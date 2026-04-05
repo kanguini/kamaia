@@ -1,0 +1,378 @@
+// ═══════════════════════════════════════════════════════════
+// KAMAIA — Database Schema
+// Platform: PostgreSQL 16 + pgvector
+// ═══════════════════════════════════════════════════════════
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuidOssp(map: "uuid-ossp"), pgvector(map: "vector", schema: "public")]
+}
+
+// ── Gabinete (Law Firm / Office) ──────────────────────────
+// Equivalent to "Tenant" in HEXA Prime.
+// A solo lawyer IS a gabinete of 1.
+
+model Gabinete {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(200)
+  nif       String?  @unique @db.VarChar(20)
+  address   String?  @db.Text
+  phone     String?  @db.VarChar(30)
+  email     String?  @db.VarChar(200)
+  logoUrl   String?  @map("logo_url") @db.VarChar(500)
+  plan      String   @default("FREE") @db.VarChar(20)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  users           User[]
+  clientes        Cliente[]
+  processos       Processo[]
+  prazos          Prazo[]
+  calendarEvents  CalendarEvent[]
+  documents       Document[]
+  auditLogs       AuditLog[]
+  aiConversations AIConversation[]
+  subscription    Subscription?
+  usageQuota      UsageQuota?
+
+  @@map("gabinetes")
+}
+
+// ── User ──────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  gabineteId   String    @map("gabinete_id") @db.Uuid
+  email        String    @db.VarChar(200)
+  passwordHash String?   @map("password_hash") @db.VarChar(200)
+  firstName    String    @map("first_name") @db.VarChar(100)
+  lastName     String    @map("last_name") @db.VarChar(100)
+  role         String    @db.VarChar(30)
+  oaaNumber    String?   @map("oaa_number") @db.VarChar(30)
+  specialty    String?   @db.VarChar(100)
+  phone        String?   @db.VarChar(30)
+  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
+  provider     String    @default("credentials") @db.VarChar(20)
+  providerId   String?   @map("provider_id") @db.VarChar(200)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete        Gabinete         @relation(fields: [gabineteId], references: [id])
+  sessions        UserSession[]
+  clientesManaged Cliente[]        @relation("AdvogadoClientes")
+  processos       Processo[]       @relation("AdvogadoProcessos")
+  processoEvents  ProcessoEvent[]
+  calendarEvents  CalendarEvent[]
+  documents       Document[]       @relation("UploadedDocuments")
+  auditLogs       AuditLog[]
+  aiConversations AIConversation[]
+
+  @@unique([gabineteId, email], map: "uq_user_gabinete_email")
+  @@unique([provider, providerId], map: "uq_user_provider")
+  @@index([gabineteId], map: "idx_user_gabinete")
+  @@index([gabineteId, role], map: "idx_user_gabinete_role")
+  @@index([email], map: "idx_user_email")
+  @@map("users")
+}
+
+// ── User Session ──────────────────────────────────────────
+
+model UserSession {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  refreshToken String   @map("refresh_token") @db.VarChar(500)
+  userAgent    String?  @map("user_agent") @db.VarChar(500)
+  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_session_user")
+  @@index([refreshToken], map: "idx_session_token")
+  @@map("user_sessions")
+}
+
+// ── Cliente (Client CRM) ─────────────────────────────────
+
+model Cliente {
+  id         String    @id @default(uuid()) @db.Uuid
+  gabineteId String    @map("gabinete_id") @db.Uuid
+  advogadoId String?   @map("advogado_id") @db.Uuid
+  type       String    @db.VarChar(20) // INDIVIDUAL | EMPRESA
+  name       String    @db.VarChar(300)
+  nif        String?   @db.VarChar(20)
+  email      String?   @db.VarChar(200)
+  phone      String?   @db.VarChar(30)
+  address    String?   @db.Text
+  notes      String?   @db.Text
+  isActive   Boolean   @default(true) @map("is_active")
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete  Gabinete   @relation(fields: [gabineteId], references: [id])
+  advogado  User?      @relation("AdvogadoClientes", fields: [advogadoId], references: [id])
+  processos Processo[]
+
+  @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
+  @@index([gabineteId], map: "idx_cliente_gabinete")
+  @@index([gabineteId, advogadoId], map: "idx_cliente_gabinete_advogado")
+  @@map("clientes")
+}
+
+// ── Processo (Legal Case) ─────────────────────────────────
+
+model Processo {
+  id              String    @id @default(uuid()) @db.Uuid
+  gabineteId      String    @map("gabinete_id") @db.Uuid
+  clienteId       String    @map("cliente_id") @db.Uuid
+  advogadoId      String    @map("advogado_id") @db.Uuid
+  processoNumber  String    @map("processo_number") @db.VarChar(30)
+  title           String    @db.VarChar(500)
+  description     String?   @db.Text
+  type            String    @db.VarChar(30) // ProcessoType enum
+  status          String    @default("ACTIVO") @db.VarChar(20) // ProcessoStatus enum
+  stage           String?   @db.VarChar(100) // Current stage within type
+  court           String?   @db.VarChar(200)
+  courtCaseNumber String?   @map("court_case_number") @db.VarChar(50)
+  judge           String?   @db.VarChar(200)
+  opposingParty   String?   @map("opposing_party") @db.VarChar(300)
+  opposingLawyer  String?   @map("opposing_lawyer") @db.VarChar(200)
+  priority        String    @default("MEDIA") @db.VarChar(10) // ALTA | MEDIA | BAIXA
+  feeType         String?   @map("fee_type") @db.VarChar(20) // FIXO | HORA | PERCENTAGEM | PRO_BONO
+  feeAmount       Int?      @map("fee_amount") // Centavos AKZ
+  notes           String?   @db.Text
+  openedAt        DateTime  @default(now()) @map("opened_at") @db.Timestamptz
+  closedAt        DateTime? @map("closed_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
+  cliente   Cliente         @relation(fields: [clienteId], references: [id])
+  advogado  User            @relation("AdvogadoProcessos", fields: [advogadoId], references: [id])
+  events    ProcessoEvent[]
+  prazos    Prazo[]
+  calendar  CalendarEvent[]
+  documents Document[]
+
+  @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
+  @@index([gabineteId], map: "idx_processo_gabinete")
+  @@index([gabineteId, status], map: "idx_processo_gabinete_status")
+  @@index([gabineteId, advogadoId], map: "idx_processo_gabinete_advogado")
+  @@index([gabineteId, clienteId], map: "idx_processo_gabinete_cliente")
+  @@map("processos")
+}
+
+// ── Processo Event (Timeline) ─────────────────────────────
+
+model ProcessoEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  processoId  String    @map("processo_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        String    @db.VarChar(30) // ProcessoEventType enum
+  description String    @db.Text
+  metadata    Json?     @db.JsonB
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  processo Processo @relation(fields: [processoId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([processoId], map: "idx_evento_processo")
+  @@map("processo_events")
+}
+
+// ── Prazo (Deadline) ──────────────────────────────────────
+
+model Prazo {
+  id               String    @id @default(uuid()) @db.Uuid
+  gabineteId       String    @map("gabinete_id") @db.Uuid
+  processoId       String    @map("processo_id") @db.Uuid
+  title            String    @db.VarChar(300)
+  description      String?   @db.Text
+  type             String    @db.VarChar(30) // PrazoType enum
+  dueDate          DateTime  @map("due_date") @db.Timestamptz
+  alertHoursBefore Int       @default(48) @map("alert_hours_before")
+  status           String    @default("PENDENTE") @db.VarChar(20) // PrazoStatus enum
+  isUrgent         Boolean   @default(false) @map("is_urgent")
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  processo Processo @relation(fields: [processoId], references: [id])
+
+  @@index([gabineteId, dueDate], map: "idx_prazo_gabinete_due")
+  @@index([gabineteId, status], map: "idx_prazo_gabinete_status")
+  @@map("prazos")
+}
+
+// ── Calendar Event ────────────────────────────────────────
+
+model CalendarEvent {
+  id              String    @id @default(uuid()) @db.Uuid
+  gabineteId      String    @map("gabinete_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  processoId      String?   @map("processo_id") @db.Uuid
+  title           String    @db.VarChar(300)
+  description     String?   @db.Text
+  type            String    @db.VarChar(20) // CalendarEventType enum
+  location        String?   @db.VarChar(300)
+  startAt         DateTime  @map("start_at") @db.Timestamptz
+  endAt           DateTime  @map("end_at") @db.Timestamptz
+  allDay          Boolean   @default(false) @map("all_day")
+  reminderMinutes Int?      @map("reminder_minutes")
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete  @relation(fields: [gabineteId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+  processo Processo? @relation(fields: [processoId], references: [id])
+
+  @@index([gabineteId, startAt], map: "idx_calendar_gabinete_start")
+  @@index([userId, startAt], map: "idx_calendar_user_start")
+  @@map("calendar_events")
+}
+
+// ── Document ──────────────────────────────────────────────
+
+model Document {
+  id           String    @id @default(uuid()) @db.Uuid
+  gabineteId   String    @map("gabinete_id") @db.Uuid
+  processoId   String?   @map("processo_id") @db.Uuid
+  uploadedById String    @map("uploaded_by_id") @db.Uuid
+  title        String    @db.VarChar(300)
+  category     String    @db.VarChar(30) // DocumentCategory enum
+  fileUrl      String    @map("file_url") @db.VarChar(500)
+  fileSize     Int       @map("file_size") // Bytes
+  mimeType     String    @map("mime_type") @db.VarChar(100)
+  version      Int       @default(1)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete   Gabinete  @relation(fields: [gabineteId], references: [id])
+  processo   Processo? @relation(fields: [processoId], references: [id])
+  uploadedBy User      @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+
+  @@index([gabineteId], map: "idx_document_gabinete")
+  @@index([gabineteId, processoId], map: "idx_document_gabinete_processo")
+  @@map("documents")
+}
+
+// ── Audit Log (Append-Only) ──────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  gabineteId String   @map("gabinete_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(30) // AuditAction enum
+  entity     String   @db.VarChar(30) // EntityType enum
+  entityId   String?  @map("entity_id") @db.VarChar(50)
+  oldValue   Json?    @map("old_value") @db.JsonB
+  newValue   Json?    @map("new_value") @db.JsonB
+  ipAddress  String?  @map("ip_address") @db.VarChar(50)
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  user     User?    @relation(fields: [userId], references: [id])
+
+  // NO updatedAt, NO deletedAt — append-only
+  @@index([gabineteId], map: "idx_audit_gabinete")
+  @@index([gabineteId, entity], map: "idx_audit_gabinete_entity")
+  @@index([gabineteId, userId], map: "idx_audit_gabinete_user")
+  @@index([createdAt], map: "idx_audit_created")
+  @@map("audit_logs")
+}
+
+// ── AI Conversation ───────────────────────────────────────
+
+model AIConversation {
+  id         String    @id @default(uuid()) @db.Uuid
+  gabineteId String    @map("gabinete_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  title      String?   @db.VarChar(300)
+  context    String    @default("GERAL") @db.VarChar(20) // PROCESSO | PRAZO | GERAL | DOCUMENTO
+  contextId  String?   @map("context_id") @db.Uuid
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete    @relation(fields: [gabineteId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  messages AIMessage[]
+
+  @@index([gabineteId, userId], map: "idx_ai_conv_gabinete_user")
+  @@map("ai_conversations")
+}
+
+// ── AI Message ────────────────────────────────────────────
+
+model AIMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  role           String   @db.VarChar(20) // user | assistant | system
+  content        String   @db.Text
+  tokenCount     Int?     @map("token_count")
+  model          String?  @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId], map: "idx_ai_msg_conversation")
+  @@map("ai_messages")
+}
+
+// ── Subscription ──────────────────────────────────────────
+
+model Subscription {
+  id                    String    @id @default(uuid()) @db.Uuid
+  gabineteId            String    @unique @map("gabinete_id") @db.Uuid
+  plan                  String    @db.VarChar(20) // SubscriptionPlan enum
+  status                String    @default("ACTIVE") @db.VarChar(20) // SubscriptionStatus enum
+  currentPeriodStart    DateTime  @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd      DateTime  @map("current_period_end") @db.Timestamptz
+  cancelledAt           DateTime? @map("cancelled_at") @db.Timestamptz
+  stripeCustomerId      String?   @map("stripe_customer_id") @db.VarChar(100)
+  stripeSubscriptionId  String?   @map("stripe_subscription_id") @db.VarChar(100)
+  multicaixaRef         String?   @map("multicaixa_ref") @db.VarChar(100)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+
+  @@map("subscriptions")
+}
+
+// ── Usage Quota ───────────────────────────────────────────
+
+model UsageQuota {
+  id              String   @id @default(uuid()) @db.Uuid
+  gabineteId      String   @unique @map("gabinete_id") @db.Uuid
+  aiQueriesUsed   Int      @default(0) @map("ai_queries_used")
+  docAnalysesUsed Int      @default(0) @map("doc_analyses_used")
+  storageUsedBytes BigInt  @default(0) @map("storage_used_bytes")
+  periodStart     DateTime @map("period_start") @db.Timestamptz
+  periodEnd       DateTime @map("period_end") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+
+  @@map("usage_quotas")
+}

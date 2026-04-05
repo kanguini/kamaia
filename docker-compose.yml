@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  kamaia-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: kamaia-postgres
+    environment:
+      POSTGRES_USER: kamaia
+      POSTGRES_PASSWORD: kamaia_dev_2024
+      POSTGRES_DB: kamaia
+    ports:
+      - '5432:5432'
+    volumes:
+      - kamaia_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-extensions.sql:/docker-entrypoint-initdb.d/init-extensions.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kamaia']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kamaia-redis:
+    image: redis:7-alpine
+    container_name: kamaia-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - kamaia_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kamaia_pgdata:
+  kamaia_redis:
