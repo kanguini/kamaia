@@ -1,0 +1,339 @@
+'use client'
+
+import { use } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft, Edit, Trash2, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { useApi, useMutation } from '@/hooks/use-api'
+import { cn } from '@/lib/utils'
+import { PrazoType, PrazoStatus } from '@kamaia/shared-types'
+import { useSession } from 'next-auth/react'
+
+interface Prazo {
+  id: string
+  title: string
+  description: string | null
+  type: PrazoType
+  dueDate: string
+  status: PrazoStatus
+  isUrgent: boolean
+  alertBeforeHours: number | null
+  createdAt: string
+  processo: {
+    id: string
+    processoNumber: string
+    title: string
+  }
+}
+
+const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
+  [PrazoType.CONTESTACAO]: 'Contestacao',
+  [PrazoType.RECURSO]: 'Recurso',
+  [PrazoType.RESPOSTA]: 'Resposta',
+  [PrazoType.ALEGACOES]: 'Alegacoes',
+  [PrazoType.AUDIENCIA]: 'Audiencia',
+  [PrazoType.OUTRO]: 'Outro',
+}
+
+function PrazoSkeleton() {
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
+      <div className="h-10 bg-bone rounded w-1/3" />
+      <div className="bg-bone rounded-xl p-6 h-48" />
+    </div>
+  )
+}
+
+function getRelativeTime(date: Date, isPast: boolean): string {
+  const now = new Date()
+  const diff = Math.abs(date.getTime() - now.getTime())
+
+  const minutes = Math.floor(diff / (1000 * 60))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+
+  if (minutes < 60) {
+    const label = minutes === 1 ? 'minuto' : 'minutos'
+    return isPast ? `ha ${minutes} ${label}` : `${minutes} ${label}`
+  }
+  if (hours < 24) {
+    const label = hours === 1 ? 'hora' : 'horas'
+    return isPast ? `ha ${hours} ${label}` : `${hours} ${label}`
+  }
+  const label = days === 1 ? 'dia' : 'dias'
+  return isPast ? `ha ${days} ${label}` : `${days} ${label}`
+}
+
+function getCountdownText(dueDate: Date, status: PrazoStatus): { text: string; color: string } {
+  const now = new Date()
+
+  if (status === PrazoStatus.CUMPRIDO) {
+    return {
+      text: `Cumprido em ${dueDate.toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', year: 'numeric' })}`,
+      color: 'text-success',
+    }
+  }
+
+  if (status !== PrazoStatus.PENDENTE) {
+    return { text: '', color: '' }
+  }
+
+  if (dueDate < now) {
+    return {
+      text: `Atrasado ${getRelativeTime(dueDate, true)}`,
+      color: 'text-error font-bold',
+    }
+  }
+
+  const diff = dueDate.getTime() - now.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+  return {
+    text: `Faltam ${days} dias e ${hours} horas`,
+    color: 'text-warning',
+  }
+}
+
+export default function PrazoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const router = useRouter()
+  const { data: session } = useSession()
+
+  const { data: prazo, loading, error, refetch } = useApi<Prazo>(`/prazos/${id}`)
+  const { mutate: completePrazo, loading: completing } = useMutation(`/prazos/${id}/complete`, 'PATCH')
+  const { mutate: updateStatus, loading: updating } = useMutation<{ status: PrazoStatus }>(
+    `/prazos/${id}/status`,
+    'PATCH',
+  )
+  const { mutate: deletePrazo, loading: deleting } = useMutation(`/prazos/${id}`, 'DELETE')
+
+  const handleComplete = async () => {
+    const result = await completePrazo(undefined)
+    if (result !== null) {
+      refetch()
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!confirm('Tem certeza que deseja cancelar este prazo?')) return
+    const result = await updateStatus({ status: PrazoStatus.CANCELADO })
+    if (result !== null) {
+      refetch()
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja eliminar este prazo?')) return
+    const result = await deletePrazo()
+    if (result !== null) {
+      router.push('/prazos')
+    }
+  }
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-AO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const getStatusBadge = (status: PrazoStatus, large = false) => {
+    const styles = {
+      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-amber-700 border-amber',
+      [PrazoStatus.CUMPRIDO]: 'bg-green-50 text-green-700 border-success',
+      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-error',
+      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-muted border-muted/20',
+    }
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center rounded-full border font-mono',
+          large ? 'px-4 py-1.5 text-sm' : 'px-2 py-0.5 text-xs',
+          styles[status],
+        )}
+      >
+        {status}
+      </span>
+    )
+  }
+
+  if (loading) return <PrazoSkeleton />
+
+  if (error || !prazo) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+          {error || 'Prazo nao encontrado'}
+        </div>
+      </div>
+    )
+  }
+
+  const dueDate = new Date(prazo.dueDate)
+  const countdown = getCountdownText(dueDate, prazo.status)
+  const isSocio = session?.role === 'SOCIO_GESTOR'
+  const canComplete = prazo.status === PrazoStatus.PENDENTE
+  const canCancel = prazo.status === PrazoStatus.PENDENTE
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-start gap-4">
+        <Link
+          href="/prazos"
+          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div className="flex-1">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="font-display text-4xl font-semibold text-ink mb-3">{prazo.title}</h1>
+              <div className="flex items-center gap-3">
+                {getStatusBadge(prazo.status, true)}
+                {prazo.isUrgent && (
+                  <div className="flex items-center gap-1 text-error">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span className="text-sm font-medium">Urgente</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {countdown.text && (
+            <div className={cn('text-2xl font-semibold mb-6', countdown.color)}>
+              {countdown.text}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-bone rounded-xl p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Processo</p>
+            <Link href={`/processos/${prazo.processo.id}`} className="hover:underline">
+              <p className="font-medium text-ink">{prazo.processo.processoNumber}</p>
+              <p className="text-sm text-muted">{prazo.processo.title}</p>
+            </Link>
+          </div>
+
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Tipo</p>
+            <span className="inline-flex items-center px-3 py-1 bg-info/10 text-info rounded-full text-sm font-mono border border-info/20">
+              {PRAZO_TYPE_LABELS[prazo.type]}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Data Limite</p>
+            <p className="font-medium text-ink">{formatDate(prazo.dueDate)}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Alerta</p>
+            <p className="text-ink">
+              {prazo.alertBeforeHours
+                ? `${prazo.alertBeforeHours} horas antes`
+                : 'Sem alerta configurado'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Urgente</p>
+            <p className="text-ink">{prazo.isUrgent ? 'Sim' : 'Nao'}</p>
+          </div>
+
+          <div>
+            <p className="text-xs font-mono text-muted uppercase mb-2">Criado em</p>
+            <p className="text-ink">{formatDate(prazo.createdAt)}</p>
+          </div>
+        </div>
+      </div>
+
+      {prazo.description && (
+        <div className="bg-bone rounded-xl p-6">
+          <h2 className="text-xs font-mono text-muted uppercase mb-3">Descricao</h2>
+          <p className="text-ink">{prazo.description}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        {canComplete && (
+          <button
+            onClick={handleComplete}
+            disabled={completing}
+            className={cn(
+              'flex items-center gap-2 bg-success text-bone font-medium px-6 py-3 rounded-lg',
+              'hover:bg-green-700 transition-colors text-base',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {completing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Marcar como Cumprido
+              </>
+            )}
+          </button>
+        )}
+
+        <Link
+          href={`/prazos/${id}/editar`}
+          className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg text-base font-medium text-ink hover:bg-bone transition-colors"
+        >
+          <Edit className="w-5 h-5" />
+          Editar
+        </Link>
+
+        {canCancel && (
+          <button
+            onClick={handleCancel}
+            disabled={updating}
+            className={cn(
+              'flex items-center gap-2 px-6 py-3 border border-muted/20 text-muted rounded-lg text-base font-medium',
+              'hover:bg-muted/10 transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {updating ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <XCircle className="w-5 h-5" />
+                Cancelar Prazo
+              </>
+            )}
+          </button>
+        )}
+
+        {isSocio && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className={cn(
+              'flex items-center gap-2 px-6 py-3 border border-error/20 bg-error/10 text-error rounded-lg text-base font-medium',
+              'hover:bg-error/20 transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            )}
+          >
+            {deleting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Trash2 className="w-5 h-5" />
+                Eliminar
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

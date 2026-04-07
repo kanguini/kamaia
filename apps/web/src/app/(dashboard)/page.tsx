@@ -1,8 +1,11 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { Scale, Clock, Users, Bot, AlertCircle } from 'lucide-react'
-import { useApi } from '@/hooks/use-api'
+import Link from 'next/link'
+import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react'
+import { useApi, useMutation } from '@/hooks/use-api'
+import { cn } from '@/lib/utils'
+import { PrazoStatus } from '@kamaia/shared-types'
 
 interface DashboardStats {
   activeProcessos: number
@@ -47,6 +50,123 @@ function EmptyState({ title, description }: { title: string; description: string
       </div>
       <h3 className="text-ink font-medium mb-1">{title}</h3>
       <p className="text-muted text-sm">{description}</p>
+    </div>
+  )
+}
+
+interface UpcomingPrazo {
+  id: string
+  title: string
+  dueDate: string
+  isUrgent: boolean
+  status: PrazoStatus
+  processo: {
+    id: string
+    processoNumber: string
+  }
+}
+
+function getRelativeTime(date: Date): string {
+  const now = new Date()
+  const diff = date.getTime() - now.getTime()
+  const diffAbs = Math.abs(diff)
+
+  const hours = Math.floor(diffAbs / (1000 * 60 * 60))
+  const days = Math.floor(diffAbs / (1000 * 60 * 60 * 24))
+
+  if (diff < 0) {
+    if (hours < 24) return `ha ${hours} horas`
+    return `ha ${days} dias`
+  } else {
+    if (hours < 24) return `em ${hours} horas`
+    return `em ${days} dias`
+  }
+}
+
+function ProximosPrazosSection() {
+  const { data: prazos, loading, refetch } = useApi<UpcomingPrazo[]>('/prazos/upcoming')
+  const { mutate: completePrazo } = useMutation('/prazos/ID/complete', 'PATCH')
+
+  const handleComplete = async () => {
+    const result = await completePrazo(undefined)
+    if (result !== null) {
+      refetch()
+    }
+  }
+
+  return (
+    <div>
+      <h2 className="font-display text-2xl font-semibold text-ink mb-4">Proximos Prazos</h2>
+      {loading ? (
+        <div className="bg-bone rounded-xl p-6 space-y-3 animate-pulse">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-16 bg-border rounded" />
+          ))}
+        </div>
+      ) : !prazos || prazos.length === 0 ? (
+        <EmptyState
+          title="Nenhum prazo registado"
+          description="Os seus prazos aparecerao aqui quando forem adicionados"
+        />
+      ) : (
+        <div className="bg-bone rounded-xl p-4 space-y-3">
+          {prazos.slice(0, 5).map((prazo) => {
+            const dueDate = new Date(prazo.dueDate)
+            const isPast = dueDate < new Date()
+
+            return (
+              <Link
+                key={prazo.id}
+                href={`/prazos/${prazo.id}`}
+                className="block bg-paper rounded-lg p-3 hover:bg-bone transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    {prazo.isUrgent && (
+                      <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-ink mb-1 truncate">{prazo.title}</p>
+                      <p className="text-xs font-mono text-muted">{prazo.processo.processoNumber}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="text-right">
+                      <p
+                        className={cn(
+                          'text-xs font-medium',
+                          isPast ? 'text-error' : 'text-warning',
+                        )}
+                      >
+                        {getRelativeTime(dueDate)}
+                      </p>
+                    </div>
+                    {prazo.status === PrazoStatus.PENDENTE && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleComplete()
+                        }}
+                        className="p-1 hover:bg-success/10 rounded transition-colors"
+                        title="Marcar como cumprido"
+                      >
+                        <CheckCircle className="w-4 h-4 text-success" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+          <Link
+            href="/prazos"
+            className="block text-center text-sm text-amber hover:text-amber-700 font-medium pt-2"
+          >
+            Ver todos os prazos →
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
@@ -103,13 +223,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <h2 className="font-display text-2xl font-semibold text-ink mb-4">Proximos Prazos</h2>
-          <EmptyState
-            title="Nenhum prazo registado"
-            description="Os seus prazos aparecerao aqui quando forem adicionados"
-          />
-        </div>
+        <ProximosPrazosSection />
 
         <div>
           <h2 className="font-display text-2xl font-semibold text-ink mb-4">

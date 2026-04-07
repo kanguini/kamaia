@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
 import { ClientesModule } from './modules/clientes/clientes.module';
 import { ProcessosModule } from './modules/processos/processos.module';
+import { PrazosModule } from './modules/prazos/prazos.module';
 import { StatsModule } from './modules/stats/stats.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { StatsModule } from './modules/stats/stats.module';
     GabinetesModule,
     ClientesModule,
     ProcessosModule,
+    PrazosModule,
     StatsModule,
   ],
   providers: [

@@ -14,6 +14,8 @@ import {
   RefreshCw,
   Loader2,
   Clock,
+  Plus,
+  CheckCircle,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
@@ -124,6 +126,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     `/processos/${id}/events`,
     'POST',
   )
+  const { mutate: completePrazo } = useMutation('/prazos/ID/complete', 'PATCH')
 
   const handleDelete = async () => {
     if (!confirm('Tem certeza que deseja eliminar este processo?')) return
@@ -148,6 +151,13 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     const result = await addNote({ description: noteText })
     if (result) {
       setNoteText('')
+      refetch()
+    }
+  }
+
+  const handleCompletePrazo = async () => {
+    const result = await completePrazo(undefined)
+    if (result !== null) {
       refetch()
     }
   }
@@ -449,7 +459,16 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
         <div className="lg:col-span-1">
           <div className="bg-bone rounded-xl p-6 sticky top-6">
-            <h2 className="font-display text-2xl font-semibold text-ink mb-4">Prazos</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-2xl font-semibold text-ink">Prazos</h2>
+              <Link
+                href={`/prazos/novo?processoId=${processo.id}`}
+                className="text-sm text-amber hover:text-amber-700 font-medium flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Prazo
+              </Link>
+            </div>
 
             {processo.prazos.length === 0 ? (
               <div className="text-center py-8">
@@ -458,15 +477,40 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             ) : (
               <div className="space-y-3">
-                {processo.prazos.map((prazo) => (
-                  <div key={prazo.id} className="bg-paper rounded-lg p-3">
-                    <p className="font-medium text-ink text-sm mb-1">{prazo.title}</p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted font-mono">{formatDate(prazo.dueDate)}</p>
-                      {getPrazoStatusBadge(prazo.status)}
-                    </div>
-                  </div>
-                ))}
+                {processo.prazos.map((prazo) => {
+                  const dueDate = new Date(prazo.dueDate)
+                  const isOverdue = dueDate < new Date() && prazo.status === PrazoStatus.PENDENTE
+
+                  return (
+                    <Link
+                      key={prazo.id}
+                      href={`/prazos/${prazo.id}`}
+                      className={cn(
+                        'block bg-paper rounded-lg p-3 hover:bg-bone transition-colors',
+                        isOverdue && 'border-l-4 border-error',
+                      )}
+                    >
+                      <p className="font-medium text-ink text-sm mb-1">{prazo.title}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-muted font-mono">{formatDate(prazo.dueDate)}</p>
+                        {getPrazoStatusBadge(prazo.status)}
+                      </div>
+                      {prazo.status === PrazoStatus.PENDENTE && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleCompletePrazo()
+                          }}
+                          className="flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                        >
+                          <CheckCircle className="w-3 h-3" />
+                          Cumprido
+                        </button>
+                      )}
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </div>
