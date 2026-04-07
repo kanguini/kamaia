@@ -2,21 +2,34 @@
 
 import { useSession } from 'next-auth/react'
 import { Scale, Clock, Users, Bot, AlertCircle } from 'lucide-react'
+import { useApi } from '@/hooks/use-api'
+
+interface DashboardStats {
+  activeProcessos: number
+  upcomingPrazos: number
+  activeClientes: number
+  aiQueriesRemaining: number
+}
 
 interface StatCardProps {
   title: string
   value: string | number
   icon: React.ElementType
   iconColor: string
+  loading?: boolean
 }
 
-function StatCard({ title, value, icon: Icon, iconColor }: StatCardProps) {
+function StatCard({ title, value, icon: Icon, iconColor, loading }: StatCardProps) {
   return (
     <div className="bg-bone rounded-xl p-6 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-muted text-sm font-mono mb-1">{title}</p>
-          <p className="text-3xl font-semibold text-ink">{value}</p>
+          {loading ? (
+            <div className="h-9 w-16 bg-border rounded animate-pulse" />
+          ) : (
+            <p className="text-3xl font-semibold text-ink">{value}</p>
+          )}
         </div>
         <div className={`p-3 rounded-lg ${iconColor}`}>
           <Icon className="w-6 h-6" />
@@ -40,6 +53,7 @@ function EmptyState({ title, description }: { title: string; description: string
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const { data: stats, loading } = useApi<DashboardStats>('/stats/dashboard')
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -60,27 +74,31 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Processos Activos"
-          value={0}
+          value={stats?.activeProcessos ?? 0}
           icon={Scale}
           iconColor="bg-amber/10 text-amber"
+          loading={loading}
         />
         <StatCard
           title="Prazos Urgentes"
-          value={0}
+          value={stats?.upcomingPrazos ?? 0}
           icon={Clock}
           iconColor="bg-error/10 text-error"
+          loading={loading}
         />
         <StatCard
           title="Clientes"
-          value={0}
+          value={stats?.activeClientes ?? 0}
           icon={Users}
           iconColor="bg-info/10 text-info"
+          loading={loading}
         />
         <StatCard
           title="Consultas IA Restantes"
-          value={50}
+          value={stats?.aiQueriesRemaining ?? 50}
           icon={Bot}
           iconColor="bg-success/10 text-success"
+          loading={loading}
         />
       </div>
 

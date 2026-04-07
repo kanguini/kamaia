@@ -4,16 +4,29 @@ import GoogleProvider from 'next-auth/providers/google'
 import { api } from '@/lib/api'
 
 interface AuthResponse {
-  user: {
-    id: string
-    email: string
-    firstName: string
-    lastName: string
-    role: string
-    gabineteId: string
+  data: {
+    tokens: {
+      accessToken: string
+      refreshToken: string
+    }
+    user: {
+      id: string
+      email: string
+      firstName: string
+      lastName: string
+      role: string
+      gabineteId: string
+    }
   }
-  accessToken: string
-  refreshToken: string
+}
+
+interface RefreshResponse {
+  data: {
+    tokens: {
+      accessToken: string
+      refreshToken: string
+    }
+  }
 }
 
 const authOptions: NextAuthOptions = {
@@ -38,16 +51,18 @@ const authOptions: NextAuthOptions = {
             }),
           })
 
+          const { tokens, user } = response.data
+
           return {
-            id: response.user.id,
-            email: response.user.email,
-            name: `${response.user.firstName} ${response.user.lastName}`,
-            firstName: response.user.firstName,
-            lastName: response.user.lastName,
-            role: response.user.role,
-            gabineteId: response.user.gabineteId,
-            accessToken: response.accessToken,
-            refreshToken: response.refreshToken,
+            id: user.id,
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role,
+            gabineteId: user.gabineteId,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
           } as User
         } catch (error) {
           console.error('Auth error:', error)
@@ -86,9 +101,9 @@ const authOptions: NextAuthOptions = {
               }),
             })
 
-            token.accessToken = response.accessToken
-            token.refreshToken = response.refreshToken
-            token.user = response.user
+            token.accessToken = response.data.tokens.accessToken
+            token.refreshToken = response.data.tokens.refreshToken
+            token.user = response.data.user
           } catch (error) {
             console.error('Google auth error:', error)
             return token
@@ -105,13 +120,14 @@ const authOptions: NextAuthOptions = {
 
           if (Date.now() >= exp - 60000) {
             try {
-              const response = await api<{ accessToken: string }>('/auth/refresh', {
+              const response = await api<RefreshResponse>('/auth/refresh', {
                 method: 'POST',
                 body: JSON.stringify({
                   refreshToken: token.refreshToken,
                 }),
               })
-              token.accessToken = response.accessToken
+              token.accessToken = response.data.tokens.accessToken
+              token.refreshToken = response.data.tokens.refreshToken
             } catch (error) {
               console.error('Token refresh error:', error)
               return token

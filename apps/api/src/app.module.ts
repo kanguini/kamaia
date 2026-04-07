@@ -7,6 +7,9 @@ import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { UsersModule } from './modules/users/users.module';
 import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
+import { ClientesModule } from './modules/clientes/clientes.module';
+import { ProcessosModule } from './modules/processos/processos.module';
+import { StatsModule } from './modules/stats/stats.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
     AuditModule,
     UsersModule,
     GabinetesModule,
+    ClientesModule,
+    ProcessosModule,
+    StatsModule,
   ],
   providers: [
     {

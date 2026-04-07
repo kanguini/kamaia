@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "kamaia-api",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nest", "start", "--watch"],
+      "port": 3001,
+      "cwd": "apps/api"
+    },
+    {
+      "name": "kamaia-web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3000"],
+      "port": 3000,
+      "cwd": "apps/web"
+    }
+  ]
+}

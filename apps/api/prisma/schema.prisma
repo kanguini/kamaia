@@ -11,7 +11,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [uuidOssp(map: "uuid-ossp"), pgvector(map: "vector", schema: "public")]
+  extensions = [uuidOssp(map: "uuid-ossp")]
 }
 
 // ── Gabinete (Law Firm / Office) ──────────────────────────
