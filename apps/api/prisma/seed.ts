@@ -266,6 +266,70 @@ async function main() {
 
   console.log('[Seed] 5 Prazos created');
 
+  // ── Calendar Events ─────────────────────────────────────
+  await prisma.calendarEvent.createMany({
+    data: [
+      {
+        gabineteId: gabinete.id,
+        userId: socio.id,
+        processoId: processo1.id,
+        title: 'Audiencia de Conciliacao — Caso Silva',
+        type: 'AUDIENCIA',
+        location: 'Tribunal Provincial do Trabalho, Sala 3',
+        startAt: inDays(3),
+        endAt: new Date(inDays(3).getTime() + 2 * 60 * 60 * 1000), // +2h
+        allDay: false,
+        reminderMinutes: 120,
+      },
+      {
+        gabineteId: gabinete.id,
+        userId: socio.id,
+        title: 'Reuniao com Equipa',
+        type: 'REUNIAO',
+        location: 'Escritorio — Sala de Reunioes',
+        startAt: inDays(1),
+        endAt: new Date(inDays(1).getTime() + 60 * 60 * 1000), // +1h
+        allDay: false,
+        reminderMinutes: 30,
+      },
+      {
+        gabineteId: gabinete.id,
+        userId: advogado.id,
+        processoId: processo2.id,
+        title: 'Diligencia — Registo Comercial',
+        type: 'DILIGENCIA',
+        location: 'Conservatoria do Registo Comercial de Luanda',
+        startAt: inDays(5),
+        endAt: new Date(inDays(5).getTime() + 3 * 60 * 60 * 1000), // +3h
+        allDay: false,
+      },
+      {
+        gabineteId: gabinete.id,
+        userId: socio.id,
+        title: 'Formacao — Novo Codigo Processo Civil',
+        type: 'OUTRO',
+        startAt: inDays(7),
+        endAt: inDays(7),
+        allDay: true,
+      },
+      {
+        gabineteId: gabinete.id,
+        userId: advogado.id,
+        processoId: processo3.id,
+        title: 'Reuniao com cliente — divorcio',
+        type: 'REUNIAO',
+        location: 'Escritorio',
+        startAt: inDays(2),
+        endAt: new Date(inDays(2).getTime() + 90 * 60 * 1000), // +1.5h
+        allDay: false,
+        reminderMinutes: 60,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  console.log('[Seed] 5 Calendar events created');
+
   // ── Usage Quota ─────────────────────────────────────────
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
