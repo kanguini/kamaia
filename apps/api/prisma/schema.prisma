@@ -41,6 +41,8 @@ model Gabinete {
   aiConversations AIConversation[]
   subscription    Subscription?
   usageQuota      UsageQuota?
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
 
   @@map("gabinetes")
 }
@@ -76,6 +78,8 @@ model User {
   documents       Document[]       @relation("UploadedDocuments")
   auditLogs       AuditLog[]
   aiConversations AIConversation[]
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -165,7 +169,9 @@ model Processo {
   events    ProcessoEvent[]
   prazos    Prazo[]
   calendar  CalendarEvent[]
-  documents Document[]
+  documents   Document[]
+  timeEntries TimeEntry[]
+  expenses    Expense[]
 
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
@@ -375,4 +381,54 @@ model UsageQuota {
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
 
   @@map("usage_quotas")
+}
+
+// ── Time Entry (Timesheets) ───────────────────────────────
+
+model TimeEntry {
+  id              String    @id @default(uuid()) @db.Uuid
+  gabineteId      String    @map("gabinete_id") @db.Uuid
+  processoId      String    @map("processo_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  category        String    @db.VarChar(30) // TimeEntryCategory enum
+  description     String?   @db.Text
+  date            DateTime  @db.Date
+  durationMinutes Int       @map("duration_minutes")
+  billable        Boolean   @default(true)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  processo Processo @relation(fields: [processoId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([gabineteId, date], map: "idx_timeentry_gabinete_date")
+  @@index([gabineteId, processoId], map: "idx_timeentry_gabinete_processo")
+  @@index([gabineteId, userId], map: "idx_timeentry_gabinete_user")
+  @@map("time_entries")
+}
+
+// ── Expense (Despesas) ────────────────────────────────────
+
+model Expense {
+  id          String    @id @default(uuid()) @db.Uuid
+  gabineteId  String    @map("gabinete_id") @db.Uuid
+  processoId  String    @map("processo_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  category    String    @db.VarChar(30) // ExpenseCategory enum
+  description String    @db.Text
+  amount      Int       // Centavos AKZ
+  date        DateTime  @db.Date
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  processo Processo @relation(fields: [processoId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([gabineteId, date], map: "idx_expense_gabinete_date")
+  @@index([gabineteId, processoId], map: "idx_expense_gabinete_processo")
+  @@map("expenses")
 }

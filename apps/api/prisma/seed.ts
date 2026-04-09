@@ -373,6 +373,99 @@ async function main() {
 
   console.log('[Seed] AI conversation created with 4 messages');
 
+  // ── Time Entries ──────────────────────────────────────────
+  await prisma.timeEntry.createMany({
+    data: [
+      {
+        gabineteId: gabinete.id,
+        processoId: processo1.id,
+        userId: socio.id,
+        category: 'AUDIENCIA',
+        description: 'Audiencia de conciliacao no tribunal',
+        date: inDays(-2),
+        durationMinutes: 120,
+        billable: true,
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo1.id,
+        userId: socio.id,
+        category: 'PESQUISA',
+        description: 'Pesquisa jurisprudencia laboral',
+        date: inDays(-3),
+        durationMinutes: 180,
+        billable: true,
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo2.id,
+        userId: advogado.id,
+        category: 'REDACCAO',
+        description: 'Redaccao de peticao inicial',
+        date: inDays(-1),
+        durationMinutes: 240,
+        billable: true,
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo1.id,
+        userId: socio.id,
+        category: 'REUNIAO',
+        description: 'Reuniao com cliente',
+        date: inDays(-4),
+        durationMinutes: 60,
+        billable: true,
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo3.id,
+        userId: socio.id,
+        category: 'DESLOCACAO',
+        description: 'Deslocacao ao conservatoria',
+        date: inDays(-1),
+        durationMinutes: 90,
+        billable: false,
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('[Seed] 5 Time entries created');
+
+  // ── Expenses ──────────────────────────────────────────────
+  await prisma.expense.createMany({
+    data: [
+      {
+        gabineteId: gabinete.id,
+        processoId: processo1.id,
+        userId: socio.id,
+        category: 'EMOLUMENTOS',
+        description: 'Emolumentos judiciais',
+        amount: 2500000,
+        date: inDays(-5),
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo2.id,
+        userId: advogado.id,
+        category: 'COPIAS',
+        description: 'Copias certificadas',
+        amount: 150000,
+        date: inDays(-2),
+      },
+      {
+        gabineteId: gabinete.id,
+        processoId: processo1.id,
+        userId: socio.id,
+        category: 'DESLOCACAO',
+        description: 'Transporte ao tribunal',
+        amount: 500000,
+        date: inDays(-2),
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('[Seed] 3 Expenses created');
+
   // ── Usage Quota ─────────────────────────────────────────
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);

@@ -1,0 +1,351 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
+import { Receipt, Plus, X } from 'lucide-react'
+import { useApi, useMutation } from '@/hooks/use-api'
+import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
+import { ExpenseCategory } from '@kamaia/shared-types'
+import { useSession } from 'next-auth/react'
+
+interface Expense {
+  id: string
+  description: string
+  amountCentavos: number
+  date: string
+  category: ExpenseCategory
+  processo: {
+    id: string
+    processoNumber: string
+    title: string
+  }
+}
+
+interface Processo {
+  id: string
+  processoNumber: string
+  title: string
+}
+
+const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  [ExpenseCategory.EMOLUMENTOS]: 'Emolumentos',
+  [ExpenseCategory.DESLOCACAO]: 'Deslocacao',
+  [ExpenseCategory.COPIAS]: 'Copias',
+  [ExpenseCategory.HONORARIOS_PERITOS]: 'Honorarios de Peritos',
+  [ExpenseCategory.OUTRO]: 'Outro',
+}
+
+const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
+  [ExpenseCategory.EMOLUMENTOS]: 'bg-error/10 text-error border-error/20',
+  [ExpenseCategory.DESLOCACAO]: 'bg-amber-50 text-amber-700 border-amber',
+  [ExpenseCategory.COPIAS]: 'bg-muted/10 text-muted border-muted/20',
+  [ExpenseCategory.HONORARIOS_PERITOS]: 'bg-info/10 text-info border-info/20',
+  [ExpenseCategory.OUTRO]: 'bg-muted/10 text-muted border-muted/20',
+}
+
+function formatMoney(centavos: number): string {
+  return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
+}
+
+function ExpensesSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="bg-bone rounded-lg p-4 animate-pulse">
+          <div className="space-y-2">
+            <div className="h-4 bg-border rounded w-3/4" />
+            <div className="h-3 bg-border rounded w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function DespesasPage() {
+  const { data: session } = useSession()
+  const [showForm, setShowForm] = useState(false)
+
+  const [formProcessoId, setFormProcessoId] = useState<string>('')
+  const [formCategory, setFormCategory] = useState<ExpenseCategory>(ExpenseCategory.EMOLUMENTOS)
+  const [formDescription, setFormDescription] = useState<string>('')
+  const [formAmount, setFormAmount] = useState<string>('')
+  const [formDate, setFormDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [formError, setFormError] = useState<string>('')
+
+  const { data: expenses, loading, error, refetch } = useApi<Expense[]>('/expenses')
+  const { data: processos } = useApi<Processo[]>('/processos?limit=1000')
+
+  const { mutate: createExpense, loading: creating } = useMutation<{
+    processoId: string
+    category: ExpenseCategory
+    description: string
+    amountCentavos: number
+    date: string
+  }>('/expenses', 'POST')
+
+  const deleteExpenseFn = async (expId: string) => {
+    if (!session?.accessToken) return null
+    try {
+      await api(`/expenses/${expId}`, { method: 'DELETE', token: session.accessToken })
+      return true
+    } catch { return null }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError('')
+
+    if (!formProcessoId) {
+      setFormError('Seleccione um processo')
+      return
+    }
+
+    if (!formDescription.trim()) {
+      setFormError('Descricao e obrigatoria')
+      return
+    }
+
+    const amount = parseFloat(formAmount)
+    if (isNaN(amount) || amount <= 0) {
+      setFormError('Valor invalido')
+      return
+    }
+
+    const amountCentavos = Math.round(amount * 100)
+
+    const result = await createExpense({
+      processoId: formProcessoId,
+      category: formCategory,
+      description: formDescription.trim(),
+      amountCentavos,
+      date: formDate,
+    })
+
+    if (result) {
+      setFormProcessoId('')
+      setFormCategory(ExpenseCategory.EMOLUMENTOS)
+      setFormDescription('')
+      setFormAmount('')
+      setFormDate(new Date().toISOString().split('T')[0])
+      setShowForm(false)
+      refetch()
+    }
+  }
+
+  const handleDelete = async (expId: string) => {
+    if (!confirm('Tem certeza que deseja eliminar esta despesa?')) return
+    const result = await deleteExpenseFn(expId)
+    if (result !== null) {
+      refetch()
+    }
+  }
+
+  const totalAmount = useMemo(() => {
+    if (!expenses) return 0
+    return expenses.reduce((sum, expense) => sum + expense.amountCentavos, 0)
+  }, [expenses])
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('pt-AO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  }
+
+  const isSocio = session?.role === 'SOCIO_GESTOR'
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-4xl font-semibold text-ink">Despesas</h1>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Nova Despesa
+        </button>
+      </div>
+
+      <div className="bg-bone rounded-xl p-5">
+        <p className="text-xs font-mono text-muted uppercase mb-2">Total</p>
+        <p className="text-3xl font-semibold text-ink">{formatMoney(totalAmount)}</p>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-bone rounded-xl p-6">
+          <h2 className="font-display text-2xl font-semibold text-ink mb-4">Nova Despesa</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-ink mb-2">Processo</label>
+              <select
+                value={formProcessoId}
+                onChange={(e) => setFormProcessoId(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              >
+                <option value="">Seleccionar processo</option>
+                {processos?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.processoNumber} — {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink mb-2">Categoria</label>
+              <select
+                value={formCategory}
+                onChange={(e) => setFormCategory(e.target.value as ExpenseCategory)}
+                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              >
+                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink mb-2">Descricao</label>
+              <input
+                type="text"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                required
+                placeholder="Descricao da despesa"
+                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink mb-2">Valor (AKZ)</label>
+              <input
+                type="number"
+                value={formAmount}
+                onChange={(e) => setFormAmount(e.target.value)}
+                required
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-ink mb-2">Data</label>
+              <input
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {formError && <p className="text-error text-sm mb-4">{formError}</p>}
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={creating}
+              className={cn(
+                'px-6 py-2.5 bg-amber text-ink font-medium rounded-lg',
+                'hover:bg-amber-600 transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              {creating ? 'A guardar...' : 'Guardar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-6 py-2.5 border border-border text-ink font-medium rounded-lg hover:bg-bone transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {error && (
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+      )}
+
+      {loading ? (
+        <ExpensesSkeleton />
+      ) : !expenses || expenses.length === 0 ? (
+        <div className="bg-bone rounded-xl p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
+            <Receipt className="w-8 h-8 text-muted" />
+          </div>
+          <h3 className="text-ink font-medium text-lg mb-2">Nenhuma despesa registada</h3>
+          <p className="text-muted text-sm mb-6">Comece por registar a sua primeira despesa</p>
+          <button
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nova Despesa
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {expenses
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .map((expense) => (
+              <div
+                key={expense.id}
+                className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Link
+                        href={`/processos/${expense.processo.id}`}
+                        className="text-sm font-mono text-muted hover:underline"
+                      >
+                        {expense.processo.processoNumber}
+                      </Link>
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2 py-0.5 text-xs font-mono rounded-full border',
+                          CATEGORY_COLORS[expense.category],
+                        )}
+                      >
+                        {CATEGORY_LABELS[expense.category]}
+                      </span>
+                    </div>
+                    <p className="text-ink mb-1">{expense.description}</p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-lg font-semibold text-amber">
+                        {formatMoney(expense.amountCentavos)}
+                      </p>
+                      <p className="text-sm text-muted">{formatDate(expense.date)}</p>
+                    </div>
+                  </div>
+                  {isSocio && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleDelete(expense.id)}
+                        className="p-1.5 hover:bg-error/10 text-error rounded transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  )
+}

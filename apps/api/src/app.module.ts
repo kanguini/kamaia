@@ -14,6 +14,8 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { IaModule } from './modules/ia/ia.module';
+import { TimesheetsModule } from './modules/timesheets/timesheets.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { IaModule } from './modules/ia/ia.module';
     DocumentsModule,
     StatsModule,
     IaModule,
+    TimesheetsModule,
+    ExpensesModule,
   ],
   providers: [
     {

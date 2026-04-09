@@ -11,6 +11,8 @@ import {
   Calendar,
   Clock,
   FileText,
+  Timer,
+  Receipt,
   Bot,
   Settings,
   Menu,
@@ -40,6 +42,8 @@ const navSections = [
       { label: 'Agenda', href: '/agenda', icon: Calendar },
       { label: 'Prazos', href: '/prazos', icon: Clock },
       { label: 'Documentos', href: '/documentos', icon: FileText },
+      { label: 'Timesheets', href: '/timesheets', icon: Timer },
+      { label: 'Despesas', href: '/despesas', icon: Receipt },
     ],
   },
   {

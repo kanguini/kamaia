@@ -60,6 +60,13 @@ interface Document {
   fileSize: number
 }
 
+interface Rentabilidade {
+  totalMinutes: number
+  estimatedValue: number
+  expenses: number
+  margin?: number
+}
+
 interface Processo {
   id: string
   processoNumber: string
@@ -131,6 +138,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
   const [noteText, setNoteText] = useState('')
 
   const { data: processo, loading, error, refetch } = useApi<Processo>(`/processos/${id}`)
+  const { data: rentabilidade } = useApi<Rentabilidade>(`/stats/rentabilidade?processoId=${id}`)
   const { mutate: deleteProcesso, loading: deleting } = useMutation(`/processos/${id}`, 'DELETE')
   const { mutate: advanceStage, loading: advancing } = useMutation(
     `/processos/${id}/stage`,
@@ -254,6 +262,18 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
   const formatMoney = (amount: number) => {
     return `${amount.toLocaleString('pt-AO')} AKZ`
+  }
+
+  const formatDuration = (minutes: number): string => {
+    const h = Math.floor(minutes / 60)
+    const m = minutes % 60
+    if (h === 0) return `${m}min`
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}min`
+  }
+
+  const formatMoneyCentavos = (centavos: number): string => {
+    return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
   }
 
   const formatFileSize = (bytes: number): string => {
@@ -627,6 +647,47 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         )}
       </div>
+
+      {/* Rentabilidade Section */}
+      {rentabilidade && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-semibold text-ink">Rentabilidade</h2>
+            <Link
+              href={`/timesheets?processoId=${processo.id}`}
+              className="text-sm text-amber hover:text-amber-600 font-medium"
+            >
+              Ver timesheets
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-bone rounded-xl p-5">
+              <p className="text-xs font-mono text-muted uppercase mb-2">Horas registadas</p>
+              <p className="text-2xl font-semibold text-ink">
+                {formatDuration(rentabilidade.totalMinutes)}
+              </p>
+            </div>
+            <div className="bg-bone rounded-xl p-5">
+              <p className="text-xs font-mono text-muted uppercase mb-2">Valor estimado</p>
+              <p className="text-2xl font-semibold text-ink">
+                {formatMoneyCentavos(rentabilidade.estimatedValue)}
+              </p>
+            </div>
+            <div className="bg-bone rounded-xl p-5">
+              <p className="text-xs font-mono text-muted uppercase mb-2">Despesas</p>
+              <p className="text-2xl font-semibold text-ink">
+                {formatMoneyCentavos(rentabilidade.expenses)}
+              </p>
+            </div>
+          </div>
+          {processo.feeType === 'HORA' && rentabilidade.margin !== undefined && (
+            <div className="mt-4 bg-bone rounded-xl p-5">
+              <p className="text-xs font-mono text-muted uppercase mb-2">Margem</p>
+              <p className="text-2xl font-semibold text-ink">{rentabilidade.margin.toFixed(1)}%</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

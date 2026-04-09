@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { StatsService } from './stats.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
@@ -13,5 +13,14 @@ export class StatsController {
   async getDashboardStats(@GabineteId() gabineteId: string) {
     const stats = await this.statsService.getDashboardStats(gabineteId);
     return { data: stats };
+  }
+
+  @Get('rentabilidade')
+  async getRentabilidade(
+    @GabineteId() gabineteId: string,
+    @Query('processoId') processoId?: string,
+  ) {
+    const result = await this.statsService.getRentabilidade(gabineteId, processoId);
+    return { data: result };
   }
 }

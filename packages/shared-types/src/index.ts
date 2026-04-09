@@ -98,6 +98,23 @@ export enum DocumentCategory {
   OUTRO = 'OUTRO',
 }
 
+export enum TimeEntryCategory {
+  PESQUISA = 'PESQUISA',
+  REDACCAO = 'REDACCAO',
+  AUDIENCIA = 'AUDIENCIA',
+  REUNIAO = 'REUNIAO',
+  DESLOCACAO = 'DESLOCACAO',
+  OUTRO = 'OUTRO',
+}
+
+export enum ExpenseCategory {
+  EMOLUMENTOS = 'EMOLUMENTOS',
+  DESLOCACAO = 'DESLOCACAO',
+  COPIAS = 'COPIAS',
+  HONORARIOS_PERITOS = 'HONORARIOS_PERITOS',
+  OUTRO = 'OUTRO',
+}
+
 export enum SubscriptionPlan {
   FREE = 'FREE',
   PRO_INDIVIDUAL = 'PRO_INDIVIDUAL',
