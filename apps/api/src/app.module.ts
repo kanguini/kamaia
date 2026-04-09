@@ -12,6 +12,7 @@ import { ProcessosModule } from './modules/processos/processos.module';
 import { PrazosModule } from './modules/prazos/prazos.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { StatsModule } from './modules/stats/stats.module';
+import { IaModule } from './modules/ia/ia.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { StatsModule } from './modules/stats/stats.module';
     PrazosModule,
     CalendarModule,
     StatsModule,
+    IaModule,
   ],
   providers: [
     {

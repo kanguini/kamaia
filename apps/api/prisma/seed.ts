@@ -330,6 +330,49 @@ async function main() {
 
   console.log('[Seed] 5 Calendar events created');
 
+  // ── AI Conversations ─────────────────────────────────────
+  const aiConversation = await prisma.aIConversation.create({
+    data: {
+      gabineteId: gabinete.id,
+      userId: socio.id,
+      title: 'Prazo para contestacao civel',
+      context: 'GERAL',
+    },
+  });
+
+  await prisma.aIMessage.createMany({
+    data: [
+      {
+        conversationId: aiConversation.id,
+        role: 'user',
+        content: 'Qual e o prazo para contestar uma accao ordinaria civel em Angola?',
+        tokenCount: 15,
+      },
+      {
+        conversationId: aiConversation.id,
+        role: 'assistant',
+        content: 'De acordo com o Codigo de Processo Civil angolano (Art. 486.o), o prazo para apresentar contestacao numa accao ordinaria civel e de 20 dias uteis a contar da data da citacao.\n\n_Nota: Esta e uma resposta simulada._',
+        tokenCount: 45,
+        model: 'mock-v1',
+      },
+      {
+        conversationId: aiConversation.id,
+        role: 'user',
+        content: 'E se o reu estiver no estrangeiro?',
+        tokenCount: 8,
+      },
+      {
+        conversationId: aiConversation.id,
+        role: 'assistant',
+        content: 'Quando o reu se encontra no estrangeiro, o prazo para contestacao pode ser alargado, dependendo do metodo de citacao utilizado. A citacao edital ou por via diplomatica pode implicar prazos adicionais.\n\n_Nota: Esta e uma resposta simulada._',
+        tokenCount: 40,
+        model: 'mock-v1',
+      },
+    ],
+  });
+
+  console.log('[Seed] AI conversation created with 4 messages');
+
   // ── Usage Quota ─────────────────────────────────────────
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);

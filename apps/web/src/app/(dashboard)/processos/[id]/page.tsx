@@ -16,6 +16,7 @@ import {
   Clock,
   Plus,
   CheckCircle,
+  Bot,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
@@ -280,6 +281,13 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href={`/ia-assistente?processoId=${processo.id}&context=PROCESSO`}
+            className="flex items-center gap-2 px-4 py-2 bg-amber text-ink rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors"
+          >
+            <Bot className="w-4 h-4" />
+            Consultar IA
+          </Link>
           <Link
             href={`/processos/${id}/editar`}
             className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium text-ink hover:bg-bone transition-colors"
