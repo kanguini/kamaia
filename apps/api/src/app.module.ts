@@ -11,6 +11,7 @@ import { ClientesModule } from './modules/clientes/clientes.module';
 import { ProcessosModule } from './modules/processos/processos.module';
 import { PrazosModule } from './modules/prazos/prazos.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { IaModule } from './modules/ia/ia.module';
 
@@ -30,6 +31,7 @@ import { IaModule } from './modules/ia/ia.module';
     ProcessosModule,
     PrazosModule,
     CalendarModule,
+    DocumentsModule,
     StatsModule,
     IaModule,
   ],

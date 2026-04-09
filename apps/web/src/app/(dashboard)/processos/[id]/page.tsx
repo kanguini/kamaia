@@ -17,6 +17,10 @@ import {
   Plus,
   CheckCircle,
   Bot,
+  Upload,
+  Download,
+  File,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
@@ -46,6 +50,14 @@ interface Prazo {
   title: string
   dueDate: string
   status: PrazoStatus
+}
+
+interface Document {
+  id: string
+  title: string
+  filename: string
+  fileType: string
+  fileSize: number
 }
 
 interface Processo {
@@ -78,6 +90,7 @@ interface Processo {
   }
   events: ProcessoEvent[]
   prazos: Prazo[]
+  documents?: Document[]
 }
 
 const PROCESSO_TYPE_LABELS: Record<ProcessoType, string> = {
@@ -241,6 +254,49 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
   const formatMoney = (amount: number) => {
     return `${amount.toLocaleString('pt-AO')} AKZ`
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
+  }
+
+  const getFileIcon = (fileType: string): React.ReactNode => {
+    const type = fileType.toLowerCase()
+    if (type.includes('pdf')) {
+      return <FileText className="w-4 h-4 text-error" />
+    }
+    if (type.includes('word') || type.includes('doc')) {
+      return <FileText className="w-4 h-4 text-info" />
+    }
+    if (type.includes('image') || type.includes('jpg') || type.includes('png')) {
+      return <ImageIcon className="w-4 h-4 text-success" />
+    }
+    if (type.includes('excel') || type.includes('sheet')) {
+      return <FileText className="w-4 h-4 text-success" />
+    }
+    return <File className="w-4 h-4 text-muted" />
+  }
+
+  const handleDownload = async (docId: string, filename: string) => {
+    if (!session?.accessToken) return
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+    try {
+      const res = await fetch(`${API_URL}/documents/${docId}/download`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      })
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Error downloading file:', err)
+    }
   }
 
   if (loading) return <ProcessoSkeleton />
@@ -465,7 +521,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <div className="bg-bone rounded-xl p-6 sticky top-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-2xl font-semibold text-ink">Prazos</h2>
@@ -523,6 +579,53 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
         </div>
+      </div>
+
+      {/* Documents Section */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl font-semibold text-ink">Documentos</h2>
+          <Link
+            href={`/documentos?processoId=${processo.id}`}
+            className="flex items-center gap-1 text-sm text-amber hover:text-amber-600"
+          >
+            <Upload className="w-4 h-4" />
+            Enviar Documento
+          </Link>
+        </div>
+        {processo.documents && processo.documents.length > 0 ? (
+          <div className="space-y-2">
+            {processo.documents.map((doc) => (
+              <div
+                key={doc.id}
+                onClick={() => handleDownload(doc.id, doc.filename)}
+                className="bg-bone rounded-lg p-3 hover:bg-bone/80 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">{getFileIcon(doc.fileType)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-ink text-sm truncate">{doc.title}</p>
+                    <p className="text-xs text-muted font-mono">{formatFileSize(doc.fileSize)}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDownload(doc.id, doc.filename)
+                    }}
+                    className="p-1.5 hover:bg-border rounded transition-colors flex-shrink-0"
+                  >
+                    <Download className="w-4 h-4 text-muted" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-bone rounded-lg p-6 text-center">
+            <FileText className="w-8 h-8 text-muted mx-auto mb-2" />
+            <p className="text-muted text-sm">Nenhum documento associado</p>
+          </div>
+        )}
       </div>
     </div>
   )

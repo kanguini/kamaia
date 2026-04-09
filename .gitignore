@@ -38,3 +38,4 @@ npm-debug.log*
 # Docker volumes
 pgdata/
 redis-data/
+uploads/
