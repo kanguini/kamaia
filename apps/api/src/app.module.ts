@@ -18,6 +18,7 @@ import { IaModule } from './modules/ia/ia.module';
 import { TimesheetsModule } from './modules/timesheets/timesheets.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     TimesheetsModule,
     ExpensesModule,
     NotificationsModule,
+    HealthModule,
   ],
   providers: [
     {

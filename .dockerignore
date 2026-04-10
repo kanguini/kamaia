@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.next
+**/uploads
+**/.env
+**/.env.local
+**/.env.production
+**/*.log
+.git
+.github
+.vscode
+.claude
+docs
+*.md
+!README.md
