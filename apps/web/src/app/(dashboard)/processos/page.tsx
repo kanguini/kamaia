@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Plus, Scale, AlertCircle } from 'lucide-react'
+import { Plus, Scale, AlertCircle, Search } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton, FilterTabs } from '@/components/ui'
 import {
   ProcessoType,
   ProcessoStatus,
@@ -41,59 +41,36 @@ const PROCESSO_TYPE_LABELS: Record<ProcessoType, string> = {
   [ProcessoType.ARBITRAGEM]: 'Arbitragem',
 }
 
-function ProcessoSkeleton() {
-  return (
-    <div className="bg-bone rounded-lg p-4 animate-pulse">
-      <div className="space-y-3">
-        <div className="h-4 bg-border rounded w-1/4" />
-        <div className="h-6 bg-border rounded w-3/4" />
-        <div className="flex gap-2">
-          <div className="h-5 bg-border rounded w-20" />
-          <div className="h-5 bg-border rounded w-20" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function EmptyState() {
-  return (
-    <div className="bg-bone rounded-xl p-12 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-        <Scale className="w-8 h-8 text-muted" />
-      </div>
-      <h3 className="text-ink font-medium text-lg mb-2">Nenhum processo encontrado</h3>
-      <p className="text-muted text-sm mb-6">Comece por criar o seu primeiro processo</p>
-      <Link
-        href="/processos/novo"
-        className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Novo Processo
-      </Link>
-    </div>
-  )
-}
-
 export default function ProcessosPage() {
-  const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
+  const [search, setSearch] = useState<string>('')
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
     if (statusFilter !== 'ALL') params.append('status', statusFilter)
     if (typeFilter !== 'ALL') params.append('type', typeFilter)
     if (priorityFilter !== 'ALL') params.append('priority', priorityFilter)
+    if (search) params.append('search', search)
     return `/processos?${params.toString()}`
-  }, [statusFilter, typeFilter, priorityFilter])
+  }, [statusFilter, typeFilter, priorityFilter, search])
 
   const { data, loading, error } = useApi<PaginatedResponse<Processo>>(endpoint, [
     statusFilter,
     typeFilter,
     priorityFilter,
+    search,
   ])
+
+  const hasActiveFilters = search !== '' || statusFilter !== 'ALL' || typeFilter !== 'ALL' || priorityFilter !== 'ALL'
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('ALL')
+    setTypeFilter('ALL')
+    setPriorityFilter('ALL')
+  }
 
   const getStatusBadge = (status: ProcessoStatus) => {
     const styles = {
@@ -151,82 +128,51 @@ export default function ProcessosPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Processos</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Processos</h1>
         <Link
           href="/processos/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
         >
-          <Plus className="w-4 h-4" />
-          Novo Processo
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Novo Processo</span>
+          <span className="sm:hidden">Novo</span>
         </Link>
       </div>
 
-      <div className="bg-bone rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-4 overflow-x-auto">
-          <button
-            onClick={() => setStatusFilter('ALL')}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === 'ALL'
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setStatusFilter(ProcessoStatus.ACTIVO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === ProcessoStatus.ACTIVO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Activos
-          </button>
-          <button
-            onClick={() => setStatusFilter(ProcessoStatus.SUSPENSO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === ProcessoStatus.SUSPENSO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Suspensos
-          </button>
-          <button
-            onClick={() => setStatusFilter(ProcessoStatus.ENCERRADO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === ProcessoStatus.ENCERRADO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Encerrados
-          </button>
-          <button
-            onClick={() => setStatusFilter(ProcessoStatus.ARQUIVADO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === ProcessoStatus.ARQUIVADO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Arquivados
-          </button>
-        </div>
+      <div className="bg-bone rounded-xl p-4 space-y-4">
+        <FilterTabs
+          value={statusFilter}
+          onChange={setStatusFilter}
+          label="Filtrar por status"
+          tabs={[
+            { value: 'ALL', label: 'Todos' },
+            { value: ProcessoStatus.ACTIVO, label: 'Activos' },
+            { value: ProcessoStatus.SUSPENSO, label: 'Suspensos' },
+            { value: ProcessoStatus.ENCERRADO, label: 'Encerrados' },
+            { value: ProcessoStatus.ARQUIVADO, label: 'Arquivados' },
+          ]}
+        />
 
         <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Pesquisar processos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Pesquisar processos"
+              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+            />
+          </div>
+
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm"
+            aria-label="Filtrar por tipo"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Tipos</option>
             {Object.entries(PROCESSO_TYPE_LABELS).map(([value, label]) => (
@@ -239,7 +185,8 @@ export default function ProcessosPage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm"
+            aria-label="Filtrar por prioridade"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todas as Prioridades</option>
             <option value={ProcessoPriority.ALTA}>Alta</option>
@@ -250,25 +197,47 @@ export default function ProcessosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <ProcessoSkeleton key={i} />
-          ))}
-        </div>
+        <LoadingSkeleton count={5} label="A carregar processos" />
       ) : !data || data.data.length === 0 ? (
-        <EmptyState />
+        hasActiveFilters ? (
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum processo corresponde aos filtros aplicados"
+            action={
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+              >
+                Limpar filtros
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Scale}
+            title="Nenhum processo"
+            description="Comece por criar o seu primeiro processo"
+            action={
+              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]">
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Novo Processo
+              </Link>
+            }
+          />
+        )
       ) : (
         <div className="space-y-3">
           {data.data.map((processo) => (
-            <div
+            <Link
               key={processo.id}
-              onClick={() => router.push(`/processos/${processo.id}`)}
+              href={`/processos/${processo.id}`}
               className={cn(
-                'bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer',
+                'block bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors',
                 hasUrgentDeadline(processo) && 'border-l-4 border-error',
               )}
             >
@@ -297,12 +266,12 @@ export default function ProcessosPage() {
                   <p className="text-xs font-mono text-ink">{processo.currentStage}</p>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
 
           {data.nextCursor && (
             <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors">
+              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors min-h-[40px]">
                 Carregar mais
               </button>
             </div>

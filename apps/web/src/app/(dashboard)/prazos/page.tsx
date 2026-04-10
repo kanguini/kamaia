@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Plus, Clock, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Plus, Clock, AlertTriangle, CheckCircle, Search } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton, FilterTabs, IconButton } from '@/components/ui'
 import { PrazoType, PrazoStatus, PaginatedResponse } from '@kamaia/shared-types'
 
 interface Prazo {
@@ -35,37 +35,6 @@ const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
   [PrazoType.ALEGACOES]: 'Alegacoes',
   [PrazoType.AUDIENCIA]: 'Audiencia',
   [PrazoType.OUTRO]: 'Outro',
-}
-
-function PrazoSkeleton() {
-  return (
-    <div className="bg-bone rounded-lg p-4 animate-pulse">
-      <div className="space-y-3">
-        <div className="h-4 bg-border rounded w-3/4" />
-        <div className="h-3 bg-border rounded w-1/2" />
-        <div className="h-5 bg-border rounded w-24" />
-      </div>
-    </div>
-  )
-}
-
-function EmptyState() {
-  return (
-    <div className="bg-bone rounded-xl p-12 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-        <Clock className="w-8 h-8 text-muted" />
-      </div>
-      <h3 className="text-ink font-medium text-lg mb-2">Nenhum prazo registado</h3>
-      <p className="text-muted text-sm mb-6">Comece por criar o seu primeiro prazo</p>
-      <Link
-        href="/prazos/novo"
-        className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Novo Prazo
-      </Link>
-    </div>
-  )
 }
 
 function getRelativeTime(date: Date): string {
@@ -109,10 +78,19 @@ function isThisWeek(date: Date): boolean {
 }
 
 export default function PrazosPage() {
-  const router = useRouter()
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [urgentOnly, setUrgentOnly] = useState(false)
+  const [search, setSearch] = useState<string>('')
+
+  const hasActiveFilters = search !== '' || statusFilter !== 'ALL' || typeFilter !== 'ALL' || urgentOnly
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('ALL')
+    setTypeFilter('ALL')
+    setUrgentOnly(false)
+  }
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
@@ -222,15 +200,16 @@ export default function PrazosPage() {
   const showGrouped = statusFilter === 'ALL' || statusFilter === PrazoStatus.PENDENTE
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Prazos</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Prazos</h1>
         <Link
           href="/prazos/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
         >
-          <Plus className="w-4 h-4" />
-          Novo Prazo
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Novo Prazo</span>
+          <span className="sm:hidden">Novo</span>
         </Link>
       </div>
 
@@ -246,70 +225,38 @@ export default function PrazosPage() {
         </div>
       </div>
 
-      <div className="bg-bone rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-4 overflow-x-auto">
-          <button
-            onClick={() => setStatusFilter('ALL')}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === 'ALL'
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setStatusFilter(PrazoStatus.PENDENTE)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === PrazoStatus.PENDENTE
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Pendentes
-          </button>
-          <button
-            onClick={() => setStatusFilter(PrazoStatus.CUMPRIDO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === PrazoStatus.CUMPRIDO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Cumpridos
-          </button>
-          <button
-            onClick={() => setStatusFilter(PrazoStatus.EXPIRADO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === PrazoStatus.EXPIRADO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Expirados
-          </button>
-          <button
-            onClick={() => setStatusFilter(PrazoStatus.CANCELADO)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
-              statusFilter === PrazoStatus.CANCELADO
-                ? 'bg-amber text-ink'
-                : 'bg-paper text-muted hover:bg-border',
-            )}
-          >
-            Cancelados
-          </button>
-        </div>
+      <div className="bg-bone rounded-xl p-4 space-y-4">
+        <FilterTabs
+          value={statusFilter}
+          onChange={setStatusFilter}
+          label="Filtrar por status"
+          tabs={[
+            { value: 'ALL', label: 'Todos' },
+            { value: PrazoStatus.PENDENTE, label: 'Pendentes' },
+            { value: PrazoStatus.CUMPRIDO, label: 'Cumpridos' },
+            { value: PrazoStatus.EXPIRADO, label: 'Expirados' },
+            { value: PrazoStatus.CANCELADO, label: 'Cancelados' },
+          ]}
+        />
 
         <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Pesquisar prazos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Pesquisar prazos"
+              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+            />
+          </div>
+
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm"
+            aria-label="Filtrar por tipo"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Tipos</option>
             {Object.entries(PRAZO_TYPE_LABELS).map(([value, label]) => (
@@ -324,6 +271,7 @@ export default function PrazosPage() {
               type="checkbox"
               checked={urgentOnly}
               onChange={(e) => setUrgentOnly(e.target.checked)}
+              aria-label="Apenas urgentes"
               className="w-4 h-4 text-amber border-border rounded focus:ring-2 focus:ring-amber"
             />
             <span className="text-sm font-medium text-ink">Apenas urgentes</span>
@@ -332,17 +280,39 @@ export default function PrazosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <PrazoSkeleton key={i} />
-          ))}
-        </div>
+        <LoadingSkeleton count={5} label="A carregar prazos" />
       ) : !data || data.data.length === 0 ? (
-        <EmptyState />
+        hasActiveFilters ? (
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum prazo corresponde aos filtros aplicados"
+            action={
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+              >
+                Limpar filtros
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Clock}
+            title="Nenhum prazo"
+            description="Comece por criar o seu primeiro prazo"
+            action={
+              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]">
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Novo Prazo
+              </Link>
+            }
+          />
+        )
       ) : showGrouped ? (
         <div className="space-y-6">
           {groupedPrazos.atrasados && groupedPrazos.atrasados.length > 0 && (
@@ -352,16 +322,16 @@ export default function PrazosPage() {
                 {groupedPrazos.atrasados.map((prazo) => (
                   <div
                     key={prazo.id}
-                    onClick={() => router.push(`/prazos/${prazo.id}`)}
-                    className="bg-error/5 border-l-4 border-error rounded-lg p-4 hover:bg-error/10 transition-colors cursor-pointer"
+                    className="bg-error/5 border-l-4 border-error rounded-lg p-4 hover:bg-error/10 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
+                        <Link href={`/prazos/${prazo.id}`} className="block">
+                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                        </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-mono text-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
@@ -379,16 +349,16 @@ export default function PrazosPage() {
                         <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleComplete()
-                            }}
-                            className="mt-2 flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          <IconButton
+                            aria-label="Marcar como cumprido"
+                            onClick={handleComplete}
+                            variant="default"
+                            size="sm"
+                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Cumprido
-                          </button>
+                            <span className="ml-1 text-xs">Cumprido</span>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -405,16 +375,16 @@ export default function PrazosPage() {
                 {groupedPrazos.hoje.map((prazo) => (
                   <div
                     key={prazo.id}
-                    onClick={() => router.push(`/prazos/${prazo.id}`)}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
+                        <Link href={`/prazos/${prazo.id}`} className="block">
+                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                        </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-mono text-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
@@ -430,16 +400,16 @@ export default function PrazosPage() {
                         <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleComplete()
-                            }}
-                            className="mt-2 flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          <IconButton
+                            aria-label="Marcar como cumprido"
+                            onClick={handleComplete}
+                            variant="default"
+                            size="sm"
+                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Cumprido
-                          </button>
+                            <span className="ml-1 text-xs">Cumprido</span>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -456,16 +426,16 @@ export default function PrazosPage() {
                 {groupedPrazos.amanha.map((prazo) => (
                   <div
                     key={prazo.id}
-                    onClick={() => router.push(`/prazos/${prazo.id}`)}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
+                        <Link href={`/prazos/${prazo.id}`} className="block">
+                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                        </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-mono text-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
@@ -483,16 +453,16 @@ export default function PrazosPage() {
                         <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleComplete()
-                            }}
-                            className="mt-2 flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          <IconButton
+                            aria-label="Marcar como cumprido"
+                            onClick={handleComplete}
+                            variant="default"
+                            size="sm"
+                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Cumprido
-                          </button>
+                            <span className="ml-1 text-xs">Cumprido</span>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -509,16 +479,16 @@ export default function PrazosPage() {
                 {groupedPrazos.estaSemana.map((prazo) => (
                   <div
                     key={prazo.id}
-                    onClick={() => router.push(`/prazos/${prazo.id}`)}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
+                        <Link href={`/prazos/${prazo.id}`} className="block">
+                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                        </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-mono text-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
@@ -536,16 +506,16 @@ export default function PrazosPage() {
                         <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleComplete()
-                            }}
-                            className="mt-2 flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          <IconButton
+                            aria-label="Marcar como cumprido"
+                            onClick={handleComplete}
+                            variant="default"
+                            size="sm"
+                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Cumprido
-                          </button>
+                            <span className="ml-1 text-xs">Cumprido</span>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -562,16 +532,16 @@ export default function PrazosPage() {
                 {groupedPrazos.proximo.map((prazo) => (
                   <div
                     key={prazo.id}
-                    onClick={() => router.push(`/prazos/${prazo.id}`)}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
+                        <Link href={`/prazos/${prazo.id}`} className="block">
+                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                        </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-mono text-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
@@ -589,16 +559,16 @@ export default function PrazosPage() {
                         <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleComplete()
-                            }}
-                            className="mt-2 flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          <IconButton
+                            aria-label="Marcar como cumprido"
+                            onClick={handleComplete}
+                            variant="default"
+                            size="sm"
+                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            Cumprido
-                          </button>
+                            <span className="ml-1 text-xs">Cumprido</span>
+                          </IconButton>
                         )}
                       </div>
                     </div>
@@ -611,13 +581,13 @@ export default function PrazosPage() {
       ) : (
         <div className="space-y-3">
           {data.data.map((prazo) => (
-            <div
+            <Link
               key={prazo.id}
-              onClick={() => router.push(`/prazos/${prazo.id}`)}
-              className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+              href={`/prazos/${prazo.id}`}
+              className="block bg-bone rounded-lg p-4 hover:bg-bone/80 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
               <div className="flex items-start gap-3">
-                {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />}
+                {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-hidden="true" />}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
                   <Link
@@ -638,7 +608,7 @@ export default function PrazosPage() {
                   {getStatusBadge(prazo.status)}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
 
           {data.nextCursor && (

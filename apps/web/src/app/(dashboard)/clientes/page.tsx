@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Search, Plus, User, Building2 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton } from '@/components/ui'
 import { ClienteType, PaginatedResponse } from '@kamaia/shared-types'
 
 interface Cliente {
@@ -20,50 +20,18 @@ interface Cliente {
   }
 }
 
-function ClienteSkeleton() {
-  return (
-    <div className="bg-bone rounded-lg p-4 animate-pulse">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 space-y-2">
-          <div className="h-5 bg-border rounded w-1/3" />
-          <div className="h-4 bg-border rounded w-1/4" />
-        </div>
-        <div className="h-4 bg-border rounded w-16" />
-      </div>
-    </div>
-  )
-}
-
-function EmptyState({ type }: { type: string }) {
-  return (
-    <div className="bg-bone rounded-xl p-12 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-        <User className="w-8 h-8 text-muted" />
-      </div>
-      <h3 className="text-ink font-medium text-lg mb-2">Nenhum cliente encontrado</h3>
-      <p className="text-muted text-sm mb-6">
-        {type === 'search'
-          ? 'Tente ajustar os filtros de pesquisa'
-          : 'Comece por adicionar o seu primeiro cliente'}
-      </p>
-      {type !== 'search' && (
-        <Link
-          href="/clientes/novo"
-          className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Cliente
-        </Link>
-      )}
-    </div>
-  )
-}
-
 export default function ClientesPage() {
-  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  const hasActiveFilters = debouncedSearch !== '' || typeFilter !== 'ALL'
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setDebouncedSearch('')
+    setTypeFilter('ALL')
+  }
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
@@ -112,34 +80,37 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Clientes</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Clientes</h1>
         <Link
           href="/clientes/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
         >
-          <Plus className="w-4 h-4" />
-          Novo Cliente
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Novo Cliente</span>
+          <span className="sm:hidden">Novo</span>
         </Link>
       </div>
 
       <div className="bg-bone rounded-xl p-4 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
               placeholder="Pesquisar por nome, NIF, email..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
+              aria-label="Pesquisar clientes"
               className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
             />
           </div>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm"
+            aria-label="Filtrar por tipo de cliente"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todos</option>
             <option value={ClienteType.INDIVIDUAL}>Individual</option>
@@ -149,19 +120,41 @@ export default function ClientesPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <ClienteSkeleton key={i} />
-          ))}
-        </div>
+        <LoadingSkeleton count={5} label="A carregar clientes" />
       ) : !data || data.data.length === 0 ? (
-        <EmptyState type={debouncedSearch || typeFilter !== 'ALL' ? 'search' : 'empty'} />
+        hasActiveFilters ? (
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum cliente corresponde aos filtros aplicados"
+            action={
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+              >
+                Limpar filtros
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={User}
+            title="Nenhum cliente"
+            description="Comece por adicionar o seu primeiro cliente"
+            action={
+              <Link href="/clientes/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]">
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                Novo Cliente
+              </Link>
+            }
+          />
+        )
       ) : (
         <div className="space-y-3">
           <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-mono text-muted uppercase">
@@ -174,10 +167,10 @@ export default function ClientesPage() {
           </div>
 
           {data.data.map((cliente) => (
-            <div
+            <Link
               key={cliente.id}
-              onClick={() => router.push(`/clientes/${cliente.id}`)}
-              className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+              href={`/clientes/${cliente.id}`}
+              className="block bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
             >
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-center">
                 <div className="md:col-span-3">
@@ -199,12 +192,12 @@ export default function ClientesPage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
 
           {data.nextCursor && (
             <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors">
+              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors min-h-[40px]">
                 Carregar mais
               </button>
             </div>

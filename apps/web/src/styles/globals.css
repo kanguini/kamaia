@@ -9,6 +9,18 @@
     @apply font-sans bg-paper text-ink antialiased;
   }
 
+  /* Focus visible ring for keyboard users */
+  *:focus-visible {
+    outline: 2px solid #c8872a;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Remove default outline when mouse clicks */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
@@ -25,5 +37,53 @@
 
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-amber-600;
+  }
+}
+
+@layer components {
+  /* Skip to main content link — shown only when focused */
+  .skip-link {
+    @apply sr-only;
+  }
+  .skip-link:focus {
+    @apply not-sr-only fixed top-4 left-4 z-[100] px-4 py-2 bg-amber text-ink rounded-lg shadow-lg font-medium;
+  }
+}
+
+@layer utilities {
+  /* Screen reader only — visually hidden but accessible */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .not-sr-only {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+/* Respect users' motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

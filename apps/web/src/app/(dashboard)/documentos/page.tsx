@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { FileText, Image, File, Download, Upload, X, Loader2 } from 'lucide-react'
+import { FileText, Image, File, Download, Upload, X, Loader2, Search } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
 import { DocumentCategory, PaginatedResponse } from '@kamaia/shared-types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
@@ -71,40 +72,6 @@ function getFileIcon(fileType: string): React.ReactNode {
     return <FileText className="w-5 h-5 text-success" />
   }
   return <File className="w-5 h-5 text-muted" />
-}
-
-function DocumentSkeleton() {
-  return (
-    <div className="bg-bone rounded-lg p-4 animate-pulse">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 bg-border rounded" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-border rounded w-2/3" />
-          <div className="h-3 bg-border rounded w-1/3" />
-        </div>
-        <div className="h-4 bg-border rounded w-16" />
-      </div>
-    </div>
-  )
-}
-
-function EmptyState({ onUpload }: { onUpload: () => void }) {
-  return (
-    <div className="bg-bone rounded-xl p-12 text-center">
-      <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-        <FileText className="w-8 h-8 text-muted" />
-      </div>
-      <h3 className="text-ink font-medium text-lg mb-2">Nenhum documento</h3>
-      <p className="text-muted text-sm mb-6">Envie o seu primeiro ficheiro</p>
-      <button
-        onClick={onUpload}
-        className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
-      >
-        <Upload className="w-4 h-4" />
-        Enviar Documento
-      </button>
-    </div>
-  )
 }
 
 function UploadModal({
@@ -395,6 +362,14 @@ export default function DocumentosPage() {
   const [processoFilter, setProcessoFilter] = useState<string>('ALL')
   const [search, setSearch] = useState('')
 
+  const hasActiveFilters = search !== '' || categoryFilter !== 'ALL' || processoFilter !== 'ALL'
+
+  const clearFilters = () => {
+    setSearch('')
+    setCategoryFilter('ALL')
+    setProcessoFilter('ALL')
+  }
+
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
     if (categoryFilter !== 'ALL') params.append('category', categoryFilter)
@@ -451,15 +426,16 @@ export default function DocumentosPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Documentos</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Documentos</h1>
         <button
           onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
         >
-          <Upload className="w-4 h-4" />
-          Enviar Documento
+          <Upload className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Enviar Documento</span>
+          <span className="sm:hidden">Enviar</span>
         </button>
       </div>
 
@@ -484,18 +460,23 @@ export default function DocumentosPage() {
       {/* Filters */}
       <div className="bg-bone rounded-xl p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Procurar documentos..."
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Procurar documentos..."
+              aria-label="Procurar documentos"
+              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+            />
+          </div>
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+            aria-label="Filtrar por categoria"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent min-h-[40px]"
           >
             <option value="ALL">Todas as Categorias</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -508,7 +489,8 @@ export default function DocumentosPage() {
           <select
             value={processoFilter}
             onChange={(e) => setProcessoFilter(e.target.value)}
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+            aria-label="Filtrar por processo"
+            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent min-h-[40px]"
           >
             <option value="ALL">Todos os Processos</option>
             {processos?.data.map((processo) => (
@@ -521,17 +503,42 @@ export default function DocumentosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <DocumentSkeleton key={i} />
-          ))}
-        </div>
+        <LoadingSkeleton count={5} label="A carregar documentos" />
       ) : !documents || documents.data.length === 0 ? (
-        <EmptyState onUpload={() => setShowUpload(true)} />
+        hasActiveFilters ? (
+          <EmptyState
+            icon={Search}
+            title="Nenhum resultado"
+            description="Nenhum documento corresponde aos filtros aplicados"
+            action={
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+              >
+                Limpar filtros
+              </button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={FileText}
+            title="Nenhum documento"
+            description="Envie o seu primeiro ficheiro"
+            action={
+              <button
+                onClick={() => setShowUpload(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+              >
+                <Upload className="w-4 h-4" aria-hidden="true" />
+                Enviar Documento
+              </button>
+            }
+          />
+        )
       ) : (
         <div className="space-y-3">
           {documents.data.map((doc) => (
@@ -566,15 +573,17 @@ export default function DocumentosPage() {
 
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="text-sm text-muted font-mono">{formatFileSize(doc.fileSize)}</span>
-                  <button
+                  <IconButton
+                    aria-label="Transferir documento"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDownload(doc.id, doc.filename)
                     }}
-                    className="p-2 hover:bg-border rounded transition-colors"
+                    variant="ghost"
+                    size="sm"
                   >
-                    <Download className="w-4 h-4 text-muted" />
-                  </button>
+                    <Download className="w-4 h-4" />
+                  </IconButton>
                 </div>
               </div>
             </div>

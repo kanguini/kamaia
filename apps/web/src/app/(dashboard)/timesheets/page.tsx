@@ -6,6 +6,7 @@ import { Timer, CheckCircle, X } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton, IconButton, FormField } from '@/components/ui'
 import { TimeEntryCategory } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 
@@ -69,21 +70,6 @@ function parseDuration(input: string): number | null {
 
 function formatMoney(centavos: number): string {
   return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
-}
-
-function TimeEntriesSkeleton() {
-  return (
-    <div className="space-y-4">
-      {[...Array(3)].map((_, i) => (
-        <div key={i} className="bg-bone rounded-lg p-4 animate-pulse">
-          <div className="space-y-3">
-            <div className="h-4 bg-border rounded w-3/4" />
-            <div className="h-3 bg-border rounded w-1/2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 }
 
 export default function TimesheetsPage() {
@@ -214,9 +200,9 @@ export default function TimesheetsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Timesheets</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Timesheets</h1>
       </div>
 
       {summary && (
@@ -239,68 +225,86 @@ export default function TimesheetsPage() {
       )}
 
       <form onSubmit={handleSubmit} className="bg-bone rounded-xl p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-3">
-          <select
-            value={formProcessoId}
-            onChange={(e) => setFormProcessoId(e.target.value)}
-            required
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
-          >
-            <option value="">Processo</option>
-            {processos?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.processoNumber}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 mb-3">
+          <FormField label="Processo" required>
+            <select
+              value={formProcessoId}
+              onChange={(e) => setFormProcessoId(e.target.value)}
+              required
+              aria-label="Seleccionar processo"
+              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+            >
+              <option value="">Seleccionar</option>
+              {processos?.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.processoNumber}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
-          <select
-            value={formCategory}
-            onChange={(e) => setFormCategory(e.target.value as TimeEntryCategory)}
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
-          >
-            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <FormField label="Categoria" required>
+            <select
+              value={formCategory}
+              onChange={(e) => setFormCategory(e.target.value as TimeEntryCategory)}
+              aria-label="Categoria"
+              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+            >
+              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </FormField>
 
-          <input
-            type="date"
-            value={formDate}
-            onChange={(e) => setFormDate(e.target.value)}
-            required
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
-          />
-
-          <input
-            type="text"
-            value={formDuration}
-            onChange={(e) => setFormDuration(e.target.value)}
-            placeholder="02:30"
-            required
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm font-mono"
-          />
-
-          <input
-            type="text"
-            value={formDescription}
-            onChange={(e) => setFormDescription(e.target.value)}
-            placeholder="Descricao"
-            required
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
-          />
-
-          <label className="flex items-center gap-2 px-3 py-2 bg-paper border border-border rounded-lg cursor-pointer">
+          <FormField label="Data" required>
             <input
-              type="checkbox"
-              checked={formBillable}
-              onChange={(e) => setFormBillable(e.target.checked)}
-              className="w-4 h-4 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+              type="date"
+              value={formDate}
+              onChange={(e) => setFormDate(e.target.value)}
+              required
+              aria-label="Data"
+              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
             />
-            <span className="text-sm text-ink">Facturaval</span>
-          </label>
+          </FormField>
+
+          <FormField label="Duracao" required hint="Formato: HH:MM">
+            <input
+              type="text"
+              value={formDuration}
+              onChange={(e) => setFormDuration(e.target.value)}
+              placeholder="02:30"
+              required
+              aria-label="Duracao"
+              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm font-mono min-h-[40px]"
+            />
+          </FormField>
+
+          <FormField label="Descricao" required>
+            <input
+              type="text"
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+              placeholder="Descricao"
+              required
+              aria-label="Descricao"
+              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+            />
+          </FormField>
+
+          <FormField label="Facturavel">
+            <label className="flex items-center gap-2 px-3 py-2 bg-paper border border-border rounded-lg cursor-pointer min-h-[40px]">
+              <input
+                type="checkbox"
+                checked={formBillable}
+                onChange={(e) => setFormBillable(e.target.checked)}
+                aria-label="Facturavel"
+                className="w-4 h-4 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+              />
+              <span className="text-sm text-ink">Sim</span>
+            </label>
+          </FormField>
         </div>
 
         {formError && (
@@ -325,7 +329,8 @@ export default function TimesheetsPage() {
           <select
             value={processoIdFilter}
             onChange={(e) => setProcessoIdFilter(e.target.value)}
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
+            aria-label="Filtrar por processo"
+            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Processos</option>
             {processos?.map((p) => (
@@ -338,7 +343,8 @@ export default function TimesheetsPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
+            aria-label="Filtrar por categoria"
+            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
           >
             <option value="ALL">Todas as Categorias</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -353,34 +359,32 @@ export default function TimesheetsPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              placeholder="De"
-              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
+              aria-label="Data de inicio"
+              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              placeholder="Ate"
-              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm"
+              aria-label="Data de fim"
+              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
             />
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
-        <TimeEntriesSkeleton />
+        <LoadingSkeleton count={5} label="A carregar timesheets" />
       ) : !entries || entries.length === 0 ? (
-        <div className="bg-bone rounded-xl p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-            <Timer className="w-8 h-8 text-muted" />
-          </div>
-          <h3 className="text-ink font-medium text-lg mb-2">Nenhum registo de tempo</h3>
-          <p className="text-muted text-sm">Comece por registar o seu primeiro timesheet</p>
-        </div>
+        <EmptyState
+          icon={Timer}
+          title="Nenhum registo de tempo"
+          description="Comece por registar o seu primeiro timesheet"
+        />
       ) : (
         <div className="space-y-6">
           {Object.keys(groupedEntries)
@@ -426,12 +430,14 @@ export default function TimesheetsPage() {
                               {formatDuration(entry.durationMinutes)}
                             </p>
                           </div>
-                          <button
+                          <IconButton
+                            aria-label="Eliminar entrada"
                             onClick={() => handleDelete(entry.id)}
-                            className="p-1.5 hover:bg-error/10 text-error rounded transition-colors flex-shrink-0"
+                            variant="danger"
+                            size="sm"
                           >
                             <X className="w-4 h-4" />
-                          </button>
+                          </IconButton>
                         </div>
                       </div>
                     ))}

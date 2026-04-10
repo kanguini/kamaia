@@ -6,6 +6,7 @@ import { Mail, Bell, Smartphone, AlertTriangle } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui'
 
 interface NotificationPreferences {
   emailEnabled: boolean
@@ -30,36 +31,6 @@ interface ToggleCardProps {
   inset?: boolean
 }
 
-function Switch({
-  enabled,
-  onChange,
-  disabled,
-}: {
-  enabled: boolean
-  onChange: (value: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!enabled)}
-      disabled={disabled}
-      className={cn(
-        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-        enabled ? 'bg-amber' : 'bg-border',
-        disabled && 'opacity-50 cursor-not-allowed',
-      )}
-    >
-      <span
-        className={cn(
-          'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-          enabled ? 'translate-x-6' : 'translate-x-1',
-        )}
-      />
-    </button>
-  )
-}
-
 function ToggleCard({
   title,
   description,
@@ -77,15 +48,21 @@ function ToggleCard({
         inset && 'ml-8 bg-bone/30',
       )}
     >
-      <div className={cn('flex-shrink-0 mt-0.5', disabled && 'opacity-50')}>
+      <div className={cn('flex-shrink-0 mt-0.5', disabled && 'opacity-50')} aria-hidden="true">
         <Icon className="w-5 h-5 text-ink" />
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-ink font-medium mb-1">{title}</h3>
         <p className="text-muted text-sm">{description}</p>
-        {helpText && <p className="text-error text-xs mt-1">{helpText}</p>}
+        {helpText && <p className="text-error text-xs mt-1" role="alert">{helpText}</p>}
       </div>
-      <Switch enabled={enabled} onChange={onChange} disabled={disabled} />
+      <Switch
+        checked={enabled}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        label={title}
+        description={description}
+      />
     </div>
   )
 }
@@ -127,9 +104,9 @@ export default function ConfiguracoesPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <h1 className="font-display text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-bone rounded-xl p-8 text-center">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
+        <div className="bg-bone rounded-xl p-8 text-center" role="status" aria-live="polite">
           <p className="text-muted">A carregar configuracoes...</p>
         </div>
       </div>
@@ -138,9 +115,9 @@ export default function ConfiguracoesPage() {
 
   if (error || !prefs) {
     return (
-      <div className="max-w-4xl mx-auto">
-        <h1 className="font-display text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-error/10 border border-error/20 rounded-xl p-8 text-center">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
+        <div className="bg-error/10 border border-error/20 rounded-xl p-8 text-center" role="alert">
           <p className="text-error">{error || 'Erro ao carregar configuracoes'}</p>
         </div>
       </div>
@@ -148,8 +125,8 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="font-display text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
 
       {/* Perfil Section */}
       <section className="mb-10">

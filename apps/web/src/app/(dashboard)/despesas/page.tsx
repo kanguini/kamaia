@@ -6,6 +6,7 @@ import { Receipt, Plus, X } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
 import { ExpenseCategory } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 
@@ -46,21 +47,6 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
 
 function formatMoney(centavos: number): string {
   return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
-}
-
-function ExpensesSkeleton() {
-  return (
-    <div className="space-y-3">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="bg-bone rounded-lg p-4 animate-pulse">
-          <div className="space-y-2">
-            <div className="h-4 bg-border rounded w-3/4" />
-            <div className="h-3 bg-border rounded w-1/2" />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
 }
 
 export default function DespesasPage() {
@@ -158,15 +144,16 @@ export default function DespesasPage() {
   const isSocio = session?.role === 'SOCIO_GESTOR'
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-4xl font-semibold text-ink">Despesas</h1>
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Despesas</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
         >
-          <Plus className="w-4 h-4" />
-          Nova Despesa
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Nova Despesa</span>
+          <span className="sm:hidden">Nova</span>
         </button>
       </div>
 
@@ -276,26 +263,26 @@ export default function DespesasPage() {
       )}
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">{error}</div>
+        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
-        <ExpensesSkeleton />
+        <LoadingSkeleton count={5} label="A carregar despesas" />
       ) : !expenses || expenses.length === 0 ? (
-        <div className="bg-bone rounded-xl p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-            <Receipt className="w-8 h-8 text-muted" />
-          </div>
-          <h3 className="text-ink font-medium text-lg mb-2">Nenhuma despesa registada</h3>
-          <p className="text-muted text-sm mb-6">Comece por registar a sua primeira despesa</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Despesa
-          </button>
-        </div>
+        <EmptyState
+          icon={Receipt}
+          title="Nenhuma despesa"
+          description="Comece por registar a sua primeira despesa"
+          action={
+            <button
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              Nova Despesa
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-2">
           {expenses
@@ -333,12 +320,14 @@ export default function DespesasPage() {
                   </div>
                   {isSocio && (
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
+                      <IconButton
+                        aria-label="Eliminar despesa"
                         onClick={() => handleDelete(expense.id)}
-                        className="p-1.5 hover:bg-error/10 text-error rounded transition-colors"
+                        variant="danger"
+                        size="sm"
                       >
                         <X className="w-4 h-4" />
-                      </button>
+                      </IconButton>
                     </div>
                   )}
                 </div>
