@@ -7,6 +7,7 @@ RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 # ── Dependencies ──────────────────────────────────────────
+# npm workspaces hoists everything to root /app/node_modules
 FROM base AS deps
 COPY package.json package-lock.json turbo.json tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
@@ -16,10 +17,9 @@ RUN npm ci
 # ── Builder ───────────────────────────────────────────────
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
 
-# Build shared-types first (workspace dependency)
+# Build shared-types first (workspace dependency consumed by @kamaia/api)
 RUN cd packages/shared-types && npx tsc
 
 # Generate Prisma client and build NestJS
@@ -30,25 +30,28 @@ RUN cd apps/api && npx nest build
 FROM base AS runner
 ENV NODE_ENV=production
 
-# Copy node_modules (full tree for Prisma + runtime deps)
+# Copy full node_modules tree from builder (hoisted by npm workspaces)
 COPY --from=builder /app/node_modules ./node_modules
+
+# Copy root package.json so workspace resolution still works
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
 
 # Copy shared-types package (built)
 COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=builder /app/packages/shared-types/package.json ./packages/shared-types/
 
-# Copy API build + Prisma
+# Copy API build + Prisma schema
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 
-# Uploads directory (will be mounted as volume on Railway)
+# Uploads directory (Railway volume mount point)
 RUN mkdir -p /app/apps/api/uploads
 
 WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-# Run migrations then start app
+# Apply schema and start app
 CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/main"]
