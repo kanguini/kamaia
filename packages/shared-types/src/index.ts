@@ -115,6 +115,28 @@ export enum ExpenseCategory {
   OUTRO = 'OUTRO',
 }
 
+export enum NotificationChannel {
+  EMAIL = 'EMAIL',
+  SMS = 'SMS',
+  PUSH = 'PUSH',
+  IN_APP = 'IN_APP',
+}
+
+export enum NotificationStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  FAILED = 'FAILED',
+  DRY_RUN = 'DRY_RUN',
+}
+
+export enum NotificationType {
+  PRAZO_UPCOMING = 'PRAZO_UPCOMING',
+  PRAZO_TODAY = 'PRAZO_TODAY',
+  PRAZO_OVERDUE = 'PRAZO_OVERDUE',
+  PRAZO_CRITICAL = 'PRAZO_CRITICAL',
+  TEST = 'TEST',
+}
+
 export enum SubscriptionPlan {
   FREE = 'FREE',
   PRO_INDIVIDUAL = 'PRO_INDIVIDUAL',

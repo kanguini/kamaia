@@ -484,6 +484,36 @@ async function main() {
   });
 
   console.log('[Seed] Usage quota created');
+
+  // ── Notification Preferences ─────────────────────────────
+  await prisma.notificationPreference.createMany({
+    data: [
+      {
+        userId: socio.id,
+        emailEnabled: true,
+        pushEnabled: true,
+        smsEnabled: true,
+        smsOnlyUrgent: true,
+      },
+      {
+        userId: advogado.id,
+        emailEnabled: true,
+        pushEnabled: true,
+        smsEnabled: false,
+        smsOnlyUrgent: true,
+      },
+      {
+        userId: estagiario.id,
+        emailEnabled: true,
+        pushEnabled: false,
+        smsEnabled: false,
+        smsOnlyUrgent: true,
+      },
+    ],
+    skipDuplicates: true,
+  });
+  console.log('[Seed] 3 Notification preferences created');
+
   console.log('[Kamaia Seed] Done!');
   console.log('');
   console.log('Login credentials:');

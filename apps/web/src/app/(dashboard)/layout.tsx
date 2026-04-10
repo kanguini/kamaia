@@ -3,7 +3,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard,
   Scale,
@@ -18,8 +18,10 @@ import {
   Menu,
   X,
   LogOut,
+  Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useApi } from '@/hooks/use-api'
 
 interface NavItem {
   label: string
@@ -74,6 +76,34 @@ function NavLink({ item, isActive }: { item: NavItem; isActive: boolean }) {
   )
 }
 
+function NotificationBell() {
+  const { data: countData, refetch } = useApi<{ count: number }>('/notifications/unread-count')
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch()
+    }, 60000) // Refetch every 60s
+    return () => clearInterval(interval)
+  }, [refetch])
+
+  const count = countData?.count || 0
+
+  return (
+    <Link
+      href="/configuracoes"
+      className="relative text-bone hover:text-amber transition-colors"
+      title="Notificacoes"
+    >
+      <Bell className="w-5 h-5" />
+      {count > 0 && (
+        <span className="absolute -top-1 -right-1 bg-error text-white text-xs font-mono font-medium rounded-full w-4 h-4 flex items-center justify-center">
+          {count > 9 ? '9+' : count}
+        </span>
+      )}
+    </Link>
+  )
+}
+
 function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
@@ -124,6 +154,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
             </p>
             <p className="text-bone/60 text-xs font-mono truncate">{session?.user?.role}</p>
           </div>
+          <NotificationBell />
         </div>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
@@ -158,12 +189,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="lg:hidden bg-ink border-b border-bone/10 p-4 flex items-center justify-between">
           <h1 className="font-display text-2xl font-semibold text-amber">Kamaia</h1>
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="text-bone hover:text-amber transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="text-bone hover:text-amber transition-colors"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto bg-paper p-6">{children}</main>

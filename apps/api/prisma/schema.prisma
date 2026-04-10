@@ -43,6 +43,7 @@ model Gabinete {
   usageQuota      UsageQuota?
   timeEntries     TimeEntry[]
   expenses        Expense[]
+  notifications   Notification[]
 
   @@map("gabinetes")
 }
@@ -80,6 +81,9 @@ model User {
   aiConversations AIConversation[]
   timeEntries     TimeEntry[]
   expenses        Expense[]
+  notifications         Notification[]
+  pushSubscriptions     PushSubscription[]
+  notificationPreference NotificationPreference?
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -431,4 +435,66 @@ model Expense {
   @@index([gabineteId, date], map: "idx_expense_gabinete_date")
   @@index([gabineteId, processoId], map: "idx_expense_gabinete_processo")
   @@map("expenses")
+}
+
+// ── Notification (Sprint 7) ──────────────────────────────
+
+model Notification {
+  id           String    @id @default(uuid()) @db.Uuid
+  gabineteId   String    @map("gabinete_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  prazoId      String?   @map("prazo_id") @db.Uuid
+  type         String    @db.VarChar(30)
+  channel      String    @db.VarChar(20)
+  status       String    @default("PENDING") @db.VarChar(20)
+  subject      String?   @db.VarChar(300)
+  body         String?   @db.Text
+  metadata     Json?     @db.JsonB
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz
+  errorMessage String?   @map("error_message") @db.Text
+  readAt       DateTime? @map("read_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([gabineteId, userId], map: "idx_notification_user")
+  @@index([prazoId], map: "idx_notification_prazo")
+  @@index([createdAt], map: "idx_notification_created")
+  @@map("notifications")
+}
+
+// ── Push Subscription (Web Push VAPID) ──────────────────
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @db.VarChar(2000)
+  p256dh    String   @db.VarChar(500)
+  auth      String   @db.VarChar(500)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_push_user")
+  @@map("push_subscriptions")
+}
+
+// ── Notification Preferences ─────────────────────────────
+
+model NotificationPreference {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @unique @map("user_id") @db.Uuid
+  emailEnabled  Boolean  @default(true) @map("email_enabled")
+  pushEnabled   Boolean  @default(true) @map("push_enabled")
+  smsEnabled    Boolean  @default(false) @map("sms_enabled")
+  smsOnlyUrgent Boolean  @default(true) @map("sms_only_urgent")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }
