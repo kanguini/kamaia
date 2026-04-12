@@ -66,13 +66,14 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 text-[14px] transition-colors min-h-[36px]',
+        'flex items-center gap-3 px-3 py-2.5 text-[14px] transition-all min-h-[40px]',
         isActive
           ? 'bg-white/10 text-white font-medium'
-          : 'text-white/50 hover:bg-white/5 hover:text-white/80',
+          : 'text-white/45 hover:bg-white/5 hover:text-white/80',
       )}
+      style={{ borderRadius: '8px' }}
     >
-      <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+      <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" style={{ opacity: isActive ? 1 : 0.5 }} />
       <span>{item.label}</span>
     </Link>
   )
@@ -90,11 +91,11 @@ function NotificationBell() {
     <Link
       href="/configuracoes"
       aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'}
-      className="relative text-white/50 hover:text-white transition-colors p-1"
+      className="relative text-white/40 hover:text-white transition-colors p-1"
     >
       <Bell className="w-4 h-4" aria-hidden="true" />
       {count > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 bg-danger text-white text-[9px] font-mono font-medium min-w-[14px] h-[14px] px-0.5 flex items-center justify-center" aria-hidden="true">
+        <span className="absolute -top-0.5 -right-0.5 bg-[#F87171] text-white text-[9px] font-mono font-medium min-w-[14px] h-[14px] px-0.5 flex items-center justify-center" style={{ borderRadius: '4px' }} aria-hidden="true">
           {count > 9 ? '9+' : count}
         </span>
       )}
@@ -102,21 +103,30 @@ function NotificationBell() {
   )
 }
 
-function Sidebar({ onClose }: { onClose?: () => void }) {
+function Sidebar({ onClose, floating = false }: { onClose?: () => void; floating?: boolean }) {
   const pathname = usePathname()
   const { data: session } = useSession()
 
   return (
-    <aside aria-label="Navegacao principal" className="h-full bg-[#070707] flex flex-col">
+    <aside
+      aria-label="Navegacao principal"
+      className={cn(
+        'h-full flex flex-col',
+        floating
+          ? 'bg-[#161616] m-3 shadow-xl overflow-hidden'
+          : 'bg-[#161616]',
+      )}
+      style={floating ? { borderRadius: '16px', height: 'calc(100% - 24px)' } : {}}
+    >
       {/* Logo */}
-      <div className="px-5 pt-8 pb-6 border-b border-white/10">
+      <div className="px-5 pt-7 pb-5 border-b border-white/[0.06]">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-xl text-white">Kamaia</h1>
-            <p className="text-[11px] text-white/30 mt-0.5">Gestao Juridica</p>
+            <h1 className="font-display text-[22px] text-white tracking-[-0.01em]">Kamaia</h1>
+            <p className="text-[11px] text-white/25 mt-0.5 font-mono">Gestao Juridica</p>
           </div>
           {onClose && (
-            <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden text-white/50 hover:text-white p-1">
+            <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden text-white/40 hover:text-white p-1" style={{ borderRadius: '6px' }}>
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
@@ -124,13 +134,13 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto" aria-label="Menu">
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto" aria-label="Menu">
         {navSections.map((section) => (
           <div key={section.title}>
-            <h2 className="text-[9px] font-semibold tracking-[0.14em] uppercase text-white/25 px-3 mb-1">
+            <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/20 px-3 mb-2">
               {section.title}
             </h2>
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {section.items.map((item) => (
                 <li key={item.href}>
                   <NavLink item={item} isActive={pathname === item.href} onClick={onClose} />
@@ -142,18 +152,21 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       </nav>
 
       {/* User */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/[0.06]">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-white/60 font-mono text-[10px] font-medium">
+          <div
+            className="w-9 h-9 bg-white/[0.08] flex items-center justify-center flex-shrink-0"
+            style={{ borderRadius: '10px' }}
+          >
+            <span className="text-white/60 font-mono text-[11px] font-medium">
               {session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white/90 text-[12px] font-medium truncate">
+            <p className="text-white/90 text-[13px] font-medium truncate">
               {session?.user?.firstName} {session?.user?.lastName}
             </p>
-            <p className="text-white/30 text-[10px] font-mono truncate">{session?.user?.role}</p>
+            <p className="text-white/25 text-[10px] font-mono truncate">{session?.user?.role}</p>
           </div>
           <NotificationBell />
         </div>
@@ -161,7 +174,8 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           type="button"
           onClick={() => signOut({ callbackUrl: '/login' })}
           aria-label="Sair da conta"
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-white/40 hover:text-danger hover:bg-danger/10 text-[11px] transition-colors min-h-[36px]"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-white/30 hover:text-[#F87171] hover:bg-[#F87171]/10 text-[12px] transition-colors min-h-[36px]"
+          style={{ borderRadius: '8px' }}
         >
           <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Sair</span>
@@ -183,9 +197,9 @@ function MobileSidebarOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegacao">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
-      <div ref={containerRef} className="absolute inset-y-0 left-0 w-[220px]">
-        <Sidebar onClose={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div ref={containerRef} className="absolute inset-y-0 left-0 w-[240px] p-3">
+        <Sidebar onClose={onClose} floating />
       </div>
     </div>
   )
@@ -195,17 +209,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-screen flex overflow-hidden bg-[#0A0A0A]">
       <a href="#main-content" className="skip-link">Saltar para o conteudo principal</a>
 
-      <div className="hidden lg:block w-[220px] flex-shrink-0">
-        <Sidebar />
+      {/* Desktop floating sidebar */}
+      <div className="hidden lg:block w-[256px] flex-shrink-0 p-3">
+        <div className="h-full bg-[#161616] shadow-xl overflow-hidden" style={{ borderRadius: '16px' }}>
+          <Sidebar floating={false} />
+        </div>
       </div>
 
       <MobileSidebarOverlay open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden bg-[#070707] border-b border-white/10 px-4 flex items-center justify-between h-16" role="banner">
+        {/* Mobile topbar */}
+        <header className="lg:hidden bg-[#0A0A0A] border-b border-white/[0.06] px-4 flex items-center justify-between h-14" role="banner">
           <h1 className="font-display text-lg text-white">Kamaia</h1>
           <div className="flex items-center gap-3">
             <NotificationBell />
@@ -214,15 +232,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Abrir menu"
               aria-expanded={isMobileMenuOpen}
-              className="text-white/50 hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="text-white/40 hover:text-white p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-surface p-4 sm:p-8 focus:outline-none">
-          {children}
+        {/* Main content area */}
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto p-3 lg:pl-0 lg:py-3 lg:pr-3 focus:outline-none"
+        >
+          <div
+            className="min-h-full bg-[#111111] p-6 sm:p-8"
+            style={{ borderRadius: '16px' }}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </div>
