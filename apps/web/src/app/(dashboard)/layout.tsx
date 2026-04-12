@@ -69,7 +69,7 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
         'flex items-center gap-3 px-3 py-2.5 text-[14px] transition-all min-h-[40px]',
         isActive
           ? 'bg-white/10 text-white font-medium'
-          : 'text-white/45 hover:bg-white/5 hover:text-white/80',
+          : 'text-white/65 hover:bg-white/5 hover:text-white/90',
       )}
       style={{ borderRadius: '8px' }}
     >
@@ -123,7 +123,7 @@ function Sidebar({ onClose, floating = false }: { onClose?: () => void; floating
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-[22px] text-white tracking-[-0.01em]">Kamaia</h1>
-            <p className="text-[11px] text-white/25 mt-0.5 font-mono">Gestao Juridica</p>
+            <p className="text-[11px] text-white/35 mt-0.5 font-mono">Gestao Juridica</p>
           </div>
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden text-white/40 hover:text-white p-1" style={{ borderRadius: '6px' }}>
@@ -137,7 +137,7 @@ function Sidebar({ onClose, floating = false }: { onClose?: () => void; floating
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto" aria-label="Menu">
         {navSections.map((section) => (
           <div key={section.title}>
-            <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/20 px-3 mb-2">
+            <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/35 px-3 mb-2">
               {section.title}
             </h2>
             <ul className="space-y-1">
@@ -166,7 +166,7 @@ function Sidebar({ onClose, floating = false }: { onClose?: () => void; floating
             <p className="text-white/90 text-[13px] font-medium truncate">
               {session?.user?.firstName} {session?.user?.lastName}
             </p>
-            <p className="text-white/25 text-[10px] font-mono truncate">{session?.user?.role}</p>
+            <p className="text-white/40 text-[10px] font-mono truncate">{session?.user?.role}</p>
           </div>
           <NotificationBell />
         </div>
@@ -239,18 +239,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Main content area */}
+        {/* Main content area — directly on background */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto p-3 lg:pl-0 lg:py-3 lg:pr-3 focus:outline-none"
+          className="flex-1 overflow-y-auto bg-[#0A0A0A] p-6 sm:p-8 focus:outline-none"
         >
-          <div
-            className="min-h-full bg-[#111111] p-6 sm:p-8"
-            style={{ borderRadius: '16px' }}
-          >
-            {children}
-          </div>
+          {children}
         </main>
       </div>
     </div>
