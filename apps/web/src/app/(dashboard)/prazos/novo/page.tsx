@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -45,7 +45,7 @@ interface Processo {
   title: string
 }
 
-export default function NovoPrazoPage() {
+function PrazosNovoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preSelectedProcessoId = searchParams.get('processoId')
@@ -301,5 +301,13 @@ export default function NovoPrazoPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function NovoPrazoPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted">A carregar...</div></div>}>
+      <PrazosNovoContent />
+    </Suspense>
   )
 }

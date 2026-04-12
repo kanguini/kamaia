@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { Suspense, useEffect, useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -81,7 +81,7 @@ interface CalendarEvent {
   }
 }
 
-export default function NovoEventoPage() {
+function AgendaNovoContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const eventId = searchParams.get('eventId')
@@ -433,4 +433,12 @@ function formatDateTimeLocal(dateString: string, allDay: boolean): string {
   const minutes = String(date.getMinutes()).padStart(2, '0')
 
   return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+export default function NovoEventoPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted">A carregar...</div></div>}>
+      <AgendaNovoContent />
+    </Suspense>
+  )
 }

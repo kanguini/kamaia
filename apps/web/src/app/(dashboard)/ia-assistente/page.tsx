@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { Suspense, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Send, Trash2, Bot, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
@@ -109,7 +109,7 @@ function TypingIndicator() {
   )
 }
 
-export default function IAAssistentePage() {
+function IAAssistenteContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const processoId = searchParams.get('processoId')
@@ -507,5 +507,13 @@ export default function IAAssistentePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function IAAssistentePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted">A carregar...</div></div>}>
+      <IAAssistenteContent />
+    </Suspense>
   )
 }
