@@ -47,11 +47,11 @@ const CATEGORY_LABELS: Record<TimeEntryCategory, string> = {
 
 const CATEGORY_COLORS: Record<TimeEntryCategory, string> = {
   [TimeEntryCategory.PESQUISA]: 'bg-info/10 text-info border-info/20',
-  [TimeEntryCategory.REDACCAO]: 'bg-amber-50 text-amber-700 border-amber',
-  [TimeEntryCategory.AUDIENCIA]: 'bg-error/10 text-error border-error/20',
+  [TimeEntryCategory.REDACCAO]: 'bg-amber-50 text-ink-700 border-amber',
+  [TimeEntryCategory.AUDIENCIA]: 'bg-danger/10 text-danger border-danger/20',
   [TimeEntryCategory.REUNIAO]: 'bg-success/10 text-success border-success/20',
-  [TimeEntryCategory.DESLOCACAO]: 'bg-muted/10 text-muted border-muted/20',
-  [TimeEntryCategory.OUTRO]: 'bg-muted/10 text-muted border-muted/20',
+  [TimeEntryCategory.DESLOCACAO]: 'bg-muted/10 text-ink-muted border-muted/20',
+  [TimeEntryCategory.OUTRO]: 'bg-muted/10 text-ink-muted border-muted/20',
 }
 
 function formatDuration(minutes: number): string {
@@ -210,24 +210,24 @@ export default function TimesheetsPage() {
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-bone rounded-xl p-5">
-            <p className="text-xs font-mono text-muted uppercase mb-2">Total esta semana</p>
+          <div className="bg-surface-raised p-5">
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Total esta semana</p>
             <p className="text-2xl font-semibold text-ink">{formatDuration(summary.totalMinutes)}</p>
           </div>
-          <div className="bg-bone rounded-xl p-5">
-            <p className="text-xs font-mono text-muted uppercase mb-2">Horas facturavel</p>
+          <div className="bg-surface-raised p-5">
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Horas facturavel</p>
             <p className="text-2xl font-semibold text-ink">
               {formatDuration(summary.billableMinutes)}
             </p>
           </div>
-          <div className="bg-bone rounded-xl p-5">
-            <p className="text-xs font-mono text-muted uppercase mb-2">Valor estimado</p>
+          <div className="bg-surface-raised p-5">
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Valor estimado</p>
             <p className="text-2xl font-semibold text-ink">{formatMoney(summary.estimatedValue)}</p>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-bone rounded-xl p-4">
+      <form onSubmit={handleSubmit} className="bg-surface-raised p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 mb-3">
           <FormField label="Processo" required>
             <select
@@ -235,7 +235,7 @@ export default function TimesheetsPage() {
               onChange={(e) => setFormProcessoId(e.target.value)}
               required
               aria-label="Seleccionar processo"
-              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             >
               <option value="">Seleccionar</option>
               {processos?.map((p) => (
@@ -251,7 +251,7 @@ export default function TimesheetsPage() {
               value={formCategory}
               onChange={(e) => setFormCategory(e.target.value as TimeEntryCategory)}
               aria-label="Categoria"
-              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             >
               {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -268,7 +268,7 @@ export default function TimesheetsPage() {
               onChange={(e) => setFormDate(e.target.value)}
               required
               aria-label="Data"
-              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             />
           </FormField>
 
@@ -280,7 +280,7 @@ export default function TimesheetsPage() {
               placeholder="02:30"
               required
               aria-label="Duracao"
-              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm font-mono min-h-[40px]"
+              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm font-mono min-h-[40px]"
             />
           </FormField>
 
@@ -292,18 +292,18 @@ export default function TimesheetsPage() {
               placeholder="Descricao"
               required
               aria-label="Descricao"
-              className="w-full px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             />
           </FormField>
 
           <FormField label="Facturavel">
-            <label className="flex items-center gap-2 px-3 py-2 bg-paper border border-border rounded-lg cursor-pointer min-h-[40px]">
+            <label className="flex items-center gap-2 px-3 py-2 bg-surface border border-border  cursor-pointer min-h-[40px]">
               <input
                 type="checkbox"
                 checked={formBillable}
                 onChange={(e) => setFormBillable(e.target.checked)}
                 aria-label="Facturavel"
-                className="w-4 h-4 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+                className="w-4 h-4 text-ink border-border rounded focus:ring-2 focus:ring-ink"
               />
               <span className="text-sm text-ink">Sim</span>
             </label>
@@ -311,15 +311,15 @@ export default function TimesheetsPage() {
         </div>
 
         {formError && (
-          <p className="text-error text-sm mb-3">{formError}</p>
+          <p className="text-danger text-sm mb-3">{formError}</p>
         )}
 
         <button
           type="submit"
           disabled={creating}
           className={cn(
-            'px-6 py-2 bg-amber text-ink font-medium rounded-lg',
-            'hover:bg-amber-600 transition-colors',
+            'px-6 py-2 bg-ink text-white font-medium ',
+            'hover:bg-[#1a1a1a] transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >
@@ -327,13 +327,13 @@ export default function TimesheetsPage() {
         </button>
       </form>
 
-      <div className="bg-bone rounded-xl p-4">
+      <div className="bg-surface-raised p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <select
             value={processoIdFilter}
             onChange={(e) => setProcessoIdFilter(e.target.value)}
             aria-label="Filtrar por processo"
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+            className="px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Processos</option>
             {processos?.map((p) => (
@@ -347,7 +347,7 @@ export default function TimesheetsPage() {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             aria-label="Filtrar por categoria"
-            className="px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+            className="px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
           >
             <option value="ALL">Todas as Categorias</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -363,21 +363,21 @@ export default function TimesheetsPage() {
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               aria-label="Data de inicio"
-              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="flex-1 px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               aria-label="Data de fim"
-              className="flex-1 px-3 py-2 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent text-sm min-h-[40px]"
+              className="flex-1 px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
             />
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
@@ -405,14 +405,14 @@ export default function TimesheetsPage() {
                     {dayEntries.map((entry) => (
                       <div
                         key={entry.id}
-                        className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                        className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
                               <Link
                                 href={`/processos/${entry.processo.id}`}
-                                className="text-sm font-mono text-muted hover:underline"
+                                className="text-sm font-mono text-ink-muted hover:underline"
                               >
                                 {entry.processo.processoNumber}
                               </Link>
@@ -429,7 +429,7 @@ export default function TimesheetsPage() {
                               )}
                             </div>
                             <p className="text-ink mb-1">{entry.description}</p>
-                            <p className="text-sm font-medium text-amber">
+                            <p className="text-sm font-medium text-ink">
                               {formatDuration(entry.durationMinutes)}
                             </p>
                           </div>

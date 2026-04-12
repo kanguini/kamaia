@@ -40,8 +40,8 @@ const SUGGESTIONS = [
 ]
 
 const CONTEXT_LABELS = {
-  PROCESSO: { label: 'Processo', color: 'text-amber-700 bg-amber-50 border-amber' },
-  PRAZO: { label: 'Prazo', color: 'text-error bg-error/10 border-error/20' },
+  PROCESSO: { label: 'Processo', color: 'text-ink bg-surface-raised border border-border' },
+  PRAZO: { label: 'Prazo', color: 'text-danger bg-danger/10 border-danger/20' },
   GERAL: { label: 'Geral', color: 'text-info bg-info/10 border-info/20' },
 }
 
@@ -74,8 +74,8 @@ function getRelativeTime(date: Date): string {
 function ConversationSkeleton() {
   return (
     <div className="p-3 space-y-2 animate-pulse">
-      <div className="h-4 bg-bone rounded w-3/4" />
-      <div className="h-3 bg-bone rounded w-1/2" />
+      <div className="h-4 bg-surface-raised rounded w-3/4" />
+      <div className="h-3 bg-surface-raised rounded w-1/2" />
     </div>
   )
 }
@@ -83,8 +83,8 @@ function ConversationSkeleton() {
 function MessageSkeleton() {
   return (
     <div className="flex gap-3 items-start animate-pulse">
-      <div className="w-8 h-8 rounded-full bg-bone flex-shrink-0" />
-      <div className="flex-1 bg-bone rounded-xl p-4 space-y-2">
+      <div className="w-8 h-8 rounded-full bg-surface-raised flex-shrink-0" />
+      <div className="flex-1 bg-surface-raised p-4 space-y-2">
         <div className="h-4 bg-border rounded w-3/4" />
         <div className="h-4 bg-border rounded w-1/2" />
       </div>
@@ -95,14 +95,14 @@ function MessageSkeleton() {
 function TypingIndicator() {
   return (
     <div className="flex gap-3 items-start">
-      <div className="w-8 h-8 rounded-full bg-amber/20 flex items-center justify-center flex-shrink-0">
-        <Bot className="w-4 h-4 text-amber" />
+      <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center flex-shrink-0">
+        <Bot className="w-4 h-4 text-ink" />
       </div>
-      <div className="bg-white border border-border rounded-xl p-4">
+      <div className="bg-surface-raised  p-4">
         <div className="flex gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 rounded-full bg-muted animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="w-2 h-2 rounded-full bg-ink-muted animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 rounded-full bg-ink-muted animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 rounded-full bg-ink-muted animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       </div>
     </div>
@@ -241,17 +241,17 @@ function IAAssistenteContent() {
       {/* Left panel - Conversations list */}
       <div
         className={cn(
-          'w-[280px] bg-ink rounded-xl flex flex-col overflow-hidden flex-shrink-0',
+          'w-[280px] bg-ink  flex flex-col overflow-hidden flex-shrink-0',
           'lg:flex',
           mobileMenuOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden',
         )}
       >
         <div className="p-4 border-b border-bone/10">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-display text-2xl font-semibold text-amber">Kamaia IA</h2>
+            <h2 className="font-display text-2xl font-semibold text-ink">Kamaia IA</h2>
             <button
               onClick={() => handleCreateConversation()}
-              className="p-2 hover:bg-amber/20 rounded-lg transition-colors text-amber"
+              className="p-2 hover:bg-ink/10  transition-colors text-ink"
               title="Nova conversa"
             >
               <Plus className="w-5 h-5" />
@@ -276,10 +276,10 @@ function IAAssistenteContent() {
                     setMobileMenuOpen(false)
                   }}
                   className={cn(
-                    'group p-3 rounded-lg cursor-pointer transition-colors relative',
+                    'group p-3  cursor-pointer transition-colors relative',
                     activeConversationId === conv.id
                       ? 'bg-white/10 text-paper'
-                      : 'text-bone/80 hover:bg-white/5',
+                      : 'text-white/80 hover:bg-white/5',
                   )}
                 >
                   <div className="flex items-start gap-2 mb-1">
@@ -298,7 +298,7 @@ function IAAssistenteContent() {
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-bone/60">
+                    <p className="text-xs text-white/60">
                       {getRelativeTime(new Date(conv.updatedAt))}
                     </p>
                     <button
@@ -306,7 +306,7 @@ function IAAssistenteContent() {
                         e.stopPropagation()
                         handleDeleteConversation(conv.id)
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-error/20 rounded transition-all text-error"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-danger/20 rounded transition-all text-danger"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -315,12 +315,12 @@ function IAAssistenteContent() {
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center text-bone/60 text-sm">Nenhuma conversa</div>
+            <div className="p-6 text-center text-white/60 text-sm">Nenhuma conversa</div>
           )}
         </div>
 
         <div className="p-4 border-t border-bone/10">
-          <div className="text-xs text-bone/60 font-mono">
+          <div className="text-xs text-white/60 font-mono">
             {isPro ? (
               <span className="text-success">Consultas ilimitadas</span>
             ) : quota ? (
@@ -335,17 +335,17 @@ function IAAssistenteContent() {
       </div>
 
       {/* Right panel - Chat area */}
-      <div className="flex-1 bg-paper rounded-xl flex flex-col overflow-hidden">
+      <div className="flex-1 bg-surface  flex flex-col overflow-hidden">
         {!activeConversationId ? (
           /* Welcome screen */
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="max-w-2xl w-full text-center">
               <div className="mb-6">
-                <Sparkles className="w-16 h-16 text-amber mx-auto mb-4" />
-                <h1 className="font-display text-4xl font-semibold text-amber mb-2">
+                <Sparkles className="w-16 h-16 text-ink mx-auto mb-4" />
+                <h1 className="font-display text-4xl font-semibold text-ink mb-2">
                   Kamaia IA
                 </h1>
-                <p className="text-muted text-lg">Assistente Juridico Inteligente</p>
+                <p className="text-ink-muted text-lg">Assistente Juridico Inteligente</p>
               </div>
               <p className="text-ink mb-8">
                 Faca uma pergunta sobre legislacao angolana, prazos processuais, ou analise de
@@ -357,9 +357,9 @@ function IAAssistenteContent() {
                   <button
                     key={idx}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="p-4 bg-bone rounded-lg text-left hover:bg-bone/80 transition-colors group"
+                    className="p-4 bg-surface border border-border text-left hover:bg-surface-raised/80 transition-colors group"
                   >
-                    <p className="text-ink text-sm group-hover:text-amber transition-colors">
+                    <p className="text-ink text-sm group-hover:text-ink transition-colors">
                       {suggestion}
                     </p>
                   </button>
@@ -374,9 +374,9 @@ function IAAssistenteContent() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setMobileMenuOpen(true)}
-                  className="lg:hidden p-2 hover:bg-bone rounded-lg transition-colors"
+                  className="lg:hidden p-2 hover:bg-surface border border-border transition-colors"
                 >
-                  <Bot className="w-5 h-5 text-amber" />
+                  <Bot className="w-5 h-5 text-ink" />
                 </button>
                 <div>
                   <h2 className="font-medium text-ink">
@@ -394,7 +394,7 @@ function IAAssistenteContent() {
                   )}
                 </div>
               </div>
-              <div className="text-xs text-muted font-mono">
+              <div className="text-xs text-ink-muted font-mono">
                 {quota && quota.remaining !== null && (
                   <span>{quota.remaining} consultas restantes</span>
                 )}
@@ -403,8 +403,8 @@ function IAAssistenteContent() {
 
             {/* Disclaimer */}
             <div className="bg-amber-50 border-b border-amber px-4 py-2 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">
+              <AlertCircle className="w-4 h-4 text-ink-700 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-ink-700">
                 Modo demonstracao — respostas simuladas. Nao use para decisoes legais.
               </p>
             </div>
@@ -419,16 +419,16 @@ function IAAssistenteContent() {
                   return (
                     <div key={message.id} className="flex gap-3 items-start">
                       {!isUser && (
-                        <div className="w-8 h-8 rounded-full bg-amber/20 flex items-center justify-center flex-shrink-0">
-                          <Bot className="w-4 h-4 text-amber" />
+                        <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center flex-shrink-0">
+                          <Bot className="w-4 h-4 text-ink" />
                         </div>
                       )}
                       <div
                         className={cn(
-                          'rounded-xl p-4 max-w-3xl',
+                          ' p-4 max-w-3xl',
                           isUser
-                            ? 'bg-bone ml-auto'
-                            : 'bg-white border border-border',
+                            ? 'bg-surface-raised ml-auto'
+                            : 'bg-surface-raised',
                         )}
                       >
                         <div
@@ -437,7 +437,7 @@ function IAAssistenteContent() {
                             __html: `<p>${renderContent(message.content)}</p>`,
                           }}
                         />
-                        <p className="text-xs text-muted mt-2">
+                        <p className="text-xs text-ink-muted mt-2">
                           {new Date(message.createdAt).toLocaleTimeString('pt-AO', {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -445,7 +445,7 @@ function IAAssistenteContent() {
                         </p>
                       </div>
                       {isUser && (
-                        <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center flex-shrink-0 text-amber font-mono text-xs">
+                        <div className="w-8 h-8 rounded-full bg-ink flex items-center justify-center flex-shrink-0 text-ink font-mono text-xs">
                           U
                         </div>
                       )}
@@ -453,7 +453,7 @@ function IAAssistenteContent() {
                   )
                 })
               ) : (
-                <div className="text-center text-muted py-8">Inicie a conversa</div>
+                <div className="text-center text-ink-muted py-8">Inicie a conversa</div>
               )}
 
               {sending && <TypingIndicator />}
@@ -464,11 +464,11 @@ function IAAssistenteContent() {
             {/* Input area */}
             <div className="border-t border-border bg-white p-4">
               {quotaExhausted ? (
-                <div className="bg-error/10 border border-error/20 rounded-lg p-4 text-center">
-                  <p className="text-error text-sm mb-2">Limite de consultas atingido</p>
+                <div className="bg-danger/10 border border-danger/20  p-4 text-center">
+                  <p className="text-danger text-sm mb-2">Limite de consultas atingido</p>
                   <Link
                     href="/configuracoes"
-                    className="text-amber text-sm font-medium hover:underline"
+                    className="text-ink text-sm font-medium hover:underline"
                   >
                     Upgrade para Pro
                   </Link>
@@ -483,14 +483,14 @@ function IAAssistenteContent() {
                     placeholder="Faca uma pergunta juridica..."
                     rows={1}
                     disabled={sending}
-                    className="flex-1 px-4 py-3 bg-bone border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none disabled:opacity-50"
+                    className="flex-1 px-4 py-3 bg-surface-raised border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none disabled:opacity-50"
                   />
                   <button
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || sending}
                     className={cn(
-                      'w-12 h-12 rounded-full bg-amber text-ink flex items-center justify-center',
-                      'hover:bg-amber-600 transition-colors flex-shrink-0',
+                      'w-12 h-12 rounded-full bg-ink text-white flex items-center justify-center',
+                      'hover:bg-[#1a1a1a] transition-colors flex-shrink-0',
                       'disabled:opacity-50 disabled:cursor-not-allowed',
                     )}
                   >
@@ -512,7 +512,7 @@ function IAAssistenteContent() {
 
 export default function IAAssistentePage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted">A carregar...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-ink-muted">A carregar...</div></div>}>
       <IAAssistenteContent />
     </Suspense>
   )

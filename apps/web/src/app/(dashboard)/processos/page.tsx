@@ -74,18 +74,19 @@ export default function ProcessosPage() {
 
   const getStatusBadge = (status: ProcessoStatus) => {
     const styles = {
-      [ProcessoStatus.ACTIVO]: 'bg-success/10 text-success border-success/20',
-      [ProcessoStatus.SUSPENSO]: 'bg-warning/10 text-warning border-warning/20',
-      [ProcessoStatus.ENCERRADO]: 'bg-muted/10 text-muted border-muted/20',
-      [ProcessoStatus.ARQUIVADO]: 'bg-ink/10 text-ink border-ink/20',
+      [ProcessoStatus.ACTIVO]: 'bg-success-bg text-success-text',
+      [ProcessoStatus.SUSPENSO]: 'bg-warning-bg text-warning-text',
+      [ProcessoStatus.ENCERRADO]: 'bg-surface-raised text-ink-muted border border-border',
+      [ProcessoStatus.ARQUIVADO]: 'bg-ink text-white',
     }
     return (
       <span
         className={cn(
-          'inline-flex items-center px-2 py-0.5 text-xs font-mono rounded-full border',
+          'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-mono',
           styles[status],
         )}
       >
+        <span className="w-[5px] h-[5px] bg-current" />
         {status}
       </span>
     )
@@ -93,17 +94,18 @@ export default function ProcessosPage() {
 
   const getPriorityBadge = (priority: ProcessoPriority) => {
     const styles = {
-      [ProcessoPriority.ALTA]: 'bg-error/10 text-error border-error/20',
-      [ProcessoPriority.MEDIA]: 'bg-warning/10 text-warning border-warning/20',
-      [ProcessoPriority.BAIXA]: 'bg-muted/10 text-muted border-muted/20',
+      [ProcessoPriority.ALTA]: 'bg-danger-bg text-danger-text',
+      [ProcessoPriority.MEDIA]: 'bg-warning-bg text-warning-text',
+      [ProcessoPriority.BAIXA]: 'bg-surface-raised text-ink-muted border border-border',
     }
     return (
       <span
         className={cn(
-          'inline-flex items-center px-2 py-0.5 text-xs font-mono rounded-full border',
+          'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-mono',
           styles[priority],
         )}
       >
+        <span className="w-[5px] h-[5px] bg-current" />
         {priority}
       </span>
     )
@@ -133,7 +135,7 @@ export default function ProcessosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Processos</h1>
         <Link
           href="/processos/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 bg-ink text-white font-medium px-4 sm:px-6 py-2.5 hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Novo Processo</span>
@@ -141,7 +143,7 @@ export default function ProcessosPage() {
         </Link>
       </div>
 
-      <div className="bg-bone rounded-xl p-4 space-y-4">
+      <div className="bg-surface-raised p-4 space-y-4">
         <FilterTabs
           value={statusFilter}
           onChange={setStatusFilter}
@@ -157,14 +159,14 @@ export default function ProcessosPage() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" aria-hidden="true" />
             <input
               type="search"
               placeholder="Pesquisar processos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Pesquisar processos"
-              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border-strong focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             />
           </div>
 
@@ -172,7 +174,7 @@ export default function ProcessosPage() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             aria-label="Filtrar por tipo"
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
+            className="px-4 py-2.5 bg-surface border border-border-strong focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Tipos</option>
             {Object.entries(PROCESSO_TYPE_LABELS).map(([value, label]) => (
@@ -186,7 +188,7 @@ export default function ProcessosPage() {
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Filtrar por prioridade"
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
+            className="px-4 py-2.5 bg-surface border border-border-strong focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todas as Prioridades</option>
             <option value={ProcessoPriority.ALTA}>Alta</option>
@@ -197,7 +199,7 @@ export default function ProcessosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
+        <div className="bg-danger-bg border border-danger/20 text-danger p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
@@ -211,7 +213,7 @@ export default function ProcessosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -223,7 +225,7 @@ export default function ProcessosPage() {
             title="Nenhum processo"
             description="Comece por criar o seu primeiro processo"
             action={
-              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]">
+              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium hover:bg-[#1a1a1a] transition-colors min-h-[40px]">
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Novo Processo
               </Link>
@@ -237,32 +239,33 @@ export default function ProcessosPage() {
               key={processo.id}
               href={`/processos/${processo.id}`}
               className={cn(
-                'block bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors',
-                hasUrgentDeadline(processo) && 'border-l-4 border-error',
+                'block bg-surface border border-border p-4 hover:bg-surface-hover transition-colors',
+                hasUrgentDeadline(processo) && 'border-l-4 border-danger',
               )}
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-xs font-mono text-muted">
+                    <span className="text-xs font-mono text-ink-muted">
                       {processo.processoNumber}
                     </span>
                     {hasUrgentDeadline(processo) && (
-                      <AlertCircle className="w-4 h-4 text-error" />
+                      <AlertCircle className="w-4 h-4 text-danger" />
                     )}
                   </div>
                   <h3 className="font-medium text-ink mb-1">{processo.title}</h3>
-                  <p className="text-sm text-muted">{processo.cliente.name}</p>
+                  <p className="text-sm text-ink-muted">{processo.cliente.name}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-mono px-2 py-0.5 bg-info/10 text-info rounded-full border border-info/20">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-mono px-2 py-0.5 bg-info-bg text-info-text">
+                    <span className="w-[5px] h-[5px] bg-current" />
                     {PROCESSO_TYPE_LABELS[processo.type]}
                   </span>
                   {getStatusBadge(processo.status)}
                   {getPriorityBadge(processo.priority)}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted mb-1">{formatDate(processo.createdAt)}</p>
+                  <p className="text-xs text-ink-muted mb-1">{formatDate(processo.createdAt)}</p>
                   <p className="text-xs font-mono text-ink">{processo.currentStage}</p>
                 </div>
               </div>
@@ -271,7 +274,7 @@ export default function ProcessosPage() {
 
           {data.nextCursor && (
             <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors min-h-[40px]">
+              <button className="px-6 py-2.5 border border-border text-sm font-medium text-ink-muted hover:bg-surface-raised transition-colors min-h-[40px]">
                 Carregar mais
               </button>
             </div>

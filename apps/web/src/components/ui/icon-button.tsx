@@ -18,9 +18,9 @@ const sizeClasses: Record<Size, string> = {
 }
 
 const variantClasses: Record<Variant, string> = {
-  default: 'text-ink bg-bone hover:bg-border',
-  ghost: 'text-muted hover:text-ink hover:bg-bone',
-  danger: 'text-error hover:bg-error/10',
+  default: 'text-ink bg-surface-raised hover:bg-surface-hover',
+  ghost: 'text-ink-muted hover:text-ink hover:bg-surface-raised',
+  danger: 'text-danger hover:bg-danger-bg',
 }
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
@@ -30,8 +30,8 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         type={type}
         className={cn(
-          'inline-flex items-center justify-center rounded-lg transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
+          'inline-flex items-center justify-center transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           sizeClasses[size],
           variantClasses[variant],

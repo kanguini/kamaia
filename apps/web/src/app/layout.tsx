@@ -1,26 +1,26 @@
 import type { Metadata } from 'next'
-import { Cormorant_Garamond, DM_Mono, Instrument_Sans } from 'next/font/google'
+import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from 'next/font/google'
 import { SessionProvider } from '@/components/providers/session-provider'
 import '@/styles/globals.css'
 
-const cormorantGaramond = Cormorant_Garamond({
+const dmSerifDisplay = DM_Serif_Display({
   subsets: ['latin'],
-  weight: ['300', '400', '600'],
+  weight: ['400'],
   variable: '--font-display',
   display: 'swap',
 })
 
-const dmMono = DM_Mono({
+const dmSans = DM_Sans({
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  variable: '--font-mono',
+  weight: ['300', '400', '500', '600'],
+  variable: '--font-sans',
   display: 'swap',
 })
 
-const instrumentSans = Instrument_Sans({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-sans',
+  weight: ['400', '500'],
+  variable: '--font-mono',
   display: 'swap',
 })
 
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html lang="pt-AO">
       <body
-        className={`${cormorantGaramond.variable} ${dmMono.variable} ${instrumentSans.variable}`}
+        className={`${dmSerifDisplay.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
       >
         <SessionProvider>{children}</SessionProvider>
       </body>

@@ -53,10 +53,10 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
             className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center text-sm font-mono font-medium transition-colors',
               i + 1 === currentStep
-                ? 'bg-amber text-ink'
+                ? 'bg-ink text-white'
                 : i + 1 < currentStep
-                  ? 'bg-success text-bone'
-                  : 'bg-border text-muted',
+                  ? 'bg-success text-white'
+                  : 'bg-border text-ink-muted',
             )}
           >
             {i + 1 < currentStep ? <Check className="w-4 h-4" /> : i + 1}
@@ -117,18 +117,18 @@ export default function NovoProcessoPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/processos"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-display text-4xl font-semibold text-ink">Novo Processo</h1>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         <StepIndicator currentStep={step} totalSteps={5} />
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
             {error}
           </div>
         )}
@@ -140,14 +140,14 @@ export default function NovoProcessoPage() {
 
               <div>
                 <label className="block text-sm font-mono font-medium text-ink mb-2">
-                  Tipo de Processo <span className="text-error">*</span>
+                  Tipo de Processo <span className="text-danger">*</span>
                 </label>
                 <select
                   {...register('type')}
                   className={cn(
-                    'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                    'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                    errors.type ? 'border-error' : 'border-border',
+                    'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                    'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                    errors.type ? 'border-danger' : 'border-border',
                   )}
                 >
                   <option value="">Selecione o tipo</option>
@@ -157,24 +157,24 @@ export default function NovoProcessoPage() {
                     </option>
                   ))}
                 </select>
-                {errors.type && <p className="text-error text-sm mt-1">{errors.type.message}</p>}
+                {errors.type && <p className="text-danger text-sm mt-1">{errors.type.message}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-mono font-medium text-ink mb-2">
-                  Titulo <span className="text-error">*</span>
+                  Titulo <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
                   {...register('title')}
                   className={cn(
-                    'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                    'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                    errors.title ? 'border-error' : 'border-border',
+                    'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                    'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                    errors.title ? 'border-danger' : 'border-border',
                   )}
                   placeholder="Ex: Accao de Despejo"
                 />
-                {errors.title && <p className="text-error text-sm mt-1">{errors.title.message}</p>}
+                {errors.title && <p className="text-danger text-sm mt-1">{errors.title.message}</p>}
               </div>
 
               <div>
@@ -184,7 +184,7 @@ export default function NovoProcessoPage() {
                 <textarea
                   {...register('description')}
                   rows={4}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
                   placeholder="Breve descricao do processo"
                 />
               </div>
@@ -196,11 +196,11 @@ export default function NovoProcessoPage() {
               <h2 className="font-display text-2xl font-semibold text-ink mb-4">Cliente</h2>
 
               {clientes.length === 0 ? (
-                <div className="bg-warning/10 border border-warning/20 rounded-lg p-6 text-center">
+                <div className="bg-warning/10 border border-warning/20  p-6 text-center">
                   <p className="text-warning mb-4">Nenhum cliente registado</p>
                   <Link
                     href="/clientes/novo"
-                    className="inline-flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+                    className="inline-flex items-center gap-2 bg-ink text-white font-medium px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors"
                   >
                     Criar Cliente Primeiro
                   </Link>
@@ -208,14 +208,14 @@ export default function NovoProcessoPage() {
               ) : (
                 <div>
                   <label className="block text-sm font-mono font-medium text-ink mb-2">
-                    Selecione o Cliente <span className="text-error">*</span>
+                    Selecione o Cliente <span className="text-danger">*</span>
                   </label>
                   <select
                     {...register('clienteId')}
                     className={cn(
-                      'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                      'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                      errors.clienteId ? 'border-error' : 'border-border',
+                      'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                      'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                      errors.clienteId ? 'border-danger' : 'border-border',
                     )}
                   >
                     <option value="">Selecione um cliente</option>
@@ -226,7 +226,7 @@ export default function NovoProcessoPage() {
                     ))}
                   </select>
                   {errors.clienteId && (
-                    <p className="text-error text-sm mt-1">{errors.clienteId.message}</p>
+                    <p className="text-danger text-sm mt-1">{errors.clienteId.message}</p>
                   )}
                 </div>
               )}
@@ -244,7 +244,7 @@ export default function NovoProcessoPage() {
                 <input
                   type="text"
                   {...register('court')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   placeholder="Ex: Tribunal Provincial de Luanda"
                 />
               </div>
@@ -256,7 +256,7 @@ export default function NovoProcessoPage() {
                 <input
                   type="text"
                   {...register('courtCaseNumber')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   placeholder="Ex: 1234/2024"
                 />
               </div>
@@ -266,7 +266,7 @@ export default function NovoProcessoPage() {
                 <input
                   type="text"
                   {...register('judge')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   placeholder="Nome do juiz"
                 />
               </div>
@@ -279,7 +279,7 @@ export default function NovoProcessoPage() {
                   <input
                     type="text"
                     {...register('opposingParty')}
-                    className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                     placeholder="Nome da parte contraria"
                   />
                 </div>
@@ -291,7 +291,7 @@ export default function NovoProcessoPage() {
                   <input
                     type="text"
                     {...register('opposingLawyer')}
-                    className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                     placeholder="Nome do advogado"
                   />
                 </div>
@@ -309,7 +309,7 @@ export default function NovoProcessoPage() {
                 </label>
                 <select
                   {...register('feeType')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 >
                   <option value="">Selecione o tipo</option>
                   <option value="FIXO">Fixo</option>
@@ -326,7 +326,7 @@ export default function NovoProcessoPage() {
                 <input
                   type="number"
                   {...register('feeAmount', { valueAsNumber: true })}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   placeholder="0"
                 />
               </div>
@@ -337,28 +337,28 @@ export default function NovoProcessoPage() {
             <div className="space-y-6">
               <h2 className="font-display text-2xl font-semibold text-ink mb-4">Confirmar</h2>
 
-              <div className="bg-paper rounded-lg p-6 space-y-4">
+              <div className="bg-surface  p-6 space-y-4">
                 <div>
-                  <p className="text-xs font-mono text-muted uppercase mb-1">Tipo</p>
+                  <p className="text-xs font-mono text-ink-muted uppercase mb-1">Tipo</p>
                   <p className="text-ink font-medium">
                     {formData.type ? PROCESSO_TYPE_LABELS[formData.type] : '—'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs font-mono text-muted uppercase mb-1">Titulo</p>
+                  <p className="text-xs font-mono text-ink-muted uppercase mb-1">Titulo</p>
                   <p className="text-ink font-medium">{formData.title || '—'}</p>
                 </div>
 
                 {formData.description && (
                   <div>
-                    <p className="text-xs font-mono text-muted uppercase mb-1">Descricao</p>
+                    <p className="text-xs font-mono text-ink-muted uppercase mb-1">Descricao</p>
                     <p className="text-ink">{formData.description}</p>
                   </div>
                 )}
 
                 <div>
-                  <p className="text-xs font-mono text-muted uppercase mb-1">Cliente</p>
+                  <p className="text-xs font-mono text-ink-muted uppercase mb-1">Cliente</p>
                   <p className="text-ink font-medium">
                     {clientes.find((c) => c.id === formData.clienteId)?.name || '—'}
                   </p>
@@ -366,14 +366,14 @@ export default function NovoProcessoPage() {
 
                 {formData.court && (
                   <div>
-                    <p className="text-xs font-mono text-muted uppercase mb-1">Tribunal</p>
+                    <p className="text-xs font-mono text-ink-muted uppercase mb-1">Tribunal</p>
                     <p className="text-ink">{formData.court}</p>
                   </div>
                 )}
 
                 {formData.feeType && (
                   <div>
-                    <p className="text-xs font-mono text-muted uppercase mb-1">Honorario</p>
+                    <p className="text-xs font-mono text-ink-muted uppercase mb-1">Honorario</p>
                     <p className="text-ink">
                       {formData.feeType}
                       {formData.feeAmount ? ` - ${formData.feeAmount.toLocaleString()} AKZ` : ''}
@@ -389,7 +389,7 @@ export default function NovoProcessoPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex items-center gap-2 px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+                className="flex items-center gap-2 px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Anterior
@@ -402,8 +402,8 @@ export default function NovoProcessoPage() {
                 onClick={nextStep}
                 disabled={!canProceed()}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                  'hover:bg-amber-600 transition-colors',
+                  'flex-1 flex items-center justify-center gap-2 bg-ink text-white font-medium py-2.5 ',
+                  'hover:bg-[#1a1a1a] transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
@@ -415,8 +415,8 @@ export default function NovoProcessoPage() {
                 type="submit"
                 disabled={loading}
                 className={cn(
-                  'flex-1 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                  'hover:bg-amber-600 transition-colors',
+                  'flex-1 bg-ink text-white font-medium py-2.5 ',
+                  'hover:bg-[#1a1a1a] transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                   'flex items-center justify-center gap-2',
                 )}
@@ -434,7 +434,7 @@ export default function NovoProcessoPage() {
 
             <Link
               href="/processos"
-              className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+              className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
             >
               Cancelar
             </Link>

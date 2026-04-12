@@ -56,8 +56,8 @@ interface Prazo {
 function PrazoSkeleton() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-pulse">
-      <div className="h-10 bg-bone rounded w-1/3" />
-      <div className="bg-bone rounded-xl p-6 h-96" />
+      <div className="h-10 bg-surface-raised rounded w-1/3" />
+      <div className="bg-surface-raised p-6 h-96" />
     </div>
   )
 }
@@ -109,7 +109,7 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
   if (loadError || !prazo) {
     return (
       <div className="max-w-3xl mx-auto">
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
           {loadError || 'Prazo nao encontrado'}
         </div>
       </div>
@@ -121,37 +121,37 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
       <div className="flex items-center gap-4">
         <Link
           href={`/prazos/${id}`}
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-display text-4xl font-semibold text-ink">Editar Prazo</h1>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="bg-paper rounded-lg p-4">
-            <p className="text-xs font-mono text-muted uppercase mb-2">Processo</p>
+          <div className="bg-surface  p-4">
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Processo</p>
             <p className="font-medium text-ink">{prazo.processo.processoNumber}</p>
-            <p className="text-sm text-muted">{prazo.processo.title}</p>
+            <p className="text-sm text-ink-muted">{prazo.processo.title}</p>
           </div>
 
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Tipo <span className="text-error">*</span>
+              Tipo <span className="text-danger">*</span>
             </label>
             <select
               {...register('type')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.type ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.type ? 'border-danger' : 'border-border',
               )}
             >
               <option value="">Selecione o tipo</option>
@@ -161,24 +161,24 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
                 </option>
               ))}
             </select>
-            {errors.type && <p className="text-error text-sm mt-1">{errors.type.message}</p>}
+            {errors.type && <p className="text-danger text-sm mt-1">{errors.type.message}</p>}
           </div>
 
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Titulo <span className="text-error">*</span>
+              Titulo <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               {...register('title')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.title ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.title ? 'border-danger' : 'border-border',
               )}
               placeholder="Ex: Prazo de Contestacao"
             />
-            {errors.title && <p className="text-error text-sm mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-danger text-sm mt-1">{errors.title.message}</p>}
           </div>
 
           <div>
@@ -186,25 +186,25 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
             <textarea
               {...register('description')}
               rows={4}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
               placeholder="Notas adicionais sobre este prazo"
             />
           </div>
 
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Data Limite <span className="text-error">*</span>
+              Data Limite <span className="text-danger">*</span>
             </label>
             <input
               type="datetime-local"
               {...register('dueDate')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.dueDate ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.dueDate ? 'border-danger' : 'border-border',
               )}
             />
-            {errors.dueDate && <p className="text-error text-sm mt-1">{errors.dueDate.message}</p>}
+            {errors.dueDate && <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>}
           </div>
 
           <div>
@@ -213,7 +213,7 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
             </label>
             <select
               {...register('alertBeforeHours', { valueAsNumber: true })}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             >
               {ALERT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -228,11 +228,11 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
               <input
                 type="checkbox"
                 {...register('isUrgent')}
-                className="w-5 h-5 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+                className="w-5 h-5 text-ink border-border rounded focus:ring-2 focus:ring-ink"
               />
               <div>
                 <span className="text-sm font-medium text-ink">Marcar como urgente</span>
-                <p className="text-xs text-muted">
+                <p className="text-xs text-ink-muted">
                   Prazos urgentes recebem destaque especial no dashboard
                 </p>
               </div>
@@ -244,8 +244,8 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
               type="submit"
               disabled={loading}
               className={cn(
-                'flex-1 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'flex-1 bg-ink text-white font-medium py-2.5 ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center justify-center gap-2',
               )}
@@ -262,7 +262,7 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
 
             <Link
               href={`/prazos/${id}`}
-              className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+              className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
             >
               Cancelar
             </Link>

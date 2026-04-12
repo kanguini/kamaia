@@ -38,11 +38,11 @@ const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 }
 
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  [ExpenseCategory.EMOLUMENTOS]: 'bg-error/10 text-error border-error/20',
-  [ExpenseCategory.DESLOCACAO]: 'bg-amber-50 text-amber-700 border-amber',
-  [ExpenseCategory.COPIAS]: 'bg-muted/10 text-muted border-muted/20',
+  [ExpenseCategory.EMOLUMENTOS]: 'bg-danger/10 text-danger border-danger/20',
+  [ExpenseCategory.DESLOCACAO]: 'bg-amber-50 text-ink-700 border-amber',
+  [ExpenseCategory.COPIAS]: 'bg-muted/10 text-ink-muted border-muted/20',
   [ExpenseCategory.HONORARIOS_PERITOS]: 'bg-info/10 text-info border-info/20',
-  [ExpenseCategory.OUTRO]: 'bg-muted/10 text-muted border-muted/20',
+  [ExpenseCategory.OUTRO]: 'bg-muted/10 text-ink-muted border-muted/20',
 }
 
 function formatMoney(centavos: number): string {
@@ -151,7 +151,7 @@ export default function DespesasPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Despesas</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 bg-ink text-white font-medium px-4 sm:px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Nova Despesa</span>
@@ -159,13 +159,13 @@ export default function DespesasPage() {
         </button>
       </div>
 
-      <div className="bg-bone rounded-xl p-5">
-        <p className="text-xs font-mono text-muted uppercase mb-2">Total</p>
+      <div className="bg-surface-raised p-5">
+        <p className="text-xs font-mono text-ink-muted uppercase mb-2">Total</p>
         <p className="text-3xl font-semibold text-ink">{formatMoney(totalAmount)}</p>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-bone rounded-xl p-6">
+        <form onSubmit={handleSubmit} className="bg-surface-raised p-6">
           <h2 className="font-display text-2xl font-semibold text-ink mb-4">Nova Despesa</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -175,7 +175,7 @@ export default function DespesasPage() {
                 value={formProcessoId}
                 onChange={(e) => setFormProcessoId(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               >
                 <option value="">Seleccionar processo</option>
                 {processos?.map((p) => (
@@ -191,7 +191,7 @@ export default function DespesasPage() {
               <select
                 value={formCategory}
                 onChange={(e) => setFormCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               >
                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -209,7 +209,7 @@ export default function DespesasPage() {
                 onChange={(e) => setFormDescription(e.target.value)}
                 required
                 placeholder="Descricao da despesa"
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               />
             </div>
 
@@ -223,7 +223,7 @@ export default function DespesasPage() {
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono"
               />
             </div>
 
@@ -234,20 +234,20 @@ export default function DespesasPage() {
                 value={formDate}
                 onChange={(e) => setFormDate(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               />
             </div>
           </div>
 
-          {formError && <p className="text-error text-sm mb-4">{formError}</p>}
+          {formError && <p className="text-danger text-sm mb-4">{formError}</p>}
 
           <div className="flex gap-3">
             <button
               type="submit"
               disabled={creating}
               className={cn(
-                'px-6 py-2.5 bg-amber text-ink font-medium rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'px-6 py-2.5 bg-ink text-white font-medium ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
             >
@@ -256,7 +256,7 @@ export default function DespesasPage() {
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-6 py-2.5 border border-border text-ink font-medium rounded-lg hover:bg-bone transition-colors"
+              className="px-6 py-2.5 border border-border text-ink font-medium  hover:bg-surface-raised transition-colors"
             >
               Cancelar
             </button>
@@ -265,7 +265,7 @@ export default function DespesasPage() {
       )}
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
@@ -278,7 +278,7 @@ export default function DespesasPage() {
           action={
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium  hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
             >
               <Plus className="w-4 h-4" aria-hidden="true" />
               Nova Despesa
@@ -292,14 +292,14 @@ export default function DespesasPage() {
             .map((expense) => (
               <div
                 key={expense.id}
-                className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <Link
                         href={`/processos/${expense.processo.id}`}
-                        className="text-sm font-mono text-muted hover:underline"
+                        className="text-sm font-mono text-ink-muted hover:underline"
                       >
                         {expense.processo.processoNumber}
                       </Link>
@@ -314,10 +314,10 @@ export default function DespesasPage() {
                     </div>
                     <p className="text-ink mb-1">{expense.description}</p>
                     <div className="flex items-center gap-3">
-                      <p className="text-lg font-semibold text-amber">
+                      <p className="text-lg font-semibold text-ink">
                         {formatMoney(expense.amountCentavos)}
                       </p>
-                      <p className="text-sm text-muted">{formatDate(expense.date)}</p>
+                      <p className="text-sm text-ink-muted">{formatDate(expense.date)}</p>
                     </div>
                   </div>
                   {isSocio && (

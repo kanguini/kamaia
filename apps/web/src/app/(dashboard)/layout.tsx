@@ -60,21 +60,19 @@ const navSections = [
 
 function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
   const Icon = item.icon
-
   return (
     <Link
       href={item.href}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-3 px-4 py-2.5 rounded-lg min-h-[44px] motion-safe:transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink',
+        'flex items-center gap-3 px-3 py-2 text-[12px] transition-colors min-h-[36px]',
         isActive
-          ? 'bg-amber text-ink font-medium'
-          : 'text-bone/80 hover:bg-ink/50 hover:text-bone',
+          ? 'bg-ink text-white font-medium'
+          : 'text-ink-muted hover:bg-surface-hover hover:text-ink-secondary',
       )}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+      <Icon className="w-[14px] h-[14px] flex-shrink-0" aria-hidden="true" />
       <span>{item.label}</span>
     </Link>
   )
@@ -82,35 +80,21 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
 
 function NotificationBell() {
   const { data: countData, refetch } = useApi<{ count: number }>('/notifications/unread-count')
-
   useEffect(() => {
-    const interval = setInterval(() => {
-      refetch()
-    }, 60000) // Refetch every 60s
+    const interval = setInterval(() => refetch(), 60000)
     return () => clearInterval(interval)
   }, [refetch])
-
   const count = countData?.count || 0
-  const label =
-    count > 0
-      ? `Notificacoes (${count} nao lida${count === 1 ? '' : 's'})`
-      : 'Notificacoes'
 
   return (
     <Link
       href="/configuracoes"
-      aria-label={label}
-      className={cn(
-        'relative text-bone hover:text-amber motion-safe:transition-colors p-2 rounded-lg',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink',
-      )}
+      aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'}
+      className="relative text-ink-muted hover:text-ink transition-colors p-1"
     >
-      <Bell className="w-5 h-5" aria-hidden="true" />
+      <Bell className="w-4 h-4" aria-hidden="true" />
       {count > 0 && (
-        <span
-          className="absolute top-0 right-0 bg-error text-white text-xs font-mono font-medium rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center"
-          aria-hidden="true"
-        >
+        <span className="absolute -top-0.5 -right-0.5 bg-danger text-white text-[9px] font-mono font-medium min-w-[14px] h-[14px] px-0.5 flex items-center justify-center" aria-hidden="true">
           {count > 9 ? '9+' : count}
         </span>
       )}
@@ -123,44 +107,33 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const { data: session } = useSession()
 
   return (
-    <aside
-      aria-label="Navegacao principal"
-      className="h-full bg-ink flex flex-col"
-    >
-      <div className="p-6 flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-amber">Kamaia</h1>
-          <p className="text-bone/60 text-xs font-mono mt-1">Gestao Juridica</p>
+    <aside aria-label="Navegacao principal" className="h-full bg-surface-raised border-r border-border flex flex-col" style={{ borderRightWidth: '0.5px' }}>
+      {/* Logo */}
+      <div className="px-5 pt-8 pb-6 border-b border-border" style={{ borderBottomWidth: '0.5px' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-display text-xl text-ink">Kamaia</h1>
+            <p className="text-[11px] text-ink-ghost mt-0.5">Gestao Juridica</p>
+          </div>
+          {onClose && (
+            <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden text-ink-muted hover:text-ink p-1">
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar menu"
-            className={cn(
-              'lg:hidden text-bone hover:text-amber motion-safe:transition-colors p-1 rounded-lg',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber',
-            )}
-          >
-            <X className="w-6 h-6" aria-hidden="true" />
-          </button>
-        )}
       </div>
 
-      <nav className="flex-1 px-4 space-y-6 overflow-y-auto" aria-label="Menu">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto" aria-label="Menu">
         {navSections.map((section) => (
           <div key={section.title}>
-            <h2 className="text-bone/40 text-xs font-mono font-medium mb-2 px-4">
+            <h2 className="text-[9px] font-semibold tracking-[0.14em] uppercase text-ink-ghost px-3 mb-1">
               {section.title}
             </h2>
-            <ul className="space-y-1">
-              {navSections.find((s) => s.title === section.title)?.items.map((item) => (
+            <ul className="space-y-0.5">
+              {section.items.map((item) => (
                 <li key={item.href}>
-                  <NavLink
-                    item={item}
-                    isActive={pathname === item.href}
-                    onClick={onClose}
-                  />
+                  <NavLink item={item} isActive={pathname === item.href} onClick={onClose} />
                 </li>
               ))}
             </ul>
@@ -168,24 +141,19 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-bone/10">
+      {/* User */}
+      <div className="p-4 border-t border-border" style={{ borderTopWidth: '0.5px' }}>
         <div className="flex items-center gap-3 mb-3">
-          <div
-            className="w-10 h-10 rounded-full bg-amber/20 flex items-center justify-center flex-shrink-0"
-            aria-hidden="true"
-          >
-            <span className="text-amber font-mono font-medium">
-              {session?.user?.firstName?.[0]}
-              {session?.user?.lastName?.[0]}
+          <div className="w-8 h-8 bg-surface-hover border border-border flex items-center justify-center flex-shrink-0" style={{ borderWidth: '0.5px' }}>
+            <span className="text-ink-muted font-mono text-[10px] font-medium">
+              {session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-bone text-sm font-medium truncate">
+            <p className="text-ink-secondary text-[12px] font-medium truncate">
               {session?.user?.firstName} {session?.user?.lastName}
             </p>
-            <p className="text-bone/60 text-xs font-mono truncate">
-              {session?.user?.role}
-            </p>
+            <p className="text-ink-ghost text-[10px] font-mono truncate">{session?.user?.role}</p>
           </div>
           <NotificationBell />
         </div>
@@ -193,14 +161,9 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           type="button"
           onClick={() => signOut({ callbackUrl: '/login' })}
           aria-label="Sair da conta"
-          className={cn(
-            'w-full flex items-center justify-center gap-2 px-4 py-2 min-h-[44px]',
-            'text-bone/80 hover:text-error hover:bg-error/10 rounded-lg text-sm',
-            'motion-safe:transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink',
-          )}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-ink-muted hover:text-danger hover:bg-danger-bg text-[11px] transition-colors min-h-[36px]"
         >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Sair</span>
         </button>
       </div>
@@ -208,39 +171,20 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   )
 }
 
-function MobileSidebarOverlay({
-  open,
-  onClose,
-}: {
-  open: boolean
-  onClose: () => void
-}) {
+function MobileSidebarOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const containerRef = useFocusTrap<HTMLDivElement>(open)
-
   useEffect(() => {
     if (!open) return
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleEsc)
     return () => document.removeEventListener('keydown', handleEsc)
   }, [open, onClose])
-
   if (!open) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 lg:hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Menu de navegacao"
-    >
-      <div
-        className="absolute inset-0 bg-ink/80"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div ref={containerRef} className="absolute inset-y-0 left-0 w-64 bg-ink">
+    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegacao">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden="true" />
+      <div ref={containerRef} className="absolute inset-y-0 left-0 w-[220px] bg-surface-raised">
         <Sidebar onClose={onClose} />
       </div>
     </div>
@@ -252,48 +196,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="h-screen flex overflow-hidden">
-      <a href="#main-content" className="skip-link">
-        Saltar para o conteudo principal
-      </a>
+      <a href="#main-content" className="skip-link">Saltar para o conteudo principal</a>
 
-      <div className="hidden lg:block w-64 flex-shrink-0">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block w-[220px] flex-shrink-0">
         <Sidebar />
       </div>
 
-      <MobileSidebarOverlay
-        open={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-      />
+      <MobileSidebarOverlay open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header
-          className="lg:hidden bg-ink border-b border-bone/10 p-4 flex items-center justify-between"
-          role="banner"
-        >
-          <h1 className="font-display text-2xl font-semibold text-amber">Kamaia</h1>
+        {/* Mobile topbar */}
+        <header className="lg:hidden bg-surface border-b border-border px-4 flex items-center justify-between h-16" style={{ borderBottomWidth: '0.5px' }} role="banner">
+          <h1 className="font-display text-lg text-ink">Kamaia</h1>
           <div className="flex items-center gap-3">
             <NotificationBell />
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Abrir menu de navegacao"
+              aria-label="Abrir menu"
               aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-sidebar"
-              className={cn(
-                'text-bone hover:text-amber motion-safe:transition-colors p-2 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-ink',
-              )}
+              className="text-ink-muted hover:text-ink p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
-              <Menu className="w-6 h-6" aria-hidden="true" />
+              <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 overflow-y-auto bg-paper p-4 sm:p-6 focus:outline-none"
-        >
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-surface p-4 sm:p-8 focus:outline-none">
           {children}
         </main>
       </div>

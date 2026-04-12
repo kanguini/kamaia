@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,52 +6,51 @@
 
 @layer base {
   body {
-    @apply font-sans bg-paper text-ink antialiased;
+    @apply font-sans bg-surface text-ink-secondary antialiased;
+    font-size: 13px;
+    line-height: 1.6;
   }
 
-  /* Focus visible ring for keyboard users */
+  /* Focus visible ring — ink black */
   *:focus-visible {
-    outline: 2px solid #c8872a;
+    outline: 2px solid #070707;
     outline-offset: 2px;
-    border-radius: 4px;
   }
 
-  /* Remove default outline when mouse clicks */
   *:focus:not(:focus-visible) {
     outline: none;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar — subtle */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-bone;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-amber rounded-full;
+    background: #C8C6BF;
+    border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-amber-600;
+    background: #888780;
   }
 }
 
 @layer components {
-  /* Skip to main content link — shown only when focused */
   .skip-link {
     @apply sr-only;
   }
   .skip-link:focus {
-    @apply not-sr-only fixed top-4 left-4 z-[100] px-4 py-2 bg-amber text-ink rounded-lg shadow-lg font-medium;
+    @apply not-sr-only fixed top-4 left-4 z-[100] px-4 py-2 bg-ink text-white shadow-lg font-medium;
   }
 }
 
 @layer utilities {
-  /* Screen reader only — visually hidden but accessible */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -76,7 +75,6 @@
   }
 }
 
-/* Respect users' motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

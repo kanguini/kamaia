@@ -60,7 +60,7 @@ function formatFileSize(bytes: number): string {
 function getFileIcon(fileType: string): React.ReactNode {
   const type = fileType.toLowerCase()
   if (type.includes('pdf')) {
-    return <FileText className="w-5 h-5 text-error" />
+    return <FileText className="w-5 h-5 text-danger" />
   }
   if (type.includes('word') || type.includes('doc')) {
     return <FileText className="w-5 h-5 text-info" />
@@ -71,7 +71,7 @@ function getFileIcon(fileType: string): React.ReactNode {
   if (type.includes('excel') || type.includes('sheet')) {
     return <FileText className="w-5 h-5 text-success" />
   }
-  return <File className="w-5 h-5 text-muted" />
+  return <File className="w-5 h-5 text-ink-muted" />
 }
 
 function UploadModal({
@@ -196,20 +196,20 @@ function UploadModal({
 
   return (
     <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-paper rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface  max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-2xl font-semibold text-ink">Enviar Documento</h2>
             <button
               onClick={handleClose}
-              className="p-1 hover:bg-bone rounded transition-colors"
+              className="p-1 hover:bg-surface-raised rounded transition-colors"
             >
-              <X className="w-5 h-5 text-muted" />
+              <X className="w-5 h-5 text-ink-muted" />
             </button>
           </div>
 
           {error && (
-            <div className="mb-4 bg-error/10 border border-error/20 text-error rounded-lg p-3 text-sm">
+            <div className="mb-4 bg-danger/10 border border-danger/20 text-danger  p-3 text-sm">
               {error}
             </div>
           )}
@@ -221,7 +221,7 @@ function UploadModal({
             onDragOver={handleDrag}
             onDrop={handleDrop}
             className={cn(
-              'border-2 border-dashed rounded-xl p-8 mb-4 text-center transition-colors cursor-pointer',
+              'border-2 border-dashed  p-8 mb-4 text-center transition-colors cursor-pointer',
               dragActive
                 ? 'border-amber bg-amber/5'
                 : 'border-border-strong hover:border-amber',
@@ -241,23 +241,23 @@ function UploadModal({
                   {getFileIcon(file.type)}
                   <span className="font-medium text-ink">{file.name}</span>
                 </div>
-                <p className="text-sm text-muted">{formatFileSize(file.size)}</p>
+                <p className="text-sm text-ink-muted">{formatFileSize(file.size)}</p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     setFile(null)
                     setTitle('')
                   }}
-                  className="text-xs text-error hover:underline"
+                  className="text-xs text-danger hover:underline"
                 >
                   Remover
                 </button>
               </div>
             ) : (
               <div className="space-y-2">
-                <Upload className="w-10 h-10 text-muted mx-auto" />
+                <Upload className="w-10 h-10 text-ink-muted mx-auto" />
                 <p className="text-ink font-medium">Arraste o ficheiro aqui ou clique para seleccionar</p>
-                <p className="text-sm text-muted">PDF, Word, Excel, Imagens (max 50 MB)</p>
+                <p className="text-sm text-ink-muted">PDF, Word, Excel, Imagens (max 50 MB)</p>
               </div>
             )}
           </div>
@@ -275,7 +275,7 @@ function UploadModal({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Nome do documento"
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 />
               </div>
 
@@ -287,7 +287,7 @@ function UploadModal({
                   id="category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value as DocumentCategory)}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 >
                   {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
@@ -305,7 +305,7 @@ function UploadModal({
                   id="processo"
                   value={processoId}
                   onChange={(e) => setProcessoId(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 >
                   <option value="">Sem processo associado</option>
                   {processos?.data.map((processo) => (
@@ -324,8 +324,8 @@ function UploadModal({
               onClick={handleUpload}
               disabled={!file || uploading}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'flex-1 flex items-center justify-center gap-2 bg-ink text-white font-medium px-6 py-2.5 ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
             >
@@ -344,7 +344,7 @@ function UploadModal({
             <button
               onClick={handleClose}
               disabled={uploading}
-              className="px-6 py-2.5 border border-border rounded-lg text-ink hover:bg-bone transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 border border-border  text-ink hover:bg-surface-raised transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -422,7 +422,7 @@ export default function DocumentosPage() {
   const getStorageBarColor = (percentage: number) => {
     if (percentage < 50) return 'bg-success'
     if (percentage < 80) return 'bg-amber'
-    return 'bg-error'
+    return 'bg-danger'
   }
 
   return (
@@ -431,7 +431,7 @@ export default function DocumentosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Documentos</h1>
         <button
           onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 bg-ink text-white font-medium px-4 sm:px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
         >
           <Upload className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Enviar Documento</span>
@@ -441,9 +441,9 @@ export default function DocumentosPage() {
 
       {/* Storage bar */}
       {storage && (
-        <div className="bg-bone rounded-xl p-4">
+        <div className="bg-surface-raised p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-muted">Armazenamento</p>
+            <p className="text-sm text-ink-muted">Armazenamento</p>
             <p className="text-sm font-mono text-ink">
               {formatFileSize(storage.used)} / {formatFileSize(storage.limit)} usados
             </p>
@@ -458,17 +458,17 @@ export default function DocumentosPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-bone rounded-xl p-4">
+      <div className="bg-surface-raised p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" aria-hidden="true" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Procurar documentos..."
               aria-label="Procurar documentos"
-              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             />
           </div>
 
@@ -476,7 +476,7 @@ export default function DocumentosPage() {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             aria-label="Filtrar por categoria"
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent min-h-[40px]"
+            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent min-h-[40px]"
           >
             <option value="ALL">Todas as Categorias</option>
             {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -490,7 +490,7 @@ export default function DocumentosPage() {
             value={processoFilter}
             onChange={(e) => setProcessoFilter(e.target.value)}
             aria-label="Filtrar por processo"
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent min-h-[40px]"
+            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent min-h-[40px]"
           >
             <option value="ALL">Todos os Processos</option>
             {processos?.data.map((processo) => (
@@ -503,7 +503,7 @@ export default function DocumentosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
@@ -517,7 +517,7 @@ export default function DocumentosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium  hover:bg-ink/90 transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -531,7 +531,7 @@ export default function DocumentosPage() {
             action={
               <button
                 onClick={() => setShowUpload(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium  hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
               >
                 <Upload className="w-4 h-4" aria-hidden="true" />
                 Enviar Documento
@@ -544,7 +544,7 @@ export default function DocumentosPage() {
           {documents.data.map((doc) => (
             <div
               key={doc.id}
-              className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors cursor-pointer"
+              className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors cursor-pointer"
               onClick={() => handleDownload(doc.id, doc.filename)}
             >
               <div className="flex items-center gap-4">
@@ -553,7 +553,7 @@ export default function DocumentosPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-ink truncate">{doc.title}</h3>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 bg-muted/10 text-muted rounded-full border border-muted/20">
+                    <span className="text-xs px-2 py-0.5 bg-muted/10 text-ink-muted rounded-full border border-muted/20">
                       {CATEGORY_LABELS[doc.category]}
                     </span>
                     {doc.processo && (
@@ -566,13 +566,13 @@ export default function DocumentosPage() {
                       </Link>
                     )}
                   </div>
-                  <p className="text-xs text-muted mt-1">
+                  <p className="text-xs text-ink-muted mt-1">
                     {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} • {formatDate(doc.uploadedAt)}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-sm text-muted font-mono">{formatFileSize(doc.fileSize)}</span>
+                  <span className="text-sm text-ink-muted font-mono">{formatFileSize(doc.fileSize)}</span>
                   <IconButton
                     aria-label="Transferir documento"
                     onClick={(e) => {
@@ -591,7 +591,7 @@ export default function DocumentosPage() {
 
           {documents.nextCursor && (
             <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors">
+              <button className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface-raised transition-colors">
                 Carregar mais
               </button>
             </div>

@@ -22,21 +22,16 @@ interface StatCardProps {
   loading?: boolean
 }
 
-function StatCard({ title, value, icon: Icon, iconColor, loading }: StatCardProps) {
+function StatCard({ title, value, loading }: StatCardProps) {
   return (
-    <div className="bg-bone rounded-xl p-6 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-muted text-sm font-mono mb-1">{title}</p>
-          {loading ? (
-            <div className="h-9 w-16 bg-border rounded animate-pulse" />
-          ) : (
-            <p className="text-3xl font-semibold text-ink">{value}</p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${iconColor}`}>
-          <Icon className="w-6 h-6" />
-        </div>
+    <div className="bg-surface-raised p-6 shadow-sm">
+      <div className="flex flex-col gap-4">
+        <p className="text-[11px] text-ink-muted">{title}</p>
+        {loading ? (
+          <div className="h-9 w-16 bg-border animate-pulse" />
+        ) : (
+          <p className="font-display text-[28px] text-ink">{value}</p>
+        )}
       </div>
     </div>
   )
@@ -44,12 +39,12 @@ function StatCard({ title, value, icon: Icon, iconColor, loading }: StatCardProp
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="bg-bone rounded-xl p-8 text-center">
-      <div className="w-12 h-12 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-        <AlertCircle className="w-6 h-6 text-muted" />
+    <div className="bg-surface-raised p-8 text-center">
+      <div className="w-12 h-12 bg-ink-muted/10 flex items-center justify-center mx-auto mb-4">
+        <AlertCircle className="w-6 h-6 text-ink-muted" />
       </div>
       <h3 className="text-ink font-medium mb-1">{title}</h3>
-      <p className="text-muted text-sm">{description}</p>
+      <p className="text-ink-muted text-sm">{description}</p>
     </div>
   )
 }
@@ -97,11 +92,11 @@ function ProximosPrazosSection() {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-semibold text-ink mb-4">Proximos Prazos</h2>
+      <h2 className="font-display text-[20px] font-medium text-ink mb-4">Proximos Prazos</h2>
       {loading ? (
-        <div className="bg-bone rounded-xl p-6 space-y-3 animate-pulse">
+        <div className="bg-surface-raised p-6 space-y-3 animate-pulse">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-border rounded" />
+            <div key={i} className="h-16 bg-border" />
           ))}
         </div>
       ) : !prazos || prazos.length === 0 ? (
@@ -110,7 +105,7 @@ function ProximosPrazosSection() {
           description="Os seus prazos aparecerao aqui quando forem adicionados"
         />
       ) : (
-        <div className="bg-bone rounded-xl p-4 space-y-3">
+        <div className="bg-surface-raised border border-border p-4 space-y-3">
           {prazos.slice(0, 5).map((prazo) => {
             const dueDate = new Date(prazo.dueDate)
             const isPast = dueDate < new Date()
@@ -119,16 +114,16 @@ function ProximosPrazosSection() {
               <Link
                 key={prazo.id}
                 href={`/prazos/${prazo.id}`}
-                className="block bg-paper rounded-lg p-3 hover:bg-bone transition-colors"
+                className="block bg-surface border border-border p-3 hover:bg-surface-hover transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     {prazo.isUrgent && (
-                      <AlertTriangle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-ink mb-1 truncate">{prazo.title}</p>
-                      <p className="text-xs font-mono text-muted">{prazo.processo.processoNumber}</p>
+                      <p className="text-xs font-mono text-ink-muted">{prazo.processo.processoNumber}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -136,7 +131,7 @@ function ProximosPrazosSection() {
                       <p
                         className={cn(
                           'text-xs font-medium',
-                          isPast ? 'text-error' : 'text-warning',
+                          isPast ? 'text-danger' : 'text-warning',
                         )}
                       >
                         {getRelativeTime(dueDate)}
@@ -149,7 +144,7 @@ function ProximosPrazosSection() {
                           e.stopPropagation()
                           handleComplete()
                         }}
-                        className="p-1 hover:bg-success/10 rounded transition-colors"
+                        className="p-1 hover:bg-success-bg transition-colors"
                         title="Marcar como cumprido"
                       >
                         <CheckCircle className="w-4 h-4 text-success" />
@@ -162,7 +157,7 @@ function ProximosPrazosSection() {
           })}
           <Link
             href="/prazos"
-            className="block text-center text-sm text-amber hover:text-amber-700 font-medium pt-2"
+            className="block text-center text-sm text-ink-muted hover:text-ink font-medium pt-2"
           >
             Ver todos os prazos →
           </Link>
@@ -189,7 +184,7 @@ export default function DashboardPage() {
         <h1 className="font-display text-4xl font-semibold text-ink mb-2">
           {getGreeting()}, {session?.user?.firstName}!
         </h1>
-        <p className="text-muted">Aqui esta o resumo da sua actividade</p>
+        <p className="text-ink-muted">Aqui esta o resumo da sua actividade</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -197,28 +192,28 @@ export default function DashboardPage() {
           title="Processos Activos"
           value={stats?.activeProcessos ?? 0}
           icon={Scale}
-          iconColor="bg-amber/10 text-amber"
+          iconColor=""
           loading={loading}
         />
         <StatCard
           title="Prazos Urgentes"
           value={stats?.upcomingPrazos ?? 0}
           icon={Clock}
-          iconColor="bg-error/10 text-error"
+          iconColor=""
           loading={loading}
         />
         <StatCard
           title="Clientes"
           value={stats?.activeClientes ?? 0}
           icon={Users}
-          iconColor="bg-info/10 text-info"
+          iconColor=""
           loading={loading}
         />
         <StatCard
           title="Consultas IA Restantes"
           value={stats?.aiQueriesRemaining ?? 50}
           icon={Bot}
-          iconColor="bg-success/10 text-success"
+          iconColor=""
           loading={loading}
         />
       </div>
@@ -227,7 +222,7 @@ export default function DashboardPage() {
         <ProximosPrazosSection />
 
         <div>
-          <h2 className="font-display text-2xl font-semibold text-ink mb-4">
+          <h2 className="font-display text-[20px] font-medium text-ink mb-4">
             Actividade Recente
           </h2>
           <EmptyState

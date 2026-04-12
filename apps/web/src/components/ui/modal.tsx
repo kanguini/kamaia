@@ -70,7 +70,7 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          'w-full bg-paper rounded-xl shadow-lg max-h-[90vh] overflow-y-auto',
+          'w-full bg-surface shadow-lg max-h-[90vh] overflow-y-auto',
           sizeClasses[size],
         )}
         onClick={(e) => e.stopPropagation()}
@@ -82,7 +82,7 @@ export function Modal({
               {title}
             </h2>
             {description && (
-              <p id={descId} className="mt-1 text-sm text-muted">
+              <p id={descId} className="mt-1 text-sm text-ink-muted">
                 {description}
               </p>
             )}
@@ -91,7 +91,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="ml-4 p-1 rounded-lg text-muted hover:text-ink hover:bg-bone focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            className="ml-4 p-1 text-ink-muted hover:text-ink hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>

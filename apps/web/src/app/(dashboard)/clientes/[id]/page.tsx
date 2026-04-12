@@ -41,9 +41,9 @@ function InfoCard({
 }) {
   return (
     <div>
-      <p className="text-xs font-mono text-muted uppercase mb-1">{label}</p>
+      <p className="text-xs font-mono text-ink-muted uppercase mb-1">{label}</p>
       <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-4 h-4 text-muted" />}
+        {Icon && <Icon className="w-4 h-4 text-ink-muted" />}
         <p className="text-ink font-medium">{value || '—'}</p>
       </div>
     </div>
@@ -53,8 +53,8 @@ function InfoCard({
 function ClienteSkeleton() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
-      <div className="h-10 bg-bone rounded w-1/3" />
-      <div className="bg-bone rounded-xl p-6 space-y-4">
+      <div className="h-10 bg-surface-raised rounded w-1/3" />
+      <div className="bg-surface-raised p-6 space-y-4">
         <div className="h-6 bg-border rounded w-1/2" />
         <div className="grid grid-cols-2 gap-4">
           <div className="h-12 bg-border rounded" />
@@ -83,7 +83,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const getTypeBadge = (type: ClienteType) => {
     const styles = {
       [ClienteType.INDIVIDUAL]: 'bg-info/10 text-info border-info/20',
-      [ClienteType.EMPRESA]: 'bg-amber/10 text-amber border-amber/20',
+      [ClienteType.EMPRESA]: 'bg-amber/10 text-ink border-amber/20',
     }
     const icons = {
       [ClienteType.INDIVIDUAL]: User,
@@ -111,7 +111,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     const styles = {
       [ProcessoStatus.ACTIVO]: 'bg-success/10 text-success border-success/20',
       [ProcessoStatus.SUSPENSO]: 'bg-warning/10 text-warning border-warning/20',
-      [ProcessoStatus.ENCERRADO]: 'bg-muted/10 text-muted border-muted/20',
+      [ProcessoStatus.ENCERRADO]: 'bg-muted/10 text-ink-muted border-muted/20',
       [ProcessoStatus.ARQUIVADO]: 'bg-ink/10 text-ink border-ink/20',
     }
     return (
@@ -139,7 +139,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   if (error || !cliente) {
     return (
       <div className="max-w-5xl mx-auto">
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
           {error || 'Cliente nao encontrado'}
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <div className="flex items-center gap-4">
         <Link
           href="/clientes"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -161,7 +161,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex items-center gap-2">
           <Link
             href={`/clientes/${id}/editar`}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium text-ink hover:bg-bone transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-border  text-sm font-medium text-ink hover:bg-surface-raised transition-colors"
           >
             <Edit className="w-4 h-4" />
             Editar
@@ -170,7 +170,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 border border-error/20 bg-error/10 text-error rounded-lg text-sm font-medium hover:bg-error/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border border-danger/20 bg-danger/10 text-danger  text-sm font-medium hover:bg-danger/20 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
               Eliminar
@@ -183,7 +183,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         {getTypeBadge(cliente.type)}
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         <h2 className="font-display text-2xl font-semibold text-ink mb-6">Informacoes</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InfoCard label="NIF" value={cliente.nif || '—'} />
@@ -196,16 +196,16 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
         {cliente.notes && (
           <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-xs font-mono text-muted uppercase mb-2">Notas</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Notas</p>
             <p className="text-ink whitespace-pre-wrap">{cliente.notes}</p>
           </div>
         )}
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-2xl font-semibold text-ink">Processos Associados</h2>
-          <span className="px-3 py-1 bg-ink text-bone text-sm font-mono rounded">
+          <span className="px-3 py-1 bg-ink text-white text-sm font-mono rounded">
             {cliente.processos.length}
           </span>
         </div>
@@ -213,9 +213,9 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         {cliente.processos.length === 0 ? (
           <div className="text-center py-8">
             <div className="w-12 h-12 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-3">
-              <Scale className="w-6 h-6 text-muted" />
+              <Scale className="w-6 h-6 text-ink-muted" />
             </div>
-            <p className="text-muted text-sm">Nenhum processo associado a este cliente</p>
+            <p className="text-ink-muted text-sm">Nenhum processo associado a este cliente</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -223,21 +223,21 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
               <Link
                 key={processo.id}
                 href={`/processos/${processo.id}`}
-                className="block bg-paper rounded-lg p-4 hover:bg-bone transition-colors"
+                className="block bg-surface  p-4 hover:bg-surface-raised transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xs font-mono text-muted">
+                      <span className="text-xs font-mono text-ink-muted">
                         {processo.processoNumber}
                       </span>
                       {getStatusBadge(processo.status)}
                     </div>
                     <h3 className="font-medium text-ink mb-1">{processo.title}</h3>
-                    <p className="text-sm text-muted">{processo.type}</p>
+                    <p className="text-sm text-ink-muted">{processo.type}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted">{formatDate(processo.createdAt)}</p>
+                    <p className="text-xs text-ink-muted">{formatDate(processo.createdAt)}</p>
                   </div>
                 </div>
               </Link>

@@ -93,8 +93,8 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
   if (loadingProcesso) {
     return (
       <div className="max-w-3xl mx-auto space-y-6 animate-pulse">
-        <div className="h-10 bg-bone rounded w-1/3" />
-        <div className="bg-bone rounded-xl p-6 space-y-4">
+        <div className="h-10 bg-surface-raised rounded w-1/3" />
+        <div className="bg-surface-raised p-6 space-y-4">
           <div className="h-12 bg-border rounded" />
           <div className="h-12 bg-border rounded" />
           <div className="h-12 bg-border rounded" />
@@ -106,7 +106,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
   if (!processo) {
     return (
       <div className="max-w-3xl mx-auto">
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
           Processo nao encontrado
         </div>
       </div>
@@ -118,21 +118,21 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
       <div className="flex items-center gap-4">
         <Link
           href={`/processos/${id}`}
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
           <h1 className="font-display text-4xl font-semibold text-ink">Editar Processo</h1>
-          <p className="text-sm text-muted mt-1">
+          <p className="text-sm text-ink-muted mt-1">
             Tipo: {PROCESSO_TYPE_LABELS[processo.type]} (nao pode ser alterado)
           </p>
         </div>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
             {error}
           </div>
         )}
@@ -140,18 +140,18 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Titulo <span className="text-error">*</span>
+              Titulo <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               {...register('title')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.title ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.title ? 'border-danger' : 'border-border',
               )}
             />
-            {errors.title && <p className="text-error text-sm mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-danger text-sm mt-1">{errors.title.message}</p>}
           </div>
 
           <div>
@@ -159,7 +159,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
             <textarea
               {...register('description')}
               rows={4}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
             />
           </div>
 
@@ -167,7 +167,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
             <label className="block text-sm font-mono font-medium text-ink mb-2">Prioridade</label>
             <select
               {...register('priority')}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             >
               <option value={ProcessoPriority.BAIXA}>Baixa</option>
               <option value={ProcessoPriority.MEDIA}>Media</option>
@@ -188,7 +188,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                 <input
                   type="text"
                   {...register('court')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 />
               </div>
 
@@ -199,7 +199,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                 <input
                   type="text"
                   {...register('courtCaseNumber')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 />
               </div>
 
@@ -208,7 +208,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                 <input
                   type="text"
                   {...register('judge')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 />
               </div>
 
@@ -220,7 +220,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                   <input
                     type="text"
                     {...register('opposingParty')}
-                    className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   />
                 </div>
 
@@ -231,7 +231,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                   <input
                     type="text"
                     {...register('opposingLawyer')}
-                    className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                    className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                   />
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                 </label>
                 <select
                   {...register('feeType')}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 >
                   <option value="">Selecione o tipo</option>
                   <option value="FIXO">Fixo</option>
@@ -265,7 +265,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
                 <input
                   type="number"
                   {...register('feeAmount', { valueAsNumber: true })}
-                  className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                  className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 />
               </div>
             </div>
@@ -276,8 +276,8 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
               type="submit"
               disabled={loading}
               className={cn(
-                'flex-1 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'flex-1 bg-ink text-white font-medium py-2.5 ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center justify-center gap-2',
               )}
@@ -293,7 +293,7 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
             </button>
             <Link
               href={`/processos/${id}`}
-              className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+              className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
             >
               Cancelar
             </Link>

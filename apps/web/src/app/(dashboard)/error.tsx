@@ -12,13 +12,13 @@ export default function DashboardError({
       <h2 className="font-display text-3xl font-semibold text-ink mb-4">
         Ocorreu um erro
       </h2>
-      <p className="text-muted mb-2">{error.message}</p>
+      <p className="text-ink-muted mb-2">{error.message}</p>
       {error.digest && (
-        <p className="text-xs font-mono text-muted mb-6">Digest: {error.digest}</p>
+        <p className="text-xs font-mono text-ink-muted mb-6">Digest: {error.digest}</p>
       )}
       <button
         onClick={reset}
-        className="px-6 py-2 bg-amber text-ink rounded-lg font-medium hover:bg-amber-600 transition-colors"
+        className="px-6 py-2 bg-ink text-white  font-medium hover:bg-[#1a1a1a] transition-colors"
       >
         Tentar novamente
       </button>

@@ -174,7 +174,7 @@ function AgendaNovoContent() {
       <div className="flex items-center gap-4">
         <Link
           href="/agenda"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -183,9 +183,9 @@ function AgendaNovoContent() {
         </h1>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
             {error}
           </div>
         )}
@@ -194,32 +194,32 @@ function AgendaNovoContent() {
           {/* Title */}
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Titulo <span className="text-error">*</span>
+              Titulo <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               {...register('title')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.title ? 'border-error' : 'border-border'
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.title ? 'border-danger' : 'border-border'
               )}
               placeholder="Ex: Reuniao com cliente"
             />
-            {errors.title && <p className="text-error text-sm mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-danger text-sm mt-1">{errors.title.message}</p>}
           </div>
 
           {/* Type */}
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Tipo <span className="text-error">*</span>
+              Tipo <span className="text-danger">*</span>
             </label>
             <select
               {...register('type')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.type ? 'border-error' : 'border-border'
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.type ? 'border-danger' : 'border-border'
               )}
             >
               {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
@@ -228,7 +228,7 @@ function AgendaNovoContent() {
                 </option>
               ))}
             </select>
-            {errors.type && <p className="text-error text-sm mt-1">{errors.type.message}</p>}
+            {errors.type && <p className="text-danger text-sm mt-1">{errors.type.message}</p>}
           </div>
 
           {/* All Day */}
@@ -237,7 +237,7 @@ function AgendaNovoContent() {
               <input
                 type="checkbox"
                 {...register('allDay')}
-                className="w-5 h-5 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+                className="w-5 h-5 text-ink border-border rounded focus:ring-2 focus:ring-ink"
               />
               <span className="text-sm font-medium text-ink">Todo o dia</span>
             </label>
@@ -246,35 +246,35 @@ function AgendaNovoContent() {
           {/* Start Date */}
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Data Inicio <span className="text-error">*</span>
+              Data Inicio <span className="text-danger">*</span>
             </label>
             <input
               type={formData.allDay ? 'date' : 'datetime-local'}
               {...register('startAt')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.startAt ? 'border-error' : 'border-border'
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.startAt ? 'border-danger' : 'border-border'
               )}
             />
-            {errors.startAt && <p className="text-error text-sm mt-1">{errors.startAt.message}</p>}
+            {errors.startAt && <p className="text-danger text-sm mt-1">{errors.startAt.message}</p>}
           </div>
 
           {/* End Date */}
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Data Fim <span className="text-error">*</span>
+              Data Fim <span className="text-danger">*</span>
             </label>
             <input
               type={formData.allDay ? 'date' : 'datetime-local'}
               {...register('endAt')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.endAt ? 'border-error' : 'border-border'
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.endAt ? 'border-danger' : 'border-border'
               )}
             />
-            {errors.endAt && <p className="text-error text-sm mt-1">{errors.endAt.message}</p>}
+            {errors.endAt && <p className="text-danger text-sm mt-1">{errors.endAt.message}</p>}
           </div>
 
           {/* Location */}
@@ -283,7 +283,7 @@ function AgendaNovoContent() {
             <input
               type="text"
               {...register('location')}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               placeholder="Ex: Tribunal Provincial de Luanda"
             />
           </div>
@@ -293,23 +293,23 @@ function AgendaNovoContent() {
             <label className="block text-sm font-mono font-medium text-ink mb-2">Processo</label>
 
             {selectedProcesso ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-paper border border-border rounded-lg">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-border ">
                 <div className="flex-1">
                   <div className="font-mono text-sm text-ink">{selectedProcesso.processoNumber}</div>
-                  <div className="text-xs text-muted">{selectedProcesso.title}</div>
+                  <div className="text-xs text-ink-muted">{selectedProcesso.title}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setValue('processoId', undefined)}
-                  className="p-1 hover:bg-bone rounded transition-colors"
+                  className="p-1 hover:bg-surface-raised rounded transition-colors"
                 >
-                  <X className="w-4 h-4 text-muted" />
+                  <X className="w-4 h-4 text-ink-muted" />
                 </button>
               </div>
             ) : (
               <>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                   <input
                     type="text"
                     value={processoSearch}
@@ -318,13 +318,13 @@ function AgendaNovoContent() {
                       setShowProcessoDropdown(true)
                     }}
                     onFocus={() => setShowProcessoDropdown(true)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                     placeholder="Pesquisar processo..."
                   />
                 </div>
 
                 {showProcessoDropdown && filteredProcessos.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-paper border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-surface border border-border  shadow-lg max-h-60 overflow-y-auto">
                     {filteredProcessos.map((processo) => (
                       <button
                         key={processo.id}
@@ -334,10 +334,10 @@ function AgendaNovoContent() {
                           setShowProcessoDropdown(false)
                           setProcessoSearch('')
                         }}
-                        className="w-full text-left px-4 py-3 hover:bg-bone transition-colors border-b border-border last:border-0"
+                        className="w-full text-left px-4 py-3 hover:bg-surface-raised transition-colors border-b border-border last:border-0"
                       >
                         <div className="font-mono text-sm text-ink">{processo.processoNumber}</div>
-                        <div className="text-xs text-muted mt-0.5">{processo.title}</div>
+                        <div className="text-xs text-ink-muted mt-0.5">{processo.title}</div>
                       </button>
                     ))}
                   </div>
@@ -346,7 +346,7 @@ function AgendaNovoContent() {
             )}
 
             {processos.length === 0 && (
-              <div className="mt-2 bg-warning/10 border border-warning/20 rounded-lg p-3">
+              <div className="mt-2 bg-warning/10 border border-warning/20  p-3">
                 <p className="text-xs text-warning">
                   Nenhum processo activo. <Link href="/processos/novo" className="underline">Criar processo</Link>
                 </p>
@@ -360,7 +360,7 @@ function AgendaNovoContent() {
             <textarea
               {...register('description')}
               rows={4}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
               placeholder="Notas adicionais sobre este evento"
             />
           </div>
@@ -372,7 +372,7 @@ function AgendaNovoContent() {
               {...register('reminderMinutes', {
                 setValueAs: (v) => v === '' || v === 'null' ? null : Number(v)
               })}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             >
               {REMINDER_OPTIONS.map((option) => (
                 <option key={option.label} value={option.value ?? 'null'}>
@@ -388,8 +388,8 @@ function AgendaNovoContent() {
               type="submit"
               disabled={loading}
               className={cn(
-                'flex-1 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'flex-1 bg-ink text-white font-medium py-2.5 ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center justify-center gap-2'
               )}
@@ -406,7 +406,7 @@ function AgendaNovoContent() {
 
             <Link
               href="/agenda"
-              className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+              className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
             >
               Cancelar
             </Link>
@@ -437,7 +437,7 @@ function formatDateTimeLocal(dateString: string, allDay: boolean): string {
 
 export default function NovoEventoPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-muted">A carregar...</div></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-ink-muted">A carregar...</div></div>}>
       <AgendaNovoContent />
     </Suspense>
   )

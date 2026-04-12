@@ -55,16 +55,16 @@ export default function NovoClientePage() {
       <div className="flex items-center gap-4">
         <Link
           href="/clientes"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="font-display text-4xl font-semibold text-ink">Novo Cliente</h1>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
             {error}
           </div>
         )}
@@ -72,24 +72,24 @@ export default function NovoClientePage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-2">
-              Nome <span className="text-error">*</span>
+              Nome <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               {...register('name')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.name ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.name ? 'border-danger' : 'border-border',
               )}
               placeholder="Nome completo ou razao social"
             />
-            {errors.name && <p className="text-error text-sm mt-1">{errors.name.message}</p>}
+            {errors.name && <p className="text-danger text-sm mt-1">{errors.name.message}</p>}
           </div>
 
           <div>
             <label className="block text-sm font-mono font-medium text-ink mb-3">
-              Tipo <span className="text-error">*</span>
+              Tipo <span className="text-danger">*</span>
             </label>
             <div className="flex gap-4">
               <label className="flex items-center gap-3 flex-1 cursor-pointer">
@@ -97,7 +97,7 @@ export default function NovoClientePage() {
                   type="radio"
                   value={ClienteType.INDIVIDUAL}
                   {...register('type')}
-                  className="w-4 h-4 text-amber border-border focus:ring-amber"
+                  className="w-4 h-4 text-ink border-border focus:ring-ink"
                 />
                 <span className="text-sm font-medium text-ink">Individual</span>
               </label>
@@ -106,12 +106,12 @@ export default function NovoClientePage() {
                   type="radio"
                   value={ClienteType.EMPRESA}
                   {...register('type')}
-                  className="w-4 h-4 text-amber border-border focus:ring-amber"
+                  className="w-4 h-4 text-ink border-border focus:ring-ink"
                 />
                 <span className="text-sm font-medium text-ink">Empresa</span>
               </label>
             </div>
-            {errors.type && <p className="text-error text-sm mt-1">{errors.type.message}</p>}
+            {errors.type && <p className="text-danger text-sm mt-1">{errors.type.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,7 +123,7 @@ export default function NovoClientePage() {
                 id="nif"
                 type="text"
                 {...register('nif')}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 placeholder="Numero de identificacao fiscal"
               />
             </div>
@@ -136,7 +136,7 @@ export default function NovoClientePage() {
                 id="phone"
                 type="text"
                 {...register('phone')}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 placeholder="+244 900 000 000"
               />
             </div>
@@ -151,13 +151,13 @@ export default function NovoClientePage() {
               type="email"
               {...register('email')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.email ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border  transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.email ? 'border-danger' : 'border-border',
               )}
               placeholder="email@exemplo.com"
             />
-            {errors.email && <p className="text-error text-sm mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-danger text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
@@ -168,7 +168,7 @@ export default function NovoClientePage() {
               id="address"
               {...register('address')}
               rows={3}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
               placeholder="Endereco completo"
             />
           </div>
@@ -181,7 +181,7 @@ export default function NovoClientePage() {
               id="notes"
               {...register('notes')}
               rows={4}
-              className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
+              className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
               placeholder="Informacoes adicionais sobre o cliente"
             />
           </div>
@@ -191,8 +191,8 @@ export default function NovoClientePage() {
               type="submit"
               disabled={loading}
               className={cn(
-                'flex-1 bg-amber text-ink font-medium py-2.5 rounded-lg',
-                'hover:bg-amber-600 transition-colors',
+                'flex-1 bg-ink text-white font-medium py-2.5 ',
+                'hover:bg-[#1a1a1a] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center justify-center gap-2',
               )}
@@ -208,7 +208,7 @@ export default function NovoClientePage() {
             </button>
             <Link
               href="/clientes"
-              className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-paper transition-colors"
+              className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
             >
               Cancelar
             </Link>

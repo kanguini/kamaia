@@ -82,15 +82,15 @@ export default function RegisterPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="font-display text-5xl font-semibold text-amber mb-2">Kamaia</h1>
-        <p className="text-bone text-sm font-mono">Gestao Juridica Inteligente</p>
+        <h1 className="font-display text-5xl font-semibold text-ink mb-2">Kamaia</h1>
+        <p className="text-ink-muted text-sm font-mono">Gestao Juridica Inteligente</p>
       </div>
 
-      <div className="bg-bone rounded-xl p-8 shadow-lg">
+      <div className="bg-surface border border-border p-8 shadow-lg">
         <h2 className="font-display text-2xl font-semibold text-ink mb-6">Criar conta</h2>
 
         {error && (
-          <div className="bg-error/10 border border-error/20 text-error rounded-lg p-3 mb-6 text-sm">
+          <div className="bg-danger-bg border border-danger/20 text-danger p-3 mb-6 text-sm">
             {error}
           </div>
         )}
@@ -100,7 +100,7 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="firstName"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Nome
               </label>
@@ -109,21 +109,21 @@ export default function RegisterPage() {
                 type="text"
                 {...register('firstName')}
                 className={cn(
-                  'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                  errors.firstName ? 'border-error' : 'border-border',
+                  'w-full px-4 py-2.5 bg-surface border transition-colors',
+                  'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                  errors.firstName ? 'border-danger' : 'border-border',
                 )}
                 placeholder="Nome"
               />
               {errors.firstName && (
-                <p className="text-error text-sm mt-1">{errors.firstName.message}</p>
+                <p className="text-danger text-sm mt-1">{errors.firstName.message}</p>
               )}
             </div>
 
             <div>
               <label
                 htmlFor="lastName"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Apelido
               </label>
@@ -132,20 +132,20 @@ export default function RegisterPage() {
                 type="text"
                 {...register('lastName')}
                 className={cn(
-                  'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                  errors.lastName ? 'border-error' : 'border-border',
+                  'w-full px-4 py-2.5 bg-surface border transition-colors',
+                  'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                  errors.lastName ? 'border-danger' : 'border-border',
                 )}
                 placeholder="Apelido"
               />
               {errors.lastName && (
-                <p className="text-error text-sm mt-1">{errors.lastName.message}</p>
+                <p className="text-danger text-sm mt-1">{errors.lastName.message}</p>
               )}
             </div>
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-mono font-medium text-ink mb-2">
+            <label htmlFor="email" className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2">
               Email
             </label>
             <input
@@ -153,20 +153,20 @@ export default function RegisterPage() {
               type="email"
               {...register('email')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.email ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.email ? 'border-danger' : 'border-border',
               )}
               placeholder="seu@email.com"
             />
-            {errors.email && <p className="text-error text-sm mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-danger text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Palavra-passe
               </label>
@@ -175,21 +175,21 @@ export default function RegisterPage() {
                 type="password"
                 {...register('password')}
                 className={cn(
-                  'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                  errors.password ? 'border-error' : 'border-border',
+                  'w-full px-4 py-2.5 bg-surface border transition-colors',
+                  'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                  errors.password ? 'border-danger' : 'border-border',
                 )}
                 placeholder="••••••••"
               />
               {errors.password && (
-                <p className="text-error text-sm mt-1">{errors.password.message}</p>
+                <p className="text-danger text-sm mt-1">{errors.password.message}</p>
               )}
             </div>
 
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Confirmar
               </label>
@@ -198,14 +198,14 @@ export default function RegisterPage() {
                 type="password"
                 {...register('confirmPassword')}
                 className={cn(
-                  'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                  errors.confirmPassword ? 'border-error' : 'border-border',
+                  'w-full px-4 py-2.5 bg-surface border transition-colors',
+                  'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                  errors.confirmPassword ? 'border-danger' : 'border-border',
                 )}
                 placeholder="••••••••"
               />
               {errors.confirmPassword && (
-                <p className="text-error text-sm mt-1">{errors.confirmPassword.message}</p>
+                <p className="text-danger text-sm mt-1">{errors.confirmPassword.message}</p>
               )}
             </div>
           </div>
@@ -213,7 +213,7 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="gabineteName"
-              className="block text-sm font-mono font-medium text-ink mb-2"
+              className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
             >
               Nome do Gabinete
             </label>
@@ -222,14 +222,14 @@ export default function RegisterPage() {
               type="text"
               {...register('gabineteName')}
               className={cn(
-                'w-full px-4 py-2.5 bg-paper border rounded-lg transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent',
-                errors.gabineteName ? 'border-error' : 'border-border',
+                'w-full px-4 py-2.5 bg-surface border transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.gabineteName ? 'border-danger' : 'border-border',
               )}
               placeholder="Nome do seu gabinete juridico"
             />
             {errors.gabineteName && (
-              <p className="text-error text-sm mt-1">{errors.gabineteName.message}</p>
+              <p className="text-danger text-sm mt-1">{errors.gabineteName.message}</p>
             )}
           </div>
 
@@ -237,7 +237,7 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="oaaNumber"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Numero OAA (opcional)
               </label>
@@ -245,7 +245,7 @@ export default function RegisterPage() {
                 id="oaaNumber"
                 type="text"
                 {...register('oaaNumber')}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border transition-colors focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 placeholder="12345"
               />
             </div>
@@ -253,7 +253,7 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="specialty"
-                className="block text-sm font-mono font-medium text-ink mb-2"
+                className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
               >
                 Especialidade (opcional)
               </label>
@@ -261,7 +261,7 @@ export default function RegisterPage() {
                 id="specialty"
                 type="text"
                 {...register('specialty')}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border transition-colors focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
                 placeholder="Civil, Penal..."
               />
             </div>
@@ -271,8 +271,8 @@ export default function RegisterPage() {
             type="submit"
             disabled={isLoading}
             className={cn(
-              'w-full bg-amber text-ink font-medium py-2.5 rounded-lg',
-              'hover:bg-amber-600 transition-colors',
+              'w-full bg-ink text-white font-medium py-2.5',
+              'hover:bg-[#1a1a1a] transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               'flex items-center justify-center gap-2',
             )}
@@ -288,9 +288,9 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted">
+        <p className="mt-6 text-center text-sm text-ink-muted">
           Ja tem conta?{' '}
-          <Link href="/login" className="text-amber hover:text-amber-600 font-medium">
+          <Link href="/login" className="text-ink-muted hover:text-ink font-medium">
             Entrar
           </Link>
         </p>

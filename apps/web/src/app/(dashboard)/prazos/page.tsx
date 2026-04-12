@@ -127,10 +127,10 @@ export default function PrazosPage() {
 
   const getStatusBadge = (status: PrazoStatus) => {
     const styles = {
-      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-amber-700 border-amber',
+      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-ink-700 border-amber',
       [PrazoStatus.CUMPRIDO]: 'bg-green-50 text-green-700 border-success',
-      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-error',
-      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-muted border-muted/20',
+      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-danger',
+      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-ink-muted border-muted/20',
     }
     return (
       <span
@@ -205,7 +205,7 @@ export default function PrazosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Prazos</h1>
         <Link
           href="/prazos/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-4 sm:px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 bg-ink text-white font-medium px-4 sm:px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Novo Prazo</span>
@@ -214,18 +214,18 @@ export default function PrazosPage() {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-4 py-2 bg-error/10 border border-error/20 rounded-lg">
-          <span className="text-xs font-mono text-error">{stats.urgentes} urgentes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-danger/10 border border-danger/20 ">
+          <span className="text-xs font-mono text-danger">{stats.urgentes} urgentes</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber rounded-lg">
-          <span className="text-xs font-mono text-amber-700">{stats.pendentes} pendentes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber ">
+          <span className="text-xs font-mono text-ink-700">{stats.pendentes} pendentes</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-success rounded-lg">
+        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-success ">
           <span className="text-xs font-mono text-green-700">{stats.cumpridos} cumpridos este mes</span>
         </div>
       </div>
 
-      <div className="bg-bone rounded-xl p-4 space-y-4">
+      <div className="bg-surface-raised p-4 space-y-4">
         <FilterTabs
           value={statusFilter}
           onChange={setStatusFilter}
@@ -241,14 +241,14 @@ export default function PrazosPage() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" aria-hidden="true" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" aria-hidden="true" />
             <input
               type="search"
               placeholder="Pesquisar prazos..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Pesquisar prazos"
-              className="w-full pl-10 pr-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function PrazosPage() {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             aria-label="Filtrar por tipo"
-            className="px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent font-mono text-sm min-h-[40px]"
+            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono text-sm min-h-[40px]"
           >
             <option value="ALL">Todos os Tipos</option>
             {Object.entries(PRAZO_TYPE_LABELS).map(([value, label]) => (
@@ -266,13 +266,13 @@ export default function PrazosPage() {
             ))}
           </select>
 
-          <label className="flex items-center gap-2 px-4 py-2.5 bg-paper border border-border rounded-lg cursor-pointer hover:bg-bone transition-colors">
+          <label className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-border  cursor-pointer hover:bg-surface-raised transition-colors">
             <input
               type="checkbox"
               checked={urgentOnly}
               onChange={(e) => setUrgentOnly(e.target.checked)}
               aria-label="Apenas urgentes"
-              className="w-4 h-4 text-amber border-border rounded focus:ring-2 focus:ring-amber"
+              className="w-4 h-4 text-ink border-border rounded focus:ring-2 focus:ring-ink"
             />
             <span className="text-sm font-medium text-ink">Apenas urgentes</span>
           </label>
@@ -280,7 +280,7 @@ export default function PrazosPage() {
       </div>
 
       {error && (
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4" role="alert">{error}</div>
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
       )}
 
       {loading ? (
@@ -294,7 +294,7 @@ export default function PrazosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-bone font-medium rounded-lg hover:bg-ink/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium  hover:bg-ink/90 transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -306,7 +306,7 @@ export default function PrazosPage() {
             title="Nenhum prazo"
             description="Comece por criar o seu primeiro prazo"
             action={
-              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-amber text-ink font-medium rounded-lg hover:bg-amber-600 transition-colors min-h-[40px]">
+              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-white font-medium  hover:bg-[#1a1a1a] transition-colors min-h-[40px]">
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Novo Prazo
               </Link>
@@ -317,36 +317,36 @@ export default function PrazosPage() {
         <div className="space-y-6">
           {groupedPrazos.atrasados && groupedPrazos.atrasados.length > 0 && (
             <div>
-              <h2 className="font-display text-xl font-semibold text-error mb-3">Atrasados</h2>
+              <h2 className="font-display text-xl font-semibold text-danger mb-3">Atrasados</h2>
               <div className="space-y-3">
                 {groupedPrazos.atrasados.map((prazo) => (
                   <div
                     key={prazo.id}
-                    className="bg-error/5 border-l-4 border-error rounded-lg p-4 hover:bg-error/10 transition-colors"
+                    className="bg-danger/5 border-l-4 border-danger  p-4 hover:bg-danger/10 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
                         <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
                         </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-muted hover:underline"
+                          className="text-sm font-mono text-ink-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
                         </Link>
                         <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                             {PRAZO_TYPE_LABELS[prazo.type]}
                           </span>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-error mb-1">
+                        <p className="text-sm font-medium text-danger mb-1">
                           {getRelativeTime(new Date(prazo.dueDate))}
                         </p>
-                        <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
                           <IconButton
@@ -375,29 +375,29 @@ export default function PrazosPage() {
                 {groupedPrazos.hoje.map((prazo) => (
                   <div
                     key={prazo.id}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
                         <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
                         </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-muted hover:underline"
+                          className="text-sm font-mono text-ink-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
                         </Link>
                         <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                             {PRAZO_TYPE_LABELS[prazo.type]}
                           </span>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-medium text-warning mb-1">Hoje</p>
-                        <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
                           <IconButton
@@ -426,22 +426,22 @@ export default function PrazosPage() {
                 {groupedPrazos.amanha.map((prazo) => (
                   <div
                     key={prazo.id}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
                         <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
                         </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-muted hover:underline"
+                          className="text-sm font-mono text-ink-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
                         </Link>
                         <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                             {PRAZO_TYPE_LABELS[prazo.type]}
                           </span>
                         </div>
@@ -450,7 +450,7 @@ export default function PrazosPage() {
                         <p className="text-sm font-medium text-ink mb-1">
                           {getRelativeTime(new Date(prazo.dueDate))}
                         </p>
-                        <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
                           <IconButton
@@ -479,22 +479,22 @@ export default function PrazosPage() {
                 {groupedPrazos.estaSemana.map((prazo) => (
                   <div
                     key={prazo.id}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
                         <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
                         </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-muted hover:underline"
+                          className="text-sm font-mono text-ink-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
                         </Link>
                         <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                             {PRAZO_TYPE_LABELS[prazo.type]}
                           </span>
                         </div>
@@ -503,7 +503,7 @@ export default function PrazosPage() {
                         <p className="text-sm font-medium text-ink mb-1">
                           {getRelativeTime(new Date(prazo.dueDate))}
                         </p>
-                        <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
                           <IconButton
@@ -532,22 +532,22 @@ export default function PrazosPage() {
                 {groupedPrazos.proximo.map((prazo) => (
                   <div
                     key={prazo.id}
-                    className="bg-bone rounded-lg p-4 hover:bg-bone/80 transition-colors"
+                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-label="Urgente" />}
+                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
                       <div className="flex-1 min-w-0">
                         <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-amber transition-colors">{prazo.title}</h3>
+                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
                         </Link>
                         <Link
                           href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-muted hover:underline"
+                          className="text-sm font-mono text-ink-muted hover:underline"
                         >
                           {prazo.processo.processoNumber}
                         </Link>
                         <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                             {PRAZO_TYPE_LABELS[prazo.type]}
                           </span>
                         </div>
@@ -556,7 +556,7 @@ export default function PrazosPage() {
                         <p className="text-sm font-medium text-ink mb-1">
                           {getRelativeTime(new Date(prazo.dueDate))}
                         </p>
-                        <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                         {getStatusBadge(prazo.status)}
                         {prazo.status === PrazoStatus.PENDENTE && (
                           <IconButton
@@ -584,27 +584,27 @@ export default function PrazosPage() {
             <Link
               key={prazo.id}
               href={`/prazos/${prazo.id}`}
-              className="block bg-bone rounded-lg p-4 hover:bg-bone/80 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              className="block bg-surface border border-border p-4 hover:bg-surface-raised/80 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
               <div className="flex items-start gap-3">
-                {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" aria-hidden="true" />}
+                {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-hidden="true" />}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
                   <Link
                     href={`/processos/${prazo.processo.id}`}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-sm font-mono text-muted hover:underline"
+                    className="text-sm font-mono text-ink-muted hover:underline"
                   >
                     {prazo.processo.processoNumber}
                   </Link>
                   <div className="mt-2">
-                    <span className="text-xs px-2 py-1 bg-muted/10 text-muted rounded-full">
+                    <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
                       {PRAZO_TYPE_LABELS[prazo.type]}
                     </span>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xs text-muted mb-2">{formatDate(prazo.dueDate)}</p>
+                  <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
                   {getStatusBadge(prazo.status)}
                 </div>
               </div>
@@ -613,7 +613,7 @@ export default function PrazosPage() {
 
           {data.nextCursor && (
             <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border rounded-lg text-sm font-medium text-muted hover:bg-bone transition-colors">
+              <button className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface-raised transition-colors">
                 Carregar mais
               </button>
             </div>

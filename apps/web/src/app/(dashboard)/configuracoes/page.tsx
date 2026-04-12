@@ -44,8 +44,8 @@ function ToggleCard({
   return (
     <div
       className={cn(
-        'bg-white border border-border rounded-xl p-4 flex items-start gap-4',
-        inset && 'ml-8 bg-bone/30',
+        'bg-white border border-border  p-4 flex items-start gap-4',
+        inset && 'ml-8 bg-surface-raised/30',
       )}
     >
       <div className={cn('flex-shrink-0 mt-0.5', disabled && 'opacity-50')} aria-hidden="true">
@@ -53,8 +53,8 @@ function ToggleCard({
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="text-ink font-medium mb-1">{title}</h3>
-        <p className="text-muted text-sm">{description}</p>
-        {helpText && <p className="text-error text-xs mt-1" role="alert">{helpText}</p>}
+        <p className="text-ink-muted text-sm">{description}</p>
+        {helpText && <p className="text-danger text-xs mt-1" role="alert">{helpText}</p>}
       </div>
       <Switch
         checked={enabled}
@@ -106,8 +106,8 @@ export default function ConfiguracoesPage() {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-bone rounded-xl p-8 text-center" role="status" aria-live="polite">
-          <p className="text-muted">A carregar configuracoes...</p>
+        <div className="bg-surface-raised p-8 text-center" role="status" aria-live="polite">
+          <p className="text-ink-muted">A carregar configuracoes...</p>
         </div>
       </div>
     )
@@ -117,8 +117,8 @@ export default function ConfiguracoesPage() {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-error/10 border border-error/20 rounded-xl p-8 text-center" role="alert">
-          <p className="text-error">{error || 'Erro ao carregar configuracoes'}</p>
+        <div className="bg-danger/10 border border-danger/20  p-8 text-center" role="alert">
+          <p className="text-danger">{error || 'Erro ao carregar configuracoes'}</p>
         </div>
       </div>
     )
@@ -131,24 +131,24 @@ export default function ConfiguracoesPage() {
       {/* Perfil Section */}
       <section className="mb-10">
         <h2 className="font-display text-2xl font-semibold text-ink mb-4">Perfil</h2>
-        <div className="bg-white border border-border rounded-xl p-6 space-y-4">
+        <div className="bg-white border border-border  p-6 space-y-4">
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-1">Nome</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Nome</p>
             <p className="text-ink">
               {session?.user?.firstName} {session?.user?.lastName}
             </p>
           </div>
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-1">Email</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Email</p>
             <p className="text-ink">{session?.user?.email}</p>
           </div>
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-1">Tipo de Utilizador</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Tipo de Utilizador</p>
             <p className="text-ink">{session?.user?.role}</p>
           </div>
           {(session?.user as { oaaNumber?: string })?.oaaNumber && (
             <div>
-              <p className="text-xs font-mono text-muted uppercase mb-1">Numero OAA</p>
+              <p className="text-xs font-mono text-ink-muted uppercase mb-1">Numero OAA</p>
               <p className="text-ink font-mono">{(session?.user as { oaaNumber?: string })?.oaaNumber}</p>
             </div>
           )}
@@ -211,22 +211,22 @@ export default function ConfiguracoesPage() {
               onClick={handleTest}
               disabled={testing}
               className={cn(
-                'px-6 py-2.5 bg-ink text-bone rounded-lg hover:bg-ink/80 transition-colors font-medium',
+                'px-6 py-2.5 bg-ink text-white  hover:bg-ink/80 transition-colors font-medium',
                 testing && 'opacity-50 cursor-not-allowed',
               )}
             >
               {testing ? 'A enviar...' : 'Enviar notificacao de teste'}
             </button>
             {testResult && (
-              <div className="mt-4 bg-bone rounded-lg p-4">
-                <p className="text-xs font-mono text-muted uppercase mb-2">Resultado do Teste</p>
+              <div className="mt-4 bg-surface border border-border p-4">
+                <p className="text-xs font-mono text-ink-muted uppercase mb-2">Resultado do Teste</p>
                 <div className="space-y-1 text-sm">
                   {testResult.email && (
                     <p>
                       <span className="font-medium">Email:</span>{' '}
                       <span
                         className={
-                          testResult.email.status === 'sent' ? 'text-success' : 'text-error'
+                          testResult.email.status === 'sent' ? 'text-success' : 'text-danger'
                         }
                       >
                         {testResult.email.status}
@@ -238,7 +238,7 @@ export default function ConfiguracoesPage() {
                       <span className="font-medium">Push:</span>{' '}
                       <span
                         className={
-                          testResult.push.status === 'sent' ? 'text-success' : 'text-error'
+                          testResult.push.status === 'sent' ? 'text-success' : 'text-danger'
                         }
                       >
                         {testResult.push.status}
@@ -249,7 +249,7 @@ export default function ConfiguracoesPage() {
                     <p>
                       <span className="font-medium">SMS:</span>{' '}
                       <span
-                        className={testResult.sms.status === 'sent' ? 'text-success' : 'text-error'}
+                        className={testResult.sms.status === 'sent' ? 'text-success' : 'text-danger'}
                       >
                         {testResult.sms.status}
                       </span>

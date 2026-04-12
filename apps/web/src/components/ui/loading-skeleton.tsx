@@ -30,7 +30,7 @@ export function LoadingSkeleton({
         <div
           key={i}
           className={cn(
-            'h-16 bg-bone rounded-lg motion-safe:animate-pulse',
+            'h-16 bg-surface-raised motion-safe:animate-pulse',
             rowClassName,
           )}
           aria-hidden="true"
@@ -44,7 +44,7 @@ export function LoadingSkeleton({
 export function SkeletonText({ className }: { className?: string }) {
   return (
     <div
-      className={cn('h-4 bg-bone rounded motion-safe:animate-pulse', className)}
+      className={cn('h-4 bg-surface-raised motion-safe:animate-pulse', className)}
       aria-hidden="true"
     />
   )

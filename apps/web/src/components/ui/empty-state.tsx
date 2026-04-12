@@ -15,19 +15,19 @@ export function EmptyState({ icon: Icon, title, description, action, className }
     <div
       role="status"
       className={cn(
-        'bg-bone rounded-xl p-8 sm:p-12 text-center',
+        'bg-surface-raised p-8 sm:p-12 text-center',
         className,
       )}
     >
       <div
-        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4"
+        className="w-14 h-14 sm:w-16 sm:h-16 bg-ink-muted/10 flex items-center justify-center mx-auto mb-4"
         aria-hidden="true"
       >
-        <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-muted" />
+        <Icon className="w-7 h-7 sm:w-8 sm:h-8 text-ink-muted" />
       </div>
       <h3 className="text-ink font-medium text-base sm:text-lg mb-2">{title}</h3>
       {description && (
-        <p className="text-muted text-sm mb-6 max-w-md mx-auto">{description}</p>
+        <p className="text-ink-muted text-sm mb-6 max-w-md mx-auto">{description}</p>
       )}
       {action && <div className="flex justify-center">{action}</div>}
     </div>

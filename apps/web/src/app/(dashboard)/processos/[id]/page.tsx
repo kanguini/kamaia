@@ -122,10 +122,10 @@ const EVENT_ICONS: Record<ProcessoEventType, React.ElementType> = {
 function ProcessoSkeleton() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-pulse">
-      <div className="h-10 bg-bone rounded w-1/3" />
+      <div className="h-10 bg-surface-raised rounded w-1/3" />
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-bone rounded-xl p-6 h-32" />
-        <div className="bg-bone rounded-xl p-6 h-32" />
+        <div className="bg-surface-raised p-6 h-32" />
+        <div className="bg-surface-raised p-6 h-32" />
       </div>
     </div>
   )
@@ -188,7 +188,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     const styles = {
       [ProcessoStatus.ACTIVO]: 'bg-success/10 text-success border-success/20',
       [ProcessoStatus.SUSPENSO]: 'bg-warning/10 text-warning border-warning/20',
-      [ProcessoStatus.ENCERRADO]: 'bg-muted/10 text-muted border-muted/20',
+      [ProcessoStatus.ENCERRADO]: 'bg-muted/10 text-ink-muted border-muted/20',
       [ProcessoStatus.ARQUIVADO]: 'bg-ink/10 text-ink border-ink/20',
     }
     return (
@@ -205,9 +205,9 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
   const getPriorityBadge = (priority: ProcessoPriority) => {
     const styles = {
-      [ProcessoPriority.ALTA]: 'bg-error/10 text-error border-error/20',
+      [ProcessoPriority.ALTA]: 'bg-danger/10 text-danger border-danger/20',
       [ProcessoPriority.MEDIA]: 'bg-warning/10 text-warning border-warning/20',
-      [ProcessoPriority.BAIXA]: 'bg-muted/10 text-muted border-muted/20',
+      [ProcessoPriority.BAIXA]: 'bg-muted/10 text-ink-muted border-muted/20',
     }
     return (
       <span
@@ -225,8 +225,8 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     const styles = {
       [PrazoStatus.PENDENTE]: 'bg-warning/10 text-warning border-warning/20',
       [PrazoStatus.CUMPRIDO]: 'bg-success/10 text-success border-success/20',
-      [PrazoStatus.EXPIRADO]: 'bg-error/10 text-error border-error/20',
-      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-muted border-muted/20',
+      [PrazoStatus.EXPIRADO]: 'bg-danger/10 text-danger border-danger/20',
+      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-ink-muted border-muted/20',
     }
     return (
       <span
@@ -286,7 +286,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
   const getFileIcon = (fileType: string): React.ReactNode => {
     const type = fileType.toLowerCase()
     if (type.includes('pdf')) {
-      return <FileText className="w-4 h-4 text-error" />
+      return <FileText className="w-4 h-4 text-danger" />
     }
     if (type.includes('word') || type.includes('doc')) {
       return <FileText className="w-4 h-4 text-info" />
@@ -297,7 +297,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     if (type.includes('excel') || type.includes('sheet')) {
       return <FileText className="w-4 h-4 text-success" />
     }
-    return <File className="w-4 h-4 text-muted" />
+    return <File className="w-4 h-4 text-ink-muted" />
   }
 
   const handleDownload = async (docId: string, filename: string) => {
@@ -324,7 +324,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
   if (error || !processo) {
     return (
       <div className="max-w-6xl mx-auto">
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
           {error || 'Processo nao encontrado'}
         </div>
       </div>
@@ -341,12 +341,12 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
       <div className="flex items-start gap-4">
         <Link
           href="/processos"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <p className="text-sm font-mono text-muted mb-1">{processo.processoNumber}</p>
+          <p className="text-sm font-mono text-ink-muted mb-1">{processo.processoNumber}</p>
           <h1 className="font-display text-4xl font-semibold text-ink mb-3">{processo.title}</h1>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-mono px-2 py-0.5 bg-info/10 text-info rounded-full border border-info/20">
@@ -359,14 +359,14 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-2">
           <Link
             href={`/ia-assistente?processoId=${processo.id}&context=PROCESSO`}
-            className="flex items-center gap-2 px-4 py-2 bg-amber text-ink rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-ink text-white  text-sm font-medium hover:bg-[#1a1a1a] transition-colors"
           >
             <Bot className="w-4 h-4" />
             Consultar IA
           </Link>
           <Link
             href={`/processos/${id}/editar`}
-            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium text-ink hover:bg-bone transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-border  text-sm font-medium text-ink hover:bg-surface-raised transition-colors"
           >
             <Edit className="w-4 h-4" />
             Editar
@@ -375,7 +375,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="flex items-center gap-2 px-4 py-2 border border-error/20 bg-error/10 text-error rounded-lg text-sm font-medium hover:bg-error/20 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border border-danger/20 bg-danger/10 text-danger  text-sm font-medium hover:bg-danger/20 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
               Eliminar
@@ -385,57 +385,57 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {processo.description && (
-        <div className="bg-bone rounded-xl p-6">
+        <div className="bg-surface-raised p-6">
           <p className="text-ink">{processo.description}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-bone rounded-xl p-5">
-          <p className="text-xs font-mono text-muted uppercase mb-2">Cliente</p>
+        <div className="bg-surface-raised p-5">
+          <p className="text-xs font-mono text-ink-muted uppercase mb-2">Cliente</p>
           <Link href={`/clientes/${processo.cliente.id}`} className="hover:underline">
             <p className="font-medium text-ink">{processo.cliente.name}</p>
             {processo.cliente.nif && (
-              <p className="text-sm text-muted font-mono">{processo.cliente.nif}</p>
+              <p className="text-sm text-ink-muted font-mono">{processo.cliente.nif}</p>
             )}
           </Link>
         </div>
 
-        <div className="bg-bone rounded-xl p-5">
-          <p className="text-xs font-mono text-muted uppercase mb-2">Tribunal</p>
+        <div className="bg-surface-raised p-5">
+          <p className="text-xs font-mono text-ink-muted uppercase mb-2">Tribunal</p>
           <p className="font-medium text-ink">{processo.court || '—'}</p>
           {processo.courtCaseNumber && (
-            <p className="text-sm text-muted font-mono">{processo.courtCaseNumber}</p>
+            <p className="text-sm text-ink-muted font-mono">{processo.courtCaseNumber}</p>
           )}
-          {processo.judge && <p className="text-sm text-muted">{processo.judge}</p>}
+          {processo.judge && <p className="text-sm text-ink-muted">{processo.judge}</p>}
         </div>
 
-        <div className="bg-bone rounded-xl p-5">
-          <p className="text-xs font-mono text-muted uppercase mb-2">Advogado</p>
+        <div className="bg-surface-raised p-5">
+          <p className="text-xs font-mono text-ink-muted uppercase mb-2">Advogado</p>
           <p className="font-medium text-ink">
             {processo.advogado.firstName} {processo.advogado.lastName}
           </p>
-          <p className="text-sm text-muted">{processo.advogado.email}</p>
+          <p className="text-sm text-ink-muted">{processo.advogado.email}</p>
         </div>
 
-        <div className="bg-bone rounded-xl p-5">
-          <p className="text-xs font-mono text-muted uppercase mb-2">Honorarios</p>
+        <div className="bg-surface-raised p-5">
+          <p className="text-xs font-mono text-ink-muted uppercase mb-2">Honorarios</p>
           <p className="font-medium text-ink">{processo.feeType || '—'}</p>
           {processo.feeAmount && (
-            <p className="text-sm text-muted">{formatMoney(processo.feeAmount)}</p>
+            <p className="text-sm text-ink-muted">{formatMoney(processo.feeAmount)}</p>
           )}
         </div>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-2xl font-semibold text-ink">Evolucao do Processo</h2>
           <button
             onClick={handleAdvanceStage}
             disabled={advancing || isLastStage}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 bg-amber text-ink rounded-lg text-sm font-medium',
-              'hover:bg-amber-600 transition-colors',
+              'flex items-center gap-2 px-4 py-2 bg-ink text-white  text-sm font-medium',
+              'hover:bg-[#1a1a1a] transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
@@ -456,12 +456,12 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
               <div key={stage} className="flex items-center">
                 <div
                   className={cn(
-                    'px-4 py-2 rounded-lg text-sm font-mono whitespace-nowrap transition-colors',
+                    'px-4 py-2  text-sm font-mono whitespace-nowrap transition-colors',
                     index === currentStageIndex
-                      ? 'bg-amber text-ink font-medium'
+                      ? 'bg-ink text-white font-medium'
                       : index < currentStageIndex
                         ? 'bg-success/20 text-success'
-                        : 'bg-border text-muted',
+                        : 'bg-border text-ink-muted',
                   )}
                 >
                   {stage}
@@ -482,7 +482,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-bone rounded-xl p-6">
+          <div className="bg-surface-raised p-6">
             <h2 className="font-display text-2xl font-semibold text-ink mb-4">
               Historico do Processo
             </h2>
@@ -493,14 +493,14 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Adicionar nota ao processo..."
                 rows={3}
-                className="w-full px-4 py-2.5 bg-paper border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none mb-3"
+                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none mb-3"
               />
               <button
                 onClick={handleAddNote}
                 disabled={addingNote || !noteText.trim()}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 bg-amber text-ink rounded-lg text-sm font-medium',
-                  'hover:bg-amber-600 transition-colors',
+                  'flex items-center gap-2 px-4 py-2 bg-ink text-white  text-sm font-medium',
+                  'hover:bg-[#1a1a1a] transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
@@ -517,18 +517,18 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
             <div className="space-y-4">
               {processo.events.length === 0 ? (
-                <p className="text-center text-muted py-8">Nenhum evento registado</p>
+                <p className="text-center text-ink-muted py-8">Nenhum evento registado</p>
               ) : (
                 processo.events.map((event) => {
                   const Icon = EVENT_ICONS[event.type]
                   return (
                     <div key={event.id} className="flex gap-3">
-                      <div className="p-2 bg-amber/10 rounded-lg h-fit">
-                        <Icon className="w-4 h-4 text-amber" />
+                      <div className="p-2 bg-amber/10  h-fit">
+                        <Icon className="w-4 h-4 text-ink" />
                       </div>
                       <div className="flex-1">
                         <p className="text-ink">{event.description}</p>
-                        <p className="text-xs text-muted mt-1">
+                        <p className="text-xs text-ink-muted mt-1">
                           {event.user.firstName} {event.user.lastName} •{' '}
                           {formatRelativeTime(event.createdAt)}
                         </p>
@@ -542,12 +542,12 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
         </div>
 
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-bone rounded-xl p-6 sticky top-6">
+          <div className="bg-surface-raised p-6 sticky top-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-2xl font-semibold text-ink">Prazos</h2>
               <Link
                 href={`/prazos/novo?processoId=${processo.id}`}
-                className="text-sm text-amber hover:text-amber-700 font-medium flex items-center gap-1"
+                className="text-sm text-ink-muted hover:text-ink-700 font-medium flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
                 Novo Prazo
@@ -556,8 +556,8 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
 
             {processo.prazos.length === 0 ? (
               <div className="text-center py-8">
-                <Clock className="w-8 h-8 text-muted mx-auto mb-2" />
-                <p className="text-muted text-sm">Nenhum prazo associado</p>
+                <Clock className="w-8 h-8 text-ink-muted mx-auto mb-2" />
+                <p className="text-ink-muted text-sm">Nenhum prazo associado</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -570,13 +570,13 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                       key={prazo.id}
                       href={`/prazos/${prazo.id}`}
                       className={cn(
-                        'block bg-paper rounded-lg p-3 hover:bg-bone transition-colors',
-                        isOverdue && 'border-l-4 border-error',
+                        'block bg-surface  p-3 hover:bg-surface-raised transition-colors',
+                        isOverdue && 'border-l-4 border-danger',
                       )}
                     >
                       <p className="font-medium text-ink text-sm mb-1">{prazo.title}</p>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs text-muted font-mono">{formatDate(prazo.dueDate)}</p>
+                        <p className="text-xs text-ink-muted font-mono">{formatDate(prazo.dueDate)}</p>
                         {getPrazoStatusBadge(prazo.status)}
                       </div>
                       {prazo.status === PrazoStatus.PENDENTE && (
@@ -607,7 +607,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
           <h2 className="font-display text-xl font-semibold text-ink">Documentos</h2>
           <Link
             href={`/documentos?processoId=${processo.id}`}
-            className="flex items-center gap-1 text-sm text-amber hover:text-amber-600"
+            className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink-600"
           >
             <Upload className="w-4 h-4" />
             Enviar Documento
@@ -619,13 +619,13 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
               <div
                 key={doc.id}
                 onClick={() => handleDownload(doc.id, doc.filename)}
-                className="bg-bone rounded-lg p-3 hover:bg-bone/80 transition-colors cursor-pointer"
+                className="bg-surface border border-border p-3 hover:bg-surface-raised/80 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0">{getFileIcon(doc.fileType)}</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-ink text-sm truncate">{doc.title}</p>
-                    <p className="text-xs text-muted font-mono">{formatFileSize(doc.fileSize)}</p>
+                    <p className="text-xs text-ink-muted font-mono">{formatFileSize(doc.fileSize)}</p>
                   </div>
                   <button
                     onClick={(e) => {
@@ -634,16 +634,16 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                     }}
                     className="p-1.5 hover:bg-border rounded transition-colors flex-shrink-0"
                   >
-                    <Download className="w-4 h-4 text-muted" />
+                    <Download className="w-4 h-4 text-ink-muted" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="bg-bone rounded-lg p-6 text-center">
-            <FileText className="w-8 h-8 text-muted mx-auto mb-2" />
-            <p className="text-muted text-sm">Nenhum documento associado</p>
+          <div className="bg-surface border border-border p-6 text-center">
+            <FileText className="w-8 h-8 text-ink-muted mx-auto mb-2" />
+            <p className="text-ink-muted text-sm">Nenhum documento associado</p>
           </div>
         )}
       </div>
@@ -655,34 +655,34 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             <h2 className="font-display text-xl font-semibold text-ink">Rentabilidade</h2>
             <Link
               href={`/timesheets?processoId=${processo.id}`}
-              className="text-sm text-amber hover:text-amber-600 font-medium"
+              className="text-sm text-ink-muted hover:text-ink-600 font-medium"
             >
               Ver timesheets
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-bone rounded-xl p-5">
-              <p className="text-xs font-mono text-muted uppercase mb-2">Horas registadas</p>
+            <div className="bg-surface-raised p-5">
+              <p className="text-xs font-mono text-ink-muted uppercase mb-2">Horas registadas</p>
               <p className="text-2xl font-semibold text-ink">
                 {formatDuration(rentabilidade.totalMinutes)}
               </p>
             </div>
-            <div className="bg-bone rounded-xl p-5">
-              <p className="text-xs font-mono text-muted uppercase mb-2">Valor estimado</p>
+            <div className="bg-surface-raised p-5">
+              <p className="text-xs font-mono text-ink-muted uppercase mb-2">Valor estimado</p>
               <p className="text-2xl font-semibold text-ink">
                 {formatMoneyCentavos(rentabilidade.estimatedValue)}
               </p>
             </div>
-            <div className="bg-bone rounded-xl p-5">
-              <p className="text-xs font-mono text-muted uppercase mb-2">Despesas</p>
+            <div className="bg-surface-raised p-5">
+              <p className="text-xs font-mono text-ink-muted uppercase mb-2">Despesas</p>
               <p className="text-2xl font-semibold text-ink">
                 {formatMoneyCentavos(rentabilidade.expenses)}
               </p>
             </div>
           </div>
           {processo.feeType === 'HORA' && rentabilidade.margin !== undefined && (
-            <div className="mt-4 bg-bone rounded-xl p-5">
-              <p className="text-xs font-mono text-muted uppercase mb-2">Margem</p>
+            <div className="mt-4 bg-surface-raised p-5">
+              <p className="text-xs font-mono text-ink-muted uppercase mb-2">Margem</p>
               <p className="text-2xl font-semibold text-ink">{rentabilidade.margin.toFixed(1)}%</p>
             </div>
           )}

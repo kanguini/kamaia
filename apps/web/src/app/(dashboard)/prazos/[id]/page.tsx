@@ -38,8 +38,8 @@ const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
 function PrazoSkeleton() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-pulse">
-      <div className="h-10 bg-bone rounded w-1/3" />
-      <div className="bg-bone rounded-xl p-6 h-48" />
+      <div className="h-10 bg-surface-raised rounded w-1/3" />
+      <div className="bg-surface-raised p-6 h-48" />
     </div>
   )
 }
@@ -81,7 +81,7 @@ function getCountdownText(dueDate: Date, status: PrazoStatus): { text: string; c
   if (dueDate < now) {
     return {
       text: `Atrasado ${getRelativeTime(dueDate, true)}`,
-      color: 'text-error font-bold',
+      color: 'text-danger font-bold',
     }
   }
 
@@ -143,10 +143,10 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
 
   const getStatusBadge = (status: PrazoStatus, large = false) => {
     const styles = {
-      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-amber-700 border-amber',
+      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-ink-700 border-amber',
       [PrazoStatus.CUMPRIDO]: 'bg-green-50 text-green-700 border-success',
-      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-error',
-      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-muted border-muted/20',
+      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-danger',
+      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-ink-muted border-muted/20',
     }
     return (
       <span
@@ -166,7 +166,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
   if (error || !prazo) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
           {error || 'Prazo nao encontrado'}
         </div>
       </div>
@@ -184,7 +184,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
       <div className="flex items-start gap-4">
         <Link
           href="/prazos"
-          className="p-2 hover:bg-bone rounded-lg transition-colors text-muted hover:text-ink"
+          className="p-2 hover:bg-surface border border-border transition-colors text-ink-muted hover:text-ink"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -195,7 +195,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 {getStatusBadge(prazo.status, true)}
                 {prazo.isUrgent && (
-                  <div className="flex items-center gap-1 text-error">
+                  <div className="flex items-center gap-1 text-danger">
                     <AlertTriangle className="w-5 h-5" />
                     <span className="text-sm font-medium">Urgente</span>
                   </div>
@@ -212,30 +212,30 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="bg-bone rounded-xl p-6">
+      <div className="bg-surface-raised p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Processo</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Processo</p>
             <Link href={`/processos/${prazo.processo.id}`} className="hover:underline">
               <p className="font-medium text-ink">{prazo.processo.processoNumber}</p>
-              <p className="text-sm text-muted">{prazo.processo.title}</p>
+              <p className="text-sm text-ink-muted">{prazo.processo.title}</p>
             </Link>
           </div>
 
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Tipo</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Tipo</p>
             <span className="inline-flex items-center px-3 py-1 bg-info/10 text-info rounded-full text-sm font-mono border border-info/20">
               {PRAZO_TYPE_LABELS[prazo.type]}
             </span>
           </div>
 
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Data Limite</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Data Limite</p>
             <p className="font-medium text-ink">{formatDate(prazo.dueDate)}</p>
           </div>
 
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Alerta</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Alerta</p>
             <p className="text-ink">
               {prazo.alertBeforeHours
                 ? `${prazo.alertBeforeHours} horas antes`
@@ -244,20 +244,20 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Urgente</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Urgente</p>
             <p className="text-ink">{prazo.isUrgent ? 'Sim' : 'Nao'}</p>
           </div>
 
           <div>
-            <p className="text-xs font-mono text-muted uppercase mb-2">Criado em</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Criado em</p>
             <p className="text-ink">{formatDate(prazo.createdAt)}</p>
           </div>
         </div>
       </div>
 
       {prazo.description && (
-        <div className="bg-bone rounded-xl p-6">
-          <h2 className="text-xs font-mono text-muted uppercase mb-3">Descricao</h2>
+        <div className="bg-surface-raised p-6">
+          <h2 className="text-xs font-mono text-ink-muted uppercase mb-3">Descricao</h2>
           <p className="text-ink">{prazo.description}</p>
         </div>
       )}
@@ -268,7 +268,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={handleComplete}
             disabled={completing}
             className={cn(
-              'flex items-center gap-2 bg-success text-bone font-medium px-6 py-3 rounded-lg',
+              'flex items-center gap-2 bg-success text-white font-medium px-6 py-3 ',
               'hover:bg-green-700 transition-colors text-base',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -286,7 +286,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
 
         <Link
           href={`/prazos/${id}/editar`}
-          className="flex items-center gap-2 px-6 py-3 border border-border rounded-lg text-base font-medium text-ink hover:bg-bone transition-colors"
+          className="flex items-center gap-2 px-6 py-3 border border-border  text-base font-medium text-ink hover:bg-surface-raised transition-colors"
         >
           <Edit className="w-5 h-5" />
           Editar
@@ -297,7 +297,7 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={handleCancel}
             disabled={updating}
             className={cn(
-              'flex items-center gap-2 px-6 py-3 border border-muted/20 text-muted rounded-lg text-base font-medium',
+              'flex items-center gap-2 px-6 py-3 border border-muted/20 text-ink-muted  text-base font-medium',
               'hover:bg-muted/10 transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
@@ -318,8 +318,8 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={handleDelete}
             disabled={deleting}
             className={cn(
-              'flex items-center gap-2 px-6 py-3 border border-error/20 bg-error/10 text-error rounded-lg text-base font-medium',
-              'hover:bg-error/20 transition-colors',
+              'flex items-center gap-2 px-6 py-3 border border-danger/20 bg-danger/10 text-danger  text-base font-medium',
+              'hover:bg-danger/20 transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >

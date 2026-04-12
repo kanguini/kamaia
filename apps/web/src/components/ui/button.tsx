@@ -15,15 +15,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-amber text-ink hover:bg-amber-600 focus-visible:ring-amber disabled:bg-amber/40 disabled:text-ink/50',
+    'bg-ink text-white hover:bg-[#1a1a1a] focus-visible:ring-ink disabled:bg-ink/40 disabled:text-white/50',
   secondary:
-    'bg-bone text-ink hover:bg-border focus-visible:ring-ink disabled:bg-bone/50 disabled:text-muted',
+    'bg-transparent border border-border-strong text-ink-secondary hover:bg-surface-raised focus-visible:ring-ink disabled:bg-surface-raised/50 disabled:text-ink-muted',
   ghost:
-    'bg-transparent text-ink hover:bg-bone focus-visible:ring-ink disabled:text-muted',
+    'bg-transparent text-ink-muted hover:text-ink-secondary hover:bg-surface-raised focus-visible:ring-ink disabled:text-ink-muted',
   danger:
-    'bg-error text-white hover:bg-error/90 focus-visible:ring-error disabled:bg-error/40',
+    'bg-danger-bg text-danger-text hover:bg-danger/90 focus-visible:ring-danger disabled:bg-danger/40',
   outline:
-    'border border-border bg-white text-ink hover:bg-bone focus-visible:ring-ink disabled:bg-white/50',
+    'border border-border bg-surface text-ink hover:bg-surface-raised focus-visible:ring-ink disabled:bg-surface/50',
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -55,8 +55,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         aria-busy={loading || undefined}
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
+          'inline-flex items-center justify-center gap-2 font-medium transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
           'disabled:cursor-not-allowed',
           variantClasses[variant],
           sizeClasses[size],

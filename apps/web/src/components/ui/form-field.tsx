@@ -41,23 +41,23 @@ export function FormField({
     <div className={cn('space-y-1', className)}>
       <label
         htmlFor={fieldId}
-        className="block text-sm font-mono font-medium text-ink"
+        className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em]"
       >
         {label}
         {required && (
-          <span className="ml-0.5 text-error" aria-hidden="true">
+          <span className="ml-0.5 text-danger" aria-hidden="true">
             *
           </span>
         )}
       </label>
       {children}
       {hint && !error && (
-        <p id={hintId} className="text-xs text-muted">
+        <p id={hintId} className="text-xs text-ink-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-xs text-error" role="alert">
+        <p id={errorId} className="text-xs text-danger" role="alert">
           {error}
         </p>
       )}

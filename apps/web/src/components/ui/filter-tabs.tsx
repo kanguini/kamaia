@@ -44,20 +44,20 @@ export function FilterTabs<T extends string>({
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap min-h-[40px]',
+              'px-4 py-2 text-sm font-medium whitespace-nowrap min-h-[40px]',
               'motion-safe:transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
               active
-                ? 'bg-ink text-paper'
-                : 'bg-bone text-muted hover:text-ink hover:bg-border',
+                ? 'bg-ink text-white'
+                : 'bg-surface-raised text-ink-muted hover:text-ink-secondary hover:bg-surface-hover',
             )}
           >
             {tab.label}
             {typeof tab.count === 'number' && (
               <span
                 className={cn(
-                  'ml-2 inline-flex items-center justify-center text-xs font-mono rounded-full px-1.5 py-0.5 min-w-[20px]',
-                  active ? 'bg-paper/20 text-paper' : 'bg-white text-muted',
+                  'ml-2 inline-flex items-center justify-center text-xs font-mono px-1.5 py-0.5 min-w-[20px]',
+                  active ? 'bg-white/20 text-white' : 'bg-white text-ink-muted',
                 )}
                 aria-hidden="true"
               >

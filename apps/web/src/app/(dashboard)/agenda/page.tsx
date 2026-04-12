@@ -45,17 +45,17 @@ const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
 
 function getEventColor(type: CalendarEventType, isUrgent?: boolean): string {
   if (type === CalendarEventType.PRAZO) {
-    return isUrgent ? 'bg-error/70 text-white' : 'bg-amber/60 text-ink'
+    return isUrgent ? 'bg-danger text-white' : 'bg-warning text-warning-text'
   }
   switch (type) {
     case CalendarEventType.AUDIENCIA:
-      return 'bg-amber/80 text-ink'
+      return 'bg-warning text-warning-text'
     case CalendarEventType.REUNIAO:
-      return 'bg-info/80 text-white'
+      return 'bg-info text-white'
     case CalendarEventType.DILIGENCIA:
-      return 'bg-muted/60 text-white'
+      return 'bg-ink-muted/60 text-white'
     default:
-      return 'bg-bone border border-border text-ink'
+      return 'bg-surface-raised border border-border text-ink'
   }
 }
 
@@ -90,22 +90,22 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-paper rounded-xl shadow-lg max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface  shadow-lg max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h2 className="font-display text-2xl font-semibold text-ink mb-2">{event.title}</h2>
-            <span className={cn('inline-block px-2 py-1 text-xs font-mono rounded-md', getEventColor(event.type))}>
+            <span className={cn('inline-block px-2 py-1 text-xs font-mono ', getEventColor(event.type))}>
               {EVENT_TYPE_LABELS[event.type]}
             </span>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
+          <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-muted flex-shrink-0 mt-0.5" />
+            <Clock className="w-5 h-5 text-ink-muted flex-shrink-0 mt-0.5" />
             <div>
               {event.allDay ? (
                 <p className="text-ink">Todo o dia</p>
@@ -119,14 +119,14 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
 
           {event.location && (
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-muted flex-shrink-0 mt-0.5" />
+              <MapPin className="w-5 h-5 text-ink-muted flex-shrink-0 mt-0.5" />
               <p className="text-ink">{event.location}</p>
             </div>
           )}
 
           {event.processo && (
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-muted flex-shrink-0 mt-0.5" />
+              <FileText className="w-5 h-5 text-ink-muted flex-shrink-0 mt-0.5" />
               <Link
                 href={`/processos/${event.processo.id}`}
                 className="text-info hover:underline font-mono text-sm"
@@ -138,20 +138,20 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
           )}
 
           {event.description && (
-            <div className="bg-bone rounded-lg p-3">
+            <div className="bg-surface border border-border p-3">
               <p className="text-sm text-ink whitespace-pre-wrap">{event.description}</p>
             </div>
           )}
 
           {isPrazo && (
-            <div className="bg-amber/10 border border-amber rounded-lg p-3">
+            <div className="bg-warning-bg border border-warning  p-3">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-4 h-4 text-ink flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-ink">Este evento e um prazo</p>
                   <Link
                     href={`/prazos/${event.id}`}
-                    className="text-xs text-amber hover:underline"
+                    className="text-xs text-ink-muted hover:underline"
                     onClick={onClose}
                   >
                     Ver detalhes do prazo
@@ -169,7 +169,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
                 onComplete()
                 onClose()
               }}
-              className="flex-1 flex items-center justify-center gap-2 bg-success text-white font-medium px-4 py-2.5 rounded-lg hover:bg-green-700 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 bg-success-bg text-success-text font-medium px-4 py-2.5  hover:bg-success transition-colors"
             >
               <CheckCircle2 className="w-4 h-4" />
               Marcar Cumprido
@@ -178,7 +178,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
             <>
               <Link
                 href={`/agenda/novo?eventId=${event.id}`}
-                className="flex-1 text-center bg-amber text-ink font-medium px-4 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+                className="flex-1 text-center bg-ink text-white font-medium px-4 py-2.5  hover:bg-[#1a1a1a] transition-colors"
                 onClick={onClose}
               >
                 Editar
@@ -190,7 +190,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
                     onClose()
                   }
                 }}
-                className="px-4 py-2.5 border border-error text-error rounded-lg hover:bg-error/10 transition-colors"
+                className="px-4 py-2.5 border border-danger text-danger-text  hover:bg-danger/10 transition-colors"
               >
                 Eliminar
               </button>
@@ -284,7 +284,7 @@ export default function AgendaPage() {
         <h1 className="font-display text-4xl font-semibold text-ink">Agenda</h1>
         <Link
           href="/agenda/novo"
-          className="flex items-center gap-2 bg-amber text-ink font-medium px-6 py-2.5 rounded-lg hover:bg-amber-600 transition-colors"
+          className="flex items-center gap-2 bg-ink text-white font-medium px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors"
         >
           <Plus className="w-4 h-4" />
           Novo Evento
@@ -292,22 +292,22 @@ export default function AgendaPage() {
       </div>
 
       {/* Controls */}
-      <div className="bg-bone rounded-xl p-4">
+      <div className="bg-surface-raised p-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('prev')}
-              className="p-2 hover:bg-paper rounded-lg transition-colors"
+              className="p-2 hover:bg-surface  transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-ink" />
             </button>
 
-            <div className="flex items-center gap-2 bg-paper rounded-lg overflow-hidden">
+            <div className="flex items-center gap-2 bg-surface  overflow-hidden">
               <button
                 onClick={() => setView('month')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'month' ? 'bg-amber text-ink' : 'text-muted hover:bg-bone'
+                  view === 'month' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Mes
@@ -316,7 +316,7 @@ export default function AgendaPage() {
                 onClick={() => setView('week')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'week' ? 'bg-amber text-ink' : 'text-muted hover:bg-bone'
+                  view === 'week' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Semana
@@ -325,7 +325,7 @@ export default function AgendaPage() {
                 onClick={() => setView('day')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'day' ? 'bg-amber text-ink' : 'text-muted hover:bg-bone'
+                  view === 'day' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Dia
@@ -334,7 +334,7 @@ export default function AgendaPage() {
 
             <button
               onClick={() => navigate('next')}
-              className="p-2 hover:bg-paper rounded-lg transition-colors"
+              className="p-2 hover:bg-surface  transition-colors"
             >
               <ChevronRight className="w-5 h-5 text-ink" />
             </button>
@@ -349,7 +349,7 @@ export default function AgendaPage() {
             </h2>
             <button
               onClick={() => navigate('today')}
-              className="px-4 py-2 text-sm font-medium text-muted hover:text-ink hover:bg-paper rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface  transition-colors"
             >
               Hoje
             </button>
@@ -359,7 +359,7 @@ export default function AgendaPage() {
 
       {/* Calendar View */}
       {loading ? (
-        <div className="bg-bone rounded-xl p-12 text-center">
+        <div className="bg-surface-raised p-12 text-center">
           <div className="animate-pulse space-y-3">
             <div className="h-4 bg-border rounded w-1/4 mx-auto" />
             <div className="h-4 bg-border rounded w-1/3 mx-auto" />
@@ -433,11 +433,11 @@ function MonthView({ currentDate, events, onEventClick, onDayClick }: {
   today.setHours(0, 0, 0, 0)
 
   return (
-    <div className="bg-bone rounded-xl overflow-hidden">
+    <div className="bg-surface-raised overflow-hidden">
       {/* Day headers */}
-      <div className="grid grid-cols-7 bg-paper border-b border-border">
+      <div className="grid grid-cols-7 bg-surface border-b border-border">
         {DAY_NAMES.map(day => (
-          <div key={day} className="p-3 text-center text-sm font-mono font-medium text-muted">
+          <div key={day} className="p-3 text-center text-sm font-mono font-medium text-ink-muted">
             {day}
           </div>
         ))}
@@ -459,16 +459,16 @@ function MonthView({ currentDate, events, onEventClick, onDayClick }: {
               key={idx}
               onClick={() => onDayClick(day)}
               className={cn(
-                'min-h-[100px] p-2 border-b border-r border-border bg-white cursor-pointer hover:bg-bone/50 transition-colors',
-                !isCurrentMonth && 'bg-paper/50 text-muted/50',
+                'min-h-[100px] p-2 border-b border-r border-border bg-white cursor-pointer hover:bg-surface-raised/50 transition-colors',
+                !isCurrentMonth && 'bg-surface/50 text-ink-muted/50',
                 isToday && 'ring-2 ring-amber ring-inset'
               )}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className={cn(
                   'text-sm font-medium',
-                  isCurrentMonth ? 'text-ink' : 'text-muted/50',
-                  isToday && 'text-amber font-bold'
+                  isCurrentMonth ? 'text-ink' : 'text-ink-muted/50',
+                  isToday && 'text-ink font-bold'
                 )}>
                   {day.getDate()}
                 </span>
@@ -483,7 +483,7 @@ function MonthView({ currentDate, events, onEventClick, onDayClick }: {
                       onEventClick(event)
                     }}
                     className={cn(
-                      'w-full text-left px-1.5 py-0.5 rounded-md text-xs truncate',
+                      'w-full text-left px-1.5 py-0.5  text-xs truncate',
                       getEventColor(event.type)
                     )}
                   >
@@ -491,7 +491,7 @@ function MonthView({ currentDate, events, onEventClick, onDayClick }: {
                   </button>
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-muted px-1.5">+{dayEvents.length - 3} mais</div>
+                  <div className="text-xs text-ink-muted px-1.5">+{dayEvents.length - 3} mais</div>
                 )}
               </div>
             </div>
@@ -524,16 +524,16 @@ function WeekView({ currentDate, events, onEventClick }: {
   const showCurrentTime = currentHour >= 7 && currentHour <= 22
 
   return (
-    <div className="bg-bone rounded-xl overflow-hidden">
+    <div className="bg-surface-raised overflow-hidden">
       {/* Day headers */}
-      <div className="grid grid-cols-8 bg-paper border-b border-border">
+      <div className="grid grid-cols-8 bg-surface border-b border-border">
         <div className="p-3" /> {/* Empty corner */}
         {weekDays.map((day, i) => {
           const isToday = day.getTime() === today.getTime()
           return (
-            <div key={i} className={cn('p-3 text-center', isToday && 'bg-amber/20')}>
-              <div className="text-xs font-mono text-muted">{DAY_NAMES[i]}</div>
-              <div className={cn('text-lg font-semibold', isToday ? 'text-amber' : 'text-ink')}>
+            <div key={i} className={cn('p-3 text-center', isToday && 'ring-2 ring-ink')}>
+              <div className="text-xs font-mono text-ink-muted">{DAY_NAMES[i]}</div>
+              <div className={cn('text-lg font-semibold', isToday ? 'text-ink' : 'text-ink')}>
                 {day.getDate()}
               </div>
             </div>
@@ -546,7 +546,7 @@ function WeekView({ currentDate, events, onEventClick }: {
         <div className="grid grid-cols-8">
           {hours.map(hour => (
             <>
-              <div key={`hour-${hour}`} className="p-3 text-right text-xs font-mono text-muted border-b border-border bg-paper">
+              <div key={`hour-${hour}`} className="p-3 text-right text-xs font-mono text-ink-muted border-b border-border bg-surface">
                 {hour.toString().padStart(2, '0')}:00
               </div>
               {weekDays.map((day, i) => {
@@ -574,7 +574,7 @@ function WeekView({ currentDate, events, onEventClick }: {
                           key={event.id}
                           onClick={() => onEventClick(event)}
                           className={cn(
-                            'absolute left-1 right-1 rounded-md p-1.5 text-xs text-left overflow-hidden',
+                            'absolute left-1 right-1  p-1.5 text-xs text-left overflow-hidden',
                             getEventColor(event.type)
                           )}
                           style={{ height: `${height}px` }}
@@ -594,10 +594,10 @@ function WeekView({ currentDate, events, onEventClick }: {
         {/* Current time indicator */}
         {showCurrentTime && (
           <div
-            className="absolute left-0 right-0 h-0.5 bg-error pointer-events-none z-10"
+            className="absolute left-0 right-0 h-0.5 bg-danger pointer-events-none z-10"
             style={{ top: `${((currentHour - 7) * 60)}px` }}
           >
-            <div className="absolute -left-2 -top-1.5 w-3 h-3 rounded-full bg-error" />
+            <div className="absolute -left-2 -top-1.5 w-3 h-3 bg-danger" />
           </div>
         )}
       </div>
@@ -634,16 +634,16 @@ function DayView({ currentDate, events, onEventClick }: {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Timeline */}
-      <div className="md:col-span-2 bg-bone rounded-xl overflow-hidden">
+      <div className="md:col-span-2 bg-surface-raised overflow-hidden">
         {allDayEvents.length > 0 && (
-          <div className="bg-paper border-b border-border p-4 space-y-2">
-            <div className="text-xs font-mono text-muted mb-2">TODO O DIA</div>
+          <div className="bg-surface border-b border-border p-4 space-y-2">
+            <div className="text-xs font-mono text-ink-muted mb-2">TODO O DIA</div>
             {allDayEvents.map(event => (
               <button
                 key={event.id}
                 onClick={() => onEventClick(event)}
                 className={cn(
-                  'w-full text-left px-3 py-2 rounded-md text-sm',
+                  'w-full text-left px-3 py-2  text-sm',
                   getEventColor(event.type)
                 )}
               >
@@ -667,7 +667,7 @@ function DayView({ currentDate, events, onEventClick }: {
 
             return (
               <div key={hour} className="flex border-b border-border bg-white min-h-[60px]">
-                <div className="w-20 p-3 text-right text-xs font-mono text-muted bg-paper border-r border-border">
+                <div className="w-20 p-3 text-right text-xs font-mono text-ink-muted bg-surface border-r border-border">
                   {hour.toString().padStart(2, '0')}:00
                 </div>
                 <div className="flex-1 p-2 space-y-2">
@@ -676,7 +676,7 @@ function DayView({ currentDate, events, onEventClick }: {
                       key={event.id}
                       onClick={() => onEventClick(event)}
                       className={cn(
-                        'w-full text-left px-3 py-2 rounded-md',
+                        'w-full text-left px-3 py-2 ',
                         getEventColor(event.type)
                       )}
                     >
@@ -704,32 +704,32 @@ function DayView({ currentDate, events, onEventClick }: {
 
           {showCurrentTime && (
             <div
-              className="absolute left-20 right-0 h-0.5 bg-error pointer-events-none z-10"
+              className="absolute left-20 right-0 h-0.5 bg-danger pointer-events-none z-10"
               style={{ top: `${((currentHour - 7) * 60)}px` }}
             >
-              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-error" />
+              <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-danger" />
             </div>
           )}
         </div>
       </div>
 
       {/* Prazos sidebar */}
-      <div className="bg-bone rounded-xl p-4">
+      <div className="bg-surface-raised p-4">
         <h3 className="font-display text-lg font-semibold text-ink mb-4">Prazos de Hoje</h3>
         {prazos.length === 0 ? (
-          <p className="text-sm text-muted">Nenhum prazo para hoje</p>
+          <p className="text-sm text-ink-muted">Nenhum prazo para hoje</p>
         ) : (
           <div className="space-y-3">
             {prazos.map(prazo => (
               <button
                 key={prazo.id}
                 onClick={() => onEventClick(prazo)}
-                className="w-full text-left bg-white rounded-lg p-3 hover:bg-paper transition-colors border border-border"
+                className="w-full text-left bg-white  p-3 hover:bg-surface transition-colors border border-border"
               >
                 <div className="font-medium text-sm text-ink mb-1">{prazo.title}</div>
-                <div className="text-xs text-muted">{prazo.allDay ? 'Todo o dia' : formatTime(prazo.startAt)}</div>
+                <div className="text-xs text-ink-muted">{prazo.allDay ? 'Todo o dia' : formatTime(prazo.startAt)}</div>
                 {prazo.processo && (
-                  <div className="text-xs font-mono text-muted mt-1">{prazo.processo.processoNumber}</div>
+                  <div className="text-xs font-mono text-ink-muted mt-1">{prazo.processo.processoNumber}</div>
                 )}
               </button>
             ))}
