@@ -96,15 +96,18 @@ export default function TimesheetsPage() {
     return `/timesheets?${params.toString()}`
   }, [processoIdFilter, categoryFilter, dateFrom, dateTo])
 
-  const { data: entries, loading, error, refetch } = useApi<TimeEntry[]>(endpoint, [
+  const { data: entriesData, loading, error, refetch } = useApi<{ data: TimeEntry[]; total: number }>(endpoint, [
     processoIdFilter,
     categoryFilter,
     dateFrom,
     dateTo,
   ])
 
+  const entries = entriesData?.data || []
+
   const { data: summary } = useApi<TimeEntrySummary>('/timesheets/summary')
-  const { data: processos } = useApi<Processo[]>('/processos?limit=1000')
+  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=1000')
+  const processos = processosData?.data || []
 
   const { mutate: createEntry, loading: creating } = useMutation<{
     processoId: string

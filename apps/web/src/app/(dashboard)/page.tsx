@@ -84,7 +84,8 @@ function getRelativeTime(date: Date): string {
 }
 
 function ProximosPrazosSection() {
-  const { data: prazos, loading, refetch } = useApi<UpcomingPrazo[]>('/prazos/upcoming')
+  const { data: prazosData, loading, refetch } = useApi<{ upcoming: UpcomingPrazo[]; overdue: UpcomingPrazo[] }>('/prazos/upcoming')
+  const prazos = [...(prazosData?.upcoming || []), ...(prazosData?.overdue || [])]
   const { mutate: completePrazo } = useMutation('/prazos/ID/complete', 'PATCH')
 
   const handleComplete = async () => {

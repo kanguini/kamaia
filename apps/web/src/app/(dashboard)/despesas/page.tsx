@@ -60,8 +60,10 @@ export default function DespesasPage() {
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [formError, setFormError] = useState<string>('')
 
-  const { data: expenses, loading, error, refetch } = useApi<Expense[]>('/expenses')
-  const { data: processos } = useApi<Processo[]>('/processos?limit=1000')
+  const { data: expensesData, loading, error, refetch } = useApi<{ data: Expense[] }>('/expenses')
+  const expenses = expensesData?.data || []
+  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=1000')
+  const processos = processosData?.data || []
 
   const { mutate: createExpense, loading: creating } = useMutation<{
     processoId: string

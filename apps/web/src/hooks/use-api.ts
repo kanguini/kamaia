@@ -4,6 +4,12 @@ import { useSession } from 'next-auth/react'
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 
+/**
+ * Generic API fetch hook. Returns the raw JSON from the API.
+ * Most endpoints return { data: T } — the unwrap is done here automatically.
+ * For paginated endpoints that return { data: { data: T[], total, nextCursor } },
+ * use useApi<PaginatedResponse<T>> and access result.data for the array.
+ */
 export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
   const { data: session, status } = useSession()
   const [data, setData] = useState<T | null>(null)
@@ -19,11 +25,16 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
     }
     setLoading(true)
     try {
-      const result = await api<{ data: T } | T>(endpoint, { token: session.accessToken })
-      const unwrapped = (result && typeof result === 'object' && 'data' in result)
-        ? (result as { data: T }).data
-        : result as T
-      setData(unwrapped)
+      const result = await api<Record<string, unknown>>(endpoint, { token: session.accessToken })
+      // The API always wraps in { data: ... }. Unwrap one level.
+      // But ONLY if the result has a single 'data' key (standard envelope).
+      // If 'data' contains an array or primitive, return it directly as T.
+      // If 'data' contains an object with its own 'data' key (paginated), return the inner object as T.
+      if (result && typeof result === 'object' && 'data' in result) {
+        setData(result.data as T)
+      } else {
+        setData(result as unknown as T)
+      }
       setError(null)
     } catch (err: unknown) {
       const errorObj = err as { error?: string }
@@ -54,15 +65,15 @@ export function useMutation<TInput, TResult = unknown>(
     setLoading(true)
     setError(null)
     try {
-      const result = await api<{ data: TResult } | TResult>(endpoint, {
+      const result = await api<Record<string, unknown>>(endpoint, {
         method,
         body: body ? JSON.stringify(body) : undefined,
         token: session.accessToken,
       })
-      const unwrapped = (result && typeof result === 'object' && 'data' in result)
-        ? (result as { data: TResult }).data
-        : result as TResult
-      return unwrapped
+      if (result && typeof result === 'object' && 'data' in result) {
+        return result.data as TResult
+      }
+      return result as unknown as TResult
     } catch (err: unknown) {
       const errorObj = err as { error?: string }
       setError(errorObj?.error || 'Erro na operacao')
