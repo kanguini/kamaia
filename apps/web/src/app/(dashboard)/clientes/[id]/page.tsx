@@ -205,7 +205,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <div className="bg-surface-raised p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-display text-2xl font-semibold text-ink">Processos Associados</h2>
-          <span className="px-3 py-1 bg-ink text-white text-sm font-mono rounded">
+          <span className="px-3 py-1 bg-white text-[#070707] text-sm font-mono rounded">
             {cliente.processos.length}
           </span>
         </div>

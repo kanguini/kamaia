@@ -489,8 +489,8 @@ function IAAssistenteContent() {
                     onClick={() => handleSendMessage()}
                     disabled={!inputMessage.trim() || sending}
                     className={cn(
-                      'w-12 h-12 rounded-full bg-ink text-white flex items-center justify-center',
-                      'hover:bg-[#1a1a1a] transition-colors flex-shrink-0',
+                      'w-12 h-12 rounded-full bg-white text-[#070707] flex items-center justify-center',
+                      'hover:bg-white/90 transition-colors flex-shrink-0',
                       'disabled:opacity-50 disabled:cursor-not-allowed',
                     )}
                   >

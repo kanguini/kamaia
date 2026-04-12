@@ -178,7 +178,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
             <>
               <Link
                 href={`/agenda/novo?eventId=${event.id}`}
-                className="flex-1 text-center bg-ink text-white font-medium px-4 py-2.5  hover:bg-[#1a1a1a] transition-colors"
+                className="flex-1 text-center bg-white text-[#070707] font-medium px-4 py-2.5  hover:bg-white/90 transition-colors"
                 onClick={onClose}
               >
                 Editar
@@ -284,7 +284,7 @@ export default function AgendaPage() {
         <h1 className="font-display text-4xl font-semibold text-ink">Agenda</h1>
         <Link
           href="/agenda/novo"
-          className="flex items-center gap-2 bg-ink text-white font-medium px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors"
+          className="flex items-center gap-2 bg-white text-[#070707] font-medium px-6 py-2.5  hover:bg-white/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Novo Evento
@@ -307,7 +307,7 @@ export default function AgendaPage() {
                 onClick={() => setView('month')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'month' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
+                  view === 'month' ? 'bg-white text-[#070707]' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Mes
@@ -316,7 +316,7 @@ export default function AgendaPage() {
                 onClick={() => setView('week')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'week' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
+                  view === 'week' ? 'bg-white text-[#070707]' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Semana
@@ -325,7 +325,7 @@ export default function AgendaPage() {
                 onClick={() => setView('day')}
                 className={cn(
                   'px-4 py-2 text-sm font-medium transition-colors',
-                  view === 'day' ? 'bg-ink text-white' : 'text-ink-muted hover:bg-surface-raised'
+                  view === 'day' ? 'bg-white text-[#070707]' : 'text-ink-muted hover:bg-surface-raised'
                 )}
               >
                 Dia

@@ -48,7 +48,7 @@ export function FilterTabs<T extends string>({
               'motion-safe:transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
               active
-                ? 'bg-ink text-white'
+                ? 'bg-white text-[#070707]'
                 : 'bg-surface-raised text-ink-muted hover:text-ink-secondary hover:bg-surface-hover',
             )}
           >

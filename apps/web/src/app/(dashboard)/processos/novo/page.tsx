@@ -53,7 +53,7 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
             className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center text-sm font-mono font-medium transition-colors',
               i + 1 === currentStep
-                ? 'bg-ink text-white'
+                ? 'bg-white text-[#070707]'
                 : i + 1 < currentStep
                   ? 'bg-success text-white'
                   : 'bg-border text-ink-muted',
@@ -200,7 +200,7 @@ export default function NovoProcessoPage() {
                   <p className="text-warning mb-4">Nenhum cliente registado</p>
                   <Link
                     href="/clientes/novo"
-                    className="inline-flex items-center gap-2 bg-ink text-white font-medium px-6 py-2.5  hover:bg-[#1a1a1a] transition-colors"
+                    className="inline-flex items-center gap-2 bg-white text-[#070707] font-medium px-6 py-2.5  hover:bg-white/90 transition-colors"
                   >
                     Criar Cliente Primeiro
                   </Link>
@@ -402,8 +402,8 @@ export default function NovoProcessoPage() {
                 onClick={nextStep}
                 disabled={!canProceed()}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-2 bg-ink text-white font-medium py-2.5 ',
-                  'hover:bg-[#1a1a1a] transition-colors',
+                  'flex-1 flex items-center justify-center gap-2 bg-white text-[#070707] font-medium py-2.5 ',
+                  'hover:bg-white/90 transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >
@@ -415,8 +415,8 @@ export default function NovoProcessoPage() {
                 type="submit"
                 disabled={loading}
                 className={cn(
-                  'flex-1 bg-ink text-white font-medium py-2.5 ',
-                  'hover:bg-[#1a1a1a] transition-colors',
+                  'flex-1 bg-white text-[#070707] font-medium py-2.5 ',
+                  'hover:bg-white/90 transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                   'flex items-center justify-center gap-2',
                 )}

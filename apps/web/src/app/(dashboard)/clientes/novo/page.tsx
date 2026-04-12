@@ -191,8 +191,8 @@ export default function NovoClientePage() {
               type="submit"
               disabled={loading}
               className={cn(
-                'flex-1 bg-ink text-white font-medium py-2.5 ',
-                'hover:bg-[#1a1a1a] transition-colors',
+                'flex-1 bg-white text-[#070707] font-medium py-2.5 ',
+                'hover:bg-white/90 transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center justify-center gap-2',
               )}

@@ -211,7 +211,7 @@ export default function ConfiguracoesPage() {
               onClick={handleTest}
               disabled={testing}
               className={cn(
-                'px-6 py-2.5 bg-ink text-white  hover:bg-ink/80 transition-colors font-medium',
+                'px-6 py-2.5 bg-white text-[#070707]  hover:bg-ink/80 transition-colors font-medium',
                 testing && 'opacity-50 cursor-not-allowed',
               )}
             >

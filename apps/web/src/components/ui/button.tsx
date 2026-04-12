@@ -15,15 +15,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-ink text-white hover:bg-[#1a1a1a] focus-visible:ring-ink disabled:bg-ink/40 disabled:text-white/50',
+    'bg-white text-[#070707] hover:bg-white/90 focus-visible:ring-white disabled:bg-white/30 disabled:text-[#070707]/50',
   secondary:
-    'bg-transparent border border-border-strong text-ink-secondary hover:bg-surface-raised focus-visible:ring-ink disabled:bg-surface-raised/50 disabled:text-ink-muted',
+    'bg-transparent border border-border-strong text-ink-secondary hover:bg-surface-raised focus-visible:ring-white disabled:bg-surface-raised/50 disabled:text-ink-muted',
   ghost:
-    'bg-transparent text-ink-muted hover:text-ink-secondary hover:bg-surface-raised focus-visible:ring-ink disabled:text-ink-muted',
+    'bg-transparent text-ink-muted hover:text-ink-secondary hover:bg-surface-raised focus-visible:ring-white disabled:text-ink-muted',
   danger:
-    'bg-danger-bg text-danger-text hover:bg-danger/90 focus-visible:ring-danger disabled:bg-danger/40',
+    'bg-danger-bg text-danger-text hover:bg-danger/20 focus-visible:ring-danger disabled:bg-danger/10',
   outline:
-    'border border-border bg-surface text-ink hover:bg-surface-raised focus-visible:ring-ink disabled:bg-surface/50',
+    'border border-border bg-surface text-ink hover:bg-surface-raised focus-visible:ring-white disabled:bg-surface/50',
 }
 
 const sizeClasses: Record<Size, string> = {

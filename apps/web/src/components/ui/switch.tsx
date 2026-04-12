@@ -34,13 +34,14 @@ export function Switch({
         'relative inline-flex h-6 w-11 flex-shrink-0 items-center motion-safe:transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        checked ? 'bg-ink' : 'bg-border',
+        checked ? 'bg-white' : 'bg-border',
         className,
       )}
     >
       <span
         className={cn(
-          'inline-block h-4 w-4 transform bg-white shadow-sm motion-safe:transition-transform',
+          'inline-block h-4 w-4 transform shadow-sm motion-safe:transition-transform',
+          checked ? 'bg-[#070707]' : 'bg-ink-muted',
           checked ? 'translate-x-6' : 'translate-x-1',
         )}
         aria-hidden="true"
