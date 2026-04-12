@@ -359,7 +359,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
         <div className="flex items-center gap-2">
           <Link
             href={`/ia-assistente?processoId=${processo.id}&context=PROCESSO`}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-[#070707]  text-sm font-medium hover:bg-white/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]  text-sm font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors"
           >
             <Bot className="w-4 h-4" />
             Consultar IA
@@ -434,8 +434,8 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             onClick={handleAdvanceStage}
             disabled={advancing || isLastStage}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 bg-white text-[#070707]  text-sm font-medium',
-              'hover:bg-white/90 transition-colors',
+              'flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]  text-sm font-medium',
+              'hover:[background:var(--color-btn-primary-hover)] transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
@@ -458,7 +458,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                   className={cn(
                     'px-4 py-2  text-sm font-mono whitespace-nowrap transition-colors',
                     index === currentStageIndex
-                      ? 'bg-white text-[#070707] font-medium'
+                      ? '[background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium'
                       : index < currentStageIndex
                         ? 'bg-success/20 text-success'
                         : 'bg-border text-ink-muted',
@@ -499,8 +499,8 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                 onClick={handleAddNote}
                 disabled={addingNote || !noteText.trim()}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 bg-white text-[#070707]  text-sm font-medium',
-                  'hover:bg-white/90 transition-colors',
+                  'flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]  text-sm font-medium',
+                  'hover:[background:var(--color-btn-primary-hover)] transition-colors',
                   'disabled:opacity-50 disabled:cursor-not-allowed',
                 )}
               >

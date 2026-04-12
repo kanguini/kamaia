@@ -205,7 +205,7 @@ export default function PrazosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Prazos</h1>
         <Link
           href="/prazos/novo"
-          className="flex items-center gap-2 bg-white text-[#070707] font-medium px-4 sm:px-6 py-2.5  hover:bg-white/90 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Novo Prazo</span>
@@ -294,7 +294,7 @@ export default function PrazosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium  hover:bg-white/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -306,7 +306,7 @@ export default function PrazosPage() {
             title="Nenhum prazo"
             description="Comece por criar o seu primeiro prazo"
             action={
-              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium  hover:bg-white/90 transition-colors min-h-[40px]">
+              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]">
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Novo Prazo
               </Link>

@@ -84,7 +84,7 @@ export default function ClientesPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Clientes</h1>
         <Link
           href="/clientes/novo"
-          className="flex items-center gap-2 bg-white text-[#070707] font-medium px-4 sm:px-6 py-2.5 hover:bg-white/90 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Novo Cliente</span>
@@ -135,7 +135,7 @@ export default function ClientesPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium hover:bg-white/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -147,7 +147,7 @@ export default function ClientesPage() {
             title="Nenhum cliente"
             description="Comece por adicionar o seu primeiro cliente"
             action={
-              <Link href="/clientes/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium  hover:bg-white/90 transition-colors min-h-[40px]">
+              <Link href="/clientes/novo" className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]">
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Novo Cliente
               </Link>
@@ -186,7 +186,7 @@ export default function ClientesPage() {
                   <p className="text-sm text-ink-muted font-mono">{cliente.phone || '—'}</p>
                 </div>
                 <div className="md:col-span-1 text-left md:text-right">
-                  <span className="inline-flex items-center justify-center px-2 py-1 bg-white text-[#070707] text-xs font-mono">
+                  <span className="inline-flex items-center justify-center px-2 py-1 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] text-xs font-mono">
                     {cliente._count?.processos || 0}
                   </span>
                 </div>

@@ -324,8 +324,8 @@ function UploadModal({
               onClick={handleUpload}
               disabled={!file || uploading}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 bg-white text-[#070707] font-medium px-6 py-2.5 ',
-                'hover:bg-white/90 transition-colors',
+                'flex-1 flex items-center justify-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-6 py-2.5 ',
+                'hover:[background:var(--color-btn-primary-hover)] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
             >
@@ -431,7 +431,7 @@ export default function DocumentosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Documentos</h1>
         <button
           onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 bg-white text-[#070707] font-medium px-4 sm:px-6 py-2.5  hover:bg-white/90 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
         >
           <Upload className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Enviar Documento</span>
@@ -517,7 +517,7 @@ export default function DocumentosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium  hover:bg-white/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -531,7 +531,7 @@ export default function DocumentosPage() {
             action={
               <button
                 onClick={() => setShowUpload(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium  hover:bg-white/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
               >
                 <Upload className="w-4 h-4" aria-hidden="true" />
                 Enviar Documento

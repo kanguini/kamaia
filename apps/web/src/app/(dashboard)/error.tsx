@@ -18,7 +18,7 @@ export default function DashboardError({
       )}
       <button
         onClick={reset}
-        className="px-6 py-2 bg-white text-[#070707]  font-medium hover:bg-white/90 transition-colors"
+        className="px-6 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]  font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors"
       >
         Tentar novamente
       </button>

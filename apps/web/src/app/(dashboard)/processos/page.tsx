@@ -77,7 +77,7 @@ export default function ProcessosPage() {
       [ProcessoStatus.ACTIVO]: 'bg-success-bg text-success-text',
       [ProcessoStatus.SUSPENSO]: 'bg-warning-bg text-warning-text',
       [ProcessoStatus.ENCERRADO]: 'bg-surface-raised text-ink-muted border border-border',
-      [ProcessoStatus.ARQUIVADO]: 'bg-white text-[#070707]',
+      [ProcessoStatus.ARQUIVADO]: '[background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]',
     }
     return (
       <span
@@ -135,7 +135,7 @@ export default function ProcessosPage() {
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Processos</h1>
         <Link
           href="/processos/novo"
-          className="flex items-center gap-2 bg-white text-[#070707] font-medium px-4 sm:px-6 py-2.5 hover:bg-white/90 transition-colors min-h-[40px]"
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           <span className="hidden sm:inline">Novo Processo</span>
@@ -213,7 +213,7 @@ export default function ProcessosPage() {
             action={
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium hover:bg-white/90 transition-colors min-h-[40px]"
+                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
               >
                 Limpar filtros
               </button>
@@ -225,7 +225,7 @@ export default function ProcessosPage() {
             title="Nenhum processo"
             description="Comece por criar o seu primeiro processo"
             action={
-              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#070707] font-medium hover:bg-white/90 transition-colors min-h-[40px]">
+              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]">
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Novo Processo
               </Link>

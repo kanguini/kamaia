@@ -271,8 +271,8 @@ export default function RegisterPage() {
             type="submit"
             disabled={isLoading}
             className={cn(
-              'w-full bg-white text-[#070707] font-medium py-2.5',
-              'hover:bg-white/90 transition-colors',
+              'w-full [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium py-2.5',
+              'hover:[background:var(--color-btn-primary-hover)] transition-colors',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               'flex items-center justify-center gap-2',
             )}

@@ -318,8 +318,8 @@ export default function TimesheetsPage() {
           type="submit"
           disabled={creating}
           className={cn(
-            'px-6 py-2 bg-white text-[#070707] font-medium ',
-            'hover:bg-white/90 transition-colors',
+            'px-6 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium ',
+            'hover:[background:var(--color-btn-primary-hover)] transition-colors',
             'disabled:opacity-50 disabled:cursor-not-allowed',
           )}
         >
