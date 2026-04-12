@@ -66,13 +66,13 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 text-[12px] transition-colors min-h-[36px]',
+        'flex items-center gap-3 px-3 py-2 text-[14px] transition-colors min-h-[36px]',
         isActive
           ? 'bg-white/10 text-white font-medium'
           : 'text-white/50 hover:bg-white/5 hover:text-white/80',
       )}
     >
-      <Icon className="w-[14px] h-[14px] flex-shrink-0" aria-hidden="true" />
+      <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
       <span>{item.label}</span>
     </Link>
   )
