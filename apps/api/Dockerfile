@@ -41,10 +41,12 @@ COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
 COPY --from=builder /app/packages/shared-types/package.json ./packages/shared-types/
 
-# Copy API build + Prisma schema
+# Copy API build + Prisma schema + entrypoint
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/apps/api/entrypoint.sh ./apps/api/entrypoint.sh
+RUN chmod +x /app/apps/api/entrypoint.sh
 
 # Uploads directory (Railway volume mount point)
 RUN mkdir -p /app/apps/api/uploads
@@ -53,5 +55,5 @@ WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-# Apply schema and start app
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/main"]
+# Entrypoint script handles prisma db push + app start with logging
+CMD ["./entrypoint.sh"]
