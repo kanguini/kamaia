@@ -292,7 +292,14 @@ export class IaService {
     // Try Gemini first
     if (this.isGeminiEnabled && this.genAI) {
       try {
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+        const model = this.genAI.getGenerativeModel({
+          model: 'gemini-2.0-flash',
+          systemInstruction: SYSTEM_PROMPT,
+          generationConfig: {
+            maxOutputTokens: 2000,
+            temperature: 0.3,
+          },
+        });
 
         // Build chat history from previous messages
         const history = previousMessages.map((msg) => ({
@@ -300,14 +307,7 @@ export class IaService {
           parts: [{ text: msg.content }],
         }));
 
-        const chat = model.startChat({
-          history,
-          generationConfig: {
-            maxOutputTokens: 2000,
-            temperature: 0.3,
-          },
-          systemInstruction: SYSTEM_PROMPT,
-        });
+        const chat = model.startChat({ history });
 
         const result = await chat.sendMessage(userContent);
         const response = result.response.text();
