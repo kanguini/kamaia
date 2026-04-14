@@ -10,6 +10,8 @@ export interface ListProcessosParams {
   clienteId?: string;
   priority?: string;
   search?: string;
+  tag?: string;
+  lifecycle?: string;
 }
 
 @Injectable()
@@ -17,7 +19,7 @@ export class ProcessosRepository {
   constructor(private prisma: PrismaService) {}
 
   async findAll(gabineteId: string, params: ListProcessosParams) {
-    const { cursor, limit, status, type, advogadoId, clienteId, priority, search } = params;
+    const { cursor, limit, status, type, advogadoId, clienteId, priority, search, tag, lifecycle } = params;
 
     const where: any = {
       gabineteId,
@@ -44,6 +46,14 @@ export class ProcessosRepository {
       where.priority = priority;
     }
 
+    if (tag) {
+      where.tags = { has: tag };
+    }
+
+    if (lifecycle) {
+      where.lifecycle = lifecycle;
+    }
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -65,7 +75,9 @@ export class ProcessosRepository {
         type: true,
         status: true,
         stage: true,
+        lifecycle: true,
         priority: true,
+        tags: true,
         openedAt: true,
         closedAt: true,
         createdAt: true,
@@ -182,6 +194,60 @@ export class ProcessosRepository {
       },
     });
     return this.findById(gabineteId, id);
+  }
+
+  async changeLifecycle(gabineteId: string, id: string, lifecycle: string) {
+    await this.prisma.processo.updateMany({
+      where: { id, gabineteId, deletedAt: null },
+      data: { lifecycle },
+    });
+    return this.findById(gabineteId, id);
+  }
+
+  async findForKanban(gabineteId: string, type?: string, advogadoId?: string) {
+    const where: any = { gabineteId, deletedAt: null, status: 'ACTIVO' };
+    if (type) where.type = type;
+    if (advogadoId) where.advogadoId = advogadoId;
+
+    return this.prisma.processo.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        processoNumber: true,
+        title: true,
+        type: true,
+        status: true,
+        stage: true,
+        lifecycle: true,
+        priority: true,
+        tags: true,
+        updatedAt: true,
+        cliente: { select: { id: true, name: true } },
+        prazos: {
+          where: { deletedAt: null, status: 'PENDENTE' },
+          select: { id: true, dueDate: true, isUrgent: true },
+          orderBy: { dueDate: 'asc' },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  async findPipelineCounts(gabineteId: string) {
+    return this.prisma.processo.groupBy({
+      by: ['lifecycle'],
+      where: { gabineteId, deletedAt: null },
+      _count: { id: true },
+    });
+  }
+
+  async findAllTags(gabineteId: string): Promise<string[]> {
+    const results = await this.prisma.$queryRawUnsafe<Array<{ tag: string }>>(
+      `SELECT DISTINCT unnest(tags) AS tag FROM processos WHERE gabinete_id = $1::uuid AND deleted_at IS NULL ORDER BY tag`,
+      gabineteId,
+    );
+    return results.map((r) => r.tag);
   }
 
   async countByGabinete(gabineteId: string) {

@@ -43,6 +43,7 @@ model Gabinete {
   usageQuota      UsageQuota?
   timeEntries     TimeEntry[]
   expenses        Expense[]
+  clienteInteractions ClienteInteraction[]
   notifications   Notification[]
 
   @@map("gabinetes")
@@ -81,6 +82,7 @@ model User {
   aiConversations AIConversation[]
   timeEntries     TimeEntry[]
   expenses        Expense[]
+  clienteInteractions ClienteInteraction[]
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
   notificationPreference NotificationPreference?
@@ -132,6 +134,7 @@ model Cliente {
   gabinete  Gabinete   @relation(fields: [gabineteId], references: [id])
   advogado  User?      @relation("AdvogadoClientes", fields: [advogadoId], references: [id])
   processos Processo[]
+  interactions ClienteInteraction[]
 
   @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
   @@index([gabineteId], map: "idx_cliente_gabinete")
@@ -158,6 +161,8 @@ model Processo {
   opposingParty   String?   @map("opposing_party") @db.VarChar(300)
   opposingLawyer  String?   @map("opposing_lawyer") @db.VarChar(200)
   priority        String    @default("MEDIA") @db.VarChar(10) // ALTA | MEDIA | BAIXA
+  lifecycle       String    @default("ATENDIMENTO") @db.VarChar(30) // ProcessoLifecycle enum
+  tags            String[]  @default([])
   feeType         String?   @map("fee_type") @db.VarChar(20) // FIXO | HORA | PERCENTAGEM | PRO_BONO
   feeAmount       Int?      @map("fee_amount") // Centavos AKZ
   notes           String?   @db.Text
@@ -180,6 +185,7 @@ model Processo {
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
   @@index([gabineteId, status], map: "idx_processo_gabinete_status")
+  @@index([gabineteId, lifecycle], map: "idx_processo_gabinete_lifecycle")
   @@index([gabineteId, advogadoId], map: "idx_processo_gabinete_advogado")
   @@index([gabineteId, clienteId], map: "idx_processo_gabinete_cliente")
   @@map("processos")
@@ -399,6 +405,7 @@ model TimeEntry {
   date            DateTime  @db.Date
   durationMinutes Int       @map("duration_minutes")
   billable        Boolean   @default(true)
+  hourlyRate      Int?      @map("hourly_rate") // Centavos AKZ, if null inherits from Processo.feeAmount
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -497,6 +504,27 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+// ── Cliente Interaction (CRM Flow) ───────────────────────
+
+model ClienteInteraction {
+  id         String   @id @default(uuid()) @db.Uuid
+  gabineteId String   @map("gabinete_id") @db.Uuid
+  clienteId  String   @map("cliente_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  type       String   @db.VarChar(20) // CHAMADA, EMAIL, REUNIAO, WHATSAPP, VISITA
+  notes      String?  @db.Text
+  date       DateTime @db.Timestamptz
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  cliente  Cliente  @relation(fields: [clienteId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([gabineteId, clienteId], map: "idx_interaction_gabinete_cliente")
+  @@map("cliente_interactions")
 }
 
 // ── Legislation Document (RAG) ───────────────────────────

@@ -15,6 +15,7 @@ import {
   ProcessoStatus,
   ProcessoEventType,
   KamaiaRole,
+  LIFECYCLE_STAGES,
 } from '@kamaia/shared-types';
 import {
   CreateProcessoDto,
@@ -373,6 +374,108 @@ export class ProcessosService {
       return ok(event);
     } catch (error) {
       return err('Failed to add event', 'EVENT_CREATE_FAILED');
+    }
+  }
+
+  // ── Kanban ─────────────────────────────────────────────
+
+  async findForKanban(
+    gabineteId: string,
+    type?: string,
+    advogadoId?: string,
+  ): Promise<Result<any>> {
+    try {
+      const processos = await this.processosRepository.findForKanban(
+        gabineteId,
+        type,
+        advogadoId,
+      );
+
+      // Group by stage
+      const grouped: Record<string, any[]> = {};
+      for (const p of processos) {
+        const stage = p.stage || 'Sem Fase';
+        if (!grouped[stage]) grouped[stage] = [];
+        grouped[stage].push(p);
+      }
+
+      return ok(grouped);
+    } catch (error) {
+      return err('Failed to load kanban', 'KANBAN_FAILED');
+    }
+  }
+
+  // ── Pipeline ───────────────────────────────────────────
+
+  async getPipelineCounts(
+    gabineteId: string,
+  ): Promise<Result<Record<string, number>>> {
+    try {
+      const groups = await this.processosRepository.findPipelineCounts(gabineteId);
+      const counts: Record<string, number> = {};
+      for (const stage of LIFECYCLE_STAGES) {
+        counts[stage] = 0;
+      }
+      for (const g of groups) {
+        counts[g.lifecycle] = g._count.id;
+      }
+      return ok(counts);
+    } catch (error) {
+      return err('Failed to get pipeline', 'PIPELINE_FAILED');
+    }
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────
+
+  async changeLifecycle(
+    gabineteId: string,
+    userId: string,
+    userRole: string,
+    processoId: string,
+    lifecycle: string,
+  ): Promise<Result<any>> {
+    try {
+      if (!LIFECYCLE_STAGES.includes(lifecycle as any)) {
+        return err('Fase do ciclo de vida invalida', 'INVALID_LIFECYCLE');
+      }
+
+      const existing = await this.processosRepository.findById(gabineteId, processoId);
+      if (!existing) return err('Processo nao encontrado', 'PROCESSO_NOT_FOUND');
+
+      if (userRole === KamaiaRole.ADVOGADO_MEMBRO && existing.advogadoId !== userId) {
+        return err('Sem permissao', 'ACCESS_DENIED');
+      }
+
+      const updated = await this.processosRepository.changeLifecycle(
+        gabineteId,
+        processoId,
+        lifecycle,
+      );
+
+      await this.prisma.processoEvent.create({
+        data: {
+          processoId,
+          userId,
+          type: 'STAGE_CHANGE',
+          description: `Ciclo de vida: ${existing.lifecycle || 'N/A'} → ${lifecycle}`,
+          metadata: { oldLifecycle: existing.lifecycle, newLifecycle: lifecycle },
+        },
+      });
+
+      return ok(updated);
+    } catch (error) {
+      return err('Failed to change lifecycle', 'LIFECYCLE_CHANGE_FAILED');
+    }
+  }
+
+  // ── Tags ───────────────────────────────────────────────
+
+  async getAllTags(gabineteId: string): Promise<Result<string[]>> {
+    try {
+      const tags = await this.processosRepository.findAllTags(gabineteId);
+      return ok(tags);
+    } catch (error) {
+      return err('Failed to get tags', 'TAGS_FAILED');
     }
   }
 }

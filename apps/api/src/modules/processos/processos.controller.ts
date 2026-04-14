@@ -69,6 +69,53 @@ export class ProcessosController {
     return { data: result.data };
   }
 
+  @Get('kanban')
+  async kanban(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Query('type') type?: string,
+  ) {
+    const advogadoId = user.role === KamaiaRole.ADVOGADO_MEMBRO ? user.sub : undefined;
+    const result = await this.processosService.findForKanban(gabineteId, type, advogadoId);
+
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: 'KANBAN_FETCH_FAILED' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { data: result.data };
+  }
+
+  @Get('pipeline')
+  async pipeline(@GabineteId() gabineteId: string) {
+    const result = await this.processosService.getPipelineCounts(gabineteId);
+
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: 'PIPELINE_FETCH_FAILED' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { data: result.data };
+  }
+
+  @Get('tags')
+  async getTags(@GabineteId() gabineteId: string) {
+    const result = await this.processosService.getAllTags(gabineteId);
+
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: 'TAGS_FETCH_FAILED' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { data: result.data };
+  }
+
   @Get(':id')
   async findOne(
     @GabineteId() gabineteId: string,
@@ -192,6 +239,31 @@ export class ProcessosController {
           code: result.code || 'STAGE_CHANGE_FAILED',
         },
         status,
+      );
+    }
+
+    return { data: result.data };
+  }
+
+  @Patch(':id/lifecycle')
+  async changeLifecycle(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { lifecycle: string },
+  ) {
+    const result = await this.processosService.changeLifecycle(
+      gabineteId,
+      user.sub,
+      user.role,
+      id,
+      dto.lifecycle,
+    );
+
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: result.code || 'LIFECYCLE_CHANGE_FAILED' },
+        result.code === 'PROCESSO_NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST,
       );
     }
 

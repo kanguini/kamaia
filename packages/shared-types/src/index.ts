@@ -81,6 +81,47 @@ export enum ProcessoPriority {
   BAIXA = 'BAIXA',
 }
 
+export enum ProcessoLifecycle {
+  ATENDIMENTO = 'ATENDIMENTO',
+  CONSULTA = 'CONSULTA',
+  ADMINISTRATIVO = 'ADMINISTRATIVO',
+  INSTRUCAO = 'INSTRUCAO',
+  RECURSO = 'RECURSO',
+  EXECUCAO = 'EXECUCAO',
+  ARQUIVO = 'ARQUIVO',
+  FINANCEIRO = 'FINANCEIRO',
+}
+
+export const LIFECYCLE_STAGES = [
+  'ATENDIMENTO',
+  'CONSULTA',
+  'ADMINISTRATIVO',
+  'INSTRUCAO',
+  'RECURSO',
+  'EXECUCAO',
+  'ARQUIVO',
+  'FINANCEIRO',
+] as const;
+
+export const LIFECYCLE_LABELS: Record<string, string> = {
+  ATENDIMENTO: 'Atendimento',
+  CONSULTA: 'Consulta',
+  ADMINISTRATIVO: 'Administrativo',
+  INSTRUCAO: 'Instrucao',
+  RECURSO: 'Recurso',
+  EXECUCAO: 'Execucao',
+  ARQUIVO: 'Arquivo',
+  FINANCEIRO: 'Financeiro',
+};
+
+export enum InteractionType {
+  CHAMADA = 'CHAMADA',
+  EMAIL = 'EMAIL',
+  REUNIAO = 'REUNIAO',
+  WHATSAPP = 'WHATSAPP',
+  VISITA = 'VISITA',
+}
+
 export enum CalendarEventType {
   AUDIENCIA = 'AUDIENCIA',
   REUNIAO = 'REUNIAO',
