@@ -44,8 +44,8 @@ function ToggleCard({
   return (
     <div
       className={cn(
-        'bg-white border border-border  p-4 flex items-start gap-4',
-        inset && 'ml-8 bg-surface-raised/30',
+        'bg-surface border border-border p-4 flex items-start gap-4',
+        inset && 'ml-8 bg-surface-raised',
       )}
     >
       <div className={cn('flex-shrink-0 mt-0.5', disabled && 'opacity-50')} aria-hidden="true">
@@ -131,7 +131,7 @@ export default function ConfiguracoesPage() {
       {/* Perfil Section */}
       <section className="mb-10">
         <h2 className="font-display text-2xl font-semibold text-ink mb-4">Perfil</h2>
-        <div className="bg-white border border-border  p-6 space-y-4">
+        <div className="bg-surface border border-border p-6 space-y-4">
           <div>
             <p className="text-xs font-mono text-ink-muted uppercase mb-1">Nome</p>
             <p className="text-ink">

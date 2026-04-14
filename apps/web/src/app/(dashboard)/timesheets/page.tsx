@@ -46,12 +46,12 @@ const CATEGORY_LABELS: Record<TimeEntryCategory, string> = {
 }
 
 const CATEGORY_COLORS: Record<TimeEntryCategory, string> = {
-  [TimeEntryCategory.PESQUISA]: 'bg-info/10 text-info border-info/20',
-  [TimeEntryCategory.REDACCAO]: 'bg-amber-50 text-ink-700 border-amber',
-  [TimeEntryCategory.AUDIENCIA]: 'bg-danger/10 text-danger border-danger/20',
-  [TimeEntryCategory.REUNIAO]: 'bg-success/10 text-success border-success/20',
-  [TimeEntryCategory.DESLOCACAO]: 'bg-muted/10 text-ink-muted border-muted/20',
-  [TimeEntryCategory.OUTRO]: 'bg-muted/10 text-ink-muted border-muted/20',
+  [TimeEntryCategory.PESQUISA]: 'bg-info-bg text-info-text border-info',
+  [TimeEntryCategory.REDACCAO]: 'bg-warning-bg text-warning-text border-warning',
+  [TimeEntryCategory.AUDIENCIA]: 'bg-danger-bg text-danger-text border-danger',
+  [TimeEntryCategory.REUNIAO]: 'bg-success-bg text-success-text border-success',
+  [TimeEntryCategory.DESLOCACAO]: 'bg-surface-raised text-ink-muted border-border',
+  [TimeEntryCategory.OUTRO]: 'bg-surface-raised text-ink-muted border-border',
 }
 
 function formatDuration(minutes: number): string {

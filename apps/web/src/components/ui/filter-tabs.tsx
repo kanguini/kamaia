@@ -57,7 +57,7 @@ export function FilterTabs<T extends string>({
               <span
                 className={cn(
                   'ml-2 inline-flex items-center justify-center text-xs font-mono px-1.5 py-0.5 min-w-[20px]',
-                  active ? 'bg-white/20 text-white' : 'bg-white text-ink-muted',
+                  active ? 'bg-surface/20 [color:var(--color-btn-primary-text)]' : 'bg-surface-raised text-ink-muted',
                 )}
                 aria-hidden="true"
               >

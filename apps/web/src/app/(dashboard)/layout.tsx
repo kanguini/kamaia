@@ -61,7 +61,7 @@ function NotificationBell() {
   return (
     <Link href="/configuracoes" aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'} className="relative text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg hover:bg-surface-hover">
       <Bell className="w-[18px] h-[18px]" aria-hidden="true" />
-      {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-danger text-white text-[9px] font-mono font-medium min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full" aria-hidden="true">{count > 9 ? '9+' : count}</span>}
+      {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-danger text-surface text-[9px] font-mono font-medium min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full" aria-hidden="true">{count > 9 ? '9+' : count}</span>}
     </Link>
   )
 }

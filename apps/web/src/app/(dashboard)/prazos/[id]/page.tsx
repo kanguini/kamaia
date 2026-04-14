@@ -143,10 +143,10 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
 
   const getStatusBadge = (status: PrazoStatus, large = false) => {
     const styles = {
-      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-ink-700 border-amber',
-      [PrazoStatus.CUMPRIDO]: 'bg-green-50 text-green-700 border-success',
-      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-danger',
-      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-ink-muted border-muted/20',
+      [PrazoStatus.PENDENTE]: 'bg-warning-bg text-warning-text border-warning',
+      [PrazoStatus.CUMPRIDO]: 'bg-success-bg text-success-text border-success',
+      [PrazoStatus.EXPIRADO]: 'bg-danger-bg text-danger-text border-danger',
+      [PrazoStatus.CANCELADO]: 'bg-surface-raised text-ink-muted border-border',
     }
     return (
       <span
@@ -268,8 +268,8 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={handleComplete}
             disabled={completing}
             className={cn(
-              'flex items-center gap-2 bg-success text-white font-medium px-6 py-3 ',
-              'hover:bg-green-700 transition-colors text-base',
+              'flex items-center gap-2 bg-success text-surface font-medium px-6 py-3',
+              'hover:opacity-90 transition-opacity text-base',
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >

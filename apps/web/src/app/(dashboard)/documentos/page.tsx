@@ -221,10 +221,10 @@ function UploadModal({
             onDragOver={handleDrag}
             onDrop={handleDrop}
             className={cn(
-              'border-2 border-dashed  p-8 mb-4 text-center transition-colors cursor-pointer',
+              'border-2 border-dashed p-8 mb-4 text-center transition-colors cursor-pointer',
               dragActive
-                ? 'border-amber bg-amber/5'
-                : 'border-border-strong hover:border-amber',
+                ? 'border-ink bg-surface-hover'
+                : 'border-border-strong hover:border-ink',
             )}
             onClick={() => document.getElementById('file-input')?.click()}
           >
@@ -421,7 +421,7 @@ export default function DocumentosPage() {
 
   const getStorageBarColor = (percentage: number) => {
     if (percentage < 50) return 'bg-success'
-    if (percentage < 80) return 'bg-amber'
+    if (percentage < 80) return 'bg-warning'
     return 'bg-danger'
   }
 

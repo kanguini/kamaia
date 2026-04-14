@@ -241,17 +241,17 @@ function IAAssistenteContent() {
       {/* Left panel - Conversations list */}
       <div
         className={cn(
-          'w-[280px] bg-ink  flex flex-col overflow-hidden flex-shrink-0',
+          'w-[280px] bg-surface-raised flex flex-col overflow-hidden flex-shrink-0',
           'lg:flex',
           mobileMenuOpen ? 'fixed inset-y-0 left-0 z-50 flex' : 'hidden',
         )}
       >
-        <div className="p-4 border-b border-bone/10">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-display text-2xl font-semibold text-ink">Kamaia IA</h2>
             <button
               onClick={() => handleCreateConversation()}
-              className="p-2 hover:bg-ink/10  transition-colors text-ink"
+              className="p-2 hover:bg-surface-hover transition-colors text-ink"
               title="Nova conversa"
             >
               <Plus className="w-5 h-5" />
@@ -276,10 +276,10 @@ function IAAssistenteContent() {
                     setMobileMenuOpen(false)
                   }}
                   className={cn(
-                    'group p-3  cursor-pointer transition-colors relative',
+                    'group p-3 cursor-pointer transition-colors relative',
                     activeConversationId === conv.id
-                      ? 'bg-white/10 text-paper'
-                      : 'text-white/80 hover:bg-white/5',
+                      ? 'bg-surface-hover text-ink'
+                      : 'text-ink-secondary hover:bg-surface-hover',
                   )}
                 >
                   <div className="flex items-start gap-2 mb-1">
@@ -298,7 +298,7 @@ function IAAssistenteContent() {
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-ink-muted">
                       {getRelativeTime(new Date(conv.updatedAt))}
                     </p>
                     <button
@@ -315,12 +315,12 @@ function IAAssistenteContent() {
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center text-white/60 text-sm">Nenhuma conversa</div>
+            <div className="p-6 text-center text-ink-muted text-sm">Nenhuma conversa</div>
           )}
         </div>
 
-        <div className="p-4 border-t border-bone/10">
-          <div className="text-xs text-white/60 font-mono">
+        <div className="p-4 border-t border-border">
+          <div className="text-xs text-ink-muted font-mono">
             {isPro ? (
               <span className="text-success">Consultas ilimitadas</span>
             ) : quota ? (
@@ -335,7 +335,7 @@ function IAAssistenteContent() {
       </div>
 
       {/* Right panel - Chat area */}
-      <div className="flex-1 bg-surface  flex flex-col overflow-hidden">
+      <div className="flex-1 bg-surface flex flex-col overflow-hidden">
         {!activeConversationId ? (
           /* Welcome screen */
           <div className="flex-1 flex items-center justify-center p-8">
@@ -370,7 +370,7 @@ function IAAssistenteContent() {
         ) : (
           <>
             {/* Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between bg-white">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-surface-raised">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setMobileMenuOpen(true)}
@@ -402,9 +402,9 @@ function IAAssistenteContent() {
             </div>
 
             {/* Disclaimer */}
-            <div className="bg-amber-50 border-b border-amber px-4 py-2 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-ink-700 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-ink-700">
+            <div className="bg-warning-bg border-b border-warning px-4 py-2 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-warning-text flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-warning-text">
                 Modo demonstracao — respostas simuladas. Nao use para decisoes legais.
               </p>
             </div>
@@ -462,7 +462,7 @@ function IAAssistenteContent() {
             </div>
 
             {/* Input area */}
-            <div className="border-t border-border bg-white p-4">
+            <div className="border-t border-border bg-surface-raised p-4">
               {quotaExhausted ? (
                 <div className="bg-danger/10 border border-danger/20  p-4 text-center">
                   <p className="text-danger text-sm mb-2">Limite de consultas atingido</p>

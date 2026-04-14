@@ -586,7 +586,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
                             e.stopPropagation()
                             handleCompletePrazo()
                           }}
-                          className="flex items-center gap-1 text-xs text-success hover:text-green-700 transition-colors"
+                          className="flex items-center gap-1 text-xs text-success hover:opacity-80 transition-opacity"
                         >
                           <CheckCircle className="w-3 h-3" />
                           Cumprido

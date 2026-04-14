@@ -82,8 +82,8 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
   const getTypeBadge = (type: ClienteType) => {
     const styles = {
-      [ClienteType.INDIVIDUAL]: 'bg-info/10 text-info border-info/20',
-      [ClienteType.EMPRESA]: 'bg-amber/10 text-ink border-amber/20',
+      [ClienteType.INDIVIDUAL]: 'bg-info-bg text-info-text border-info',
+      [ClienteType.EMPRESA]: 'bg-warning-bg text-warning-text border-warning',
     }
     const icons = {
       [ClienteType.INDIVIDUAL]: User,

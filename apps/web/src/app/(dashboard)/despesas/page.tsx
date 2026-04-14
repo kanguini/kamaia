@@ -38,11 +38,11 @@ const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 }
 
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  [ExpenseCategory.EMOLUMENTOS]: 'bg-danger/10 text-danger border-danger/20',
-  [ExpenseCategory.DESLOCACAO]: 'bg-amber-50 text-ink-700 border-amber',
-  [ExpenseCategory.COPIAS]: 'bg-muted/10 text-ink-muted border-muted/20',
-  [ExpenseCategory.HONORARIOS_PERITOS]: 'bg-info/10 text-info border-info/20',
-  [ExpenseCategory.OUTRO]: 'bg-muted/10 text-ink-muted border-muted/20',
+  [ExpenseCategory.EMOLUMENTOS]: 'bg-danger-bg text-danger-text border-danger',
+  [ExpenseCategory.DESLOCACAO]: 'bg-warning-bg text-warning-text border-warning',
+  [ExpenseCategory.COPIAS]: 'bg-surface-raised text-ink-muted border-border',
+  [ExpenseCategory.HONORARIOS_PERITOS]: 'bg-info-bg text-info-text border-info',
+  [ExpenseCategory.OUTRO]: 'bg-surface-raised text-ink-muted border-border',
 }
 
 function formatMoney(centavos: number): string {

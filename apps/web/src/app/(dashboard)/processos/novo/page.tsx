@@ -55,7 +55,7 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
               i + 1 === currentStep
                 ? '[background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]'
                 : i + 1 < currentStep
-                  ? 'bg-success text-white'
+                  ? 'bg-success text-surface'
                   : 'bg-border text-ink-muted',
             )}
           >

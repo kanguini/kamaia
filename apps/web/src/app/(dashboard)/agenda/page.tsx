@@ -45,15 +45,15 @@ const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
 
 function getEventColor(type: CalendarEventType, isUrgent?: boolean): string {
   if (type === CalendarEventType.PRAZO) {
-    return isUrgent ? 'bg-danger text-white' : 'bg-warning text-warning-text'
+    return isUrgent ? 'bg-danger text-surface' : 'bg-warning text-warning-text'
   }
   switch (type) {
     case CalendarEventType.AUDIENCIA:
       return 'bg-warning text-warning-text'
     case CalendarEventType.REUNIAO:
-      return 'bg-info text-white'
+      return 'bg-info text-surface'
     case CalendarEventType.DILIGENCIA:
-      return 'bg-ink-muted/60 text-white'
+      return 'bg-ink-muted/60 text-surface'
     default:
       return 'bg-surface-raised border border-border text-ink'
   }
@@ -90,7 +90,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-surface  shadow-lg max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface shadow-lg max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h2 className="font-display text-2xl font-semibold text-ink mb-2">{event.title}</h2>
@@ -144,7 +144,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
           )}
 
           {isPrazo && (
-            <div className="bg-warning-bg border border-warning  p-3">
+            <div className="bg-warning-bg border border-warning p-3">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-ink flex-shrink-0 mt-0.5" />
                 <div>
@@ -178,7 +178,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
             <>
               <Link
                 href={`/agenda/novo?eventId=${event.id}`}
-                className="flex-1 text-center [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors"
+                className="flex-1 text-center [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors"
                 onClick={onClose}
               >
                 Editar
@@ -190,7 +190,7 @@ function EventDetailModal({ event, onClose, onDelete, onComplete }: {
                     onClose()
                   }
                 }}
-                className="px-4 py-2.5 border border-danger text-danger-text  hover:bg-danger/10 transition-colors"
+                className="px-4 py-2.5 border border-danger text-danger-text hover:bg-danger/10 transition-colors"
               >
                 Eliminar
               </button>
@@ -284,7 +284,7 @@ export default function AgendaPage() {
         <h1 className="font-display text-4xl font-semibold text-ink">Agenda</h1>
         <Link
           href="/agenda/novo"
-          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-6 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors"
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors"
         >
           <Plus className="w-4 h-4" />
           Novo Evento
@@ -297,12 +297,12 @@ export default function AgendaPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('prev')}
-              className="p-2 hover:bg-surface  transition-colors"
+              className="p-2 hover:bg-surface transition-colors"
             >
               <ChevronLeft className="w-5 h-5 text-ink" />
             </button>
 
-            <div className="flex items-center gap-2 bg-surface  overflow-hidden">
+            <div className="flex items-center gap-2 bg-surface overflow-hidden">
               <button
                 onClick={() => setView('month')}
                 className={cn(
@@ -334,7 +334,7 @@ export default function AgendaPage() {
 
             <button
               onClick={() => navigate('next')}
-              className="p-2 hover:bg-surface  transition-colors"
+              className="p-2 hover:bg-surface transition-colors"
             >
               <ChevronRight className="w-5 h-5 text-ink" />
             </button>
@@ -349,7 +349,7 @@ export default function AgendaPage() {
             </h2>
             <button
               onClick={() => navigate('today')}
-              className="px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface  transition-colors"
+              className="px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface transition-colors"
             >
               Hoje
             </button>
@@ -459,9 +459,9 @@ function MonthView({ currentDate, events, onEventClick, onDayClick }: {
               key={idx}
               onClick={() => onDayClick(day)}
               className={cn(
-                'min-h-[100px] p-2 border-b border-r border-border bg-white cursor-pointer hover:bg-surface-raised/50 transition-colors',
-                !isCurrentMonth && 'bg-surface/50 text-ink-muted/50',
-                isToday && 'ring-2 ring-amber ring-inset'
+                'min-h-[100px] p-2 border-b border-r border-border bg-surface cursor-pointer hover:bg-surface-raised/50 transition-colors',
+                !isCurrentMonth && 'bg-surface-raised text-ink-muted/50',
+                isToday && 'ring-2 ring-ink ring-inset'
               )}
             >
               <div className="flex items-center justify-between mb-1">
@@ -562,7 +562,7 @@ function WeekView({ currentDate, events, onEventClick }: {
                 })
 
                 return (
-                  <div key={`${hour}-${i}`} className="relative min-h-[60px] border-b border-r border-border bg-white p-1">
+                  <div key={`${hour}-${i}`} className="relative min-h-[60px] border-b border-r border-border bg-surface p-1">
                     {hourEvents.map(event => {
                       const start = new Date(event.startAt)
                       const end = new Date(event.endAt)
@@ -666,7 +666,7 @@ function DayView({ currentDate, events, onEventClick }: {
             })
 
             return (
-              <div key={hour} className="flex border-b border-border bg-white min-h-[60px]">
+              <div key={hour} className="flex border-b border-border bg-surface min-h-[60px]">
                 <div className="w-20 p-3 text-right text-xs font-mono text-ink-muted bg-surface border-r border-border">
                   {hour.toString().padStart(2, '0')}:00
                 </div>
@@ -724,7 +724,7 @@ function DayView({ currentDate, events, onEventClick }: {
               <button
                 key={prazo.id}
                 onClick={() => onEventClick(prazo)}
-                className="w-full text-left bg-white  p-3 hover:bg-surface transition-colors border border-border"
+                className="w-full text-left bg-surface p-3 hover:bg-surface-hover transition-colors border border-border"
               >
                 <div className="font-medium text-sm text-ink mb-1">{prazo.title}</div>
                 <div className="text-xs text-ink-muted">{prazo.allDay ? 'Todo o dia' : formatTime(prazo.startAt)}</div>

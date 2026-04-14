@@ -127,10 +127,10 @@ export default function PrazosPage() {
 
   const getStatusBadge = (status: PrazoStatus) => {
     const styles = {
-      [PrazoStatus.PENDENTE]: 'bg-amber-50 text-ink-700 border-amber',
-      [PrazoStatus.CUMPRIDO]: 'bg-green-50 text-green-700 border-success',
-      [PrazoStatus.EXPIRADO]: 'bg-red-50 text-red-700 border-danger',
-      [PrazoStatus.CANCELADO]: 'bg-muted/10 text-ink-muted border-muted/20',
+      [PrazoStatus.PENDENTE]: 'bg-warning-bg text-warning-text border-warning',
+      [PrazoStatus.CUMPRIDO]: 'bg-success-bg text-success-text border-success',
+      [PrazoStatus.EXPIRADO]: 'bg-danger-bg text-danger-text border-danger',
+      [PrazoStatus.CANCELADO]: 'bg-surface-raised text-ink-muted border-border',
     }
     return (
       <span
@@ -214,14 +214,14 @@ export default function PrazosPage() {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-4 py-2 bg-danger/10 border border-danger/20 ">
-          <span className="text-xs font-mono text-danger">{stats.urgentes} urgentes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-danger-bg border border-danger">
+          <span className="text-xs font-mono text-danger-text">{stats.urgentes} urgentes</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber ">
-          <span className="text-xs font-mono text-ink-700">{stats.pendentes} pendentes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-warning-bg border border-warning">
+          <span className="text-xs font-mono text-warning-text">{stats.pendentes} pendentes</span>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-success ">
-          <span className="text-xs font-mono text-green-700">{stats.cumpridos} cumpridos este mes</span>
+        <div className="flex items-center gap-2 px-4 py-2 bg-success-bg border border-success">
+          <span className="text-xs font-mono text-success-text">{stats.cumpridos} cumpridos este mes</span>
         </div>
       </div>
 
