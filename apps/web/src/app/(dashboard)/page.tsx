@@ -2,10 +2,25 @@
 
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle, FileDown, Plus } from 'lucide-react'
-import { useApi, useMutation } from '@/hooks/use-api'
+import dynamic from 'next/dynamic'
+import {
+  Scale, Clock, Users, Bot,
+  FileDown, TrendingUp, Trophy,
+} from 'lucide-react'
+import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
-import { PrazoStatus } from '@kamaia/shared-types'
+import { PrazoStatus, LIFECYCLE_LABELS } from '@kamaia/shared-types'
+
+// Lazy load recharts to avoid SSR issues
+const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false })
+const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false })
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false })
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false })
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false })
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false })
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false })
+const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false })
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false })
 
 interface DashboardStats {
   activeProcessos: number
@@ -14,39 +29,29 @@ interface DashboardStats {
   aiQueriesRemaining: number
 }
 
-interface StatCardProps {
-  title: string
-  value: string | number
-  icon: React.ElementType
-  iconColor: string
-  loading?: boolean
+interface KPIData {
+  processosByType: Record<string, number>
+  processosByLifecycle: Record<string, number>
+  prazosByStatus: { pendente: number; cumprido: number; expirado: number }
+  revenueByMonth: Array<{ month: string; value: number }>
+  topProcessos: Array<{ id: string; title: string; horas: number; valor: number }>
+  overduePrazos: number
+  totalDocuments: number
+  totalTimeHours: number
 }
 
-function StatCard({ title, value, loading }: StatCardProps) {
-  return (
-    <div className="bg-surface-raised p-6 shadow-sm">
-      <div className="flex flex-col gap-4">
-        <p className="text-[11px] text-ink-muted">{title}</p>
-        {loading ? (
-          <div className="h-9 w-16 bg-border animate-pulse" />
-        ) : (
-          <p className="font-display text-[28px] text-ink">{value}</p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-surface-raised p-8 text-center">
-      <div className="w-12 h-12 bg-ink-muted/10 flex items-center justify-center mx-auto mb-4">
-        <AlertCircle className="w-6 h-6 text-ink-muted" />
-      </div>
-      <h3 className="text-ink font-medium mb-1">{title}</h3>
-      <p className="text-ink-muted text-sm">{description}</p>
-    </div>
-  )
+interface TaskscoreUser {
+  userId: string
+  userName: string
+  score: number
+  breakdown: {
+    processosCriados: number
+    fasesAvancadas: number
+    prazosCumpridos: number
+    horasRegistadas: number
+    documentosEnviados: number
+    notasAdicionadas: number
+  }
 }
 
 interface UpcomingPrazo {
@@ -55,121 +60,54 @@ interface UpcomingPrazo {
   dueDate: string
   isUrgent: boolean
   status: PrazoStatus
-  processo: {
-    id: string
-    processoNumber: string
-  }
+  processo: { id: string; processoNumber: string }
 }
 
-function getRelativeTime(date: Date): string {
-  const now = new Date()
-  const diff = date.getTime() - now.getTime()
-  const diffAbs = Math.abs(diff)
-
-  const hours = Math.floor(diffAbs / (1000 * 60 * 60))
-  const days = Math.floor(diffAbs / (1000 * 60 * 60 * 24))
-
-  if (diff < 0) {
-    if (hours < 24) return `ha ${hours} horas`
-    return `ha ${days} dias`
-  } else {
-    if (hours < 24) return `em ${hours} horas`
-    return `em ${days} dias`
-  }
+const TYPE_LABELS: Record<string, string> = {
+  CIVEL: 'Civel',
+  LABORAL: 'Laboral',
+  COMERCIAL: 'Comercial',
+  CRIMINAL: 'Criminal',
+  ADMINISTRATIVO: 'Admin.',
+  FAMILIA: 'Familia',
+  ARBITRAGEM: 'Arbitragem',
 }
 
-function ProximosPrazosSection() {
-  const { data: prazosData, loading, refetch } = useApi<{ upcoming: UpcomingPrazo[]; overdue: UpcomingPrazo[] }>('/prazos/upcoming')
-  const prazos = [...(prazosData?.upcoming || []), ...(prazosData?.overdue || [])]
-  const { mutate: completePrazo } = useMutation('/prazos/ID/complete', 'PATCH')
+const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#f97316']
 
-  const handleComplete = async () => {
-    const result = await completePrazo(undefined)
-    if (result !== null) {
-      refetch()
-    }
-  }
-
+function StatCard({ title, value, icon: Icon, loading }: {
+  title: string; value: string | number; icon: React.ElementType; loading?: boolean
+}) {
   return (
-    <div>
-      <h2 className="font-display text-[20px] font-medium text-ink mb-4">Proximos Prazos</h2>
+    <div className="bg-surface-raised p-5 rounded-lg border border-border">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
+          <Icon className="w-4 h-4 text-ink-muted" />
+        </div>
+        <p className="text-xs text-ink-muted uppercase tracking-wide">{title}</p>
+      </div>
       {loading ? (
-        <div className="bg-surface-raised p-6 space-y-3 animate-pulse">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-border" />
-          ))}
-        </div>
-      ) : !prazos || prazos.length === 0 ? (
-        <EmptyState
-          title="Nenhum prazo registado"
-          description="Os seus prazos aparecerao aqui quando forem adicionados"
-        />
+        <div className="h-8 w-16 bg-border animate-pulse rounded" />
       ) : (
-        <div className="bg-surface-raised border border-border p-4 space-y-3">
-          {prazos.slice(0, 5).map((prazo) => {
-            const dueDate = new Date(prazo.dueDate)
-            const isPast = dueDate < new Date()
-
-            return (
-              <Link
-                key={prazo.id}
-                href={`/prazos/${prazo.id}`}
-                className="block bg-surface border border-border p-3 hover:bg-surface-hover transition-colors"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    {prazo.isUrgent && (
-                      <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-ink mb-1 truncate">{prazo.title}</p>
-                      <p className="text-xs font-mono text-ink-muted">{prazo.processo.processoNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className="text-right">
-                      <p
-                        className={cn(
-                          'text-xs font-medium',
-                          isPast ? 'text-danger' : 'text-warning',
-                        )}
-                      >
-                        {getRelativeTime(dueDate)}
-                      </p>
-                    </div>
-                    {prazo.status === PrazoStatus.PENDENTE && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          handleComplete()
-                        }}
-                        className="p-1 hover:bg-success-bg transition-colors"
-                        title="Marcar como cumprido"
-                      >
-                        <CheckCircle className="w-4 h-4 text-success" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
-          <Link
-            href="/prazos"
-            className="block text-center text-sm text-ink-muted hover:text-ink font-medium pt-2"
-          >
-            Ver todos os prazos →
-          </Link>
-        </div>
+        <p className="text-3xl font-bold text-ink">{value}</p>
       )}
     </div>
   )
 }
 
+function formatAKZ(centavos: number) {
+  return `${(centavos / 100).toLocaleString('pt-AO')} Kz`
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const { data: stats, loading } = useApi<DashboardStats>('/stats/dashboard')
+  const { data: kpis, loading: kpisLoading } = useApi<KPIData>('/stats/kpis')
+  const { data: taskscore } = useApi<TaskscoreUser[]>('/stats/taskscore?period=month')
+  const { data: prazosData } = useApi<{ upcoming: UpcomingPrazo[]; overdue: UpcomingPrazo[] }>('/prazos/upcoming')
+
+  const prazos = [...(prazosData?.upcoming || []), ...(prazosData?.overdue || [])]
+  const myScore = taskscore?.find(t => t.userId === (session?.user as any)?.id)
 
   const getGreeting = () => {
     const hour = new Date().getHours()
@@ -178,14 +116,35 @@ export default function DashboardPage() {
     return 'Boa noite'
   }
 
+  // Prepare chart data
+  const typeChartData = kpis
+    ? Object.entries(kpis.processosByType).map(([type, count]) => ({
+        name: TYPE_LABELS[type] || type,
+        value: count,
+      }))
+    : []
+
+  const revenueChartData = kpis?.revenueByMonth.map(r => ({
+    month: r.month.split('-')[1] + '/' + r.month.split('-')[0].slice(2),
+    valor: Math.round(r.value / 100),
+  })) || []
+
+  const lifecycleData = kpis
+    ? Object.entries(kpis.processosByLifecycle).map(([stage, count]) => ({
+        name: LIFECYCLE_LABELS[stage] || stage,
+        count,
+      }))
+    : []
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-4xl font-semibold text-ink mb-2">
+          <h1 className="text-3xl font-semibold text-ink mb-1">
             {getGreeting()}, {session?.user?.firstName}!
           </h1>
-          <p className="text-ink-muted">Aqui esta o resumo da sua actividade</p>
+          <p className="text-ink-muted text-sm">Resumo da sua actividade</p>
         </div>
         <button
           onClick={() => {
@@ -199,35 +158,12 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Processos Activos"
-          value={stats?.activeProcessos ?? 0}
-          icon={Scale}
-          iconColor=""
-          loading={loading}
-        />
-        <StatCard
-          title="Prazos Urgentes"
-          value={stats?.upcomingPrazos ?? 0}
-          icon={Clock}
-          iconColor=""
-          loading={loading}
-        />
-        <StatCard
-          title="Clientes"
-          value={stats?.activeClientes ?? 0}
-          icon={Users}
-          iconColor=""
-          loading={loading}
-        />
-        <StatCard
-          title="Consultas IA Restantes"
-          value={stats?.aiQueriesRemaining ?? 50}
-          icon={Bot}
-          iconColor=""
-          loading={loading}
-        />
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Processos Activos" value={stats?.activeProcessos ?? 0} icon={Scale} loading={loading} />
+        <StatCard title="Prazos Urgentes" value={stats?.upcomingPrazos ?? 0} icon={Clock} loading={loading} />
+        <StatCard title="Clientes" value={stats?.activeClientes ?? 0} icon={Users} loading={loading} />
+        <StatCard title="Horas Registadas" value={kpis?.totalTimeHours ?? 0} icon={TrendingUp} loading={kpisLoading} />
       </div>
 
       {/* Quick Actions */}
@@ -237,43 +173,217 @@ export default function DashboardPage() {
           { label: 'Novo Cliente', href: '/clientes/novo', icon: Users },
           { label: 'Novo Prazo', href: '/prazos/novo', icon: Clock },
           { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
-        ].map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="flex items-center gap-3 px-4 py-3 bg-surface-raised border border-border rounded-lg hover:border-ink/20 transition-colors group"
-          >
+        ].map((a) => (
+          <Link key={a.href} href={a.href} className="flex items-center gap-3 px-4 py-3 bg-surface-raised border border-border rounded-lg hover:border-ink/20 transition-colors group">
             <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
-              <action.icon className="w-4 h-4 text-ink-muted group-hover:text-ink transition-colors" />
+              <a.icon className="w-4 h-4 text-ink-muted group-hover:text-ink transition-colors" />
             </div>
-            <span className="text-sm font-medium text-ink">{action.label}</span>
+            <span className="text-sm font-medium text-ink">{a.label}</span>
           </Link>
         ))}
       </div>
 
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProximosPrazosSection />
+        {/* Processos by Type (Pie) */}
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <h2 className="text-sm font-semibold text-ink mb-4">Processos por Tipo</h2>
+          {typeChartData.length > 0 ? (
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={typeChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                  >
+                    {typeChartData.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-ink-muted text-sm">Sem dados</div>
+          )}
+        </div>
 
-        <div>
-          <h2 className="font-display text-[20px] font-medium text-ink mb-4">
-            Accoes Rapidas
-          </h2>
-          <div className="bg-surface-raised border border-border p-4 space-y-2">
-            <Link href="/documentos" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
-              <Plus className="w-4 h-4" /> Enviar Documento
-            </Link>
-            <Link href="/timesheets" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
-              <Plus className="w-4 h-4" /> Registar Tempo
-            </Link>
-            <Link href="/despesas" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
-              <Plus className="w-4 h-4" /> Registar Despesa
-            </Link>
-            <Link href="/agenda/novo" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
-              <Plus className="w-4 h-4" /> Agendar Evento
-            </Link>
-          </div>
+        {/* Revenue by Month (Bar) */}
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <h2 className="text-sm font-semibold text-ink mb-4">Receita Mensal (AKZ)</h2>
+          {revenueChartData.some(r => r.valor > 0) ? (
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueChartData}>
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v) => [`${Number(v).toLocaleString()} Kz`, 'Receita']} />
+                  <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-ink-muted text-sm">Sem dados de receita</div>
+          )}
         </div>
       </div>
+
+      {/* Pipeline + Taskscore + Prazos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Pipeline Overview */}
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <h2 className="text-sm font-semibold text-ink mb-4">Pipeline</h2>
+          <div className="space-y-2">
+            {lifecycleData.map((stage) => {
+              const maxCount = Math.max(...lifecycleData.map(s => s.count), 1)
+              return (
+                <div key={stage.name} className="flex items-center gap-3">
+                  <span className="text-xs text-ink-muted w-24 truncate">{stage.name}</span>
+                  <div className="flex-1 h-5 bg-surface rounded overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500/20 rounded flex items-center px-2"
+                      style={{ width: `${Math.max((stage.count / maxCount) * 100, 8)}%` }}
+                    >
+                      <span className="text-[10px] font-mono text-ink-muted">{stage.count}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Taskscore */}
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            <h2 className="text-sm font-semibold text-ink">Taskscore</h2>
+          </div>
+          {myScore ? (
+            <div className="text-center mb-4">
+              <p className="text-4xl font-bold text-ink">{myScore.score}</p>
+              <p className="text-xs text-ink-muted mt-1">pontos este mes</p>
+            </div>
+          ) : (
+            <div className="text-center mb-4">
+              <p className="text-4xl font-bold text-ink-muted">0</p>
+              <p className="text-xs text-ink-muted mt-1">sem actividade</p>
+            </div>
+          )}
+          {taskscore && taskscore.length > 0 && (
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-[10px] text-ink-muted uppercase tracking-wide">Ranking</p>
+              {taskscore.slice(0, 5).map((user, i) => (
+                <div key={user.userId} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
+                      i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-surface text-ink-muted',
+                    )}>
+                      {i + 1}
+                    </span>
+                    <span className="text-ink truncate max-w-[120px]">{user.userName}</span>
+                  </div>
+                  <span className="font-mono text-ink-muted text-xs">{user.score} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Proximos Prazos */}
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-4 h-4 text-ink-muted" />
+            <h2 className="text-sm font-semibold text-ink">Proximos Prazos</h2>
+          </div>
+          {prazos.length === 0 ? (
+            <div className="text-center py-6 text-ink-muted text-sm">Sem prazos pendentes</div>
+          ) : (
+            <div className="space-y-2">
+              {prazos.slice(0, 5).map((prazo) => {
+                const isPast = new Date(prazo.dueDate) < new Date()
+                return (
+                  <Link
+                    key={prazo.id}
+                    href={`/prazos/${prazo.id}`}
+                    className="block p-2 rounded hover:bg-surface transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-ink truncate">{prazo.title}</p>
+                        <p className="text-[10px] font-mono text-ink-muted">{prazo.processo.processoNumber}</p>
+                      </div>
+                      <span className={cn('text-xs font-medium', isPast ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')}>
+                        {new Date(prazo.dueDate).toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+              <Link href="/prazos" className="block text-center text-xs text-ink-muted hover:text-ink pt-2">
+                Ver todos →
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Processos + Prazos Status */}
+      {kpis && kpis.topProcessos.length > 0 && (
+        <div className="bg-surface-raised rounded-lg border border-border p-5">
+          <h2 className="text-sm font-semibold text-ink mb-4">Top Processos por Valor</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-ink-muted uppercase border-b border-border">
+                  <th className="text-left py-2 pr-4">Processo</th>
+                  <th className="text-right py-2 px-4">Horas</th>
+                  <th className="text-right py-2 pl-4">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kpis.topProcessos.map((p) => (
+                  <tr key={p.id} className="border-b border-border/50">
+                    <td className="py-2 pr-4">
+                      <Link href={`/processos/${p.id}`} className="text-ink hover:underline truncate block max-w-[250px]">
+                        {p.title}
+                      </Link>
+                    </td>
+                    <td className="text-right py-2 px-4 font-mono text-ink-muted">{p.horas}h</td>
+                    <td className="text-right py-2 pl-4 font-mono text-ink">{formatAKZ(p.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Prazos Status Summary */}
+      {kpis && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{kpis.prazosByStatus.pendente}</p>
+            <p className="text-xs text-ink-muted mt-1">Pendentes</p>
+          </div>
+          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{kpis.prazosByStatus.cumprido}</p>
+            <p className="text-xs text-ink-muted mt-1">Cumpridos</p>
+          </div>
+          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{kpis.prazosByStatus.expirado}</p>
+            <p className="text-xs text-ink-muted mt-1">Expirados</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

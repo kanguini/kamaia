@@ -15,12 +15,33 @@ export class StatsController {
     return { data: stats };
   }
 
+  @Get('kpis')
+  async getKPIs(@GabineteId() gabineteId: string) {
+    const kpis = await this.statsService.getKPIs(gabineteId);
+    return { data: kpis };
+  }
+
+  @Get('taskscore')
+  async getTaskscore(
+    @GabineteId() gabineteId: string,
+    @Query('period') period?: string,
+  ) {
+    const scores = await this.statsService.getTaskscore(
+      gabineteId,
+      (period as 'week' | 'month') || 'month',
+    );
+    return { data: scores };
+  }
+
   @Get('rentabilidade')
   async getRentabilidade(
     @GabineteId() gabineteId: string,
     @Query('processoId') processoId?: string,
   ) {
-    const result = await this.statsService.getRentabilidade(gabineteId, processoId);
+    const result = await this.statsService.getRentabilidade(
+      gabineteId,
+      processoId,
+    );
     return { data: result };
   }
 }
