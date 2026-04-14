@@ -405,7 +405,7 @@ function IAAssistenteContent() {
             <div className="bg-warning-bg border-b border-warning px-4 py-2 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-warning-text flex-shrink-0 mt-0.5" />
               <p className="text-xs text-warning-text">
-                Modo demonstracao — respostas simuladas. Nao use para decisoes legais.
+                Assistente IA — respostas geradas por inteligencia artificial. Nao substitui aconselhamento juridico formal.
               </p>
             </div>
 

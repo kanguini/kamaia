@@ -16,6 +16,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@kamaia/shared-types": "*",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^3.2.0",

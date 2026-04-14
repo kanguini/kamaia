@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IaRepository, ListConversationsParams } from './ia.repository';
 import { AuditService } from '../audit/audit.service';
 import {
@@ -12,13 +13,59 @@ import {
   SubscriptionPlan,
 } from '@kamaia/shared-types';
 import { CreateConversationDto } from './ia.dto';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const SYSTEM_PROMPT = `Tu es o Kamaia IA, um assistente juridico especializado em direito angolano.
+
+REGRAS:
+- Responde SEMPRE em portugues de Angola
+- Quando citas legislacao, inclui a referencia completa (diploma, artigo, numero)
+- Se nao tens certeza, diz claramente que e uma orientacao geral e recomenda consulta com advogado
+- Nunca inventes artigos ou leis que nao existas — se nao sabes, diz "nao tenho informacao precisa sobre este artigo"
+- Sê conciso mas completo
+- Formata com markdown (bold, listas numeradas, italico)
+- No final, adiciona sempre: "_Aviso: Esta orientacao e informativa e nao substitui aconselhamento juridico formal._"
+
+LEGISLACAO ANGOLANA QUE CONHECES:
+- Constituicao da Republica de Angola (2010)
+- Codigo Civil (Decreto n.o 47 344)
+- Codigo de Processo Civil angolano
+- Lei Geral do Trabalho (Lei n.o 7/15)
+- Lei das Sociedades Comerciais (Lei n.o 1/04)
+- Codigo Penal angolano
+- Codigo de Processo Penal
+- Lei do Notariado e Registo
+- Lei das Execucoes Fiscais
+- Legislacao da ARSEG (seguros)
+- Lei do Arrendamento Urbano
+- Estatuto da Ordem dos Advogados de Angola
+
+PRAZOS PROCESSUAIS COMUNS:
+- Contestacao em accao ordinaria civel: 20 dias uteis (Art. 486.o CPC)
+- Recurso de sentenca civel: 30 dias (Art. 685.o CPC)
+- Accao de reintegracao laboral: 90 dias (Art. 198.o LGT)
+- Recurso de decisao arbitral: 30 dias (Lei de Arbitragem)`;
 
 @Injectable()
 export class IaService {
+  private readonly logger = new Logger(IaService.name);
+  private genAI: GoogleGenerativeAI | null = null;
+  private readonly isGeminiEnabled: boolean;
+
   constructor(
     private iaRepository: IaRepository,
     private auditService: AuditService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    this.isGeminiEnabled = !!apiKey;
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      this.logger.log('Gemini AI enabled (gemini-2.0-flash)');
+    } else {
+      this.logger.warn('Gemini AI not configured — using mock responses');
+    }
+  }
 
   async findConversations(
     gabineteId: string,
@@ -166,8 +213,9 @@ export class IaService {
         tokenCount: Math.ceil(content.length / 4),
       });
 
-      // 4. Generate mock response
-      const assistantContent = this.generateMockResponse(content, conversation);
+      // 4. Generate AI response (Gemini or mock fallback)
+      const previousMessages = conversation.messages || [];
+      const assistantContent = await this.generateResponse(content, previousMessages);
 
       // 5. Create assistant message
       const assistantMessage = await this.iaRepository.createMessage(
@@ -176,7 +224,7 @@ export class IaService {
           role: 'assistant',
           content: assistantContent,
           tokenCount: Math.ceil(assistantContent.length / 4),
-          model: 'mock-v1',
+          model: this.isGeminiEnabled ? 'gemini-2.0-flash' : 'mock-v1',
         },
       );
 
@@ -237,100 +285,47 @@ export class IaService {
     }
   }
 
-  private generateMockResponse(content: string, _conversation: unknown): string {
-    const lowerContent = content.toLowerCase();
+  private async generateResponse(
+    userContent: string,
+    previousMessages: Array<{ role: string; content: string }>,
+  ): Promise<string> {
+    // Try Gemini first
+    if (this.isGeminiEnabled && this.genAI) {
+      try {
+        const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
-    if (
-      lowerContent.includes('prazo') ||
-      lowerContent.includes('contestar') ||
-      lowerContent.includes('recurso')
-    ) {
-      return (
-        `Com base na legislacao angolana, posso indicar os seguintes prazos processuais relevantes:\n\n` +
-        `1. **Contestacao em accao ordinaria civel** — 20 dias uteis a contar da citacao (Art. 486.o CPC)\n` +
-        `2. **Recurso de sentenca civel** — 30 dias a contar da notificacao (Art. 685.o CPC)\n` +
-        `3. **Accao de reintegracao laboral** — 90 dias apos despedimento (Art. 198.o LGT)\n\n` +
-        `Para um calculo preciso, recomendo indicar a data do evento processual em causa.\n\n` +
-        `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
-      );
+        // Build chat history from previous messages
+        const history = previousMessages.map((msg) => ({
+          role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
+          parts: [{ text: msg.content }],
+        }));
+
+        const chat = model.startChat({
+          history,
+          generationConfig: {
+            maxOutputTokens: 2000,
+            temperature: 0.3,
+          },
+          systemInstruction: SYSTEM_PROMPT,
+        });
+
+        const result = await chat.sendMessage(userContent);
+        const response = result.response.text();
+
+        if (response && response.length > 0) {
+          return response;
+        }
+      } catch (error) {
+        this.logger.error(`Gemini API error: ${(error as Error).message}`);
+        // Fall through to mock
+      }
     }
 
-    if (
-      lowerContent.includes('despedimento') ||
-      lowerContent.includes('trabalho') ||
-      lowerContent.includes('laboral')
-    ) {
-      return (
-        `De acordo com a Lei Geral do Trabalho (Lei n.o 7/15), o despedimento deve cumprir requisitos formais rigorosos:\n\n` +
-        `1. **Processo disciplinar previo** — obrigatorio para despedimento com justa causa\n` +
-        `2. **Comunicacao escrita** — fundamentacao detalhada dos motivos\n` +
-        `3. **Direito de defesa** — o trabalhador deve ser ouvido antes da decisao\n` +
-        `4. **Indemnizacao** — se o despedimento for declarado ilicito, o trabalhador tem direito a reintegracao ou indemnizacao\n\n` +
-        `O prazo para impugnar o despedimento e de 90 dias (Art. 198.o LGT).\n\n` +
-        `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
-      );
-    }
-
-    if (
-      lowerContent.includes('contrato') ||
-      lowerContent.includes('clausula') ||
-      lowerContent.includes('acordo')
-    ) {
-      return (
-        `Na analise de contratos ao abrigo do direito angolano, e importante considerar:\n\n` +
-        `1. **Capacidade das partes** — Art. 67.o e seguintes do Codigo Civil\n` +
-        `2. **Objecto licito e determinado** — requisito de validade essencial\n` +
-        `3. **Forma legal** — alguns contratos exigem escritura publica ou documento autenticado\n` +
-        `4. **Clausulas abusivas** — verificacao de equilibrio contratual\n\n` +
-        `Recomendo a analise detalhada do contrato especifico para identificar eventuais riscos.\n\n` +
-        `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
-      );
-    }
-
-    if (
-      lowerContent.includes('artigo') ||
-      lowerContent.includes('lei') ||
-      lowerContent.includes('codigo') ||
-      lowerContent.includes('legislacao')
-    ) {
-      return (
-        `A legislacao angolana relevante para esta questao inclui:\n\n` +
-        `- **Constituicao da Republica de Angola** (2010) — direitos fundamentais\n` +
-        `- **Codigo Civil** (Decreto n.o 47 344, actualizado) — obrigacoes e contratos\n` +
-        `- **Codigo de Processo Civil** — procedimentos judiciais civeis\n` +
-        `- **Lei Geral do Trabalho** (Lei n.o 7/15) — relacoes laborais\n` +
-        `- **Lei das Sociedades Comerciais** (Lei n.o 1/04) — direito societario\n\n` +
-        `Para uma resposta mais precisa, por favor indique o diploma ou artigo especifico que pretende consultar.\n\n` +
-        `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
-      );
-    }
-
-    if (
-      lowerContent.includes('sociedade') ||
-      lowerContent.includes('empresa') ||
-      lowerContent.includes('comercial')
-    ) {
-      return (
-        `No ambito do direito comercial angolano, a Lei das Sociedades Comerciais (Lei n.o 1/04) regula:\n\n` +
-        `1. **Tipos societarios** — SQ (Sociedade por Quotas), SA (Sociedade Anonima), SNC, etc.\n` +
-        `2. **Constituicao** — requisitos de escritura publica e registo comercial\n` +
-        `3. **Capital social** — minimo legal conforme tipo de sociedade\n` +
-        `4. **Orgaos sociais** — gerencia (SQ) ou administracao (SA)\n\n` +
-        `Indique o tipo de sociedade e a questao especifica para uma orientacao mais detalhada.\n\n` +
-        `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
-      );
-    }
-
-    // Default response
+    // Fallback mock response
     return (
-      `Obrigado pela sua questao. Com base no enquadramento juridico angolano, posso indicar que:\n\n` +
-      `Esta materia e regulada por legislacao especifica que deve ser analisada em detalhe, considerando:\n\n` +
-      `- O contexto factual concreto do caso\n` +
-      `- A jurisdicao e tribunal competente\n` +
-      `- Os prazos processuais aplicaveis\n` +
-      `- A jurisprudencia relevante dos tribunais angolanos\n\n` +
-      `Recomendo formular a questao com mais detalhe para que eu possa fornecer uma orientacao mais precisa.\n\n` +
-      `_Nota: Esta e uma resposta simulada. A integracao com IA real sera activada em breve._`
+      `Obrigado pela sua questao sobre direito angolano.\n\n` +
+      `Para uma resposta precisa, recomendo consultar a legislacao relevante ou contactar um advogado especializado.\n\n` +
+      `_Nota: O assistente IA esta em modo de demonstracao. Configure a GEMINI_API_KEY para activar respostas reais._`
     );
   }
 }
