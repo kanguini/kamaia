@@ -16,7 +16,7 @@ async function main() {
       address: 'Rua Major Kanhangulo, 45, Luanda',
       phone: '+244 923 456 789',
       email: 'geral@drcarlos.ao',
-      plan: 'FREE',
+      plan: 'PRO_BUSINESS',
       isActive: true,
     },
   });

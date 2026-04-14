@@ -26,7 +26,7 @@ model Gabinete {
   phone     String?  @db.VarChar(30)
   email     String?  @db.VarChar(200)
   logoUrl   String?  @map("logo_url") @db.VarChar(500)
-  plan      String   @default("FREE") @db.VarChar(20)
+  plan      String   @default("PRO_BUSINESS") @db.VarChar(20)
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
