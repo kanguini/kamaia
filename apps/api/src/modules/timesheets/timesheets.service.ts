@@ -237,4 +237,133 @@ export class TimesheetsService {
       return err('Failed to fetch summary', 'SUMMARY_FETCH_FAILED');
     }
   }
+
+  async getBillingSummary(
+    gabineteId: string,
+    userId: string,
+    userRole: string,
+    month?: string,
+  ): Promise<Result<any>> {
+    try {
+      // Default to current month
+      const now = new Date();
+      let dateFrom: Date;
+      let dateTo: Date;
+
+      if (month) {
+        const [year, mon] = month.split('-').map(Number);
+        dateFrom = new Date(year, mon - 1, 1);
+        dateTo = new Date(year, mon, 0, 23, 59, 59);
+      } else {
+        dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+        dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      }
+
+      const where: any = {
+        gabineteId,
+        deletedAt: null,
+        date: { gte: dateFrom, lte: dateTo },
+      };
+
+      // Role-based filtering
+      if (userRole === KamaiaRole.ADVOGADO_MEMBRO || userRole === KamaiaRole.ESTAGIARIO) {
+        where.userId = userId;
+      }
+
+      const entries = await this.prisma.timeEntry.findMany({
+        where,
+        include: {
+          processo: {
+            select: {
+              id: true,
+              processoNumber: true,
+              title: true,
+              feeType: true,
+              feeAmount: true,
+            },
+          },
+          user: {
+            select: { firstName: true, lastName: true },
+          },
+        },
+        orderBy: { date: 'desc' },
+      });
+
+      // Aggregate by processo
+      const byProcesso = new Map<string, {
+        processoId: string;
+        processoNumber: string;
+        title: string;
+        feeType: string | null;
+        feeAmount: number | null;
+        totalMinutes: number;
+        billableMinutes: number;
+        entries: number;
+      }>();
+
+      let totalMinutes = 0;
+      let totalBillableMinutes = 0;
+      let totalValue = 0;
+
+      for (const entry of entries) {
+        totalMinutes += entry.durationMinutes;
+        if (entry.billable) totalBillableMinutes += entry.durationMinutes;
+
+        const pid = entry.processoId;
+        if (!byProcesso.has(pid)) {
+          byProcesso.set(pid, {
+            processoId: pid,
+            processoNumber: entry.processo.processoNumber,
+            title: entry.processo.title,
+            feeType: entry.processo.feeType,
+            feeAmount: entry.processo.feeAmount,
+            totalMinutes: 0,
+            billableMinutes: 0,
+            entries: 0,
+          });
+        }
+        const p = byProcesso.get(pid)!;
+        p.totalMinutes += entry.durationMinutes;
+        if (entry.billable) p.billableMinutes += entry.durationMinutes;
+        p.entries++;
+      }
+
+      // Calculate values
+      const processos = [...byProcesso.values()].map((p) => {
+        const rate = p.feeAmount || 0;
+        const valor =
+          p.feeType === 'HORA'
+            ? Math.round((p.billableMinutes / 60) * rate)
+            : p.feeType === 'FIXO'
+              ? rate
+              : 0;
+        totalValue += valor;
+
+        return {
+          ...p,
+          totalHours: Math.round((p.totalMinutes / 60) * 10) / 10,
+          billableHours: Math.round((p.billableMinutes / 60) * 10) / 10,
+          valor,
+        };
+      });
+
+      processos.sort((a, b) => b.valor - a.valor);
+
+      return ok({
+        period: {
+          from: dateFrom.toISOString(),
+          to: dateTo.toISOString(),
+        },
+        totals: {
+          totalHours: Math.round((totalMinutes / 60) * 10) / 10,
+          billableHours: Math.round((totalBillableMinutes / 60) * 10) / 10,
+          totalValue,
+          totalEntries: entries.length,
+        },
+        byProcesso: processos,
+      });
+    } catch (error) {
+      return err('Failed to fetch billing summary', 'BILLING_FETCH_FAILED');
+    }
+  }
 }

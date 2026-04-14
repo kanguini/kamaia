@@ -86,6 +86,29 @@ export class TimesheetsController {
     return { data: result.data };
   }
 
+  @Get('billing')
+  async getBillingSummary(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Query('month') month?: string,
+  ) {
+    const result = await this.timesheetsService.getBillingSummary(
+      gabineteId,
+      user.sub,
+      user.role,
+      month,
+    );
+
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: result.code || 'BILLING_FETCH_FAILED' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { data: result.data };
+  }
+
   @Post()
   async create(
     @GabineteId() gabineteId: string,

@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ClientesService } from './clientes.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -32,7 +33,10 @@ import {
 @Controller('clientes')
 @UseGuards(JwtAuthGuard, GabineteGuard)
 export class ClientesController {
-  constructor(private clientesService: ClientesService) {}
+  constructor(
+    private clientesService: ClientesService,
+    private prisma: PrismaService,
+  ) {}
 
   @Get()
   async findAll(
@@ -157,5 +161,54 @@ export class ClientesController {
     }
 
     return { data: { success: true } };
+  }
+
+  // ── Interactions (CRM Flow) ────────────────────────────
+
+  @Get(':id/interactions')
+  async getInteractions(
+    @GabineteId() gabineteId: string,
+    @Param('id') clienteId: string,
+  ) {
+    const interactions = await this.prisma.clienteInteraction.findMany({
+      where: { gabineteId, clienteId, deletedAt: null },
+      orderBy: { date: 'desc' },
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return { data: interactions };
+  }
+
+  @Post(':id/interactions')
+  async addInteraction(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') clienteId: string,
+    @Body() body: { type: string; notes?: string; date?: string },
+  ) {
+    if (!body.type) {
+      throw new HttpException(
+        { error: 'Tipo de interaccao obrigatorio', code: 'VALIDATION_ERROR' },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const interaction = await this.prisma.clienteInteraction.create({
+      data: {
+        gabineteId,
+        clienteId,
+        userId: user.sub,
+        type: body.type,
+        notes: body.notes,
+        date: body.date ? new Date(body.date) : new Date(),
+      },
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return { data: interaction };
   }
 }
