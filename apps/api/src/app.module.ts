@@ -19,6 +19,7 @@ import { TimesheetsModule } from './modules/timesheets/timesheets.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthModule } from './modules/health/health.module';
+import { RagModule } from './modules/rag/rag.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { HealthModule } from './modules/health/health.module';
     ExpensesModule,
     NotificationsModule,
     HealthModule,
+    RagModule,
   ],
   providers: [
     {

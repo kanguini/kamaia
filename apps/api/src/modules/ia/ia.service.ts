@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IaRepository, ListConversationsParams } from './ia.repository';
 import { AuditService } from '../audit/audit.service';
+import { RagService } from '../rag/rag.service';
 import {
   Result,
   ok,
@@ -56,6 +57,7 @@ export class IaService {
     private iaRepository: IaRepository,
     private auditService: AuditService,
     private configService: ConfigService,
+    private ragService: RagService,
   ) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.isGeminiEnabled = !!apiKey;
@@ -292,9 +294,25 @@ export class IaService {
     // Try Gemini first
     if (this.isGeminiEnabled && this.genAI) {
       try {
+        // RAG: retrieve relevant legislation context
+        let enrichedPrompt = SYSTEM_PROMPT;
+        try {
+          const ragResult = await this.ragService.retrieveContext(userContent, 5);
+          if (ragResult.success && ragResult.data.length > 0) {
+            const ragContext = this.ragService.formatContextForPrompt(ragResult.data);
+            enrichedPrompt = SYSTEM_PROMPT + ragContext;
+            this.logger.debug(
+              `RAG injected ${ragResult.data.length} chunks into prompt`,
+            );
+          }
+        } catch (ragError) {
+          this.logger.warn(`RAG retrieval skipped: ${(ragError as Error).message}`);
+          // Continue without RAG — graceful degradation
+        }
+
         const model = this.genAI.getGenerativeModel({
           model: 'gemini-2.0-flash-lite',
-          systemInstruction: SYSTEM_PROMPT,
+          systemInstruction: enrichedPrompt,
           generationConfig: {
             maxOutputTokens: 2000,
             temperature: 0.3,

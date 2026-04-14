@@ -115,6 +115,18 @@ export enum ExpenseCategory {
   OUTRO = 'OUTRO',
 }
 
+export enum LegislationCategory {
+  CONSTITUCIONAL = 'CONSTITUCIONAL',
+  CIVIL = 'CIVIL',
+  LABORAL = 'LABORAL',
+  COMERCIAL = 'COMERCIAL',
+  PENAL = 'PENAL',
+  PROCESSUAL = 'PROCESSUAL',
+  ADMINISTRATIVO = 'ADMINISTRATIVO',
+  SEGUROS = 'SEGUROS',
+  OUTRO = 'OUTRO',
+}
+
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
   SMS = 'SMS',
