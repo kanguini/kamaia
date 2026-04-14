@@ -30,6 +30,7 @@ const navSections = [
   ]},
   { title: 'FERRAMENTAS', items: [
     { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
+    { label: 'Equipa', href: '/equipa', icon: Users },
     { label: 'Configuracoes', href: '/configuracoes', icon: Settings },
   ]},
 ]

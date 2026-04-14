@@ -23,6 +23,7 @@ import { RagModule } from './modules/rag/rag.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TeamModule } from './modules/team/team.module';
 import { PortalModule } from './modules/portal/portal.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { PortalModule } from './modules/portal/portal.module';
     ReportsModule,
     TeamModule,
     PortalModule,
+    BillingModule,
   ],
   providers: [
     {

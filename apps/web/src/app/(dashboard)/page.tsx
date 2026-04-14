@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle, FileDown } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
 import { PrazoStatus } from '@kamaia/shared-types'
@@ -180,11 +180,23 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <div>
-        <h1 className="font-display text-4xl font-semibold text-ink mb-2">
-          {getGreeting()}, {session?.user?.firstName}!
-        </h1>
-        <p className="text-ink-muted">Aqui esta o resumo da sua actividade</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-4xl font-semibold text-ink mb-2">
+            {getGreeting()}, {session?.user?.firstName}!
+          </h1>
+          <p className="text-ink-muted">Aqui esta o resumo da sua actividade</p>
+        </div>
+        <button
+          onClick={() => {
+            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reports/dashboard`
+            window.open(url, '_blank')
+          }}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:text-ink border border-border rounded-lg hover:bg-surface-raised transition-colors"
+        >
+          <FileDown className="w-4 h-4" />
+          Exportar
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
