@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useTheme } from '@/hooks/use-theme'
+import { ToastProvider } from '@/components/ui/toast'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -161,6 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session } = useSession()
 
   return (
+    <ToastProvider>
     <div className="h-screen flex overflow-hidden bg-surface">
       <a href="#main-content" className="skip-link">Saltar para o conteudo principal</a>
 
@@ -208,5 +210,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
     </div>
+    </ToastProvider>
   )
 }

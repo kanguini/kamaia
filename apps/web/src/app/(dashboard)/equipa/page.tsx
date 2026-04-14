@@ -7,6 +7,7 @@ import {
   Key, X, Check,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { Button, Modal, EmptyState, LoadingSkeleton, FormField } from '@/components/ui'
 import { cn } from '@/lib/utils'
@@ -46,6 +47,7 @@ export default function EquipaPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const [inviting, setInviting] = useState(false)
+  const toast = useToast()
 
   const [form, setForm] = useState({
     email: '',
@@ -84,19 +86,28 @@ export default function EquipaPage() {
       setTempPassword(result.tempPassword)
       setShowInvite(false)
       setForm({ email: '', firstName: '', lastName: '', role: KamaiaRole.ADVOGADO_MEMBRO, oaaNumber: '', specialty: '' })
+      toast.success('Membro convidado com sucesso')
       refetch()
+    } else {
+      toast.error('Erro ao convidar membro')
     }
     setInviting(false)
   }
 
   const handleResetPassword = async (memberId: string) => {
     const result = await callApi(`/team/members/${memberId}/reset-password`)
-    if (result) setTempPassword(result.tempPassword)
+    if (result) {
+      setTempPassword(result.tempPassword)
+      toast.success('Password resetada')
+    } else {
+      toast.error('Erro ao resetar password')
+    }
     setMenuOpen(null)
   }
 
   const handleToggleActive = async (memberId: string, isActive: boolean) => {
     await callApi(`/team/members/${memberId}`, 'PUT', { isActive: !isActive })
+    toast.success(isActive ? 'Membro desactivado' : 'Membro activado')
     refetch()
     setMenuOpen(null)
   }

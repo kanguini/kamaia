@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ProcessoType, ClienteType, PaginatedResponse } from '@kamaia/shared-types'
 
@@ -79,7 +80,7 @@ export default function NovoProcessoPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const { data: clientesData } = useApi<PaginatedResponse<Cliente>>('/clientes?limit=100')
-  const { mutate, loading, error } = useMutation<CreateProcessoData, { id: string }>(
+  const { mutate, loading, error: mutationError } = useMutation<CreateProcessoData, { id: string }>(
     '/processos',
     'POST',
   )
@@ -96,10 +97,15 @@ export default function NovoProcessoPage() {
   const formData = watch()
   const clientes = clientesData?.data || []
 
+  const toast = useToast()
+
   const onSubmit = async (data: CreateProcessoData) => {
     const result = await mutate(data)
     if (result?.id) {
+      toast.success('Processo criado com sucesso')
       router.push(`/processos/${result.id}`)
+    } else {
+      toast.error(mutationError || 'Erro ao criar processo')
     }
   }
 
@@ -127,9 +133,9 @@ export default function NovoProcessoPage() {
       <div className="bg-surface-raised p-6">
         <StepIndicator currentStep={step} totalSteps={5} />
 
-        {error && (
+        {mutationError && (
           <div className="bg-danger/10 border border-danger/20 text-danger  p-3 mb-6 text-sm">
-            {error}
+            {mutationError}
           </div>
         )}
 

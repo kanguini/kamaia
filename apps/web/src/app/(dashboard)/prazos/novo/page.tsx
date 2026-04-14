@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2, BookOpen } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { PrazoType, PaginatedResponse } from '@kamaia/shared-types'
 
@@ -91,10 +92,15 @@ function PrazosNovoContent() {
     }
   }, [formData.type, formData.title, setValue])
 
+  const toast = useToast()
+
   const onSubmit = async (data: CreatePrazoData) => {
     const result = await mutate(data)
     if (result?.id) {
+      toast.success('Prazo criado com sucesso')
       router.push('/prazos')
+    } else {
+      toast.error('Erro ao criar prazo')
     }
   }
 

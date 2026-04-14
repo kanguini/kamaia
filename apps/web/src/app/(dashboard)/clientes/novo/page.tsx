@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ClienteType } from '@kamaia/shared-types'
 
@@ -43,10 +44,15 @@ export default function NovoClientePage() {
 
   watch('type')
 
+  const toast = useToast()
+
   const onSubmit = async (data: CreateClienteData) => {
     const result = await mutate(data)
     if (result?.id) {
+      toast.success('Cliente criado com sucesso')
       router.push(`/clientes/${result.id}`)
+    } else {
+      toast.error('Erro ao criar cliente')
     }
   }
 
