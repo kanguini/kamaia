@@ -146,4 +146,21 @@ export class RagRepository {
   async countChunks(): Promise<number> {
     return this.prisma.legislationChunk.count();
   }
+
+  async findChunksWithoutEmbeddings(): Promise<
+    Array<{ id: string; title: string; content: string }>
+  > {
+    return this.prisma.$queryRawUnsafe(
+      `SELECT id, title, content FROM legislation_chunks WHERE embedding IS NULL ORDER BY created_at`,
+    );
+  }
+
+  async updateChunkEmbedding(chunkId: string, embedding: number[]) {
+    const vectorStr = `[${embedding.join(',')}]`;
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE legislation_chunks SET embedding = $1::vector WHERE id = $2::uuid`,
+      vectorStr,
+      chunkId,
+    );
+  }
 }

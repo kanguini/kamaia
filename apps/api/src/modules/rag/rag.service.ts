@@ -131,4 +131,65 @@ export class RagService {
       return err('Failed to get RAG stats', 'RAG_STATS_FAILED');
     }
   }
+
+  async backfillEmbeddings(): Promise<
+    Result<{ processed: number; failed: number; skipped: number }>
+  > {
+    if (!this.embeddingService.enabled) {
+      return err(
+        'Embedding service not configured — set GEMINI_API_KEY',
+        'EMBEDDINGS_DISABLED',
+      );
+    }
+
+    try {
+      const chunks =
+        await this.ragRepository.findChunksWithoutEmbeddings();
+
+      if (chunks.length === 0) {
+        return ok({ processed: 0, failed: 0, skipped: 0 });
+      }
+
+      this.logger.log(`Backfilling embeddings for ${chunks.length} chunks...`);
+
+      let processed = 0;
+      let failed = 0;
+
+      // Process in batches of 5 to respect rate limits
+      for (let i = 0; i < chunks.length; i += 5) {
+        const batch = chunks.slice(i, i + 5);
+
+        for (const chunk of batch) {
+          try {
+            const text = `${chunk.title}\n${chunk.content}`;
+            const embedding =
+              await this.embeddingService.generateEmbedding(text);
+            await this.ragRepository.updateChunkEmbedding(chunk.id, embedding);
+            processed++;
+          } catch (error) {
+            this.logger.warn(
+              `Failed to embed chunk ${chunk.id}: ${(error as Error).message}`,
+            );
+            failed++;
+          }
+        }
+
+        // Rate limit pause between batches
+        if (i + 5 < chunks.length) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+
+      this.logger.log(
+        `Backfill complete: ${processed} processed, ${failed} failed`,
+      );
+
+      return ok({ processed, failed, skipped: 0 });
+    } catch (error) {
+      return err(
+        `Backfill failed: ${(error as Error).message}`,
+        'BACKFILL_FAILED',
+      );
+    }
+  }
 }

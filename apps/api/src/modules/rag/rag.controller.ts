@@ -135,6 +135,28 @@ export class RagController {
     return { data: result.data };
   }
 
+  // ── Backfill embeddings ─────────────────────────────────
+  @Post('backfill')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR)
+  async backfillEmbeddings(@GabineteId() _gabineteId: string) {
+    const result = await this.ragService.backfillEmbeddings();
+
+    if (!result.success) {
+      const status =
+        result.code === 'EMBEDDINGS_DISABLED'
+          ? HttpStatus.SERVICE_UNAVAILABLE
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+
+      throw new HttpException(
+        { error: result.error, code: result.code },
+        status,
+      );
+    }
+
+    return { data: result.data };
+  }
+
   // ── Ingest text ────────────────────────────────────────
   @Post('ingest/text')
   @UseGuards(RolesGuard)

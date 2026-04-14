@@ -20,6 +20,8 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthModule } from './modules/health/health.module';
 import { RagModule } from './modules/rag/rag.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { TeamModule } from './modules/team/team.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { RagModule } from './modules/rag/rag.module';
     NotificationsModule,
     HealthModule,
     RagModule,
+    ReportsModule,
+    TeamModule,
   ],
   providers: [
     {
