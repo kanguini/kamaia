@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { FileText, Image, File, Download, Upload, X, Loader2, Search } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
 import { DocumentCategory, PaginatedResponse } from '@kamaia/shared-types'
@@ -357,6 +358,7 @@ function UploadModal({
 
 export default function DocumentosPage() {
   const { data: session } = useSession()
+  const toast = useToast()
   const [showUpload, setShowUpload] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   const [processoFilter, setProcessoFilter] = useState<string>('ALL')
@@ -389,6 +391,7 @@ export default function DocumentosPage() {
   const { data: processos } = useApi<PaginatedResponse<Processo>>('/processos?limit=1000')
 
   const handleUploadSuccess = () => {
+    toast.success('Documento enviado com sucesso')
     refetch()
     refetchStorage()
   }

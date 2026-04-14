@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ProcessoType, ProcessoPriority } from '@kamaia/shared-types'
 
@@ -83,10 +84,15 @@ export default function EditarProcessoPage({ params }: { params: Promise<{ id: s
     }
   }, [processo, reset])
 
+  const toast = useToast()
+
   const onSubmit = async (data: UpdateProcessoData) => {
     const result = await mutate(data)
     if (result !== null) {
+      toast.success('Processo actualizado')
       router.push(`/processos/${id}`)
+    } else {
+      toast.error('Erro ao actualizar processo')
     }
   }
 

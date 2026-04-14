@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Mail, Bell, Smartphone, AlertTriangle } from 'lucide-react'
+import { Mail, Bell, Smartphone, AlertTriangle, Download, Shield, Database } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { usePushNotifications } from '@/hooks/use-push-notifications'
 import { cn } from '@/lib/utils'
-import { Switch } from '@/components/ui'
+import { Switch, Button } from '@/components/ui'
 
 interface NotificationPreferences {
   emailEnabled: boolean
@@ -83,10 +84,14 @@ export default function ConfiguracoesPage() {
   const { status: pushStatus, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications()
 
   const [testResult, setTestResult] = useState<TestResult | null>(null)
+  const toast = useToast()
 
   const handleUpdatePref = async (update: Partial<NotificationPreferences>) => {
     const result = await updatePrefs(update)
-    if (result) refetch()
+    if (result) {
+      toast.success('Preferencia actualizada')
+      refetch()
+    }
   }
 
   const handlePushToggle = async (value: boolean) => {
@@ -258,6 +263,67 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Dados e Seguranca */}
+      <section className="mt-10">
+        <h2 className="font-display text-2xl font-semibold text-ink mb-4">
+          Dados e Seguranca
+        </h2>
+        <div className="space-y-4">
+          <div className="bg-surface border border-border p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
+                <Download className="w-5 h-5 text-ink-muted" />
+              </div>
+              <div>
+                <p className="font-medium text-ink">Exportar Dados</p>
+                <p className="text-sm text-ink-muted">Descarregue todos os dados do gabinete em formato JSON</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+                window.open(`${apiUrl}/backup/export`, '_blank')
+                toast.info('A preparar export...')
+              }}
+            >
+              Exportar
+            </Button>
+          </div>
+
+          <div className="bg-surface border border-border p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
+                <Database className="w-5 h-5 text-ink-muted" />
+              </div>
+              <div>
+                <p className="font-medium text-ink">Integridade dos Dados</p>
+                <p className="text-sm text-ink-muted">Verificacao diaria automatica as 03:00 UTC</p>
+              </div>
+            </div>
+            <span className="text-xs text-ink-muted bg-surface-raised px-3 py-1 rounded">
+              PRO_BUSINESS
+            </span>
+          </div>
+
+          <div className="bg-surface border border-border p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
+                <Shield className="w-5 h-5 text-ink-muted" />
+              </div>
+              <div>
+                <p className="font-medium text-ink">Seguranca</p>
+                <p className="text-sm text-ink-muted">Audit log activo — todas as accoes sao registadas</p>
+              </div>
+            </div>
+            <span className="text-xs text-success bg-success-bg px-3 py-1 rounded font-medium">
+              Activo
+            </span>
           </div>
         </div>
       </section>

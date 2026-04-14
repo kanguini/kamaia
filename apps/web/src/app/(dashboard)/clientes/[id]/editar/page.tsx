@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ClienteType } from '@kamaia/shared-types'
 
@@ -63,10 +64,15 @@ export default function EditarClientePage({ params }: { params: Promise<{ id: st
     }
   }, [cliente, reset])
 
+  const toast = useToast()
+
   const onSubmit = async (data: UpdateClienteData) => {
     const result = await mutate(data)
     if (result !== null) {
+      toast.success('Cliente actualizado')
       router.push(`/clientes/${id}`)
+    } else {
+      toast.error('Erro ao actualizar cliente')
     }
   }
 

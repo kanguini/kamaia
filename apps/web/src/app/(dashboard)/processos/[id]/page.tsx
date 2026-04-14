@@ -23,6 +23,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
   ProcessoType,
@@ -150,11 +151,16 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
   )
   const { mutate: completePrazo } = useMutation('/prazos/ID/complete', 'PATCH')
 
+  const toast = useToast()
+
   const handleDelete = async () => {
     if (!confirm('Tem certeza que deseja eliminar este processo?')) return
     const result = await deleteProcesso()
     if (result !== null) {
+      toast.success('Processo eliminado')
       router.push('/processos')
+    } else {
+      toast.error('Erro ao eliminar processo')
     }
   }
 
@@ -165,7 +171,10 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
     if (currentIndex === -1 || currentIndex >= stages.length - 1) return
 
     const result = await advanceStage({ stage: stages[currentIndex + 1] })
-    if (result) refetch()
+    if (result) {
+      toast.success('Fase avancada')
+      refetch()
+    }
   }
 
   const handleAddNote = async () => {

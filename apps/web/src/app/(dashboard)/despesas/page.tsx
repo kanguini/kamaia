@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Receipt, Plus, X } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
@@ -51,6 +52,7 @@ function formatMoney(centavos: number): string {
 
 export default function DespesasPage() {
   const { data: session } = useSession()
+  const toast = useToast()
   const [showForm, setShowForm] = useState(false)
 
   const [formProcessoId, setFormProcessoId] = useState<string>('')
@@ -112,6 +114,7 @@ export default function DespesasPage() {
     })
 
     if (result) {
+      toast.success('Despesa registada')
       setFormProcessoId('')
       setFormCategory(ExpenseCategory.EMOLUMENTOS)
       setFormDescription('')
@@ -119,6 +122,8 @@ export default function DespesasPage() {
       setFormDate(new Date().toISOString().split('T')[0])
       setShowForm(false)
       refetch()
+    } else {
+      toast.error('Erro ao registar despesa')
     }
   }
 
@@ -126,7 +131,10 @@ export default function DespesasPage() {
     if (!confirm('Tem certeza que deseja eliminar esta despesa?')) return
     const result = await deleteExpenseFn(expId)
     if (result !== null) {
+      toast.success('Despesa eliminada')
       refetch()
+    } else {
+      toast.error('Erro ao eliminar despesa')
     }
   }
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Edit, Trash2, User, Building2, Scale } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { ClienteType, ProcessoType, ProcessoStatus } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
@@ -72,11 +73,16 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const { data: cliente, loading, error } = useApi<Cliente>(`/clientes/${id}`)
   const { mutate: deleteCliente, loading: deleting } = useMutation(`/clientes/${id}`, 'DELETE')
 
+  const toast = useToast()
+
   const handleDelete = async () => {
     if (!confirm('Tem certeza que deseja eliminar este cliente?')) return
     const result = await deleteCliente()
     if (result !== null) {
+      toast.success('Cliente eliminado')
       router.push('/clientes')
+    } else {
+      toast.error('Erro ao eliminar cliente')
     }
   }
 

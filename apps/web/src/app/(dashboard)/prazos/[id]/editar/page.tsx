@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { PrazoType } from '@kamaia/shared-types'
 
@@ -97,10 +98,15 @@ export default function EditarPrazoPage({ params }: { params: Promise<{ id: stri
     }
   }, [prazo, reset])
 
+  const toast = useToast()
+
   const onSubmit = async (data: UpdatePrazoData) => {
     const result = await mutate(data)
     if (result?.id) {
+      toast.success('Prazo actualizado')
       router.push(`/prazos/${id}`)
+    } else {
+      toast.error('Erro ao actualizar prazo')
     }
   }
 

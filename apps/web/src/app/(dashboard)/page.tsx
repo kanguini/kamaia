@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle, FileDown } from 'lucide-react'
+import { Scale, Clock, Users, Bot, AlertCircle, CheckCircle, AlertTriangle, FileDown, Plus } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
 import { PrazoStatus } from '@kamaia/shared-types'
@@ -230,17 +230,48 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Novo Processo', href: '/processos/novo', icon: Scale },
+          { label: 'Novo Cliente', href: '/clientes/novo', icon: Users },
+          { label: 'Novo Prazo', href: '/prazos/novo', icon: Clock },
+          { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
+        ].map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="flex items-center gap-3 px-4 py-3 bg-surface-raised border border-border rounded-lg hover:border-ink/20 transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
+              <action.icon className="w-4 h-4 text-ink-muted group-hover:text-ink transition-colors" />
+            </div>
+            <span className="text-sm font-medium text-ink">{action.label}</span>
+          </Link>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ProximosPrazosSection />
 
         <div>
           <h2 className="font-display text-[20px] font-medium text-ink mb-4">
-            Actividade Recente
+            Accoes Rapidas
           </h2>
-          <EmptyState
-            title="Nenhuma actividade"
-            description="A sua actividade recente aparecera aqui"
-          />
+          <div className="bg-surface-raised border border-border p-4 space-y-2">
+            <Link href="/documentos" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
+              <Plus className="w-4 h-4" /> Enviar Documento
+            </Link>
+            <Link href="/timesheets" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
+              <Plus className="w-4 h-4" /> Registar Tempo
+            </Link>
+            <Link href="/despesas" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
+              <Plus className="w-4 h-4" /> Registar Despesa
+            </Link>
+            <Link href="/agenda/novo" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-hover transition-colors text-sm text-ink-muted hover:text-ink">
+              <Plus className="w-4 h-4" /> Agendar Evento
+            </Link>
+          </div>
         </div>
       </div>
     </div>

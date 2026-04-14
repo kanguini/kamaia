@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Timer, CheckCircle, X } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton, IconButton, FormField } from '@/components/ui'
@@ -74,6 +75,7 @@ function formatMoney(centavos: number): string {
 
 export default function TimesheetsPage() {
   const { data: session } = useSession()
+  const toast = useToast()
   const [processoIdFilter, setProcessoIdFilter] = useState<string>('ALL')
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   const [dateFrom, setDateFrom] = useState<string>('')
@@ -156,6 +158,7 @@ export default function TimesheetsPage() {
     })
 
     if (result) {
+      toast.success('Entrada registada')
       setFormProcessoId('')
       setFormCategory(TimeEntryCategory.PESQUISA)
       setFormDate(new Date().toISOString().split('T')[0])
@@ -163,6 +166,8 @@ export default function TimesheetsPage() {
       setFormDescription('')
       setFormBillable(true)
       refetch()
+    } else {
+      toast.error('Erro ao registar entrada')
     }
   }
 
@@ -170,7 +175,10 @@ export default function TimesheetsPage() {
     if (!confirm('Tem certeza que deseja eliminar esta entrada?')) return
     const result = await deleteEntryFn(entryId)
     if (result !== null) {
+      toast.success('Entrada eliminada')
       refetch()
+    } else {
+      toast.error('Erro ao eliminar entrada')
     }
   }
 

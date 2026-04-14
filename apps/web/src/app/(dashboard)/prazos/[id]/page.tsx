@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Edit, Trash2, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { PrazoType, PrazoStatus } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
@@ -108,10 +109,15 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
   )
   const { mutate: deletePrazo, loading: deleting } = useMutation(`/prazos/${id}`, 'DELETE')
 
+  const toast = useToast()
+
   const handleComplete = async () => {
     const result = await completePrazo(undefined)
     if (result !== null) {
+      toast.success('Prazo marcado como cumprido')
       refetch()
+    } else {
+      toast.error('Erro ao completar prazo')
     }
   }
 
@@ -119,7 +125,10 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
     if (!confirm('Tem certeza que deseja cancelar este prazo?')) return
     const result = await updateStatus({ status: PrazoStatus.CANCELADO })
     if (result !== null) {
+      toast.success('Prazo cancelado')
       refetch()
+    } else {
+      toast.error('Erro ao cancelar prazo')
     }
   }
 
@@ -127,7 +136,10 @@ export default function PrazoDetailPage({ params }: { params: Promise<{ id: stri
     if (!confirm('Tem certeza que deseja eliminar este prazo?')) return
     const result = await deletePrazo()
     if (result !== null) {
+      toast.success('Prazo eliminado')
       router.push('/prazos')
+    } else {
+      toast.error('Erro ao eliminar prazo')
     }
   }
 
