@@ -24,6 +24,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { TeamModule } from './modules/team/team.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { BillingModule } from './modules/billing/billing.module';
     TeamModule,
     PortalModule,
     BillingModule,
+    BackupModule,
   ],
   providers: [
     {

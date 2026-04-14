@@ -9,13 +9,17 @@ echo "PORT: ${PORT:-unset}"
 echo "DATABASE_URL: ${DATABASE_URL:+set}"
 echo "================================================"
 
-# Apply Prisma schema (idempotent) with a timeout so we don't hang forever.
-# If it fails, we still try to start the app — the DB may already be in sync.
-echo "[entrypoint] Running prisma db push..."
-if timeout 60 npx prisma db push --skip-generate --accept-data-loss; then
-  echo "[entrypoint] prisma db push OK"
+# Apply pending migrations (safe, versioned, never drops data).
+# prisma migrate deploy only runs forward — it NEVER deletes columns or tables.
+echo "[entrypoint] Running prisma migrate deploy..."
+if timeout 120 npx prisma migrate deploy; then
+  echo "[entrypoint] Migrations applied successfully"
 else
-  echo "[entrypoint] prisma db push FAILED or TIMED OUT — continuing anyway"
+  echo "[entrypoint] WARNING: Migration failed or timed out"
+  echo "[entrypoint] Attempting prisma db push (safe mode, no data loss)..."
+  # Fallback: db push WITHOUT --accept-data-loss
+  # This will FAIL if destructive changes are needed — which is correct.
+  timeout 60 npx prisma db push --skip-generate || echo "[entrypoint] db push failed — manual intervention needed"
 fi
 
 echo "[entrypoint] Starting NestJS..."
