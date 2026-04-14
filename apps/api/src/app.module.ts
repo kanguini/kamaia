@@ -22,6 +22,7 @@ import { HealthModule } from './modules/health/health.module';
 import { RagModule } from './modules/rag/rag.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { TeamModule } from './modules/team/team.module';
+import { PortalModule } from './modules/portal/portal.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TeamModule } from './modules/team/team.module';
     RagModule,
     ReportsModule,
     TeamModule,
+    PortalModule,
   ],
   providers: [
     {
