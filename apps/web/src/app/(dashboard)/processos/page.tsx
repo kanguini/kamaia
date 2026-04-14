@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
 import Link from 'next/link'
-import { Plus, Scale, AlertCircle, Search } from 'lucide-react'
+import { Plus, Scale, AlertCircle, Search, LayoutList, Columns3 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton, FilterTabs } from '@/components/ui'
+
+const KanbanView = lazy(() => import('./kanban-view'))
 import {
   ProcessoType,
   ProcessoStatus,
@@ -42,6 +44,7 @@ const PROCESSO_TYPE_LABELS: Record<ProcessoType, string> = {
 }
 
 export default function ProcessosPage() {
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [typeFilter, setTypeFilter] = useState<string>('ALL')
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL')
@@ -133,16 +136,47 @@ export default function ProcessosPage() {
     <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Processos</h1>
-        <Link
-          href="/processos/novo"
-          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Novo Processo</span>
-          <span className="sm:hidden">Novo</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center bg-surface-raised border border-border rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'p-2 rounded-md transition-colors',
+                viewMode === 'list' ? 'bg-ink text-surface' : 'text-ink-muted hover:text-ink',
+              )}
+              aria-label="Vista lista"
+            >
+              <LayoutList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={cn(
+                'p-2 rounded-md transition-colors',
+                viewMode === 'kanban' ? 'bg-ink text-surface' : 'text-ink-muted hover:text-ink',
+              )}
+              aria-label="Vista kanban"
+            >
+              <Columns3 className="w-4 h-4" />
+            </button>
+          </div>
+          <Link
+            href="/processos/novo"
+            className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
+          >
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Novo Processo</span>
+            <span className="sm:hidden">Novo</span>
+          </Link>
+        </div>
       </div>
 
+      {viewMode === 'kanban' ? (
+        <Suspense fallback={<div className="flex gap-4">{[1,2,3].map(i => <div key={i} className="min-w-[260px] h-[300px] bg-surface-raised rounded-lg animate-pulse" />)}</div>}>
+          <KanbanView />
+        </Suspense>
+      ) : (
+      <>
       <div className="bg-surface-raised p-4 space-y-4">
         <FilterTabs
           value={statusFilter}
@@ -280,6 +314,8 @@ export default function ProcessosPage() {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   )

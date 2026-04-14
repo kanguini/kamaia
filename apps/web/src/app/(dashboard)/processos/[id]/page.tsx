@@ -34,6 +34,8 @@ import {
   PrazoStatus,
 } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
+import { PipelineBar } from '@/components/ui/pipeline-bar'
+import { api } from '@/lib/api'
 
 interface ProcessoEvent {
   id: string
@@ -77,6 +79,8 @@ interface Processo {
   status: ProcessoStatus
   priority: ProcessoPriority
   currentStage: string
+  lifecycle: string | null
+  tags: string[]
   court: string | null
   courtCaseNumber: string | null
   judge: string | null
@@ -363,6 +367,27 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             </span>
             {getStatusBadge(processo.status)}
             {getPriorityBadge(processo.priority)}
+          </div>
+
+          {/* Pipeline 8 fases */}
+          <div className="mt-4">
+            <PipelineBar
+              currentStage={processo.lifecycle || 'ATENDIMENTO'}
+              onAdvance={async (stage) => {
+                if (!session?.accessToken) return
+                try {
+                  await api(`/processos/${id}/lifecycle`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ lifecycle: stage }),
+                    token: session.accessToken,
+                  })
+                  toast.success(`Ciclo avancado para "${stage}"`)
+                  refetch()
+                } catch {
+                  toast.error('Erro ao avancar ciclo')
+                }
+              }}
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
