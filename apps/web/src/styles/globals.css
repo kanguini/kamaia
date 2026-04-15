@@ -126,6 +126,11 @@
 @layer components {
   .skip-link { @apply sr-only; }
   .skip-link:focus { @apply not-sr-only fixed top-4 left-4 z-[100] px-4 py-2 shadow-lg font-medium rounded-lg; background: var(--color-btn-primary-bg); color: var(--color-btn-primary-text); }
+
+  /* Tech/modern look: rounded cards by default */
+  .bg-surface-raised:not(.no-round):not([class*="rounded-"]) {
+    border-radius: 18px;
+  }
 }
 
 @layer utilities {
