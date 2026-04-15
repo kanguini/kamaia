@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -35,8 +35,8 @@ interface Cliente {
   notes: string | null
 }
 
-export default function EditarClientePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditarClientePage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { data: cliente, loading: loadingCliente } = useApi<Cliente>(`/clientes/${id}`)
   const { mutate, loading, error } = useMutation<UpdateClienteData>(`/clientes/${id}`, 'PUT')

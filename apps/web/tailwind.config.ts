@@ -55,15 +55,16 @@ const config: Config = {
       fontFamily: {
         display: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Courier New', 'monospace'],
+        mono: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
-        sm: '4px',
-        DEFAULT: '8px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
-        '2xl': '20px',
+        sm: '6px',
+        DEFAULT: '10px',
+        md: '12px',
+        lg: '14px',
+        xl: '18px',
+        '2xl': '22px',
+        '3xl': '28px',
         full: '9999px',
       },
       boxShadow: {

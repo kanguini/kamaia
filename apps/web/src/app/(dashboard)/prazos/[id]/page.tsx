@@ -1,6 +1,5 @@
 'use client'
 
-import { use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Edit, Trash2, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react'
@@ -96,8 +95,8 @@ function getCountdownText(dueDate: Date, status: PrazoStatus): { text: string; c
   }
 }
 
-export default function PrazoDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function PrazoDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { data: session } = useSession()
 

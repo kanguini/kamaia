@@ -85,12 +85,26 @@
     --color-btn-primary-hover: #E5E5E5;
   }
 
+  html, body {
+    font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+  }
+
   body {
     background-color: var(--color-surface);
     color: var(--color-ink-secondary);
     font-size: 14px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  /* Force Inter on all elements */
+  * {
+    font-family: inherit;
+  }
+
+  input, textarea, select, button {
+    font-family: var(--font-inter), Inter, system-ui, sans-serif;
   }
 
   *:focus-visible {

@@ -56,15 +56,76 @@ function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean
   )
 }
 
+interface Notification {
+  id: string
+  type: string
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+  link?: string
+}
+
 function NotificationBell() {
+  const [open, setOpen] = useState(false)
   const { data: countData, refetch } = useApi<{ count: number }>('/notifications/unread-count')
+  const { data: notifs, refetch: refetchNotifs } = useApi<{ data: Notification[] }>(
+    open ? '/notifications?limit=10' : null,
+    [open],
+  )
   useEffect(() => { const i = setInterval(() => refetch(), 60000); return () => clearInterval(i) }, [refetch])
   const count = countData?.count || 0
+  const items = notifs?.data || []
+
   return (
-    <Link href="/configuracoes" aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'} className="relative text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg hover:bg-surface-hover">
-      <Bell className="w-[18px] h-[18px]" aria-hidden="true" />
-      {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-danger text-surface text-[9px] font-mono font-medium min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full" aria-hidden="true">{count > 9 ? '9+' : count}</span>}
-    </Link>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => { setOpen(!open); if (!open) refetchNotifs() }}
+        aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'}
+        aria-expanded={open}
+        className="relative text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg hover:bg-surface-hover"
+      >
+        <Bell className="w-[18px] h-[18px]" aria-hidden="true" />
+        {count > 0 && <span className="absolute -top-0.5 -right-0.5 bg-danger text-surface text-[9px] font-mono font-medium min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full" aria-hidden="true">{count > 9 ? '9+' : count}</span>}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="absolute right-0 mt-2 w-[360px] bg-surface-raised border border-border rounded-2xl shadow-xl z-50 overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-ink">Notificacoes</h3>
+              {count > 0 && <span className="text-[10px] font-mono text-ink-muted">{count} nao lidas</span>}
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {items.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-ink-muted">
+                  Sem notificacoes
+                </div>
+              ) : (
+                items.map((n) => (
+                  <div key={n.id} className={cn('px-4 py-3 border-b border-border last:border-0 hover:bg-surface-hover transition-colors', !n.isRead && 'bg-ink/5')}>
+                    <div className="flex items-start gap-2">
+                      {!n.isRead && <span className="w-1.5 h-1.5 bg-danger rounded-full mt-2 flex-shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-ink truncate">{n.title}</p>
+                        <p className="text-xs text-ink-muted mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-[10px] text-ink-muted mt-1 font-mono">{new Date(n.createdAt).toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-4 py-2 border-t border-border text-center">
+              <Link href="/configuracoes" onClick={() => setOpen(false)} className="text-xs text-ink-muted hover:text-ink">
+                Definicoes de notificacoes
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

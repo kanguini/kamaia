@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -63,8 +63,8 @@ function PrazoSkeleton() {
   )
 }
 
-export default function EditarPrazoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditarPrazoPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
 
   const { data: prazo, loading: loadingPrazo, error: loadError } = useApi<Prazo>(`/prazos/${id}`)

@@ -1,6 +1,5 @@
 'use client'
 
-import { use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Edit, Trash2, User, Building2, Scale } from 'lucide-react'
@@ -66,8 +65,8 @@ function ClienteSkeleton() {
   )
 }
 
-export default function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function ClienteDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { data: session } = useSession()
   const { data: cliente, loading, error } = useApi<Cliente>(`/clientes/${id}`)

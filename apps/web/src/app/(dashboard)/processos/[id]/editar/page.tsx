@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -52,8 +52,8 @@ interface Processo {
   feeAmount: number | null
 }
 
-export default function EditarProcessoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditarProcessoPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
   const { data: processo, loading: loadingProcesso } = useApi<Processo>(`/processos/${id}`)
   const { mutate, loading, error } = useMutation<UpdateProcessoData>(`/processos/${id}`, 'PUT')
