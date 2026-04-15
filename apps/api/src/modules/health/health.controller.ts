@@ -40,20 +40,25 @@ export class HealthController {
       throw new HttpException({ error: 'Password too short' }, HttpStatus.BAD_REQUEST);
     }
 
-    // Find the first SOCIO_GESTOR user
-    const admin = await this.prisma.user.findFirst({
-      where: { role: 'SOCIO_GESTOR', deletedAt: null },
-      select: { id: true, email: true, firstName: true, lastName: true, gabineteId: true },
+    // List all users first
+    const allUsers = await this.prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, gabineteId: true },
     });
 
-    if (!admin) {
-      throw new HttpException({ error: 'No admin found' }, HttpStatus.NOT_FOUND);
+    if (allUsers.length === 0) {
+      throw new HttpException({ error: 'No users in DB' }, HttpStatus.NOT_FOUND);
     }
 
+    // Try to find a SOCIO_GESTOR, fallback to first user
+    let admin = allUsers.find((u) => u.role === 'SOCIO_GESTOR');
+    if (!admin) admin = allUsers[0];
+
+    // Promote to SOCIO_GESTOR and reset password
     const passwordHash = await bcrypt.hash(body.newPassword, 12);
     await this.prisma.user.update({
       where: { id: admin.id },
-      data: { passwordHash },
+      data: { passwordHash, role: 'SOCIO_GESTOR' },
     });
 
     return {
@@ -61,8 +66,11 @@ export class HealthController {
       admin: {
         email: admin.email,
         name: `${admin.firstName} ${admin.lastName}`,
+        originalRole: admin.role,
         gabineteId: admin.gabineteId,
       },
+      totalUsers: allUsers.length,
+      allUsersRoles: allUsers.map((u) => ({ email: u.email, role: u.role })),
     };
   }
 }
