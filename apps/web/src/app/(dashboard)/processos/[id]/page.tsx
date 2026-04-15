@@ -64,10 +64,13 @@ interface Document {
 }
 
 interface Rentabilidade {
-  totalMinutes: number
-  estimatedValue: number
-  expenses: number
-  margin?: number
+  totalHoras: number
+  totalBillable: number
+  valorHoras: number
+  totalDespesas: number
+  receitaEstimada: number
+  custoTotal: number
+  margemLucro: number
 }
 
 interface Processo {
@@ -275,14 +278,6 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
 
   const formatMoney = (amount: number) => {
     return `${amount.toLocaleString('pt-AO')} AKZ`
-  }
-
-  const formatDuration = (minutes: number): string => {
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    if (h === 0) return `${m}min`
-    if (m === 0) return `${h}h`
-    return `${h}h ${m}min`
   }
 
   const formatMoneyCentavos = (centavos: number): string => {
@@ -698,26 +693,26 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
             <div className="bg-surface-raised p-5">
               <p className="text-xs font-mono text-ink-muted uppercase mb-2">Horas registadas</p>
               <p className="text-2xl font-semibold text-ink">
-                {formatDuration(rentabilidade.totalMinutes)}
+                {rentabilidade.totalHoras}h
               </p>
             </div>
             <div className="bg-surface-raised p-5">
               <p className="text-xs font-mono text-ink-muted uppercase mb-2">Valor estimado</p>
               <p className="text-2xl font-semibold text-ink">
-                {formatMoneyCentavos(rentabilidade.estimatedValue)}
+                {formatMoneyCentavos(rentabilidade.valorHoras)}
               </p>
             </div>
             <div className="bg-surface-raised p-5">
               <p className="text-xs font-mono text-ink-muted uppercase mb-2">Despesas</p>
               <p className="text-2xl font-semibold text-ink">
-                {formatMoneyCentavos(rentabilidade.expenses)}
+                {formatMoneyCentavos(rentabilidade.totalDespesas)}
               </p>
             </div>
           </div>
-          {processo.feeType === 'HORA' && rentabilidade.margin !== undefined && (
+          {processo.feeType === 'HORA' && rentabilidade.valorHoras > 0 && (
             <div className="mt-4 bg-surface-raised p-5">
               <p className="text-xs font-mono text-ink-muted uppercase mb-2">Margem</p>
-              <p className="text-2xl font-semibold text-ink">{rentabilidade.margin.toFixed(1)}%</p>
+              <p className="text-2xl font-semibold text-ink">{rentabilidade.margemLucro}%</p>
             </div>
           )}
         </div>
