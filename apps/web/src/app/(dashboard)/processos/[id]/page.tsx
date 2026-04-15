@@ -369,26 +369,7 @@ export default function ProcessoDetailPage({ params }: { params: Promise<{ id: s
             {getPriorityBadge(processo.priority)}
           </div>
 
-          {/* Pipeline 8 fases */}
-          <div className="mt-4">
-            <PipelineBar
-              currentStage={processo.lifecycle || 'ATENDIMENTO'}
-              onAdvance={async (stage) => {
-                if (!session?.accessToken) return
-                try {
-                  await api(`/processos/${id}/lifecycle`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ lifecycle: stage }),
-                    token: session.accessToken,
-                  })
-                  toast.success(`Ciclo avancado para "${stage}"`)
-                  refetch()
-                } catch {
-                  toast.error('Erro ao avancar ciclo')
-                }
-              }}
-            />
-          </div>
+          {/* Pipeline 8 fases - temporarily disabled for debugging */}
         </div>
         <div className="flex items-center gap-2">
           <Link
