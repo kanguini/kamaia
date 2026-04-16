@@ -1,13 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { Mail, Bell, Smartphone, AlertTriangle, Download, Shield, Database } from 'lucide-react'
-import { useApi, useMutation } from '@/hooks/use-api'
+import {
+  User, Building2, Lock, Bell, Mail, Smartphone,
+  AlertTriangle, Download, Shield, Database, Save,
+} from 'lucide-react'
+import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
-import { usePushNotifications } from '@/hooks/use-push-notifications'
-import { cn } from '@/lib/utils'
-import { Switch, Button } from '@/components/ui'
+import { api } from '@/lib/api'
+import { Button, Switch, Input, FormField } from '@/components/ui'
+
+// ── Interfaces ──────────────────────────────────────────
+
+interface UserProfile {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: string
+  oaaNumber: string | null
+  specialty: string | null
+  phone: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+interface GabineteInfo {
+  id: string
+  name: string
+  nif: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  plan: string
+}
 
 interface NotificationPreferences {
   emailEnabled: boolean
@@ -15,318 +42,494 @@ interface NotificationPreferences {
   smsOnlyUrgent: boolean
 }
 
-interface TestResult {
-  email?: { status: string }
-  push?: { status: string }
-  sms?: { status: string }
-}
+// ── Section Component ───────────────────────────────────
 
-interface ToggleCardProps {
+function Section({ title, icon: Icon, children }: {
   title: string
-  description: string
   icon: React.ElementType
-  enabled: boolean
-  onChange: (value: boolean) => void
-  disabled?: boolean
-  helpText?: string
-  inset?: boolean
-}
-
-function ToggleCard({
-  title,
-  description,
-  icon: Icon,
-  enabled,
-  onChange,
-  disabled,
-  helpText,
-  inset,
-}: ToggleCardProps) {
+  children: React.ReactNode
+}) {
   return (
-    <div
-      className={cn(
-        'bg-surface border border-border p-4 flex items-start gap-4',
-        inset && 'ml-8 bg-surface-raised',
-      )}
-    >
-      <div className={cn('flex-shrink-0 mt-0.5', disabled && 'opacity-50')} aria-hidden="true">
-        <Icon className="w-5 h-5 text-ink" />
+    <section className="mb-8">
+      <div className="flex items-center gap-2 mb-4">
+        <Icon className="w-5 h-5 text-ink-muted" />
+        <h2 className="text-lg font-semibold text-ink">{title}</h2>
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="text-ink font-medium mb-1">{title}</h3>
-        <p className="text-ink-muted text-sm">{description}</p>
-        {helpText && <p className="text-danger text-xs mt-1" role="alert">{helpText}</p>}
+      <div className="bg-surface-raised border border-border rounded-2xl p-6">
+        {children}
       </div>
-      <Switch
-        checked={enabled}
-        onCheckedChange={onChange}
-        disabled={disabled}
-        label={title}
-        description={description}
-      />
-    </div>
+    </section>
   )
 }
 
-export default function ConfiguracoesPage() {
+// ── Profile Section ─────────────────────────────────────
+
+function ProfileSection() {
   const { data: session } = useSession()
-  const { data: prefs, loading, error, refetch } = useApi<NotificationPreferences>(
-    '/notifications/preferences',
-  )
-  const { mutate: updatePrefs, loading: updating } = useMutation<
-    Partial<NotificationPreferences>,
-    NotificationPreferences
-  >('/notifications/preferences', 'PUT')
-  const { mutate: sendTest, loading: testing } = useMutation<void, TestResult>(
-    '/notifications/test',
-    'POST',
-  )
-  const { status: pushStatus, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications()
-
-  const [testResult, setTestResult] = useState<TestResult | null>(null)
   const toast = useToast()
+  const { data: profile, loading, refetch } = useApi<UserProfile>('/users/me')
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    oaaNumber: '',
+    specialty: '',
+  })
 
-  const handleUpdatePref = async (update: Partial<NotificationPreferences>) => {
-    const result = await updatePrefs(update)
-    if (result) {
-      toast.success('Preferencia actualizada')
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        phone: profile.phone || '',
+        oaaNumber: profile.oaaNumber || '',
+        specialty: profile.specialty || '',
+      })
+    }
+  }, [profile])
+
+  const handleSave = async () => {
+    if (!session?.accessToken) return
+    setSaving(true)
+    try {
+      await api('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(form),
+        token: session.accessToken,
+      })
+      toast.success('Perfil actualizado')
       refetch()
+    } catch {
+      toast.error('Erro ao actualizar perfil')
     }
-  }
-
-  const handlePushToggle = async (value: boolean) => {
-    if (value) {
-      await subscribe()
-    } else {
-      await unsubscribe()
-    }
-  }
-
-  const handleTest = async () => {
-    const result = await sendTest()
-    if (result) setTestResult(result)
+    setSaving(false)
   }
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-surface-raised p-8 text-center" role="status" aria-live="polite">
-          <p className="text-ink-muted">A carregar configuracoes...</p>
+      <Section title="Perfil" icon={User}>
+        <div className="animate-pulse space-y-4">
+          <div className="h-10 bg-border rounded-lg w-1/2" />
+          <div className="h-10 bg-border rounded-lg w-1/3" />
         </div>
-      </div>
-    )
-  }
-
-  if (error || !prefs) {
-    return (
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-        <div className="bg-danger/10 border border-danger/20  p-8 text-center" role="alert">
-          <p className="text-danger">{error || 'Erro ao carregar configuracoes'}</p>
-        </div>
-      </div>
+      </Section>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink mb-8">Configuracoes</h1>
-
-      {/* Perfil Section */}
-      <section className="mb-10">
-        <h2 className="font-display text-2xl font-semibold text-ink mb-4">Perfil</h2>
-        <div className="bg-surface border border-border p-6 space-y-4">
-          <div>
-            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Nome</p>
-            <p className="text-ink">
-              {session?.user?.firstName} {session?.user?.lastName}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Email</p>
-            <p className="text-ink">{session?.user?.email}</p>
-          </div>
-          <div>
-            <p className="text-xs font-mono text-ink-muted uppercase mb-1">Tipo de Utilizador</p>
-            <p className="text-ink">{session?.user?.role}</p>
-          </div>
-          {(session?.user as { oaaNumber?: string })?.oaaNumber && (
-            <div>
-              <p className="text-xs font-mono text-ink-muted uppercase mb-1">Numero OAA</p>
-              <p className="text-ink font-mono">{(session?.user as { oaaNumber?: string })?.oaaNumber}</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Notificacoes Section */}
-      <section>
-        <h2 className="font-display text-2xl font-semibold text-ink mb-4">
-          Preferencias de Notificacoes
-        </h2>
-        <div className="space-y-4">
-          <ToggleCard
-            title="Notificacoes por Email"
-            description="Receba alertas de prazos por email"
-            icon={Mail}
-            enabled={prefs.emailEnabled}
-            onChange={(v) => handleUpdatePref({ emailEnabled: v })}
-          />
-
-          <ToggleCard
-            title="Notificacoes Push"
-            description="Receba alertas no browser mesmo com a aplicacao fechada"
-            icon={Bell}
-            enabled={pushStatus === 'subscribed'}
-            onChange={handlePushToggle}
-            disabled={
-              pushStatus === 'unsupported' || pushStatus === 'denied' || pushLoading || updating
-            }
-            helpText={
-              pushStatus === 'unsupported'
-                ? 'Browser nao suporta push notifications'
-                : pushStatus === 'denied'
-                  ? 'Permissao negada — active nas definicoes do browser'
-                  : undefined
-            }
-          />
-
-          <ToggleCard
-            title="Notificacoes SMS"
-            description="Receba alertas criticos por SMS"
-            icon={Smartphone}
-            enabled={prefs.smsEnabled}
-            onChange={(v) => handleUpdatePref({ smsEnabled: v })}
-          />
-
-          {prefs.smsEnabled && (
-            <ToggleCard
-              title="SMS apenas para prazos urgentes"
-              description="Limita SMS a prazos marcados como urgentes"
-              icon={AlertTriangle}
-              enabled={prefs.smsOnlyUrgent}
-              onChange={(v) => handleUpdatePref({ smsOnlyUrgent: v })}
-              inset
+    <Section title="Perfil" icon={User}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Nome">
+            <Input
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
             />
-          )}
-
-          <div className="border-t border-border pt-6 mt-8">
-            <button
-              onClick={handleTest}
-              disabled={testing}
-              className={cn(
-                'px-6 py-2.5 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)]  hover:bg-ink/80 transition-colors font-medium',
-                testing && 'opacity-50 cursor-not-allowed',
-              )}
-            >
-              {testing ? 'A enviar...' : 'Enviar notificacao de teste'}
-            </button>
-            {testResult && (
-              <div className="mt-4 bg-surface border border-border p-4">
-                <p className="text-xs font-mono text-ink-muted uppercase mb-2">Resultado do Teste</p>
-                <div className="space-y-1 text-sm">
-                  {testResult.email && (
-                    <p>
-                      <span className="font-medium">Email:</span>{' '}
-                      <span
-                        className={
-                          testResult.email.status === 'sent' ? 'text-success' : 'text-danger'
-                        }
-                      >
-                        {testResult.email.status}
-                      </span>
-                    </p>
-                  )}
-                  {testResult.push && (
-                    <p>
-                      <span className="font-medium">Push:</span>{' '}
-                      <span
-                        className={
-                          testResult.push.status === 'sent' ? 'text-success' : 'text-danger'
-                        }
-                      >
-                        {testResult.push.status}
-                      </span>
-                    </p>
-                  )}
-                  {testResult.sms && (
-                    <p>
-                      <span className="font-medium">SMS:</span>{' '}
-                      <span
-                        className={testResult.sms.status === 'sent' ? 'text-success' : 'text-danger'}
-                      >
-                        {testResult.sms.status}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          </FormField>
+          <FormField label="Apelido">
+            <Input
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+            />
+          </FormField>
         </div>
-      </section>
 
-      {/* Dados e Seguranca */}
-      <section className="mt-10">
-        <h2 className="font-display text-2xl font-semibold text-ink mb-4">
-          Dados e Seguranca
-        </h2>
-        <div className="space-y-4">
-          <div className="bg-surface border border-border p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
-                <Download className="w-5 h-5 text-ink-muted" />
-              </div>
-              <div>
-                <p className="font-medium text-ink">Exportar Dados</p>
-                <p className="text-sm text-ink-muted">Descarregue todos os dados do gabinete em formato JSON</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-                window.open(`${apiUrl}/backup/export`, '_blank')
-                toast.info('A preparar export...')
-              }}
-            >
-              Exportar
+        <FormField label="Email">
+          <Input value={profile?.email || ''} disabled className="opacity-60" />
+          <p className="text-xs text-ink-muted mt-1">O email nao pode ser alterado</p>
+        </FormField>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <FormField label="Telefone">
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="+244 9XX XXX XXX"
+            />
+          </FormField>
+          <FormField label="N.o OAA">
+            <Input
+              value={form.oaaNumber}
+              onChange={(e) => setForm({ ...form, oaaNumber: e.target.value })}
+              placeholder="OAA-XXXX-XXXX"
+            />
+          </FormField>
+          <FormField label="Especialidade">
+            <Input
+              value={form.specialty}
+              onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+              placeholder="Ex: Direito Civil"
+            />
+          </FormField>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <div className="text-xs text-ink-muted">
+            <span className="font-medium text-ink">{profile?.role}</span> &middot; Desde {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('pt-AO') : ''}
+          </div>
+          <Button onClick={handleSave} loading={saving} size="sm">
+            <Save className="w-4 h-4 mr-1" />
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+// ── Password Section ────────────────────────────────────
+
+function PasswordSection() {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+  const handleChange = async () => {
+    if (form.newPassword !== form.confirmPassword) {
+      toast.error('As passwords nao coincidem')
+      return
+    }
+    if (form.newPassword.length < 8) {
+      toast.error('A nova password deve ter pelo menos 8 caracteres')
+      return
+    }
+    if (!session?.accessToken) return
+
+    setSaving(true)
+    try {
+      await api('/users/me/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentPassword: form.currentPassword,
+          newPassword: form.newPassword,
+        }),
+        token: session.accessToken,
+      })
+      toast.success('Password alterada com sucesso')
+      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (e: any) {
+      toast.error(e?.error || 'Erro ao alterar password')
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Section title="Alterar Password" icon={Lock}>
+      <div className="space-y-4 max-w-md">
+        <FormField label="Password actual">
+          <Input
+            type="password"
+            value={form.currentPassword}
+            onChange={(e) => setForm({ ...form, currentPassword: e.target.value })}
+          />
+        </FormField>
+        <FormField label="Nova password">
+          <Input
+            type="password"
+            value={form.newPassword}
+            onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
+            placeholder="Minimo 8 caracteres"
+          />
+        </FormField>
+        <FormField label="Confirmar nova password">
+          <Input
+            type="password"
+            value={form.confirmPassword}
+            onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+          />
+        </FormField>
+        <Button
+          onClick={handleChange}
+          loading={saving}
+          disabled={!form.currentPassword || !form.newPassword || !form.confirmPassword}
+          size="sm"
+        >
+          Alterar Password
+        </Button>
+      </div>
+    </Section>
+  )
+}
+
+// ── Gabinete Section ────────────────────────────────────
+
+function GabineteSection() {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const { data: gabinete, loading, refetch } = useApi<GabineteInfo>('/gabinetes/current')
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    name: '',
+    nif: '',
+    address: '',
+    phone: '',
+    email: '',
+  })
+
+  const isSocio = (session?.user as any)?.role === 'SOCIO_GESTOR'
+
+  useEffect(() => {
+    if (gabinete) {
+      setForm({
+        name: gabinete.name || '',
+        nif: gabinete.nif || '',
+        address: gabinete.address || '',
+        phone: gabinete.phone || '',
+        email: gabinete.email || '',
+      })
+    }
+  }, [gabinete])
+
+  const handleSave = async () => {
+    if (!session?.accessToken) return
+    setSaving(true)
+    try {
+      await api('/gabinetes/current', {
+        method: 'PUT',
+        body: JSON.stringify(form),
+        token: session.accessToken,
+      })
+      toast.success('Gabinete actualizado')
+      refetch()
+    } catch {
+      toast.error('Erro ao actualizar gabinete')
+    }
+    setSaving(false)
+  }
+
+  if (loading) {
+    return (
+      <Section title="Gabinete" icon={Building2}>
+        <div className="animate-pulse h-20 bg-border rounded-lg" />
+      </Section>
+    )
+  }
+
+  return (
+    <Section title="Gabinete" icon={Building2}>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Nome do Gabinete">
+            <Input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              disabled={!isSocio}
+            />
+          </FormField>
+          <FormField label="NIF">
+            <Input
+              value={form.nif}
+              onChange={(e) => setForm({ ...form, nif: e.target.value })}
+              disabled={!isSocio}
+            />
+          </FormField>
+        </div>
+        <FormField label="Endereco">
+          <Input
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            disabled={!isSocio}
+          />
+        </FormField>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Telefone">
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              disabled={!isSocio}
+            />
+          </FormField>
+          <FormField label="Email">
+            <Input
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              disabled={!isSocio}
+            />
+          </FormField>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <span className="text-xs font-mono px-2 py-1 bg-surface text-ink-muted rounded">
+            Plano: {gabinete?.plan || 'FREE'}
+          </span>
+          {isSocio && (
+            <Button onClick={handleSave} loading={saving} size="sm">
+              <Save className="w-4 h-4 mr-1" />
+              Guardar
             </Button>
-          </div>
-
-          <div className="bg-surface border border-border p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
-                <Database className="w-5 h-5 text-ink-muted" />
-              </div>
-              <div>
-                <p className="font-medium text-ink">Integridade dos Dados</p>
-                <p className="text-sm text-ink-muted">Verificacao diaria automatica as 03:00 UTC</p>
-              </div>
-            </div>
-            <span className="text-xs text-ink-muted bg-surface-raised px-3 py-1 rounded">
-              PRO_BUSINESS
-            </span>
-          </div>
-
-          <div className="bg-surface border border-border p-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-surface-raised flex items-center justify-center">
-                <Shield className="w-5 h-5 text-ink-muted" />
-              </div>
-              <div>
-                <p className="font-medium text-ink">Seguranca</p>
-                <p className="text-sm text-ink-muted">Audit log activo — todas as accoes sao registadas</p>
-              </div>
-            </div>
-            <span className="text-xs text-success bg-success-bg px-3 py-1 rounded font-medium">
-              Activo
-            </span>
-          </div>
+          )}
         </div>
-      </section>
+      </div>
+    </Section>
+  )
+}
+
+// ── Notifications Section ───────────────────────────────
+
+function NotificationsSection() {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const { data: prefs, loading, refetch } = useApi<NotificationPreferences>(
+    '/notifications/preferences',
+  )
+
+  const handleUpdate = async (update: Partial<NotificationPreferences>) => {
+    if (!session?.accessToken) return
+    try {
+      await api('/notifications/preferences', {
+        method: 'PUT',
+        body: JSON.stringify(update),
+        token: session.accessToken,
+      })
+      toast.success('Preferencia actualizada')
+      refetch()
+    } catch {
+      toast.error('Erro ao actualizar preferencia')
+    }
+  }
+
+  if (loading) {
+    return (
+      <Section title="Notificacoes" icon={Bell}>
+        <div className="animate-pulse h-20 bg-border rounded-lg" />
+      </Section>
+    )
+  }
+
+  if (!prefs) {
+    return (
+      <Section title="Notificacoes" icon={Bell}>
+        <p className="text-ink-muted text-sm">Sem configuracoes de notificacao disponiveis.</p>
+      </Section>
+    )
+  }
+
+  return (
+    <Section title="Notificacoes" icon={Bell}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Mail className="w-4 h-4 text-ink-muted" />
+            <div>
+              <p className="text-sm font-medium text-ink">Email</p>
+              <p className="text-xs text-ink-muted">Receba alertas de prazos por email</p>
+            </div>
+          </div>
+          <Switch
+            label="Email"
+            checked={prefs.emailEnabled}
+            onCheckedChange={(v) => handleUpdate({ emailEnabled: v })}
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Smartphone className="w-4 h-4 text-ink-muted" />
+            <div>
+              <p className="text-sm font-medium text-ink">SMS</p>
+              <p className="text-xs text-ink-muted">Receba alertas criticos por SMS</p>
+            </div>
+          </div>
+          <Switch
+            label="SMS"
+            checked={prefs.smsEnabled}
+            onCheckedChange={(v) => handleUpdate({ smsEnabled: v })}
+          />
+        </div>
+
+        {prefs.smsEnabled && (
+          <div className="flex items-center justify-between ml-7">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-4 h-4 text-ink-muted" />
+              <div>
+                <p className="text-sm font-medium text-ink">Apenas urgentes</p>
+                <p className="text-xs text-ink-muted">SMS so para prazos urgentes</p>
+              </div>
+            </div>
+            <Switch
+              label="Apenas urgentes"
+              checked={prefs.smsOnlyUrgent}
+              onCheckedChange={(v) => handleUpdate({ smsOnlyUrgent: v })}
+            />
+          </div>
+        )}
+      </div>
+    </Section>
+  )
+}
+
+// ── Data & Security Section ─────────────────────────────
+
+function DataSection() {
+  const toast = useToast()
+
+  return (
+    <Section title="Dados e Seguranca" icon={Shield}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-3">
+            <Download className="w-4 h-4 text-ink-muted" />
+            <div>
+              <p className="text-sm font-medium text-ink">Exportar Dados</p>
+              <p className="text-xs text-ink-muted">Download de todos os dados em JSON</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/backup/export`, '_blank')
+              toast.info('A preparar export...')
+            }}
+          >
+            Exportar
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-3">
+            <Database className="w-4 h-4 text-ink-muted" />
+            <div>
+              <p className="text-sm font-medium text-ink">Integridade</p>
+              <p className="text-xs text-ink-muted">Verificacao diaria automatica</p>
+            </div>
+          </div>
+          <span className="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded font-medium">
+            Activo
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-3">
+            <Shield className="w-4 h-4 text-ink-muted" />
+            <div>
+              <p className="text-sm font-medium text-ink">Audit Log</p>
+              <p className="text-xs text-ink-muted">Todas as accoes registadas</p>
+            </div>
+          </div>
+          <span className="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded font-medium">
+            Activo
+          </span>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+// ── Main Page ───────────────────────────────────────────
+
+export default function ConfiguracoesPage() {
+  return (
+    <div className="max-w-3xl mx-auto space-y-2">
+      <h1 className="text-2xl font-semibold text-ink mb-6">Configuracoes</h1>
+
+      <ProfileSection />
+      <PasswordSection />
+      <GabineteSection />
+      <NotificationsSection />
+      <DataSection />
     </div>
   )
 }
