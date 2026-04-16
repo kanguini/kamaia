@@ -446,7 +446,7 @@ export function TaskDetailModal({ open, onClose, taskId }: TaskDetailModalProps)
                         setDescDirty(true)
                       }}
                       onBlur={commitDescription}
-                      placeholder="Adicionar descricao..."
+                      placeholder="Adicionar descrição..."
                       rows={4}
                       className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-ink text-sm placeholder:text-ink-muted/50 focus:outline-none focus:ring-2 focus:ring-ink/20 resize-none transition-colors"
                     />
@@ -797,7 +797,7 @@ export function TaskDetailModal({ open, onClose, taskId }: TaskDetailModalProps)
         onClose={() => setConfirmDelete(false)}
         onConfirm={handleDelete}
         title="Eliminar tarefa"
-        description="Tem a certeza que deseja eliminar esta tarefa? Esta accao nao pode ser revertida."
+        description="Tem a certeza que deseja eliminar esta tarefa? Esta accao não pode ser revertida."
         confirmLabel="Eliminar"
         variant="danger"
         loading={deleting}

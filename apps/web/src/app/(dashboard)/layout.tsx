@@ -83,7 +83,7 @@ function NotificationBell() {
       <button
         type="button"
         onClick={() => { setOpen(!open); if (!open) refetchNotifs() }}
-        aria-label={count > 0 ? `Notificacoes (${count})` : 'Notificacoes'}
+        aria-label={count > 0 ? `Notificações (${count})` : 'Notificações'}
         aria-expanded={open}
         className="relative text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg hover:bg-surface-hover"
       >
@@ -95,13 +95,13 @@ function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
           <div className="absolute right-0 mt-2 w-[360px] bg-surface-raised border border-border rounded-2xl shadow-xl z-50 overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-ink">Notificacoes</h3>
-              {count > 0 && <span className="text-[10px] font-mono text-ink-muted">{count} nao lidas</span>}
+              <h3 className="text-sm font-semibold text-ink">Notificações</h3>
+              {count > 0 && <span className="text-[10px] font-mono text-ink-muted">{count} não lidas</span>}
             </div>
             <div className="max-h-[400px] overflow-y-auto">
               {items.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-ink-muted">
-                  Sem notificacoes
+                  Sem notificações
                 </div>
               ) : (
                 items.map((n) => (
@@ -120,7 +120,7 @@ function NotificationBell() {
             </div>
             <div className="px-4 py-2 border-t border-border text-center">
               <Link href="/configuracoes" onClick={() => setOpen(false)} className="text-xs text-ink-muted hover:text-ink">
-                Definicoes de notificacoes
+                Definições de notificações
               </Link>
             </div>
           </div>

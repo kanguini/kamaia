@@ -33,7 +33,7 @@ interface QuotaInfo {
 }
 
 const SUGGESTIONS = [
-  'Qual o prazo para contestar uma accao civel?',
+  'Qual o prazo para contestar uma acção cível?',
   'O meu cliente foi despedido. Que opcoes tem?',
   'Quais os requisitos para criar uma sociedade?',
   'Analise os riscos deste contrato',
@@ -405,7 +405,7 @@ function IAAssistenteContent() {
             <div className="bg-warning-bg border-b border-warning px-4 py-2 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-warning-text flex-shrink-0 mt-0.5" />
               <p className="text-xs text-warning-text">
-                Assistente IA — respostas geradas por inteligencia artificial. Nao substitui aconselhamento juridico formal.
+                Assistente IA — respostas geradas por inteligência artificial. Não substitui aconselhamento jurídico formal.
               </p>
             </div>
 

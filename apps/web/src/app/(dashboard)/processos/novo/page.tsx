@@ -191,7 +191,7 @@ export default function NovoProcessoPage() {
                   {...register('description')}
                   rows={4}
                   className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
-                  placeholder="Breve descricao do processo"
+                  placeholder="Breve descrição do processo"
                 />
               </div>
             </div>

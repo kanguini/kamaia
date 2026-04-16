@@ -17,7 +17,7 @@ const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
   [PrazoType.RECURSO]: 'Recurso',
   [PrazoType.RESPOSTA]: 'Resposta',
   [PrazoType.ALEGACOES]: 'Alegacoes',
-  [PrazoType.AUDIENCIA]: 'Audiencia',
+  [PrazoType.AUDIENCIA]: 'Audiência',
   [PrazoType.OUTRO]: 'Outro',
 }
 

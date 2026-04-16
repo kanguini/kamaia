@@ -93,7 +93,7 @@ export default function EditarClientePage({ params }: { params: { id: string } }
     return (
       <div className="max-w-3xl mx-auto">
         <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
-          Cliente nao encontrado
+          Cliente não encontrado
         </div>
       </div>
     )

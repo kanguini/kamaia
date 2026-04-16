@@ -137,7 +137,7 @@ function UploadModal({
     ]
 
     if (!allowedTypes.includes(selectedFile.type)) {
-      setError('Tipo de ficheiro nao suportado')
+      setError('Tipo de ficheiro não suportado')
       return
     }
 

@@ -113,7 +113,7 @@ export default function EditarProcessoPage({ params }: { params: { id: string } 
     return (
       <div className="max-w-3xl mx-auto">
         <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
-          Processo nao encontrado
+          Processo não encontrado
         </div>
       </div>
     )
@@ -131,7 +131,7 @@ export default function EditarProcessoPage({ params }: { params: { id: string } 
         <div>
           <h1 className="font-display text-4xl font-semibold text-ink">Editar Processo</h1>
           <p className="text-sm text-ink-muted mt-1">
-            Tipo: {PROCESSO_TYPE_LABELS[processo.type]} (nao pode ser alterado)
+            Tipo: {PROCESSO_TYPE_LABELS[processo.type]} (não pode ser alterado)
           </p>
         </div>
       </div>

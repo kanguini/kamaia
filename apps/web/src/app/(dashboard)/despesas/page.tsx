@@ -32,7 +32,7 @@ interface Processo {
 
 const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   [ExpenseCategory.EMOLUMENTOS]: 'Emolumentos',
-  [ExpenseCategory.DESLOCACAO]: 'Deslocacao',
+  [ExpenseCategory.DESLOCACAO]: 'Deslocação',
   [ExpenseCategory.COPIAS]: 'Copias',
   [ExpenseCategory.HONORARIOS_PERITOS]: 'Honorarios de Peritos',
   [ExpenseCategory.OUTRO]: 'Outro',

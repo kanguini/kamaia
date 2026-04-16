@@ -188,7 +188,7 @@ function PasswordSection() {
 
   const handleChange = async () => {
     if (form.newPassword !== form.confirmPassword) {
-      toast.error('As passwords nao coincidem')
+      toast.error('As passwords não coincidem')
       return
     }
     if (form.newPassword.length < 8) {

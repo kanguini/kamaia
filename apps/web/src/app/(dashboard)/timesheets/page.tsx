@@ -39,10 +39,10 @@ interface Processo {
 
 const CATEGORY_LABELS: Record<TimeEntryCategory, string> = {
   [TimeEntryCategory.PESQUISA]: 'Pesquisa',
-  [TimeEntryCategory.REDACCAO]: 'Redaccao',
-  [TimeEntryCategory.AUDIENCIA]: 'Audiencia',
-  [TimeEntryCategory.REUNIAO]: 'Reuniao',
-  [TimeEntryCategory.DESLOCACAO]: 'Deslocacao',
+  [TimeEntryCategory.REDACCAO]: 'Redacção',
+  [TimeEntryCategory.AUDIENCIA]: 'Audiência',
+  [TimeEntryCategory.REUNIAO]: 'Reunião',
+  [TimeEntryCategory.DESLOCACAO]: 'Deslocação',
   [TimeEntryCategory.OUTRO]: 'Outro',
 }
 

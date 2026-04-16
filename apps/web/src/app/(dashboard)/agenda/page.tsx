@@ -36,8 +36,8 @@ const _DAY_NAMES_FULL = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabad
 void _DAY_NAMES_FULL
 
 const EVENT_TYPE_LABELS: Record<CalendarEventType, string> = {
-  [CalendarEventType.AUDIENCIA]: 'Audiencia',
-  [CalendarEventType.REUNIAO]: 'Reuniao',
+  [CalendarEventType.AUDIENCIA]: 'Audiência',
+  [CalendarEventType.REUNIAO]: 'Reunião',
   [CalendarEventType.DILIGENCIA]: 'Diligencia',
   [CalendarEventType.PRAZO]: 'Prazo',
   [CalendarEventType.OUTRO]: 'Outro',

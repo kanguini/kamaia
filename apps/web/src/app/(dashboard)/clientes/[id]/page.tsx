@@ -145,7 +145,7 @@ export default function ClienteDetailPage({ params }: { params: { id: string } }
     return (
       <div className="max-w-5xl mx-auto">
         <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
-          {error || 'Cliente nao encontrado'}
+          {error || 'Cliente não encontrado'}
         </div>
       </div>
     )

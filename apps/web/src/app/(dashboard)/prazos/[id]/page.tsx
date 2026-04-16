@@ -31,7 +31,7 @@ const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
   [PrazoType.RECURSO]: 'Recurso',
   [PrazoType.RESPOSTA]: 'Resposta',
   [PrazoType.ALEGACOES]: 'Alegacoes',
-  [PrazoType.AUDIENCIA]: 'Audiencia',
+  [PrazoType.AUDIENCIA]: 'Audiência',
   [PrazoType.OUTRO]: 'Outro',
 }
 
@@ -178,7 +178,7 @@ export default function PrazoDetailPage({ params }: { params: { id: string } }) 
     return (
       <div className="max-w-4xl mx-auto">
         <div className="bg-danger/10 border border-danger/20 text-danger  p-4">
-          {error || 'Prazo nao encontrado'}
+          {error || 'Prazo não encontrado'}
         </div>
       </div>
     )

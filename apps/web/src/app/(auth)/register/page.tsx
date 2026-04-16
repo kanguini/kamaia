@@ -23,7 +23,7 @@ const registerSchema = z
     gabineteName: z.string().min(3, 'Nome do gabinete deve ter pelo menos 3 caracteres'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'As palavras-passe nao coincidem',
+    message: 'As palavras-passe não coincidem',
     path: ['confirmPassword'],
   })
 

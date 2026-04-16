@@ -12,8 +12,8 @@ import { cn } from '@/lib/utils'
 import { CalendarEventType, PaginatedResponse } from '@kamaia/shared-types'
 
 const EVENT_TYPE_LABELS: Record<Exclude<CalendarEventType, CalendarEventType.PRAZO>, string> = {
-  [CalendarEventType.AUDIENCIA]: 'Audiencia',
-  [CalendarEventType.REUNIAO]: 'Reuniao',
+  [CalendarEventType.AUDIENCIA]: 'Audiência',
+  [CalendarEventType.REUNIAO]: 'Reunião',
   [CalendarEventType.DILIGENCIA]: 'Diligencia',
   [CalendarEventType.OUTRO]: 'Outro',
 }
