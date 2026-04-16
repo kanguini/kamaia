@@ -62,9 +62,8 @@ interface TaskCard {
   assignee: { id: string; firstName: string; lastName: string } | null
   processo: { id: string; processoNumber: string; title: string } | null
   cliente: { id: string; name: string } | null
-  checklist: { total: number; checked: number }
-  _count?: { comments: number }
-  createdBy: { firstName: string; lastName: string }
+  _count?: { checklist: number; comments: number }
+  createdBy?: { firstName: string; lastName: string }
   createdAt: string
 }
 
@@ -213,17 +212,10 @@ function SortableCard({ card, onClick }: CardProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {card.checklist.total > 0 && (
-            <span
-              className={cn(
-                'inline-flex items-center gap-0.5 text-[10px]',
-                card.checklist.checked === card.checklist.total
-                  ? 'text-green-500'
-                  : 'text-ink-muted',
-              )}
-            >
+          {(card._count?.checklist ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-ink-muted">
               <CheckSquare className="w-3 h-3" />
-              {card.checklist.checked}/{card.checklist.total}
+              {card._count!.checklist}
             </span>
           )}
           {(card._count?.comments ?? 0) > 0 && (
