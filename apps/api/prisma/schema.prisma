@@ -44,6 +44,8 @@ model Gabinete {
   timeEntries     TimeEntry[]
   expenses        Expense[]
   clienteInteractions ClienteInteraction[]
+  taskColumns     TaskColumn[]
+  tasks           Task[]
   notifications   Notification[]
 
   @@map("gabinetes")
@@ -83,6 +85,9 @@ model User {
   timeEntries     TimeEntry[]
   expenses        Expense[]
   clienteInteractions ClienteInteraction[]
+  tasksAssigned     Task[]           @relation("TaskAssignee")
+  tasksCreated      Task[]           @relation("TaskCreator")
+  taskComments      TaskComment[]    @relation("TaskComments")
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
   notificationPreference NotificationPreference?
@@ -135,6 +140,7 @@ model Cliente {
   advogado  User?      @relation("AdvogadoClientes", fields: [advogadoId], references: [id])
   processos Processo[]
   interactions ClienteInteraction[]
+  tasks        Task[]
 
   @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
   @@index([gabineteId], map: "idx_cliente_gabinete")
@@ -181,6 +187,7 @@ model Processo {
   documents   Document[]
   timeEntries TimeEntry[]
   expenses    Expense[]
+  tasks       Task[]
 
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
@@ -504,6 +511,92 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+// ── Task Column (Kanban Board) ───────────────────────────
+
+model TaskColumn {
+  id         String   @id @default(uuid()) @db.Uuid
+  gabineteId String   @map("gabinete_id") @db.Uuid
+  title      String   @db.VarChar(100)
+  position   Int      @default(0)
+  color      String?  @db.VarChar(7)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  tasks    Task[]
+
+  @@index([gabineteId, position], map: "idx_taskcolumn_gabinete_pos")
+  @@map("task_columns")
+}
+
+// ── Task (Kanban Card) ──────────────────────────────────
+
+model Task {
+  id          String    @id @default(uuid()) @db.Uuid
+  gabineteId  String    @map("gabinete_id") @db.Uuid
+  columnId    String    @map("column_id") @db.Uuid
+  title       String    @db.VarChar(500)
+  description String?   @db.Text
+  priority    String    @default("MEDIA") @db.VarChar(10)
+  position    Int       @default(0)
+  assigneeId  String?   @map("assignee_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+  processoId  String?   @map("processo_id") @db.Uuid
+  clienteId   String?   @map("cliente_id") @db.Uuid
+  dueDate     DateTime? @map("due_date") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  labels      String[]  @default([])
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete  Gabinete       @relation(fields: [gabineteId], references: [id])
+  column    TaskColumn     @relation(fields: [columnId], references: [id])
+  assignee  User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User           @relation("TaskCreator", fields: [createdById], references: [id])
+  processo  Processo?      @relation(fields: [processoId], references: [id])
+  cliente   Cliente?       @relation(fields: [clienteId], references: [id])
+  checklist TaskCheckItem[]
+  comments  TaskComment[]
+
+  @@index([gabineteId, columnId, position], map: "idx_task_column_pos")
+  @@index([gabineteId, assigneeId], map: "idx_task_assignee")
+  @@index([gabineteId, processoId], map: "idx_task_processo")
+  @@map("tasks")
+}
+
+// ── Task Check Item (Checklist) ─────────────────────────
+
+model TaskCheckItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  title     String   @db.VarChar(300)
+  checked   Boolean  @default(false)
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "idx_checkitem_task")
+  @@map("task_check_items")
+}
+
+// ── Task Comment ────────────────────────────────────────
+
+model TaskComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  taskId    String   @map("task_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation("TaskComments", fields: [userId], references: [id])
+
+  @@index([taskId], map: "idx_taskcomment_task")
+  @@map("task_comments")
 }
 
 // ── Cliente Interaction (CRM Flow) ───────────────────────

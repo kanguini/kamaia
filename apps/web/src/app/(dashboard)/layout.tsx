@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText,
-  Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon,
+  Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon, CheckSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
@@ -30,6 +30,7 @@ const navSections = [
     { label: 'Despesas', href: '/despesas', icon: Receipt },
   ]},
   { title: 'FERRAMENTAS', items: [
+    { label: 'Tarefas', href: '/tarefas', icon: CheckSquare },
     { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
     { label: 'Equipa', href: '/equipa', icon: Users },
     { label: 'Configuracoes', href: '/configuracoes', icon: Settings },

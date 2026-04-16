@@ -35,6 +35,8 @@ export enum EntityType {
   DOCUMENT = 'DOCUMENT',
   AI_CONVERSATION = 'AI_CONVERSATION',
   SUBSCRIPTION = 'SUBSCRIPTION',
+  TASK = 'TASK',
+  TASK_COLUMN = 'TASK_COLUMN',
 }
 
 export enum ProcessoType {
@@ -121,6 +123,18 @@ export enum InteractionType {
   WHATSAPP = 'WHATSAPP',
   VISITA = 'VISITA',
 }
+
+export enum TaskPriority {
+  ALTA = 'ALTA',
+  MEDIA = 'MEDIA',
+  BAIXA = 'BAIXA',
+}
+
+export const DEFAULT_TASK_COLUMNS = [
+  { title: 'A Fazer', color: '#3b82f6', position: 0 },
+  { title: 'Em Progresso', color: '#f59e0b', position: 1 },
+  { title: 'Concluido', color: '#10b981', position: 2 },
+] as const;
 
 export enum CalendarEventType {
   AUDIENCIA = 'AUDIENCIA',

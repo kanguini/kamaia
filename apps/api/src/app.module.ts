@@ -25,6 +25,7 @@ import { TeamModule } from './modules/team/team.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { BackupModule } from './modules/backup/backup.module';
     PortalModule,
     BillingModule,
     BackupModule,
+    TasksModule,
   ],
   providers: [
     {
