@@ -22,7 +22,7 @@ const navSections = [
     { label: 'Processos', href: '/processos', icon: Scale },
     { label: 'Clientes', href: '/clientes', icon: Users },
   ]},
-  { title: 'GESTAO', items: [
+  { title: 'GESTÃO', items: [
     { label: 'Agenda', href: '/agenda', icon: Calendar },
     { label: 'Prazos', href: '/prazos', icon: Clock },
     { label: 'Documentos', href: '/documentos', icon: FileText },
@@ -33,7 +33,7 @@ const navSections = [
     { label: 'Tarefas', href: '/tarefas', icon: CheckSquare },
     { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
     { label: 'Equipa', href: '/equipa', icon: Users },
-    { label: 'Configuracoes', href: '/configuracoes', icon: Settings },
+    { label: 'Configurações', href: '/configuracoes', icon: Settings },
   ]},
 ]
 
@@ -153,7 +153,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[20px] font-semibold [color:var(--color-ink)] tracking-[-0.02em]">Kamaia</h1>
-            <p className="text-[11px] [color:var(--color-sidebar-text-ghost)] mt-0.5">Gestao Juridica</p>
+            <p className="text-[11px] [color:var(--color-sidebar-text-ghost)] mt-0.5">Gestão Jurídica</p>
           </div>
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1 rounded-lg">

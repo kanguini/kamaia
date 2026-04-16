@@ -137,7 +137,7 @@ function ProfileSection() {
 
         <FormField label="Email">
           <Input value={profile?.email || ''} disabled className="opacity-60" />
-          <p className="text-xs text-ink-muted mt-1">O email nao pode ser alterado</p>
+          <p className="text-xs text-ink-muted mt-1">O email não pode ser alterado</p>
         </FormField>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -383,7 +383,7 @@ function NotificationsSection() {
         body: JSON.stringify(update),
         token: session.accessToken,
       })
-      toast.success('Preferencia actualizada')
+      toast.success('Preferência actualizada')
       refetch()
     } catch {
       toast.error('Erro ao actualizar preferencia')
@@ -392,7 +392,7 @@ function NotificationsSection() {
 
   if (loading) {
     return (
-      <Section title="Notificacoes" icon={Bell}>
+      <Section title="Notificações" icon={Bell}>
         <div className="animate-pulse h-20 bg-border rounded-lg" />
       </Section>
     )
@@ -400,14 +400,14 @@ function NotificationsSection() {
 
   if (!prefs) {
     return (
-      <Section title="Notificacoes" icon={Bell}>
+      <Section title="Notificações" icon={Bell}>
         <p className="text-ink-muted text-sm">Sem configuracoes de notificacao disponiveis.</p>
       </Section>
     )
   }
 
   return (
-    <Section title="Notificacoes" icon={Bell}>
+    <Section title="Notificações" icon={Bell}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -466,7 +466,7 @@ function DataSection() {
   const toast = useToast()
 
   return (
-    <Section title="Dados e Seguranca" icon={Shield}>
+    <Section title="Dados e Segurança" icon={Shield}>
       <div className="space-y-3">
         <div className="flex items-center justify-between py-2">
           <div className="flex items-center gap-3">
@@ -493,7 +493,7 @@ function DataSection() {
             <Database className="w-4 h-4 text-ink-muted" />
             <div>
               <p className="text-sm font-medium text-ink">Integridade</p>
-              <p className="text-xs text-ink-muted">Verificacao diaria automatica</p>
+              <p className="text-xs text-ink-muted">Verificação diária automática</p>
             </div>
           </div>
           <span className="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded font-medium">
@@ -506,7 +506,7 @@ function DataSection() {
             <Shield className="w-4 h-4 text-ink-muted" />
             <div>
               <p className="text-sm font-medium text-ink">Audit Log</p>
-              <p className="text-xs text-ink-muted">Todas as accoes registadas</p>
+              <p className="text-xs text-ink-muted">Todas as acções registadas</p>
             </div>
           </div>
           <span className="text-xs px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 rounded font-medium">
@@ -523,7 +523,7 @@ function DataSection() {
 export default function ConfiguracoesPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-2">
-      <h1 className="text-2xl font-semibold text-ink mb-6">Configuracoes</h1>
+      <h1 className="text-2xl font-semibold text-ink mb-6">Configurações</h1>
 
       <ProfileSection />
       <PasswordSection />

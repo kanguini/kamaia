@@ -83,7 +83,7 @@ export default function RegisterPage() {
     <div className="space-y-8">
       <div className="text-center">
         <h1 className="font-display text-5xl font-semibold text-ink mb-2">Kamaia</h1>
-        <p className="text-ink-muted text-sm font-mono">Gestao Juridica Inteligente</p>
+        <p className="text-ink-muted text-sm font-mono">Gestão Jurídica Inteligente</p>
       </div>
 
       <div className="bg-surface border border-border p-8 shadow-lg">

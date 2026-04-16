@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Kamaia',
-  description: 'Gestao Juridica Inteligente',
+  description: 'Gestão Jurídica Inteligente',
 }
 
 export default function RootLayout({

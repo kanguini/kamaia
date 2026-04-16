@@ -144,7 +144,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-semibold text-ink mb-1">
             {getGreeting()}, {session?.user?.firstName}!
           </h1>
-          <p className="text-ink-muted text-sm">Resumo da sua actividade</p>
+          <p className="text-ink-muted text-sm">Resumo da sua atividade</p>
         </div>
         <button
           onClick={() => {
@@ -274,7 +274,7 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center mb-4">
               <p className="text-4xl font-bold text-ink-muted">0</p>
-              <p className="text-xs text-ink-muted mt-1">sem actividade</p>
+              <p className="text-xs text-ink-muted mt-1">sem atividade</p>
             </div>
           )}
           {taskscore && taskscore.length > 0 && (
