@@ -46,17 +46,17 @@
 
   /* ═══ DARK MODE ═══ */
   .dark {
-    --color-ink: #F5F5F0;
-    --color-ink-secondary: #D4D4CC;
-    --color-ink-muted: #8A8A80;
-    --color-ink-ghost: #5A5A52;
+    --color-ink: #FFFFFF;
+    --color-ink-secondary: #FFFFFF;
+    --color-ink-muted: #9CA3AF;
+    --color-ink-ghost: #6B7280;
 
-    --color-surface: #0A0A0A;
-    --color-surface-raised: #161616;
-    --color-surface-hover: #1E1E1E;
+    --color-surface: #000000;
+    --color-surface-raised: #0F0F0F;
+    --color-surface-hover: #1A1A1A;
 
-    --color-border: #2A2A28;
-    --color-border-strong: #3D3D3A;
+    --color-border: #262626;
+    --color-border-strong: #404040;
 
     --color-success: #34D399;
     --color-success-bg: rgba(52,211,153,0.15);
@@ -71,17 +71,17 @@
     --color-info-bg: rgba(96,165,250,0.15);
     --color-info-text: #93C5FD;
 
-    --color-sidebar-bg: #161616;
-    --color-sidebar-text: #D4D4CC;
-    --color-sidebar-text-muted: #8A8A80;
-    --color-sidebar-text-ghost: #5A5A52;
-    --color-sidebar-active-bg: rgba(255,255,255,0.10);
+    --color-sidebar-bg: #000000;
+    --color-sidebar-text: #FFFFFF;
+    --color-sidebar-text-muted: #FFFFFF;
+    --color-sidebar-text-ghost: #9CA3AF;
+    --color-sidebar-active-bg: rgba(255,255,255,0.12);
     --color-sidebar-active-text: #FFFFFF;
-    --color-sidebar-hover-bg: rgba(255,255,255,0.05);
-    --color-sidebar-border: rgba(255,255,255,0.06);
+    --color-sidebar-hover-bg: rgba(255,255,255,0.06);
+    --color-sidebar-border: rgba(255,255,255,0.08);
 
     --color-btn-primary-bg: #FFFFFF;
-    --color-btn-primary-text: #0A0A0A;
+    --color-btn-primary-text: #000000;
     --color-btn-primary-hover: #E5E5E5;
   }
 

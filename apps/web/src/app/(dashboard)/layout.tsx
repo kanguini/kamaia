@@ -3,11 +3,11 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText,
   Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon, CheckSquare,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
@@ -16,6 +16,7 @@ import { useTheme } from '@/hooks/use-theme'
 import { useSidebarState } from '@/hooks/use-sidebar-state'
 import { ToastProvider } from '@/components/ui/toast'
 import { Logo, LogoIcon } from '@/components/ui/logo'
+import { NewDropdownButton } from '@/components/ui/new-dropdown'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -36,7 +37,6 @@ const navSections = [
     { label: 'Tarefas', href: '/tarefas', icon: CheckSquare },
     { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
     { label: 'Equipa', href: '/equipa', icon: Users },
-    { label: 'Configurações', href: '/configuracoes', icon: Settings },
   ]},
 ]
 
@@ -56,7 +56,7 @@ function NavLink({ item, isActive, onClick, collapsed }: { item: NavItem; isActi
           : '[color:var(--color-sidebar-text-muted)] hover:[background:var(--color-sidebar-hover-bg)] hover:[color:var(--color-sidebar-text)]',
       )}
     >
-      <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" style={{ opacity: isActive ? 1 : 0.6 }} />
+      <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" style={{ opacity: isActive ? 1 : 0.85 }} />
       {!collapsed && <span>{item.label}</span>}
     </Link>
   )
@@ -148,9 +148,91 @@ function ThemeToggle() {
   )
 }
 
+function UserMenu({ collapsed }: { collapsed?: boolean }) {
+  const { data: session } = useSession()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const user = session?.user
+  const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`
+
+  return (
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-label="Menu do utilizador"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        className={cn(
+          'w-full flex items-center gap-2 rounded-lg transition-colors',
+          'hover:[background:var(--color-sidebar-hover-bg)]',
+          collapsed ? 'justify-center p-1.5' : 'p-1.5',
+        )}
+      >
+        <div className="w-8 h-8 [background:var(--color-sidebar-hover-bg)] rounded-md flex items-center justify-center flex-shrink-0">
+          <span className="[color:var(--color-sidebar-text-muted)] font-mono text-[11px] font-medium">{initials}</span>
+        </div>
+        {!collapsed && (
+          <div className="flex-1 min-w-0 text-left">
+            <p className="[color:var(--color-sidebar-text)] text-[13px] font-medium truncate">{user?.firstName} {user?.lastName}</p>
+            <p className="[color:var(--color-sidebar-text-ghost)] text-[10px] truncate">{user?.email}</p>
+          </div>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className={cn(
+            'absolute bottom-full mb-2 bg-surface-raised border border-border rounded-lg shadow-xl z-50 overflow-hidden py-1',
+            collapsed ? 'left-0 w-[220px]' : 'left-0 right-0',
+          )}
+        >
+          <div className="px-3 py-2 border-b border-border">
+            <p className="text-[13px] font-medium text-ink truncate">{user?.firstName} {user?.lastName}</p>
+            <p className="text-[11px] text-ink-muted truncate">{user?.email}</p>
+            <p className="text-[10px] font-mono text-ink-muted/60 mt-0.5">{user?.role}</p>
+          </div>
+          <Link
+            href="/configuracoes"
+            onClick={() => setOpen(false)}
+            role="menuitem"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-hover transition-colors"
+          >
+            <User className="w-4 h-4 text-ink-muted" />
+            Meu perfil
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              signOut({ callbackUrl: '/login' })
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
-  const { data: session } = useSession()
 
   return (
     <aside aria-label="Navegação principal" className="h-full [background:var(--color-sidebar-bg)] flex flex-col border-r [border-color:var(--color-sidebar-border)]" style={{ borderRightWidth: '1px' }}>
@@ -165,17 +247,6 @@ function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => voi
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1 rounded-lg">
               <X className="w-5 h-5" aria-hidden="true" />
-            </button>
-          )}
-          {onToggleCollapse && !onClose && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-              className="hidden lg:flex [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1.5 rounded-lg hover:[background:var(--color-sidebar-hover-bg)]"
-            >
-              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
             </button>
           )}
         </div>
@@ -195,31 +266,65 @@ function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => voi
         ))}
       </nav>
 
-      <div className={cn('border-t [border-color:var(--color-sidebar-border)]', collapsed ? 'p-2' : 'p-4')}>
-        <div className={cn('flex items-center mb-3', collapsed ? 'justify-center' : 'gap-3')}>
-          <div className="w-9 h-9 [background:var(--color-sidebar-hover-bg)] rounded-lg flex items-center justify-center flex-shrink-0" title={collapsed ? `${session?.user?.firstName} ${session?.user?.lastName}` : undefined}>
-            <span className="[color:var(--color-sidebar-text-muted)] font-mono text-[11px] font-medium">{session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}</span>
+      {/* Footer: user menu + settings + collapse */}
+      <div className={cn('border-t [border-color:var(--color-sidebar-border)]', collapsed ? 'p-2 space-y-1' : 'p-3')}>
+        {collapsed ? (
+          <>
+            <UserMenu collapsed />
+            <Link
+              href="/configuracoes"
+              aria-label="Configurações"
+              title="Configurações"
+              className={cn(
+                'flex items-center justify-center p-2 rounded-lg transition-colors',
+                pathname === '/configuracoes'
+                  ? '[background:var(--color-sidebar-active-bg)] [color:var(--color-sidebar-active-text)]'
+                  : '[color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] hover:[background:var(--color-sidebar-hover-bg)]',
+              )}
+            >
+              <Settings className="w-4 h-4" />
+            </Link>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label="Expandir menu"
+                title="Expandir menu"
+                className="hidden lg:flex w-full items-center justify-center p-2 rounded-lg [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] hover:[background:var(--color-sidebar-hover-bg)] transition-colors"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-1">
+            <UserMenu />
+            <Link
+              href="/configuracoes"
+              aria-label="Configurações"
+              title="Configurações"
+              className={cn(
+                'flex items-center justify-center p-2 rounded-lg transition-colors flex-shrink-0',
+                pathname === '/configuracoes'
+                  ? '[background:var(--color-sidebar-active-bg)] [color:var(--color-sidebar-active-text)]'
+                  : '[color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] hover:[background:var(--color-sidebar-hover-bg)]',
+              )}
+            >
+              <Settings className="w-4 h-4" />
+            </Link>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label="Recolher menu"
+                title="Recolher menu"
+                className="hidden lg:flex items-center justify-center p-2 rounded-lg [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] hover:[background:var(--color-sidebar-hover-bg)] transition-colors flex-shrink-0"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="[color:var(--color-sidebar-text)] text-[13px] font-medium truncate">{session?.user?.firstName} {session?.user?.lastName}</p>
-              <p className="[color:var(--color-sidebar-text-ghost)] text-[10px] font-mono truncate">{session?.user?.role}</p>
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          aria-label="Sair da conta"
-          title={collapsed ? 'Sair' : undefined}
-          className={cn(
-            'w-full flex items-center justify-center gap-2 [color:var(--color-sidebar-text-muted)] hover:text-danger hover:bg-danger-bg text-[12px] transition-colors min-h-[36px] rounded-lg',
-            collapsed ? 'px-2 py-2' : 'px-3 py-2',
-          )}
-        >
-          <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-          {!collapsed && <span>Sair</span>}
-        </button>
+        )}
       </div>
     </aside>
   )
@@ -282,16 +387,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-1 bg-surface-raised rounded-xl px-2 py-1.5 border border-border" style={{ borderWidth: '1px' }}>
-            <div className="hidden sm:flex items-center gap-2 px-2">
-              <div className="w-7 h-7 bg-surface-hover rounded-lg flex items-center justify-center">
-                <span className="text-ink-muted font-mono text-[10px] font-medium">{session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}</span>
+          <div className="flex items-center gap-3">
+            <NewDropdownButton />
+            <div className="flex items-center gap-1 bg-surface-raised rounded-lg px-2 py-1.5 border border-border" style={{ borderWidth: '1px' }}>
+              <div className="hidden sm:flex items-center gap-2 px-2">
+                <div className="w-7 h-7 bg-surface-hover rounded-md flex items-center justify-center">
+                  <span className="text-ink-muted font-mono text-[10px] font-medium">{session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}</span>
+                </div>
+                <span className="text-[12px] text-ink-secondary font-medium">{session?.user?.firstName}</span>
               </div>
-              <span className="text-[12px] text-ink-secondary font-medium">{session?.user?.firstName}</span>
+              <div className="hidden sm:block w-px h-5 bg-border mx-1" />
+              <NotificationBell />
+              <ThemeToggle />
             </div>
-            <div className="hidden sm:block w-px h-5 bg-border mx-1" />
-            <NotificationBell />
-            <ThemeToggle />
           </div>
         </header>
 

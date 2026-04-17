@@ -2,7 +2,7 @@
 
 import { useState, useMemo, lazy, Suspense } from 'react'
 import Link from 'next/link'
-import { Plus, Scale, AlertCircle, Search, LayoutList, Columns3 } from 'lucide-react'
+import { Scale, AlertCircle, Search, LayoutList, Columns3 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton, FilterTabs } from '@/components/ui'
@@ -160,14 +160,6 @@ export default function ProcessosPage() {
               <Columns3 className="w-4 h-4" />
             </button>
           </div>
-          <Link
-            href="/processos/novo"
-            className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Novo Processo</span>
-            <span className="sm:hidden">Novo</span>
-          </Link>
         </div>
       </div>
 
@@ -257,13 +249,7 @@ export default function ProcessosPage() {
           <EmptyState
             icon={Scale}
             title="Nenhum processo"
-            description="Comece por criar o seu primeiro processo"
-            action={
-              <Link href="/processos/novo" className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]">
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                Novo Processo
-              </Link>
-            }
+            description="Use o botão + Novo no topo para criar o seu primeiro processo"
           />
         )
       ) : (

@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import {
-  Scale, Clock, Users, Bot,
+  Scale, Clock, Users,
   FileDown, TrendingUp, Trophy,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
@@ -164,23 +164,6 @@ export default function DashboardPage() {
         <StatCard title="Prazos Urgentes" value={stats?.upcomingPrazos ?? 0} icon={Clock} loading={loading} />
         <StatCard title="Clientes" value={stats?.activeClientes ?? 0} icon={Users} loading={loading} />
         <StatCard title="Horas Registadas" value={kpis?.totalTimeHours ?? 0} icon={TrendingUp} loading={kpisLoading} />
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Novo Processo', href: '/processos/novo', icon: Scale },
-          { label: 'Novo Cliente', href: '/clientes/novo', icon: Users },
-          { label: 'Novo Prazo', href: '/prazos/novo', icon: Clock },
-          { label: 'IA Assistente', href: '/ia-assistente', icon: Bot },
-        ].map((a) => (
-          <Link key={a.href} href={a.href} className="flex items-center gap-3 px-4 py-3 bg-surface-raised border border-border rounded-lg hover:border-ink/20 transition-colors group">
-            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
-              <a.icon className="w-4 h-4 text-ink-muted group-hover:text-ink transition-colors" />
-            </div>
-            <span className="text-sm font-medium text-ink">{a.label}</span>
-          </Link>
-        ))}
       </div>
 
       {/* Charts Row */}
