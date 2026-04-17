@@ -131,6 +131,27 @@
   .bg-surface-raised:not(.no-round):not([class*="rounded-"]) {
     border-radius: 18px;
   }
+
+  /* Global rounded corners on form elements (skip if explicitly styled) */
+  input[type="text"]:not([class*="rounded"]),
+  input[type="email"]:not([class*="rounded"]),
+  input[type="password"]:not([class*="rounded"]),
+  input[type="number"]:not([class*="rounded"]),
+  input[type="tel"]:not([class*="rounded"]),
+  input[type="date"]:not([class*="rounded"]),
+  input[type="datetime-local"]:not([class*="rounded"]),
+  input[type="time"]:not([class*="rounded"]),
+  input[type="search"]:not([class*="rounded"]),
+  input[type="url"]:not([class*="rounded"]),
+  select:not([class*="rounded"]),
+  textarea:not([class*="rounded"]) {
+    border-radius: 12px !important;
+  }
+
+  /* Buttons get rounded unless they have an explicit rounded class or are icon-only */
+  button:not([class*="rounded"]):not([aria-label*="Fechar"]):not([aria-label*="menu"]) {
+    border-radius: 12px;
+  }
 }
 
 @layer utilities {

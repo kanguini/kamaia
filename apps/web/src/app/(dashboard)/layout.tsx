@@ -7,13 +7,15 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText,
   Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon, CheckSquare,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useTheme } from '@/hooks/use-theme'
+import { useSidebarState } from '@/hooks/use-sidebar-state'
 import { ToastProvider } from '@/components/ui/toast'
-import { Logo } from '@/components/ui/logo'
+import { Logo, LogoIcon } from '@/components/ui/logo'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -38,22 +40,24 @@ const navSections = [
   ]},
 ]
 
-function NavLink({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick?: () => void }) {
+function NavLink({ item, isActive, onClick, collapsed }: { item: NavItem; isActive: boolean; onClick?: () => void; collapsed?: boolean }) {
   const Icon = item.icon
   return (
     <Link
       href={item.href}
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
+      title={collapsed ? item.label : undefined}
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 text-[14px] rounded-lg transition-all min-h-[40px]',
+        'flex items-center gap-3 text-[14px] rounded-lg transition-all min-h-[40px]',
+        collapsed ? 'justify-center px-2' : 'px-3 py-2.5',
         isActive
           ? '[background:var(--color-sidebar-active-bg)] [color:var(--color-sidebar-active-text)] font-medium'
           : '[color:var(--color-sidebar-text-muted)] hover:[background:var(--color-sidebar-hover-bg)] hover:[color:var(--color-sidebar-text)]',
       )}
     >
       <Icon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" style={{ opacity: isActive ? 1 : 0.6 }} />
-      <span>{item.label}</span>
+      {!collapsed && <span>{item.label}</span>}
     </Link>
   )
 }
@@ -144,60 +148,77 @@ function ThemeToggle() {
   )
 }
 
-function Sidebar({ onClose }: { onClose?: () => void }) {
+function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname()
   const { data: session } = useSession()
 
   return (
-    <aside aria-label="Navegacao principal" className="h-full [background:var(--color-sidebar-bg)] flex flex-col border-r [border-color:var(--color-sidebar-border)]" style={{ borderRightWidth: '1px' }}>
-      <div className="px-5 pt-7 pb-5 border-b [border-color:var(--color-sidebar-border)]">
-        <div className="flex items-center justify-between">
-          <div>
+    <aside aria-label="Navegação principal" className="h-full [background:var(--color-sidebar-bg)] flex flex-col border-r [border-color:var(--color-sidebar-border)]" style={{ borderRightWidth: '1px' }}>
+      <div className={cn('border-b [border-color:var(--color-sidebar-border)]', collapsed ? 'px-2 pt-5 pb-4' : 'px-5 pt-7 pb-5')}>
+        <div className={cn('flex items-center', collapsed ? 'flex-col gap-3' : 'justify-between')}>
+          <div className={cn(collapsed && 'w-full flex justify-center')}>
             <h1 className="sr-only">Kamaia</h1>
             <div aria-hidden="true" className="[color:var(--color-ink)]">
-              <Logo height={28} />
+              {collapsed ? <LogoIcon size={24} /> : <Logo height={28} />}
             </div>
-            <p className="text-[11px] [color:var(--color-sidebar-text-ghost)] mt-1.5">Gestão Jurídica</p>
           </div>
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1 rounded-lg">
               <X className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
+          {onToggleCollapse && !onClose && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              className="hidden lg:flex [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1.5 rounded-lg hover:[background:var(--color-sidebar-hover-bg)]"
+            >
+              {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto" aria-label="Menu">
+      <nav className={cn('flex-1 py-4 overflow-y-auto', collapsed ? 'px-2 space-y-4' : 'px-3 space-y-6')} aria-label="Menu">
         {navSections.map((section) => (
           <div key={section.title}>
-            <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase [color:var(--color-sidebar-text-ghost)] px-3 mb-2">{section.title}</h2>
+            {!collapsed && <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase [color:var(--color-sidebar-text-ghost)] px-3 mb-2">{section.title}</h2>}
+            {collapsed && <div className="mx-2 mb-2 h-px [background:var(--color-sidebar-border)]" />}
             <ul className="space-y-1">
               {section.items.map((item) => (
-                <li key={item.href}><NavLink item={item} isActive={pathname === item.href} onClick={onClose} /></li>
+                <li key={item.href}><NavLink item={item} isActive={pathname === item.href} onClick={onClose} collapsed={collapsed} /></li>
               ))}
             </ul>
           </div>
         ))}
       </nav>
 
-      <div className="p-4 border-t [border-color:var(--color-sidebar-border)]">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 [background:var(--color-sidebar-hover-bg)] rounded-lg flex items-center justify-center flex-shrink-0">
+      <div className={cn('border-t [border-color:var(--color-sidebar-border)]', collapsed ? 'p-2' : 'p-4')}>
+        <div className={cn('flex items-center mb-3', collapsed ? 'justify-center' : 'gap-3')}>
+          <div className="w-9 h-9 [background:var(--color-sidebar-hover-bg)] rounded-lg flex items-center justify-center flex-shrink-0" title={collapsed ? `${session?.user?.firstName} ${session?.user?.lastName}` : undefined}>
             <span className="[color:var(--color-sidebar-text-muted)] font-mono text-[11px] font-medium">{session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="[color:var(--color-sidebar-text)] text-[13px] font-medium truncate">{session?.user?.firstName} {session?.user?.lastName}</p>
-            <p className="[color:var(--color-sidebar-text-ghost)] text-[10px] font-mono truncate">{session?.user?.role}</p>
-          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="[color:var(--color-sidebar-text)] text-[13px] font-medium truncate">{session?.user?.firstName} {session?.user?.lastName}</p>
+              <p className="[color:var(--color-sidebar-text-ghost)] text-[10px] font-mono truncate">{session?.user?.role}</p>
+            </div>
+          )}
         </div>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: '/login' })}
           aria-label="Sair da conta"
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 [color:var(--color-sidebar-text-muted)] hover:text-danger hover:bg-danger-bg text-[12px] transition-colors min-h-[36px] rounded-lg"
+          title={collapsed ? 'Sair' : undefined}
+          className={cn(
+            'w-full flex items-center justify-center gap-2 [color:var(--color-sidebar-text-muted)] hover:text-danger hover:bg-danger-bg text-[12px] transition-colors min-h-[36px] rounded-lg',
+            collapsed ? 'px-2 py-2' : 'px-3 py-2',
+          )}
         >
           <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Sair</span>
+          {!collapsed && <span>Sair</span>}
         </button>
       </div>
     </aside>
@@ -225,6 +246,7 @@ function MobileSidebarOverlay({ open, onClose }: { open: boolean; onClose: () =>
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { isCollapsed, toggle: toggleCollapsed } = useSidebarState()
   const { data: session } = useSession()
 
   return (
@@ -233,8 +255,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <a href="#main-content" className="skip-link">Saltar para o conteudo principal</a>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block w-[260px] flex-shrink-0">
-        <Sidebar />
+      <div className={cn('hidden lg:block flex-shrink-0 transition-[width] duration-200', isCollapsed ? 'w-[72px]' : 'w-[260px]')}>
+        <Sidebar collapsed={isCollapsed} onToggleCollapse={toggleCollapsed} />
       </div>
 
       <MobileSidebarOverlay open={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />

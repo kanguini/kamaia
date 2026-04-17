@@ -52,7 +52,16 @@ export default function NovoClientePage() {
       toast.success('Cliente criado com sucesso')
       router.push(`/clientes/${result.id}`)
     } else {
-      toast.error('Erro ao criar cliente')
+      // Use specific error message from backend if available
+      const msg = error || 'Erro ao criar cliente'
+      // Translate common backend error codes into friendly Portuguese messages
+      if (msg.toLowerCase().includes('nif') || msg.toLowerCase().includes('already exists')) {
+        toast.error('Já existe um cliente com esse NIF neste gabinete')
+      } else if (msg.toLowerCase().includes('quota')) {
+        toast.error('Limite de clientes atingido. Actualize o plano.')
+      } else {
+        toast.error(msg)
+      }
     }
   }
 
