@@ -110,7 +110,7 @@
   *:focus-visible {
     outline: 2px solid var(--color-ink);
     outline-offset: 2px;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 
   *:focus:not(:focus-visible) {
@@ -127,12 +127,12 @@
   .skip-link { @apply sr-only; }
   .skip-link:focus { @apply not-sr-only fixed top-4 left-4 z-[100] px-4 py-2 shadow-lg font-medium rounded-lg; background: var(--color-btn-primary-bg); color: var(--color-btn-primary-text); }
 
-  /* Tech/modern look: rounded cards by default */
+  /* Cards & containers: soft rounded for breathing room */
   .bg-surface-raised:not(.no-round):not([class*="rounded-"]) {
-    border-radius: 18px;
+    border-radius: 10px;
   }
 
-  /* Global rounded corners on form elements (skip if explicitly styled) */
+  /* Form elements: minimal rounding, suave mas presente */
   input[type="text"]:not([class*="rounded"]),
   input[type="email"]:not([class*="rounded"]),
   input[type="password"]:not([class*="rounded"]),
@@ -145,12 +145,12 @@
   input[type="url"]:not([class*="rounded"]),
   select:not([class*="rounded"]),
   textarea:not([class*="rounded"]) {
-    border-radius: 12px !important;
+    border-radius: 6px !important;
   }
 
-  /* Buttons get rounded unless they have an explicit rounded class or are icon-only */
+  /* Buttons: subtle rounding */
   button:not([class*="rounded"]):not([aria-label*="Fechar"]):not([aria-label*="menu"]) {
-    border-radius: 12px;
+    border-radius: 6px;
   }
 }
 
