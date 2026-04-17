@@ -7,8 +7,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { Loader2, Scale } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/ui/logo'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -68,11 +69,11 @@ export default function LoginPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <div className="w-14 h-14 bg-ink text-surface rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Scale className="w-7 h-7" />
+        <h1 className="sr-only">Kamaia</h1>
+        <div aria-hidden="true" className="text-ink inline-block">
+          <Logo height={44} />
         </div>
-        <h1 className="text-3xl font-bold text-ink tracking-tight">Kamaia</h1>
-        <p className="text-ink-muted text-sm mt-1">Gestão Jurídica Inteligente</p>
+        <p className="text-ink-muted text-sm mt-3">Gestão Jurídica Inteligente</p>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl p-8 shadow-lg">

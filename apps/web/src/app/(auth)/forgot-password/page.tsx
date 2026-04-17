@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/ui/logo'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -10,8 +11,11 @@ export default function ForgotPasswordPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="font-display text-5xl font-semibold text-ink mb-2">Kamaia</h1>
-        <p className="text-ink-muted text-sm font-mono">Gestão Jurídica Inteligente</p>
+        <h1 className="sr-only">Kamaia</h1>
+        <div aria-hidden="true" className="text-ink inline-block">
+          <Logo height={44} />
+        </div>
+        <p className="text-ink-muted text-sm mt-3">Gestão Jurídica Inteligente</p>
       </div>
 
       <div className="bg-surface border border-border p-8 shadow-lg">

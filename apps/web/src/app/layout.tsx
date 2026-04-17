@@ -10,8 +10,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Kamaia',
-  description: 'Gestão Jurídica Inteligente',
+  title: 'Kamaia — Gestão Jurídica Inteligente',
+  description: 'Plataforma de gestão jurídica para advogados e gabinetes em Angola',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 }
 
 export default function RootLayout({

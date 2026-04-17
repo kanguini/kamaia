@@ -13,6 +13,7 @@ import { useApi } from '@/hooks/use-api'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useTheme } from '@/hooks/use-theme'
 import { ToastProvider } from '@/components/ui/toast'
+import { Logo } from '@/components/ui/logo'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -152,8 +153,11 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="px-5 pt-7 pb-5 border-b [border-color:var(--color-sidebar-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-[20px] font-semibold [color:var(--color-ink)] tracking-[-0.02em]">Kamaia</h1>
-            <p className="text-[11px] [color:var(--color-sidebar-text-ghost)] mt-0.5">Gestão Jurídica</p>
+            <h1 className="sr-only">Kamaia</h1>
+            <div aria-hidden="true" className="[color:var(--color-ink)]">
+              <Logo height={28} />
+            </div>
+            <p className="text-[11px] [color:var(--color-sidebar-text-ghost)] mt-1.5">Gestão Jurídica</p>
           </div>
           {onClose && (
             <button type="button" onClick={onClose} aria-label="Fechar menu" className="lg:hidden [color:var(--color-sidebar-text-muted)] hover:[color:var(--color-sidebar-text)] p-1 rounded-lg">
@@ -249,7 +253,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Menu className="w-5 h-5" aria-hidden="true" />
             </button>
-            <h1 className="lg:hidden text-[16px] font-semibold text-ink">Kamaia</h1>
+            <div aria-hidden="true" className="lg:hidden text-ink">
+              <Logo height={20} />
+            </div>
+            <span className="sr-only lg:hidden">Kamaia</span>
           </div>
 
           {/* Right: actions */}
