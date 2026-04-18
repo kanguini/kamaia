@@ -528,6 +528,43 @@ function DataSection() {
           <div className="flex items-center gap-3">
             <Database className="w-4 h-4 text-ink-muted" />
             <div>
+              <p className="text-sm font-medium text-ink">Carregar dados demo</p>
+              <p className="text-xs text-ink-muted">
+                Popula os processos existentes com timesheets, prazos, despesas,
+                tarefas e eventos realistas. Útil para ver a plataforma em uso.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              if (!session?.accessToken) {
+                toast.error('Sessão expirada — reinicie sessão.')
+                return
+              }
+              if (!confirm('Adicionar dados demo aos processos existentes? Isto não apaga nada.')) return
+              try {
+                const r = await api<{ data: Record<string, number> }>(
+                  '/seed/demo-data',
+                  { method: 'POST', token: session.accessToken },
+                )
+                const tot = Object.values(r.data).reduce((s, n) => s + n, 0)
+                toast.success(`Adicionados ${tot} registos de demonstração`)
+                setTimeout(() => window.location.reload(), 800)
+              } catch {
+                toast.error('Erro a carregar dados demo')
+              }
+            }}
+          >
+            Carregar
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-3">
+            <Database className="w-4 h-4 text-ink-muted" />
+            <div>
               <p className="text-sm font-medium text-ink">Integridade</p>
               <p className="text-xs text-ink-muted">Verificação diária automática</p>
             </div>

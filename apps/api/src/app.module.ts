@@ -30,6 +30,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
+import { SeedModule } from './modules/seed/seed.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { HolidaysModule } from './modules/holidays/holidays.module';
     ProjectsModule,
     InvoicesModule,
     HolidaysModule,
+    SeedModule,
   ],
   providers: [
     {
