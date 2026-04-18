@@ -35,7 +35,15 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
     } catch (err: unknown) {
       // Log to console for diagnostics (browser DevTools)
       console.error(`[useApi] Failed to fetch ${endpoint}:`, err)
-      const errorObj = err as { error?: string; code?: string; message?: string }
+      const errorObj = err as { error?: string; code?: string; message?: string; status?: number }
+      // If session expired (401), trigger re-login instead of showing error
+      if (errorObj?.status === 401 || errorObj?.code === 'UNAUTHORIZED') {
+        if (typeof window !== 'undefined') {
+          const { signIn } = await import('next-auth/react')
+          signIn()
+          return
+        }
+      }
       const backendMsg = errorObj?.error || errorObj?.message
       // Include endpoint name to help identify which data failed
       const shortEndpoint = endpoint.split('?')[0]

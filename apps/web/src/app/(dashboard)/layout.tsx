@@ -18,6 +18,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { Logo, LogoIcon } from '@/components/ui/logo'
 import { NewDropdownButton } from '@/components/ui/new-dropdown'
 import { GlobalSearch } from '@/components/ui/global-search'
+import { AIButton } from '@/components/ui/ai-button'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -266,18 +267,16 @@ function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => voi
         </div>
       </div>
 
-      <nav className={cn('flex-1 py-4 overflow-y-auto', collapsed ? 'px-2 space-y-4' : 'px-3 space-y-6')} aria-label="Menu">
-        {navSections.map((section) => (
-          <div key={section.title}>
-            {!collapsed && <h2 className="text-[10px] font-semibold tracking-[0.12em] uppercase [color:var(--color-sidebar-text-ghost)] px-3 mb-2">{section.title}</h2>}
-            {collapsed && <div className="mx-2 mb-2 h-px [background:var(--color-sidebar-border)]" />}
-            <ul className="space-y-1">
-              {section.items.map((item) => (
-                <li key={item.href}><NavLink item={item} isActive={pathname === item.href} onClick={onClose} collapsed={collapsed} /></li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <nav className={cn('flex-1 py-4 overflow-y-auto', collapsed ? 'px-2' : 'px-3')} aria-label="Menu">
+        <ul className="space-y-1">
+          {navSections.flatMap((section) =>
+            section.items.map((item) => (
+              <li key={item.href}>
+                <NavLink item={item} isActive={pathname === item.href} onClick={onClose} collapsed={collapsed} />
+              </li>
+            )),
+          )}
+        </ul>
       </nav>
 
       {/* Footer: user menu + settings + collapse */}
@@ -406,6 +405,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Right: actions */}
           <div className="flex items-center gap-2">
+            <AIButton />
             <NewDropdownButton />
             <NotificationBell />
             <ThemeToggle />
