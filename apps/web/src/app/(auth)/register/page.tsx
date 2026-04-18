@@ -74,35 +74,74 @@ export default function RegisterPage() {
         router.refresh()
       }
     } catch (err: unknown) {
-      // The api helper throws { error, code, status } — not a standard Error,
-      // so err.message is undefined. Branch on code for friendly messages.
+      // Breadcrumb first — we want the raw shape in devtools regardless
+      // of what we show the user.
+      // eslint-disable-next-line no-console
+      console.error('[register] failed', err)
+
+      // Possible error shapes we need to handle:
+      //  1. Our api helper: { error, code, status }
+      //  2. NestJS default 500: { statusCode, message }
+      //  3. Network / CORS: thrown Error with message
+      //  4. Validation: { error: 'VALIDATION_ERROR', code: 'VALIDATION_FAILED', details }
       const e = (err && typeof err === 'object' ? err : {}) as {
         error?: string
         code?: string
         status?: number
-        message?: string
+        statusCode?: number
+        message?: string | string[]
+        details?: unknown
       }
-      const friendly = translateAuthError(e.code, e.error)
-      setError(friendly)
-      // Leave a breadcrumb in dev console
-      // eslint-disable-next-line no-console
-      console.error('[register] failed', e)
+
+      const code = e.code
+      const httpStatus = e.status ?? e.statusCode
+      const backendError =
+        (typeof e.error === 'string' && e.error) ||
+        (typeof e.message === 'string' && e.message) ||
+        (Array.isArray(e.message) && e.message.join('; ')) ||
+        undefined
+
+      setError(translateAuthError(code, backendError, httpStatus))
     } finally {
       setIsLoading(false)
     }
   }
 
-function translateAuthError(code: string | undefined, fallback: string | undefined): string {
+function translateAuthError(
+  code: string | undefined,
+  fallback: string | undefined,
+  status: number | undefined,
+): string {
   switch (code) {
     case 'USER_EXISTS':
       return 'Já existe uma conta com este email. Faça login ou recupere a palavra-passe.'
     case 'VALIDATION_FAILED':
+    case 'VALIDATION_ERROR':
       return fallback || 'Dados inválidos. Verifique os campos e tente novamente.'
     case 'UNAUTHORIZED':
       return 'Sessão expirada. Recarregue a página.'
-    default:
-      return fallback || 'Erro ao criar conta. Tente novamente.'
+    case 'REGISTRATION_FAILED':
+      return fallback || 'Não foi possível concluir o registo. Verifique os dados.'
+    case 'DB_SCHEMA_OUT_OF_SYNC':
+      return 'Servidor temporariamente em actualização. Tente em alguns minutos.'
+    case 'GABINETE_NIF_EXISTS':
+      return 'Este NIF de gabinete já está registado.'
+    case 'DUPLICATE_VALUE':
+      return fallback || 'Valor duplicado. Verifique email/NIF.'
   }
+  // If we have no code, surface the backend message (still helpful) and
+  // include the HTTP status so debugging is possible without devtools.
+  if (fallback) return `${fallback}${status ? ` (HTTP ${status})` : ''}`
+  if (status === 500) {
+    return 'Erro no servidor. A equipa Kamaia foi notificada. Tente novamente em instantes.'
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'Servidor temporariamente indisponível. Tente em alguns segundos.'
+  }
+  if (!status) {
+    return 'Não foi possível ligar ao servidor. Verifique a sua conexão.'
+  }
+  return `Erro ao criar conta (HTTP ${status}). Tente novamente.`
 }
 
   return (

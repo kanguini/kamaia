@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
@@ -24,6 +24,8 @@ export interface TokenPair {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private authRepository: AuthRepository,
     private jwtService: JwtService,
@@ -94,7 +96,40 @@ export class AuthService {
 
       return ok({ tokens, user: sanitizedUser });
     } catch (error) {
-      return err('Registration failed', 'REGISTRATION_FAILED');
+      // Log full stack on the server so Railway tells us exactly why — we
+      // keep the client-facing message opaque to avoid leaking schema info.
+      const e = error as {
+        code?: string;
+        message?: string;
+        meta?: Record<string, unknown>;
+      };
+      this.logger.error(
+        `Registration failed for ${dto.email}: ${e.code ?? ''} ${e.message ?? ''}`,
+        error as Error,
+      );
+
+      // Prisma unique-violation on email (P2002) → USER_EXISTS with a friendly reason
+      if (e.code === 'P2002') {
+        const target = Array.isArray(e.meta?.target)
+          ? (e.meta!.target as string[]).join(',')
+          : '';
+        if (target.includes('email')) {
+          return err('User with this email already exists', 'USER_EXISTS');
+        }
+        if (target.includes('nif')) {
+          return err('Gabinete NIF already in use', 'GABINETE_NIF_EXISTS');
+        }
+        return err('Duplicate value', 'DUPLICATE_VALUE');
+      }
+      // Missing column / migration out of sync → P2021, P2022
+      if (e.code === 'P2021' || e.code === 'P2022') {
+        return err(
+          'Base de dados desactualizada no servidor. Contacte o administrador.',
+          'DB_SCHEMA_OUT_OF_SYNC',
+        );
+      }
+
+      return err(e.message || 'Registration failed', 'REGISTRATION_FAILED');
     }
   }
 
