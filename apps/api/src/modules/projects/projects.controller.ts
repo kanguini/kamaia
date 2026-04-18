@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
+import { ProjectsAlertsService } from './projects-alerts.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -28,6 +29,9 @@ import {
   createMilestoneSchema,
   updateMilestoneSchema,
   fromTemplateSchema,
+  createCustomTemplateSchema,
+  updateCustomTemplateSchema,
+  duplicateSystemTemplateSchema,
   CreateProjectDto,
   UpdateProjectDto,
   ListProjectsDto,
@@ -35,12 +39,18 @@ import {
   CreateMilestoneDto,
   UpdateMilestoneDto,
   FromTemplateDto,
+  CreateCustomTemplateDto,
+  UpdateCustomTemplateDto,
+  DuplicateSystemTemplateDto,
 } from './projects.dto';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard, GabineteGuard)
 export class ProjectsController {
-  constructor(private svc: ProjectsService) {}
+  constructor(
+    private svc: ProjectsService,
+    private alerts: ProjectsAlertsService,
+  ) {}
 
   @Get()
   async list(
@@ -51,11 +61,69 @@ export class ProjectsController {
     return this.unwrap(r);
   }
 
-  // ── Templates ───────────────────────────────────────
+  // ── Templates (system + custom per gabinete) ─────────
   // Must come before `:id` routes so Nest doesn't treat "templates" as an id.
   @Get('templates')
-  async listTemplates() {
-    return { data: this.svc.listTemplates() };
+  async listTemplates(@GabineteId() gabineteId: string) {
+    const data = await this.svc.listTemplates(gabineteId);
+    return { data };
+  }
+
+  @Post('templates')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR, KamaiaRole.ADVOGADO_SOLO)
+  async createCustomTemplate(
+    @GabineteId() gabineteId: string,
+    @Body(new ParseZodPipe(createCustomTemplateSchema)) dto: CreateCustomTemplateDto,
+  ) {
+    const r = await this.svc.createCustomTemplate(gabineteId, dto);
+    return this.unwrap(r, { badRequestDefault: true });
+  }
+
+  @Post('templates/duplicate')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR, KamaiaRole.ADVOGADO_SOLO)
+  async duplicateTemplate(
+    @GabineteId() gabineteId: string,
+    @Body(new ParseZodPipe(duplicateSystemTemplateSchema)) dto: DuplicateSystemTemplateDto,
+  ) {
+    const r = await this.svc.duplicateSystemTemplate(gabineteId, dto);
+    return this.unwrap(r, {
+      notFoundCodes: ['TEMPLATE_NOT_FOUND'],
+      badRequestDefault: true,
+    });
+  }
+
+  @Put('templates/:templateId')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR, KamaiaRole.ADVOGADO_SOLO)
+  async updateCustomTemplate(
+    @GabineteId() gabineteId: string,
+    @Param('templateId') templateId: string,
+    @Body(new ParseZodPipe(updateCustomTemplateSchema)) dto: UpdateCustomTemplateDto,
+  ) {
+    const r = await this.svc.updateCustomTemplate(gabineteId, templateId, dto);
+    return this.unwrap(r, {
+      notFoundCodes: ['TEMPLATE_NOT_FOUND'],
+      badRequestDefault: true,
+    });
+  }
+
+  @Delete('templates/:templateId')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR, KamaiaRole.ADVOGADO_SOLO)
+  async deleteCustomTemplate(
+    @GabineteId() gabineteId: string,
+    @Param('templateId') templateId: string,
+  ) {
+    const r = await this.svc.deleteCustomTemplate(gabineteId, templateId);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'TEMPLATE_NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: { success: true } };
   }
 
   @Post('from-template')
@@ -71,6 +139,15 @@ export class ProjectsController {
       notFoundCodes: ['TEMPLATE_NOT_FOUND'],
       badRequestDefault: true,
     });
+  }
+
+  // ── Manual alerts trigger (for tests / admin) ────────
+  @Post('alerts/run')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR)
+  async runAlerts() {
+    const data = await this.alerts.runOnce();
+    return { data };
   }
 
   @Get(':id')

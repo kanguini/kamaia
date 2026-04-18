@@ -20,6 +20,9 @@ import {
   CreateMilestoneDto,
   UpdateMilestoneDto,
   FromTemplateDto,
+  CreateCustomTemplateDto,
+  UpdateCustomTemplateDto,
+  DuplicateSystemTemplateDto,
 } from './projects.dto';
 
 @Injectable()
@@ -654,14 +657,177 @@ export class ProjectsService {
 
   // Generates short unique code like "MA-2026-001"
   // ── Templates ────────────────────────────────────────
-  listTemplates(): ProjectTemplate[] {
-    return PROJECT_TEMPLATES;
+  /**
+   * Returns the merged template catalog: system templates (from code) +
+   * custom templates for the gabinete (from DB). Custom entries have
+   * `custom: true` so the UI can render edit/delete actions.
+   */
+  async listTemplates(gabineteId: string): Promise<any[]> {
+    const custom = await this.prisma.projectTemplateCustom.findMany({
+      where: { gabineteId, isArchived: false },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const systemEntries = PROJECT_TEMPLATES.map((t) => ({
+      id: t.id,
+      category: t.category,
+      name: t.name,
+      description: t.description,
+      scopeBlurb: t.scopeBlurb,
+      objectivesBlurb: t.objectivesBlurb,
+      defaultDurationDays: t.defaultDurationDays,
+      milestones: t.milestones,
+      custom: false as const,
+      basedOnSystemId: null,
+    }));
+    const customEntries = custom.map((t) => ({
+      id: t.id,
+      category: t.category,
+      name: t.name,
+      description: t.description,
+      scopeBlurb: t.scopeBlurb,
+      objectivesBlurb: t.objectivesBlurb,
+      defaultDurationDays: t.defaultDurationDays,
+      milestones: t.milestones as unknown as ProjectTemplate['milestones'],
+      custom: true as const,
+      basedOnSystemId: t.basedOnSystemId,
+    }));
+    return [...customEntries, ...systemEntries];
+  }
+
+  /** Resolves a template by id — prefers custom (gabinete) over system. */
+  private async resolveTemplate(
+    gabineteId: string,
+    templateId: string,
+  ): Promise<ProjectTemplate | null> {
+    // Custom id is a UUID; system id is a slug.
+    const isUuid = /^[0-9a-f-]{36}$/i.test(templateId);
+    if (isUuid) {
+      const custom = await this.prisma.projectTemplateCustom.findFirst({
+        where: { id: templateId, gabineteId, isArchived: false },
+      });
+      if (custom) {
+        return {
+          id: custom.id,
+          category: custom.category as ProjectTemplate['category'],
+          name: custom.name,
+          description: custom.description ?? '',
+          scopeBlurb: custom.scopeBlurb ?? '',
+          objectivesBlurb: custom.objectivesBlurb ?? undefined,
+          defaultDurationDays: custom.defaultDurationDays,
+          milestones: custom.milestones as unknown as ProjectTemplate['milestones'],
+        };
+      }
+      return null;
+    }
+    return findProjectTemplate(templateId) ?? null;
+  }
+
+  async createCustomTemplate(
+    gabineteId: string,
+    dto: CreateCustomTemplateDto,
+  ): Promise<Result<any>> {
+    try {
+      const created = await this.prisma.projectTemplateCustom.create({
+        data: {
+          gabineteId,
+          category: dto.category,
+          name: dto.name,
+          description: dto.description ?? null,
+          scopeBlurb: dto.scopeBlurb ?? null,
+          objectivesBlurb: dto.objectivesBlurb ?? null,
+          defaultDurationDays: dto.defaultDurationDays,
+          milestones: dto.milestones as any,
+          basedOnSystemId: dto.basedOnSystemId ?? null,
+        },
+      });
+      return ok(created);
+    } catch (e) {
+      return err('Failed to create custom template', 'CUSTOM_TEMPLATE_CREATE_FAILED');
+    }
+  }
+
+  async updateCustomTemplate(
+    gabineteId: string,
+    id: string,
+    dto: UpdateCustomTemplateDto,
+  ): Promise<Result<any>> {
+    try {
+      const existing = await this.prisma.projectTemplateCustom.findFirst({
+        where: { id, gabineteId },
+      });
+      if (!existing) return err('Template not found', 'TEMPLATE_NOT_FOUND');
+
+      const updated = await this.prisma.projectTemplateCustom.update({
+        where: { id },
+        data: {
+          ...(dto.category !== undefined && { category: dto.category }),
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.description !== undefined && { description: dto.description }),
+          ...(dto.scopeBlurb !== undefined && { scopeBlurb: dto.scopeBlurb }),
+          ...(dto.objectivesBlurb !== undefined && { objectivesBlurb: dto.objectivesBlurb }),
+          ...(dto.defaultDurationDays !== undefined && {
+            defaultDurationDays: dto.defaultDurationDays,
+          }),
+          ...(dto.milestones !== undefined && { milestones: dto.milestones as any }),
+        },
+      });
+      return ok(updated);
+    } catch (e) {
+      return err('Failed to update custom template', 'CUSTOM_TEMPLATE_UPDATE_FAILED');
+    }
+  }
+
+  async deleteCustomTemplate(
+    gabineteId: string,
+    id: string,
+  ): Promise<Result<void>> {
+    try {
+      const existing = await this.prisma.projectTemplateCustom.findFirst({
+        where: { id, gabineteId },
+      });
+      if (!existing) return err('Template not found', 'TEMPLATE_NOT_FOUND');
+      await this.prisma.projectTemplateCustom.delete({ where: { id } });
+      return ok(undefined);
+    } catch (e) {
+      return err('Failed to delete custom template', 'CUSTOM_TEMPLATE_DELETE_FAILED');
+    }
+  }
+
+  /**
+   * Duplicates a system template into the gabinete's DB-backed catalog,
+   * ready to be edited (rename, reorder milestones, add new ones).
+   */
+  async duplicateSystemTemplate(
+    gabineteId: string,
+    dto: DuplicateSystemTemplateDto,
+  ): Promise<Result<any>> {
+    try {
+      const system = findProjectTemplate(dto.systemId);
+      if (!system) return err('System template not found', 'TEMPLATE_NOT_FOUND');
+
+      const created = await this.prisma.projectTemplateCustom.create({
+        data: {
+          gabineteId,
+          category: system.category,
+          name: dto.name ?? `${system.name} (cópia)`,
+          description: system.description,
+          scopeBlurb: system.scopeBlurb,
+          objectivesBlurb: system.objectivesBlurb ?? null,
+          defaultDurationDays: system.defaultDurationDays,
+          milestones: system.milestones as any,
+          basedOnSystemId: system.id,
+        },
+      });
+      return ok(created);
+    } catch (e) {
+      return err('Failed to duplicate template', 'TEMPLATE_DUPLICATE_FAILED');
+    }
   }
 
   /**
    * Materialises a full project + workflow (default for the category) +
-   * milestones from a template. Everything is created in a single
-   * transaction so the project never exists in a partial state.
+   * milestones from a template (system OR custom). Everything is created
+   * in a single transaction so the project never exists in a partial state.
    */
   async createFromTemplate(
     gabineteId: string,
@@ -669,7 +835,7 @@ export class ProjectsService {
     dto: FromTemplateDto,
   ): Promise<Result<any>> {
     try {
-      const template = findProjectTemplate(dto.templateId);
+      const template = await this.resolveTemplate(gabineteId, dto.templateId);
       if (!template) return err('Template not found', 'TEMPLATE_NOT_FOUND');
 
       const startDate = dto.startDate ? new Date(dto.startDate) : new Date();

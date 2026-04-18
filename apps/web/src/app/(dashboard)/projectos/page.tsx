@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Briefcase, Plus, Circle, Sparkles, X } from 'lucide-react'
+import { Briefcase, Plus, Circle, Sparkles, X, Copy, Trash2, Pencil } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
@@ -65,10 +65,39 @@ export default function ProjectsListPage() {
   )
   const projects = data?.data || []
 
-  const { data: templates } = useApi<ProjectTemplate[]>(
-    templatesOpen ? '/projects/templates' : null,
-    [templatesOpen],
-  )
+  const { data: templates, refetch: refetchTemplates } = useApi<
+    (ProjectTemplate & { custom?: boolean; basedOnSystemId?: string | null })[]
+  >(templatesOpen ? '/projects/templates' : null, [templatesOpen])
+
+  const duplicateTemplate = async (systemId: string) => {
+    if (!session?.accessToken) return
+    try {
+      await api('/projects/templates/duplicate', {
+        method: 'POST',
+        token: session.accessToken,
+        body: JSON.stringify({ systemId }),
+      })
+      toast.success('Template duplicado — agora podes editá-lo')
+      refetchTemplates()
+    } catch {
+      toast.error('Erro ao duplicar template')
+    }
+  }
+
+  const deleteTemplate = async (templateId: string) => {
+    if (!session?.accessToken) return
+    if (!confirm('Apagar este template do gabinete?')) return
+    try {
+      await api(`/projects/templates/${templateId}`, {
+        method: 'DELETE',
+        token: session.accessToken,
+      })
+      toast.success('Template apagado')
+      refetchTemplates()
+    } catch {
+      toast.error('Erro ao apagar template')
+    }
+  }
 
   const createFromTemplate = async () => {
     if (!activeTemplate || !session?.accessToken) return
@@ -234,26 +263,80 @@ export default function ProjectsListPage() {
 
             {!activeTemplate ? (
               <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(templates ?? []).map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveTemplate(t)}
-                    className="text-left p-4 border border-border rounded-lg hover:border-ink hover:bg-surface-raised transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium text-ink">{t.name}</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 bg-surface-raised border border-border rounded">
-                        {PROJECT_CATEGORY_LABELS[t.category]}
-                      </span>
+                {(templates ?? []).map((t) => {
+                  const isCustom = !!t.custom
+                  return (
+                    <div
+                      key={t.id}
+                      className="group relative p-4 border border-border rounded-lg hover:border-ink hover:bg-surface-raised transition-colors"
+                    >
+                      <button
+                        onClick={() => setActiveTemplate(t)}
+                        className="text-left w-full"
+                      >
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
+                          <span className="text-sm font-medium text-ink truncate">
+                            {t.name}
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {isCustom && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded">
+                                GABINETE
+                              </span>
+                            )}
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 bg-surface-raised border border-border rounded">
+                              {PROJECT_CATEGORY_LABELS[t.category]}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-ink-muted line-clamp-2 mb-2">
+                          {t.description}
+                        </p>
+                        <p className="text-[10px] font-mono text-ink-muted">
+                          {t.milestones.length} marcos · {t.defaultDurationDays}d
+                        </p>
+                      </button>
+
+                      {/* Actions: system → Duplicate; custom → Edit + Delete */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        {isCustom ? (
+                          <>
+                            <Link
+                              href={`/projectos/templates/${t.id}`}
+                              className="p-1.5 text-ink-muted hover:text-ink hover:bg-surface rounded"
+                              aria-label="Editar"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteTemplate(t.id)
+                              }}
+                              className="p-1.5 text-ink-muted hover:text-red-600 hover:bg-surface rounded"
+                              aria-label="Apagar"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              duplicateTemplate(t.id)
+                            }}
+                            className="p-1.5 text-ink-muted hover:text-ink hover:bg-surface rounded"
+                            aria-label="Duplicar para editar"
+                            title="Duplicar para o gabinete"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-ink-muted line-clamp-2 mb-2">
-                      {t.description}
-                    </p>
-                    <p className="text-[10px] font-mono text-ink-muted">
-                      {t.milestones.length} marcos · {t.defaultDurationDays}d
-                    </p>
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto p-5 space-y-4">

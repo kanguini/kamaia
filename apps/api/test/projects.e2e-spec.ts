@@ -171,6 +171,149 @@ describe('Projects (e2e)', () => {
     expect(res.body.data.workflow?.stages?.length).toBeGreaterThan(0);
   });
 
+  it('POST /api/projects/templates/duplicate copies a system template into the gabinete', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/projects/templates/duplicate')
+      .set('Authorization', auth())
+      .send({ systemId: 'ma-standard', name: 'MA do nosso gabinete' });
+
+    expect([200, 201]).toContain(res.status);
+    expect(res.body.data.basedOnSystemId).toBe('ma-standard');
+    expect(res.body.data.name).toBe('MA do nosso gabinete');
+    // Milestones copied over
+    expect(Array.isArray(res.body.data.milestones)).toBe(true);
+    expect(res.body.data.milestones.length).toBe(8);
+  });
+
+  it('PUT /api/projects/templates/:id updates custom template milestones', async () => {
+    const dup = await request(ctx.app.getHttpServer())
+      .post('/api/projects/templates/duplicate')
+      .set('Authorization', auth())
+      .send({ systemId: 'due-diligence-legal' });
+    const templateId = dup.body.data.id;
+
+    const res = await request(ctx.app.getHttpServer())
+      .put(`/api/projects/templates/${templateId}`)
+      .set('Authorization', auth())
+      .send({
+        name: 'DD customizada',
+        defaultDurationDays: 14,
+        milestones: [
+          { title: 'Kickoff especial', startDayOffset: 0, dueDayOffset: 1 },
+          { title: 'Relatório express', startDayOffset: 1, dueDayOffset: 14 },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.defaultDurationDays).toBe(14);
+    expect((res.body.data.milestones as any[]).length).toBe(2);
+
+    // And listTemplates now returns it tagged as custom
+    const list = await request(ctx.app.getHttpServer())
+      .get('/api/projects/templates')
+      .set('Authorization', auth());
+    const found = list.body.data.find((t: any) => t.id === templateId);
+    expect(found?.custom).toBe(true);
+    expect(found?.name).toBe('DD customizada');
+  });
+
+  it('POST /api/projects/from-template works with a custom template id', async () => {
+    const dup = await request(ctx.app.getHttpServer())
+      .post('/api/projects/templates/duplicate')
+      .set('Authorization', auth())
+      .send({ systemId: 'consultoria-parecer', name: 'Parecer premium' });
+    const customId = dup.body.data.id;
+
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/projects/from-template')
+      .set('Authorization', auth())
+      .send({ templateId: customId, name: 'Parecer para Cliente Z' });
+
+    expect([200, 201]).toContain(res.status);
+    expect(res.body.data.category).toBe('CONSULTORIA');
+    expect(res.body.data.milestones.length).toBe(4);
+  });
+
+  it('alerts: drift + overdue milestone create notifications (POST /alerts/run)', async () => {
+    // Seed a project with overdue milestone + budget hit
+    const projRes = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({
+        name: 'Projecto ao rubro',
+        category: 'CONSULTORIA',
+        startDate: new Date(Date.now() - 20 * 86_400_000).toISOString(),
+        endDate: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+        budgetAmount: 100_000_00,
+      });
+    const projectId = projRes.body.data.id;
+
+    // Overdue milestone (10 days past due)
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({
+        title: 'Entregar draft',
+        startDate: new Date(Date.now() - 15 * 86_400_000).toISOString(),
+        dueDate: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+      });
+
+    // Seed expense that blows past ideal (project is ~50% through the timeline,
+    // ideal would be ~50k; we spend 95k, ratio > 1.15)
+    const cliente = await ctx.prisma.cliente.create({
+      data: { gabineteId: user.gabineteId, name: 'Cli Alert', type: 'INDIVIDUAL' },
+    });
+    const processo = await ctx.prisma.processo.create({
+      data: {
+        gabineteId: user.gabineteId,
+        clienteId: cliente.id,
+        advogadoId: user.id,
+        processoNumber: `P-ALERT-${Date.now()}`,
+        title: 'Processo alert',
+        type: 'CIVEL',
+        priority: 'MEDIA',
+        status: 'ACTIVO',
+        stage: 'INICIAL',
+        projectId,
+      },
+    });
+    await ctx.prisma.expense.create({
+      data: {
+        gabineteId: user.gabineteId,
+        processoId: processo.id,
+        userId: user.id,
+        category: 'EMOLUMENTOS',
+        description: 'Despesa elevada',
+        amount: 95_000_00,
+        date: new Date(),
+      },
+    });
+
+    const run = await request(ctx.app.getHttpServer())
+      .post('/api/projects/alerts/run')
+      .set('Authorization', auth());
+
+    expect(run.status).toBe(201);
+    expect(run.body.data.driftAlerts).toBeGreaterThanOrEqual(1);
+    expect(run.body.data.overdueAlerts).toBeGreaterThanOrEqual(1);
+
+    // Notifications were created
+    const notes = await ctx.prisma.notification.findMany({
+      where: {
+        gabineteId: user.gabineteId,
+        type: { in: ['PROJECT_BUDGET_DRIFT', 'PROJECT_MILESTONE_OVERDUE'] },
+      },
+    });
+    expect(notes.length).toBeGreaterThanOrEqual(2);
+
+    // Second run should be deduped (same 24h window)
+    const run2 = await request(ctx.app.getHttpServer())
+      .post('/api/projects/alerts/run')
+      .set('Authorization', auth());
+    expect(run2.body.data.driftAlerts).toBe(0);
+    expect(run2.body.data.overdueAlerts).toBe(0);
+  });
+
   it('POST /api/projects/from-template with unknown id returns 404', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post('/api/projects/from-template')

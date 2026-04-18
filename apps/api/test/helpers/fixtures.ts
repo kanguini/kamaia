@@ -102,6 +102,7 @@ export async function cleanupGabinete(
     }
   };
 
+  await safeDeleteMany(() => prisma.projectTemplateCustom.deleteMany({ where }));
   await safeDeleteMany(() => prisma.projectMilestone.deleteMany({ where: { project: { gabineteId } } }));
   await safeDeleteMany(() => prisma.projectMember.deleteMany({ where: { project: { gabineteId } } }));
   await safeDeleteMany(() => prisma.project.deleteMany({ where }));

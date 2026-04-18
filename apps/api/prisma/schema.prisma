@@ -49,6 +49,7 @@ model Gabinete {
   notifications       Notification[]
   workflows           Workflow[]
   projects            Project[]
+  projectTemplates    ProjectTemplateCustom[]
 
   @@map("gabinetes")
 }
@@ -824,4 +825,36 @@ model ProjectMilestone {
 
   @@index([projectId, position], map: "idx_milestone_project_position")
   @@map("project_milestones")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Custom Project Templates — editable per gabinete
+//
+// Shipped playbooks (M&A, Compliance, DD, Contrato, Consultoria) live in
+// code (shared-types) as read-only system templates. When a gabinete wants
+// to tweak one — add a milestone, change durations — it "duplicates" the
+// system template into this table, editable at will. Milestones are kept
+// as JSON for simplicity (they're small, structured, and always read as a
+// whole).
+// ═══════════════════════════════════════════════════════════
+model ProjectTemplateCustom {
+  id                  String   @id @default(uuid()) @db.Uuid
+  gabineteId          String   @map("gabinete_id") @db.Uuid
+  category            String   @db.VarChar(30)
+  name                String   @db.VarChar(200)
+  description         String?  @db.Text
+  scopeBlurb          String?  @map("scope_blurb") @db.Text
+  objectivesBlurb     String?  @map("objectives_blurb") @db.Text
+  defaultDurationDays Int      @default(30) @map("default_duration_days")
+  // Milestones as JSON: [{title, description?, startDayOffset, dueDayOffset}]
+  milestones          Json
+  basedOnSystemId     String?  @map("based_on_system_id") @db.VarChar(60)
+  isArchived          Boolean  @default(false) @map("is_archived")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+
+  @@index([gabineteId, category], map: "idx_tplcustom_gabinete_category")
+  @@map("project_templates_custom")
 }

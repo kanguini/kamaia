@@ -81,7 +81,45 @@ export const fromTemplateSchema = z.object({
   budgetAmount: z.number().int().min(0).optional(),
 });
 
+// ── Custom templates (editable per gabinete) ──────────────
+
+const milestoneJsonSchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().optional().nullable(),
+  startDayOffset: z.number().int().min(0),
+  dueDayOffset: z.number().int().min(0),
+});
+
+export const createCustomTemplateSchema = z.object({
+  category: z.enum([
+    'LITIGIO',
+    'MA',
+    'COMPLIANCE',
+    'DUE_DILIGENCE',
+    'CONTRATO',
+    'CONSULTORIA',
+    'OUTRO',
+  ]),
+  name: z.string().min(1).max(200),
+  description: z.string().optional().nullable(),
+  scopeBlurb: z.string().optional().nullable(),
+  objectivesBlurb: z.string().optional().nullable(),
+  defaultDurationDays: z.number().int().min(1).max(3650),
+  milestones: z.array(milestoneJsonSchema).min(1),
+  basedOnSystemId: z.string().max(60).optional().nullable(),
+});
+
+export const updateCustomTemplateSchema = createCustomTemplateSchema.partial();
+
+export const duplicateSystemTemplateSchema = z.object({
+  systemId: z.string().min(1),
+  name: z.string().min(1).max(200).optional(),
+});
+
 export type FromTemplateDto = z.infer<typeof fromTemplateSchema>;
+export type CreateCustomTemplateDto = z.infer<typeof createCustomTemplateSchema>;
+export type UpdateCustomTemplateDto = z.infer<typeof updateCustomTemplateSchema>;
+export type DuplicateSystemTemplateDto = z.infer<typeof duplicateSystemTemplateSchema>;
 
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
