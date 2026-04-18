@@ -464,6 +464,44 @@ function NotificationsSection() {
 
 function DataSection() {
   const toast = useToast()
+  const { data: session } = useSession()
+  const [exporting, setExporting] = useState(false)
+
+  const exportBackup = async () => {
+    if (!session?.accessToken) {
+      toast.error('Sessão expirada — reinicie sessão.')
+      return
+    }
+    setExporting(true)
+    toast.info('A preparar export...')
+    try {
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const res = await fetch(`${apiBase}/backup/export`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      })
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const stamp = new Date().toISOString().slice(0, 10)
+      a.download = `kamaia-export-${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Export concluído — ficheiro descarregado.')
+    } catch (e) {
+      toast.error('Erro ao exportar. Tente novamente.')
+      // eslint-disable-next-line no-console
+      console.error('[export]', e)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <Section title="Dados e Segurança" icon={Shield}>
@@ -479,12 +517,10 @@ function DataSection() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              window.open(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/backup/export`, '_blank')
-              toast.info('A preparar export...')
-            }}
+            onClick={exportBackup}
+            disabled={exporting}
           >
-            Exportar
+            {exporting ? 'A exportar…' : 'Exportar'}
           </Button>
         </div>
 
