@@ -26,10 +26,6 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
     setLoading(true)
     try {
       const result = await api<Record<string, unknown>>(endpoint, { token: session.accessToken })
-      // The API always wraps in { data: ... }. Unwrap one level.
-      // But ONLY if the result has a single 'data' key (standard envelope).
-      // If 'data' contains an array or primitive, return it directly as T.
-      // If 'data' contains an object with its own 'data' key (paginated), return the inner object as T.
       if (result && typeof result === 'object' && 'data' in result) {
         setData(result.data as T)
       } else {
@@ -37,8 +33,13 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
       }
       setError(null)
     } catch (err: unknown) {
-      const errorObj = err as { error?: string }
-      setError(errorObj?.error || 'Erro ao carregar dados')
+      // Log to console for diagnostics (browser DevTools)
+      console.error(`[useApi] Failed to fetch ${endpoint}:`, err)
+      const errorObj = err as { error?: string; code?: string; message?: string }
+      const backendMsg = errorObj?.error || errorObj?.message
+      // Include endpoint name to help identify which data failed
+      const shortEndpoint = endpoint.split('?')[0]
+      setError(backendMsg ? `${backendMsg} (${shortEndpoint})` : `Erro ao carregar ${shortEndpoint}`)
     } finally {
       setLoading(false)
     }

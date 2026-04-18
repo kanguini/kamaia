@@ -17,6 +17,7 @@ import { useSidebarState } from '@/hooks/use-sidebar-state'
 import { ToastProvider } from '@/components/ui/toast'
 import { Logo, LogoIcon } from '@/components/ui/logo'
 import { NewDropdownButton } from '@/components/ui/new-dropdown'
+import { GlobalSearch } from '@/components/ui/global-search'
 
 interface NavItem { label: string; href: string; icon: React.ElementType }
 
@@ -398,10 +399,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="sr-only lg:hidden">Kamaia</span>
           </div>
 
+          {/* Center: Global search */}
+          <div className="flex-1 flex justify-center px-4 max-w-[600px]">
+            <GlobalSearch />
+          </div>
+
           {/* Right: actions */}
           <div className="flex items-center gap-2">
             <NewDropdownButton />
-            <UserMenu position="down" />
             <NotificationBell />
             <ThemeToggle />
           </div>
