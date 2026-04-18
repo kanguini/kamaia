@@ -200,6 +200,157 @@ export class ProjectReportsService {
     }
   }
 
+  /**
+   * Renders a status report to a PDF buffer using pdfkit. The output is
+   * a portable A4 document suitable for emailing to a client or sponsor.
+   */
+  async exportPdf(
+    gabineteId: string,
+    reportId: string,
+  ): Promise<Result<Buffer>> {
+    try {
+      const report = await this.prisma.projectStatusReport.findFirst({
+        where: { id: reportId, project: { gabineteId } },
+        include: {
+          project: {
+            select: {
+              name: true,
+              code: true,
+              category: true,
+              cliente: { select: { name: true } },
+            },
+          },
+          createdBy: { select: { firstName: true, lastName: true } },
+        },
+      });
+      if (!report) return err('Report not found', 'REPORT_NOT_FOUND');
+
+      // Dynamic import keeps pdfkit out of the main bundle path
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument({ size: 'A4', margin: 48 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      const done = new Promise<Buffer>((resolve) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+
+      // Header
+      doc.fontSize(10).fillColor('#737373').text('KAMAIA · STATUS REPORT');
+      doc.moveDown(0.3);
+      doc.fontSize(20).fillColor('#111').text(report.project.name);
+      doc
+        .fontSize(10)
+        .fillColor('#737373')
+        .text(
+          `${report.project.code} · ${report.project.category}${report.project.cliente ? ` · ${report.project.cliente.name}` : ''}`,
+        );
+      doc.moveDown(0.5);
+      doc
+        .fontSize(11)
+        .fillColor('#111')
+        .text(
+          `Semana de ${new Date(report.weekStart).toLocaleDateString('pt-AO', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })}`,
+        );
+      doc.moveDown(1);
+
+      // Health badge
+      const healthColors: Record<string, string> = {
+        GREEN: '#16A34A',
+        YELLOW: '#D97706',
+        RED: '#DC2626',
+      };
+      const healthLabel: Record<string, string> = {
+        GREEN: 'SAUDÁVEL',
+        YELLOW: 'ATENÇÃO',
+        RED: 'CRÍTICO',
+      };
+      doc
+        .fontSize(12)
+        .fillColor(healthColors[report.healthStatus] ?? '#111')
+        .text(`Estado: ${healthLabel[report.healthStatus] ?? report.healthStatus}`);
+      doc.moveDown(1);
+
+      // KPI grid
+      doc.fontSize(11).fillColor('#111').text('Indicadores da semana', { underline: true });
+      doc.moveDown(0.3);
+      const rows: Array<[string, string]> = [
+        ['Horas logadas', `${(report.hoursLoggedMinutes / 60).toFixed(1)}h`],
+        ['Marcos', `${report.milestonesCompleted}/${report.milestonesTotal}`],
+        ['Atrasados', `${report.milestonesOverdue}`],
+      ];
+      if (report.budgetSnapshot != null && report.budgetSnapshot > 0) {
+        rows.push([
+          'Orçamento',
+          `${(report.budgetSnapshot / 100).toLocaleString('pt-AO')} AKZ`,
+        ]);
+        rows.push([
+          'Gasto real',
+          `${((report.actualSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AKZ`,
+        ]);
+        rows.push([
+          'Ideal à data',
+          `${((report.idealSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AKZ`,
+        ]);
+      }
+      for (const [k, v] of rows) {
+        doc.fontSize(10).fillColor('#737373').text(k, { continued: true, width: 160 });
+        doc.fillColor('#111').text(`  ${v}`);
+      }
+      doc.moveDown(1);
+
+      // Summary
+      if (report.summary) {
+        doc.fontSize(11).fillColor('#111').text('Sumário', { underline: true });
+        doc.moveDown(0.3);
+        doc.fontSize(10).fillColor('#333').text(report.summary, { align: 'left' });
+        doc.moveDown(1);
+      }
+
+      // Risks
+      const risks = Array.isArray(report.risks) ? (report.risks as any[]) : [];
+      if (risks.length > 0) {
+        doc.fontSize(11).fillColor('#111').text('Riscos', { underline: true });
+        doc.moveDown(0.3);
+        for (const r of risks) {
+          doc
+            .fontSize(10)
+            .fillColor(
+              r.severity === 'CRITICAL'
+                ? '#DC2626'
+                : r.severity === 'HIGH'
+                  ? '#EA580C'
+                  : r.severity === 'MEDIUM'
+                    ? '#D97706'
+                    : '#737373',
+            )
+            .text(`[${r.severity}] `, { continued: true });
+          doc.fillColor('#111').text(r.title);
+          if (r.mitigation) {
+            doc.fontSize(9).fillColor('#737373').text(`Mitigação: ${r.mitigation}`);
+          }
+          doc.moveDown(0.3);
+        }
+      }
+
+      // Footer
+      doc.moveDown(1.5);
+      doc.fontSize(8).fillColor('#A3A3A3').text(
+        `Gerado por ${report.createdBy.firstName} ${report.createdBy.lastName} · ${new Date(report.createdAt).toLocaleDateString('pt-AO')}`,
+        { align: 'right' },
+      );
+
+      doc.end();
+      const buffer = await done;
+      return ok(buffer);
+    } catch (e) {
+      return err('Failed to export PDF', 'REPORT_PDF_FAILED');
+    }
+  }
+
   async delete(gabineteId: string, reportId: string): Promise<Result<void>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({

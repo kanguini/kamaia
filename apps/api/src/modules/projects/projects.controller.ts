@@ -10,7 +10,9 @@ import {
   UseGuards,
   HttpException,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ProjectsService } from './projects.service';
 import { ProjectsAlertsService } from './projects-alerts.service';
 import { ProjectReportsService } from './project-reports.service';
@@ -208,6 +210,27 @@ export class ProjectsController {
       notFoundCodes: ['REPORT_NOT_FOUND'],
       badRequestDefault: true,
     });
+  }
+
+  @Get('reports/:reportId/pdf')
+  async exportReportPdf(
+    @GabineteId() gabineteId: string,
+    @Param('reportId') reportId: string,
+    @Res() res: Response,
+  ) {
+    const r = await this.reports.exportPdf(gabineteId, reportId);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'REPORT_NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="status-report-${reportId}.pdf"`,
+    );
+    res.send(r.data);
   }
 
   @Delete('reports/:reportId')

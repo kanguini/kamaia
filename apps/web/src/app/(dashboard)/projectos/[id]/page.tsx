@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Briefcase, Users, CheckSquare, TrendingUp, Plus,
   Scale, Link as LinkIcon, Unlink, Search, TrendingDown,
-  FileText, AlertTriangle,
+  FileText, AlertTriangle, Bell, X, Download,
 } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -141,6 +141,38 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const { data: burndown } = useApi<BurndownResponse>(
     tab === 'burndown' ? `/projects/${id}/burndown` : null,
   )
+
+  // Unread alerts for this project (drift + overdue) — shown as banner
+  interface AlertNotification {
+    id: string
+    type: string
+    subject: string | null
+    body: string | null
+    readAt: string | null
+    createdAt: string
+    metadata: { projectId?: string; milestoneId?: string }
+  }
+  const { data: alertsData, refetch: refetchAlerts } = useApi<{
+    data: AlertNotification[]
+  }>(`/notifications?unread=true&limit=50`)
+  const projectAlerts = (alertsData?.data ?? []).filter(
+    (n) =>
+      (n.type === 'PROJECT_BUDGET_DRIFT' || n.type === 'PROJECT_MILESTONE_OVERDUE') &&
+      n.metadata?.projectId === id,
+  )
+
+  const dismissAlert = async (notifId: string) => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/notifications/${notifId}/read`, {
+        method: 'PATCH',
+        token: session.accessToken,
+      })
+      refetchAlerts()
+    } catch {
+      /* silent */
+    }
+  }
   const { data: reports, refetch: refetchReports } = useApi<StatusReport[]>(
     tab === 'status' ? `/projects/${id}/reports` : null,
   )
@@ -296,6 +328,60 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </p>
         </div>
       </header>
+
+      {/* Alert banner */}
+      {projectAlerts.length > 0 && (
+        <div className="space-y-2">
+          {projectAlerts.slice(0, 3).map((n) => {
+            const isCritical = n.type === 'PROJECT_BUDGET_DRIFT'
+            return (
+              <div
+                key={n.id}
+                className={cn(
+                  'flex items-start gap-3 px-4 py-3 border',
+                  isCritical
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50'
+                    : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50',
+                )}
+                role="alert"
+              >
+                <div
+                  className={cn(
+                    'mt-0.5 p-1 rounded-full',
+                    isCritical
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+                  )}
+                >
+                  {isCritical ? (
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                  ) : (
+                    <Bell className="w-3.5 h-3.5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-ink">{n.subject}</p>
+                  {n.body && (
+                    <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{n.body}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => dismissAlert(n.id)}
+                  className="p-1 text-ink-muted hover:text-ink hover:bg-surface rounded"
+                  aria-label="Dispensar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )
+          })}
+          {projectAlerts.length > 3 && (
+            <p className="text-xs text-ink-muted px-1">
+              E mais {projectAlerts.length - 3} alerta(s) não lido(s) neste projecto.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
@@ -783,6 +869,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                 <ReportCard
                   key={r.id}
                   report={r}
+                  accessToken={session?.accessToken ?? ''}
                   onUpdate={(patch) => updateReport(r.id, patch)}
                 />
               ))}
@@ -811,14 +898,41 @@ function healthBadge(status: 'GREEN' | 'YELLOW' | 'RED') {
 function ReportCard({
   report,
   onUpdate,
+  accessToken,
 }: {
   report: StatusReport
   onUpdate: (patch: { healthStatus?: string; summary?: string; risks?: Risk[] }) => void
+  accessToken: string
 }) {
   const [editing, setEditing] = useState(false)
   const [summary, setSummary] = useState(report.summary ?? '')
   const [risks, setRisks] = useState<Risk[]>(report.risks ?? [])
   const [health, setHealth] = useState(report.healthStatus)
+  const [exporting, setExporting] = useState(false)
+
+  const exportPdf = async () => {
+    setExporting(true)
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+      const res = await fetch(`${apiBase}/projects/reports/${report.id}/pdf`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!res.ok) throw new Error('PDF export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `status-report-${report.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      /* silent; button visually settles */
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const weekLabel = new Date(report.weekStart).toLocaleDateString('pt-AO', {
     day: '2-digit',
@@ -842,6 +956,15 @@ function ReportCard({
         </div>
         <div className="flex items-center gap-2">
           {healthBadge(report.healthStatus)}
+          <button
+            onClick={exportPdf}
+            disabled={exporting}
+            className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink disabled:opacity-50"
+            title="Exportar PDF"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {exporting ? 'A exportar...' : 'PDF'}
+          </button>
           {!editing && (
             <button
               onClick={() => setEditing(true)}

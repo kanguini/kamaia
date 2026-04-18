@@ -29,7 +29,7 @@ interface CapacityData {
   grid: UserRow[]
 }
 
-/** Map utilisation ratio to a heatmap colour. */
+/** Actual mode: ratio = actual / planned. */
 function utilColor(u: number, hasPlan: boolean): string {
   if (!hasPlan) return 'bg-surface'
   if (u === 0) return 'bg-slate-100 dark:bg-slate-800/40'
@@ -45,13 +45,32 @@ function utilLabel(u: number): string {
   return `${Math.round(u * 100)}%`
 }
 
+/** Forecast mode: allocation of a user vs 40h/week. */
+const STANDARD_WEEK_MINUTES = 40 * 60
+function forecastColor(plannedMinutes: number): string {
+  const f = plannedMinutes / STANDARD_WEEK_MINUTES
+  if (f === 0) return 'bg-slate-100 dark:bg-slate-800/40'
+  if (f < 0.5) return 'bg-sky-100 dark:bg-sky-900/30'
+  if (f < 0.8) return 'bg-emerald-100 dark:bg-emerald-900/30'
+  if (f <= 1.0) return 'bg-emerald-300 dark:bg-emerald-700/60'
+  if (f <= 1.2) return 'bg-amber-300 dark:bg-amber-700/60'
+  return 'bg-red-400 dark:bg-red-700/80'
+}
+
+function forecastLabel(plannedMinutes: number): string {
+  return `${Math.round(plannedMinutes / 60)}h`
+}
+
 function shortWeek(iso: string): string {
   const d = new Date(iso)
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+type ViewMode = 'actual' | 'forecast'
+
 export default function CapacityHeatmapPage() {
   const [weeks, setWeeks] = useState(8)
+  const [mode, setMode] = useState<ViewMode>('actual')
   // Default to Monday of this week
   const today = new Date()
   const monday = new Date(today)
@@ -74,10 +93,33 @@ export default function CapacityHeatmapPage() {
         <div className="flex-1">
           <h1 className="font-display text-2xl font-semibold text-ink">Capacidade</h1>
           <p className="text-sm text-ink-muted">
-            Planeado (allocation × 40h) vs real (timesheets) por semana.
+            {mode === 'actual'
+              ? 'Realizado: tempo registado vs planeado, por semana.'
+              : 'Previsão: horas alocadas vs semana padrão de 40h (forecast puro).'}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Mode toggle */}
+          <div className="inline-flex rounded-lg border border-border bg-surface overflow-hidden">
+            <button
+              onClick={() => setMode('actual')}
+              className={cn(
+                'px-3 py-1.5 text-xs font-medium',
+                mode === 'actual' ? 'bg-ink text-surface' : 'text-ink-muted hover:bg-surface-raised',
+              )}
+            >
+              Realizado
+            </button>
+            <button
+              onClick={() => setMode('forecast')}
+              className={cn(
+                'px-3 py-1.5 text-xs font-medium border-l border-border',
+                mode === 'forecast' ? 'bg-ink text-surface' : 'text-ink-muted hover:bg-surface-raised',
+              )}
+            >
+              Planeado
+            </button>
+          </div>
           <input
             type="date"
             value={weekStart}
@@ -171,18 +213,27 @@ export default function CapacityHeatmapPage() {
                     <td className="text-right px-2 py-2 font-mono text-ink-muted">
                       {row.plannedPct}%
                     </td>
-                    {row.weeks.map((w) => (
-                      <td
-                        key={w.weekStart}
-                        className={cn(
-                          'text-center px-2 py-2 font-mono',
-                          utilColor(w.utilization, hasPlan),
-                        )}
-                        title={`Planeado ${(w.plannedMinutes / 60).toFixed(1)}h · Real ${(w.actualMinutes / 60).toFixed(1)}h`}
-                      >
-                        {hasPlan ? utilLabel(w.utilization) : '—'}
-                      </td>
-                    ))}
+                    {row.weeks.map((w) => {
+                      const cellColor =
+                        mode === 'actual'
+                          ? utilColor(w.utilization, hasPlan)
+                          : forecastColor(w.plannedMinutes)
+                      const cellText =
+                        mode === 'actual'
+                          ? hasPlan
+                            ? utilLabel(w.utilization)
+                            : '—'
+                          : forecastLabel(w.plannedMinutes)
+                      return (
+                        <td
+                          key={w.weekStart}
+                          className={cn('text-center px-2 py-2 font-mono', cellColor)}
+                          title={`Planeado ${(w.plannedMinutes / 60).toFixed(1)}h · Real ${(w.actualMinutes / 60).toFixed(1)}h`}
+                        >
+                          {cellText}
+                        </td>
+                      )
+                    })}
                   </tr>
                 )
               })}

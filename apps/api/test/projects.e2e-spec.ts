@@ -439,6 +439,48 @@ describe('Projects (e2e)', () => {
     expect(currentWeek.plannedMinutes).toBeGreaterThan(0);
   });
 
+  it('GET /api/projects/reports/:id/pdf streams a PDF', async () => {
+    const projRes = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({
+        name: 'Projecto PDF',
+        category: 'CONSULTORIA',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 21 * 86_400_000).toISOString(),
+        budgetAmount: 200_000_00,
+      });
+    const projectId = projRes.body.data.id;
+
+    const gen = await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/reports`)
+      .set('Authorization', auth())
+      .send({
+        summary: 'Semana 1 — kickoff concluído',
+        risks: [
+          { title: 'Fonte de dados incompleta', severity: 'MEDIUM', mitigation: 'Pedir a X' },
+        ],
+      });
+
+    const reportId = gen.body.data.id;
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/reports/${reportId}/pdf`)
+      .set('Authorization', auth())
+      .buffer(true)
+      .parse((r, cb) => {
+        const chunks: Buffer[] = [];
+        r.on('data', (c: Buffer) => chunks.push(c));
+        r.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    const body = res.body as Buffer;
+    // PDF magic bytes
+    expect(body.slice(0, 4).toString('utf8')).toBe('%PDF');
+    expect(body.length).toBeGreaterThan(500);
+  });
+
   it('POST /api/projects/from-template with unknown id returns 404', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post('/api/projects/from-template')

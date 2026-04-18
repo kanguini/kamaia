@@ -19,6 +19,6 @@ import { AuditModule } from '../audit/audit.module';
     PushProvider,
     AlertsSchedulerService,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, EmailProvider, PushProvider],
 })
 export class NotificationsModule {}

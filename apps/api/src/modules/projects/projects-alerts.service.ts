@@ -1,8 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from './projects.service';
+import { EmailProvider } from '../notifications/providers/email.provider';
+import { PushProvider } from '../notifications/providers/push.provider';
 import { NotificationType } from '@kamaia/shared-types';
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 /**
  * Periodic job that scans active projects and spawns notifications when:
@@ -23,6 +34,9 @@ export class ProjectsAlertsService {
   constructor(
     private prisma: PrismaService,
     private projectsService: ProjectsService,
+    private email: EmailProvider,
+    private push: PushProvider,
+    private config: ConfigService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -88,15 +102,18 @@ export class ProjectsAlertsService {
     );
     if (deduped) return 0;
 
-    await this.prisma.notification.create({
+    const subject = `Orçamento acima do previsto — ${p.name}`;
+    const body = `O gasto real está ${(ratio * 100).toFixed(0)}% do ideal (limite 115%). Reveja o consumo antes que o projecto estoure o orçamento.`;
+
+    const notification = await this.prisma.notification.create({
       data: {
         gabineteId: p.gabineteId,
         userId: p.managerId,
         type: NotificationType.PROJECT_BUDGET_DRIFT,
         channel: 'IN_APP',
         status: 'PENDING',
-        subject: `Orçamento acima do previsto — ${p.name}`,
-        body: `O gasto real está ${(ratio * 100).toFixed(0)}% do ideal (limite 115%). Reveja o consumo antes que o projecto estoure o orçamento.`,
+        subject,
+        body,
         metadata: {
           projectId: p.id,
           ratio,
@@ -105,6 +122,8 @@ export class ProjectsAlertsService {
         },
       },
     });
+
+    await this.deliver(p.managerId, notification.id, subject, body, `/projectos/${p.id}`);
     return 1;
   }
 
@@ -138,21 +157,144 @@ export class ProjectsAlertsService {
         1,
         Math.floor((now.getTime() - m.dueDate.getTime()) / 86_400_000),
       );
-      await this.prisma.notification.create({
+      const subject = `Marco atrasado — ${m.title}`;
+      const body = `O marco "${m.title}" do projecto ${p.name} está atrasado há ${daysLate} dia(s). Ajuste a data ou feche-o quando concluído.`;
+
+      const notif = await this.prisma.notification.create({
         data: {
           gabineteId: p.gabineteId,
           userId: p.managerId,
           type: NotificationType.PROJECT_MILESTONE_OVERDUE,
           channel: 'IN_APP',
           status: 'PENDING',
-          subject: `Marco atrasado — ${m.title}`,
-          body: `O marco "${m.title}" do projecto ${p.name} está atrasado há ${daysLate} dia(s). Ajuste a data ou feche-o quando concluído.`,
+          subject,
+          body,
           metadata: { projectId: p.id, milestoneId: m.id, daysLate },
         },
       });
+      await this.deliver(
+        p.managerId,
+        notif.id,
+        subject,
+        body,
+        `/projectos/${p.id}`,
+      );
       created++;
     }
     return created;
+  }
+
+  /**
+   * Fire-and-forget fan-out to email + push. In-app row is already persisted
+   * upstream; here we update its status/sentAt based on delivery outcomes.
+   * Failures are logged but never surfaced to the caller — notifications
+   * degrade gracefully when providers are unconfigured (DRY_RUN).
+   */
+  private async deliver(
+    userId: string,
+    notificationId: string,
+    subject: string,
+    body: string,
+    href: string,
+  ): Promise<void> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          email: true,
+          firstName: true,
+          pushSubscriptions: {
+            where: { isActive: true },
+            select: { endpoint: true, p256dh: true, auth: true, id: true },
+          },
+        },
+      });
+      if (!user) return;
+
+      const frontendUrl = this.config.get<string>('FRONTEND_URL', '');
+      const fullUrl = frontendUrl ? `${frontendUrl.split(',')[0].trim()}${href}` : href;
+
+      // ── Email ────────────────────────────────────────
+      const emailHtml = this.buildEmailHtml(subject, body, fullUrl, user.firstName);
+      const emailRes = await this.email.send(user.email, subject, emailHtml);
+
+      // ── Push (if subscribed) ─────────────────────────
+      const pushResults = await Promise.all(
+        user.pushSubscriptions.map((s) =>
+          this.push.sendToSubscription(
+            {
+              endpoint: s.endpoint,
+              keys: { p256dh: s.p256dh, auth: s.auth },
+            },
+            { title: subject, body, url: href },
+          ),
+        ),
+      );
+
+      // Prune expired push subs
+      await Promise.all(
+        pushResults.map(async (r, i) => {
+          if (r.status === 'FAILED' && (r.metadata as any)?.expired) {
+            await this.prisma.pushSubscription.update({
+              where: { id: user.pushSubscriptions[i].id },
+              data: { isActive: false },
+            });
+          }
+        }),
+      );
+
+      const anySent =
+        emailRes.status === 'SENT' || pushResults.some((r) => r.status === 'SENT');
+
+      // Merge delivery info into existing metadata (don't clobber the dedupe
+      // fields like projectId/milestoneId the scheduler uses).
+      const existing = await this.prisma.notification.findUnique({
+        where: { id: notificationId },
+        select: { metadata: true },
+      });
+      const mergedMetadata = {
+        ...((existing?.metadata as Record<string, unknown>) ?? {}),
+        delivery: {
+          email: emailRes.status,
+          push: pushResults.map((r) => r.status),
+        },
+      };
+
+      await this.prisma.notification.update({
+        where: { id: notificationId },
+        data: {
+          status: anySent ? 'SENT' : emailRes.status === 'DRY_RUN' ? 'PENDING' : 'FAILED',
+          sentAt: anySent ? new Date() : null,
+          errorMessage: anySent ? null : emailRes.errorMessage ?? null,
+          metadata: mergedMetadata as any,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Deliver fan-out failed for notification ${notificationId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private buildEmailHtml(
+    subject: string,
+    body: string,
+    url: string,
+    firstName: string | null,
+  ): string {
+    return `
+<!doctype html>
+<html><body style="font-family: -apple-system, Inter, sans-serif; color: #111; max-width: 520px; margin: 24px auto; padding: 24px;">
+  <h2 style="margin: 0 0 12px;">${escapeHtml(subject)}</h2>
+  <p style="color: #555; line-height: 1.5;">Olá${firstName ? ` ${escapeHtml(firstName)}` : ''},</p>
+  <p style="line-height: 1.5;">${escapeHtml(body)}</p>
+  <p>
+    <a href="${url}" style="display:inline-block;background:#111;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;font-size:14px;">Abrir no Kamaia</a>
+  </p>
+  <hr style="border:0;border-top:1px solid #eee;margin:24px 0;"/>
+  <p style="color:#999;font-size:12px;">Recebes este email porque és gestor deste projecto no Kamaia. Ajusta preferências em Configurações → Notificações.</p>
+</body></html>
+    `.trim();
   }
 
   /**
