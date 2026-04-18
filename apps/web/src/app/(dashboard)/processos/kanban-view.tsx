@@ -20,7 +20,26 @@ import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui'
-import { ProcessoType, PROCESSO_STAGES } from '@kamaia/shared-types'
+import { ProcessoType } from '@kamaia/shared-types'
+
+interface WorkflowStage {
+  id: string
+  key: string
+  label: string
+  position: number
+  color: string | null
+  category: string | null
+  allowsParallel: boolean
+  isTerminal: boolean
+}
+interface Workflow {
+  id: string
+  name: string
+  scope: 'PROCESSO' | 'PROJECT'
+  appliesTo: string[]
+  isDefault: boolean
+  stages: WorkflowStage[]
+}
 
 interface KanbanProcesso {
   id: string
@@ -136,7 +155,15 @@ export default function KanbanView() {
     [selectedType],
   )
 
-  const stages = PROCESSO_STAGES[selectedType] || []
+  // Load the gabinete's workflow for this processo type (auto-seeds on first use).
+  // Stage labels come straight from DB, so adding Tréplica/Quadruplica or custom
+  // parallel stages in the editor is reflected live.
+  const { data: workflows } = useApi<Workflow[]>(
+    `/workflows?scope=PROCESSO&appliesTo=${selectedType}`,
+    [selectedType],
+  )
+  const workflow = workflows?.find((w) => w.isDefault) ?? workflows?.[0]
+  const stages = workflow?.stages?.map((s) => s.label) ?? []
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

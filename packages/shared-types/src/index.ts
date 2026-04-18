@@ -389,3 +389,193 @@ export const PROCESSO_STAGES: Record<ProcessoType, string[]> = {
     'Decisao',
   ],
 };
+
+// ── Workflow & Project primitives (Sprint 1+) ──────────────
+
+export type WorkflowScope = 'PROCESSO' | 'PROJECT';
+
+export type StageInstanceStatus = 'PENDENTE' | 'EM_CURSO' | 'CUMPRIDO' | 'SKIPPED';
+
+export enum ProjectCategory {
+  LITIGIO = 'LITIGIO',
+  MA = 'MA',
+  COMPLIANCE = 'COMPLIANCE',
+  DUE_DILIGENCE = 'DUE_DILIGENCE',
+  CONTRATO = 'CONTRATO',
+  CONSULTORIA = 'CONSULTORIA',
+  OUTRO = 'OUTRO',
+}
+
+export enum ProjectStatus {
+  PROPOSTA = 'PROPOSTA',
+  ACTIVO = 'ACTIVO',
+  EM_PAUSA = 'EM_PAUSA',
+  CONCLUIDO = 'CONCLUIDO',
+  CANCELADO = 'CANCELADO',
+}
+
+export enum ProjectHealth {
+  GREEN = 'GREEN',
+  YELLOW = 'YELLOW',
+  RED = 'RED',
+}
+
+export enum RaciRole {
+  RESPONSIBLE = 'RESPONSIBLE',
+  ACCOUNTABLE = 'ACCOUNTABLE',
+  CONSULTED = 'CONSULTED',
+  INFORMED = 'INFORMED',
+}
+
+/**
+ * Richer stage templates — seeded as the default Workflow for each
+ * ProcessoType when a gabinete is provisioned. The UI reads from the
+ * DB (Workflow/WorkflowStage) so firms can extend/edit freely.
+ */
+export interface StageTemplate {
+  key: string;
+  label: string;
+  category?: string;
+  allowsParallel?: boolean;
+  isTerminal?: boolean;
+}
+
+export const PROCESSO_STAGE_TEMPLATES: Record<ProcessoType, StageTemplate[]> = {
+  [ProcessoType.CIVEL]: [
+    { key: 'peticao-inicial', label: 'Petição Inicial', category: 'INICIAL' },
+    { key: 'citacao', label: 'Citação', category: 'INICIAL' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
+    { key: 'treplica', label: 'Tréplica', category: 'ARTICULADOS' },
+    { key: 'quadruplica', label: 'Quadruplica', category: 'ARTICULADOS' },
+    { key: 'incidente', label: 'Incidente', category: 'PARALELO', allowsParallel: true },
+    { key: 'audiencia-previa', label: 'Audiência Prévia', category: 'JULGAMENTO' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'julgamento', label: 'Julgamento', category: 'JULGAMENTO' },
+    { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+    { key: 'recurso', label: 'Recurso', category: 'RECURSO', allowsParallel: true },
+    { key: 'transito-julgado', label: 'Trânsito em Julgado', category: 'FINAL', isTerminal: true },
+  ],
+  [ProcessoType.LABORAL]: [
+    { key: 'participacao', label: 'Participação', category: 'INICIAL' },
+    { key: 'audiencia-conciliacao', label: 'Audiência de Conciliação', category: 'INICIAL' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
+    { key: 'treplica', label: 'Tréplica', category: 'ARTICULADOS' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'julgamento', label: 'Julgamento', category: 'JULGAMENTO' },
+    { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+    { key: 'recurso', label: 'Recurso', category: 'RECURSO', allowsParallel: true },
+    { key: 'execucao', label: 'Execução', category: 'FINAL', isTerminal: true },
+  ],
+  [ProcessoType.CRIMINAL]: [
+    { key: 'queixa', label: 'Queixa / Participação', category: 'INICIAL' },
+    { key: 'inquerito', label: 'Inquérito', category: 'INICIAL' },
+    { key: 'acusacao', label: 'Acusação', category: 'ARTICULADOS' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'julgamento', label: 'Julgamento', category: 'JULGAMENTO' },
+    { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+    { key: 'recurso', label: 'Recurso', category: 'RECURSO', allowsParallel: true },
+  ],
+  [ProcessoType.COMERCIAL]: [
+    { key: 'peticao', label: 'Petição', category: 'INICIAL' },
+    { key: 'citacao', label: 'Citação', category: 'INICIAL' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
+    { key: 'treplica', label: 'Tréplica', category: 'ARTICULADOS' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'julgamento', label: 'Julgamento', category: 'JULGAMENTO' },
+    { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+  ],
+  [ProcessoType.ADMINISTRATIVO]: [
+    { key: 'peticao', label: 'Petição', category: 'INICIAL' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'audiencia', label: 'Audiência', category: 'JULGAMENTO' },
+    { key: 'decisao', label: 'Decisão', category: 'DECISAO' },
+    { key: 'recurso', label: 'Recurso', category: 'RECURSO', allowsParallel: true },
+  ],
+  [ProcessoType.FAMILIA]: [
+    { key: 'peticao', label: 'Petição', category: 'INICIAL' },
+    { key: 'citacao', label: 'Citação', category: 'INICIAL' },
+    { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+    { key: 'mediacao', label: 'Mediação', category: 'PARALELO', allowsParallel: true },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'julgamento', label: 'Julgamento', category: 'JULGAMENTO' },
+    { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+  ],
+  [ProcessoType.ARBITRAGEM]: [
+    { key: 'requerimento', label: 'Requerimento', category: 'INICIAL' },
+    { key: 'constituicao-tribunal', label: 'Constituição do Tribunal', category: 'INICIAL' },
+    { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },
+    { key: 'alegacoes', label: 'Alegações', category: 'JULGAMENTO' },
+    { key: 'decisao', label: 'Decisão', category: 'DECISAO', isTerminal: true },
+  ],
+};
+
+/**
+ * Project templates — seeded once per gabinete so users can spin up
+ * non-litigation engagements (M&A, Compliance, DD) with standard stages.
+ */
+export const PROJECT_STAGE_TEMPLATES: Record<ProjectCategory, StageTemplate[]> = {
+  [ProjectCategory.LITIGIO]: [
+    { key: 'analise', label: 'Análise' },
+    { key: 'propositura', label: 'Propositura' },
+    { key: 'em-curso', label: 'Em Curso' },
+    { key: 'encerrado', label: 'Encerrado', isTerminal: true },
+  ],
+  [ProjectCategory.MA]: [
+    { key: 'nda', label: 'NDA' },
+    { key: 'term-sheet', label: 'Term Sheet' },
+    { key: 'due-diligence', label: 'Due Diligence' },
+    { key: 'spa', label: 'SPA' },
+    { key: 'signing', label: 'Signing' },
+    { key: 'closing', label: 'Closing', isTerminal: true },
+    { key: 'post-closing', label: 'Pós-Closing', allowsParallel: true },
+  ],
+  [ProjectCategory.COMPLIANCE]: [
+    { key: 'assessment', label: 'Assessment' },
+    { key: 'gap-analysis', label: 'Gap Analysis' },
+    { key: 'policies', label: 'Políticas' },
+    { key: 'training', label: 'Formação' },
+    { key: 'monitoring', label: 'Monitorização' },
+    { key: 'report', label: 'Relatório', isTerminal: true },
+  ],
+  [ProjectCategory.DUE_DILIGENCE]: [
+    { key: 'kickoff', label: 'Kick-off' },
+    { key: 'data-room', label: 'Data Room' },
+    { key: 'revisao', label: 'Revisão' },
+    { key: 'red-flags', label: 'Red Flags' },
+    { key: 'relatorio', label: 'Relatório Final', isTerminal: true },
+  ],
+  [ProjectCategory.CONTRATO]: [
+    { key: 'term-sheet', label: 'Term Sheet' },
+    { key: 'primeiro-draft', label: '1º Draft' },
+    { key: 'negociacao', label: 'Negociação' },
+    { key: 'aprovacao', label: 'Aprovação' },
+    { key: 'assinatura', label: 'Assinatura', isTerminal: true },
+  ],
+  [ProjectCategory.CONSULTORIA]: [
+    { key: 'briefing', label: 'Briefing' },
+    { key: 'pesquisa', label: 'Pesquisa' },
+    { key: 'draft', label: 'Draft' },
+    { key: 'entrega', label: 'Entrega', isTerminal: true },
+  ],
+  [ProjectCategory.OUTRO]: [
+    { key: 'por-iniciar', label: 'Por Iniciar' },
+    { key: 'em-curso', label: 'Em Curso' },
+    { key: 'concluido', label: 'Concluído', isTerminal: true },
+  ],
+};
+
+export const PROJECT_CATEGORY_LABELS: Record<ProjectCategory, string> = {
+  [ProjectCategory.LITIGIO]: 'Litígio',
+  [ProjectCategory.MA]: 'Fusões & Aquisições',
+  [ProjectCategory.COMPLIANCE]: 'Compliance',
+  [ProjectCategory.DUE_DILIGENCE]: 'Due Diligence',
+  [ProjectCategory.CONTRATO]: 'Contrato',
+  [ProjectCategory.CONSULTORIA]: 'Consultoria',
+  [ProjectCategory.OUTRO]: 'Outro',
+};

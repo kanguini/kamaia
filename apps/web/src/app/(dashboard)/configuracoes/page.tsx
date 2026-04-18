@@ -529,7 +529,50 @@ export default function ConfiguracoesPage() {
       <PasswordSection />
       <GabineteSection />
       <NotificationsSection />
+      <WorkflowsLink />
       <DataSection />
+    </div>
+  )
+}
+
+// ── Workflows quick-link ────────────────────────────────
+function WorkflowsLink() {
+  return (
+    <div className="bg-surface-raised p-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-surface border border-border rounded flex items-center justify-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-ink-muted"
+            >
+              <circle cx="6" cy="3" r="3" />
+              <path d="M6 21V8m0 0a9 9 0 0 1 9 9v4" />
+              <circle cx="18" cy="6" r="3" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-ink">Workflows</p>
+            <p className="text-xs text-ink-muted">
+              Configurar fases dos processos (ex: Tréplica, Quadruplica) e projectos
+            </p>
+          </div>
+        </div>
+        <a
+          href="/configuracoes/workflows"
+          className="px-3 py-1.5 text-xs font-medium bg-surface border border-border rounded"
+        >
+          Abrir editor
+        </a>
+      </div>
     </div>
   )
 }

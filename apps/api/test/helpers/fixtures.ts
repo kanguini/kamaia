@@ -102,6 +102,12 @@ export async function cleanupGabinete(
     }
   };
 
+  await safeDeleteMany(() => prisma.projectMilestone.deleteMany({ where: { project: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.projectMember.deleteMany({ where: { project: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.project.deleteMany({ where }));
+  await safeDeleteMany(() => prisma.processoStageInstance.deleteMany({ where: { processo: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.workflowStage.deleteMany({ where: { workflow: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.workflow.deleteMany({ where }));
   await safeDeleteMany(() => prisma.notification.deleteMany({ where }));
   await safeDeleteMany(() => prisma.taskComment.deleteMany({ where: { task: { gabineteId } } }));
   await safeDeleteMany(() => prisma.task.deleteMany({ where }));

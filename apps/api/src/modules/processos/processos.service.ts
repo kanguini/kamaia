@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ProcessosRepository, ListProcessosParams } from './processos.repository';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkflowsService } from '../workflows/workflows.service';
 import {
   Result,
   ok,
@@ -31,6 +32,7 @@ export class ProcessosService {
     private processosRepository: ProcessosRepository,
     private auditService: AuditService,
     private prisma: PrismaService,
+    private workflows: WorkflowsService,
   ) {}
 
   async findAll(
@@ -102,22 +104,42 @@ export class ProcessosService {
       // Generate processo number
       const processoNumber = await this.processosRepository.getNextNumber(gabineteId);
 
-      // Get initial stage for processo type
-      const initialStage = PROCESSO_STAGES[dto.type][0];
+      // Resolve the default workflow for this processo type (seeds workflows
+      // the first time they're needed). Falls back to the legacy constant.
+      const workflow = await this.workflows.getDefaultFor(gabineteId, 'PROCESSO', dto.type);
+      const firstStage = workflow?.stages?.[0];
+      const initialStageLabel =
+        firstStage?.label ?? PROCESSO_STAGES[dto.type][0];
 
       // Create processo
       const processo = await this.processosRepository.create(gabineteId, {
         ...dto,
         processoNumber,
         advogadoId: userId,
-        stage: initialStage,
+        stage: initialStageLabel,
       });
+
+      // Attach workflow and create the initial stage instance (parallel-ready)
+      if (workflow?.id && firstStage?.id) {
+        await this.prisma.processo.update({
+          where: { id: processo.id },
+          data: { workflowId: workflow.id },
+        });
+        await this.prisma.processoStageInstance.create({
+          data: {
+            processoId: processo.id,
+            stageId: firstStage.id,
+            status: 'EM_CURSO',
+            enteredAt: new Date(),
+          },
+        });
+      }
 
       // Create initial stage change event
       await this.processosRepository.createEvent(processo.id, userId, {
         type: ProcessoEventType.STAGE_CHANGE,
-        description: `Processo criado na fase: ${initialStage}`,
-        metadata: { stage: initialStage },
+        description: `Processo criado na fase: ${initialStageLabel}`,
+        metadata: { stage: initialStageLabel },
       });
 
       // Audit log
@@ -476,6 +498,117 @@ export class ProcessosService {
       return ok(tags);
     } catch (error) {
       return err('Failed to get tags', 'TAGS_FAILED');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // Dynamic stage instances (parallel support)
+  //
+  // A processo can be in multiple stages at once — e.g. "Réplica" (articulado)
+  // and "Incidente" (paralelo) — by creating one ProcessoStageInstance per
+  // active stage. `enterStage` creates an instance, `exitStage` closes it.
+  // ─────────────────────────────────────────────────────────
+
+  async listStageInstances(gabineteId: string, processoId: string): Promise<Result<any[]>> {
+    try {
+      const processo = await this.processosRepository.findById(gabineteId, processoId);
+      if (!processo) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+      const instances = await this.prisma.processoStageInstance.findMany({
+        where: { processoId },
+        include: { stage: true },
+        orderBy: { enteredAt: 'desc' },
+      });
+      return ok(instances);
+    } catch (e) {
+      return err('Failed to list stage instances', 'STAGE_INSTANCES_FAILED');
+    }
+  }
+
+  async enterStage(
+    gabineteId: string,
+    userId: string,
+    processoId: string,
+    stageId: string,
+  ): Promise<Result<any>> {
+    try {
+      const processo = await this.processosRepository.findById(gabineteId, processoId);
+      if (!processo) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+
+      const stage = await this.prisma.workflowStage.findFirst({
+        where: { id: stageId, workflow: { gabineteId } },
+      });
+      if (!stage) return err('Stage not found', 'STAGE_NOT_FOUND');
+
+      // If the stage is non-parallel, close any other EM_CURSO instances first
+      if (!stage.allowsParallel) {
+        await this.prisma.processoStageInstance.updateMany({
+          where: { processoId, status: 'EM_CURSO' },
+          data: { status: 'CUMPRIDO', exitedAt: new Date() },
+        });
+      }
+
+      const instance = await this.prisma.processoStageInstance.create({
+        data: {
+          processoId,
+          stageId,
+          status: 'EM_CURSO',
+          enteredAt: new Date(),
+        },
+        include: { stage: true },
+      });
+
+      // Keep legacy `stage` column for back-compat (shows last non-parallel stage)
+      if (!stage.allowsParallel) {
+        await this.prisma.processo.update({
+          where: { id: processoId },
+          data: { stage: stage.label },
+        });
+      }
+
+      await this.processosRepository.createEvent(processoId, userId, {
+        type: ProcessoEventType.STAGE_CHANGE,
+        description: `Entrou na fase: ${stage.label}`,
+        metadata: { stageId, key: stage.key, parallel: stage.allowsParallel },
+      });
+
+      return ok(instance);
+    } catch (e) {
+      return err('Failed to enter stage', 'STAGE_ENTER_FAILED');
+    }
+  }
+
+  async exitStage(
+    gabineteId: string,
+    userId: string,
+    processoId: string,
+    instanceId: string,
+    status: 'CUMPRIDO' | 'SKIPPED' = 'CUMPRIDO',
+  ): Promise<Result<any>> {
+    try {
+      const processo = await this.processosRepository.findById(gabineteId, processoId);
+      if (!processo) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+
+      const instance = await this.prisma.processoStageInstance.findFirst({
+        where: { id: instanceId, processoId },
+        include: { stage: true },
+      });
+      if (!instance) return err('Stage instance not found', 'INSTANCE_NOT_FOUND');
+
+      const updated = await this.prisma.processoStageInstance.update({
+        where: { id: instanceId },
+        data: { status, exitedAt: new Date() },
+        include: { stage: true },
+      });
+
+      await this.processosRepository.createEvent(processoId, userId, {
+        type: ProcessoEventType.STAGE_CHANGE,
+        description: `Saiu da fase: ${instance.stage.label} (${status})`,
+        metadata: { stageId: instance.stageId, status },
+      });
+
+      return ok(updated);
+    } catch (e) {
+      return err('Failed to exit stage', 'STAGE_EXIT_FAILED');
     }
   }
 }

@@ -31,22 +31,24 @@ model Gabinete {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  users           User[]
-  clientes        Cliente[]
-  processos       Processo[]
-  prazos          Prazo[]
-  calendarEvents  CalendarEvent[]
-  documents       Document[]
-  auditLogs       AuditLog[]
-  aiConversations AIConversation[]
-  subscription    Subscription?
-  usageQuota      UsageQuota?
-  timeEntries     TimeEntry[]
-  expenses        Expense[]
+  users               User[]
+  clientes            Cliente[]
+  processos           Processo[]
+  prazos              Prazo[]
+  calendarEvents      CalendarEvent[]
+  documents           Document[]
+  auditLogs           AuditLog[]
+  aiConversations     AIConversation[]
+  subscription        Subscription?
+  usageQuota          UsageQuota?
+  timeEntries         TimeEntry[]
+  expenses            Expense[]
   clienteInteractions ClienteInteraction[]
-  taskColumns     TaskColumn[]
-  tasks           Task[]
-  notifications   Notification[]
+  taskColumns         TaskColumn[]
+  tasks               Task[]
+  notifications       Notification[]
+  workflows           Workflow[]
+  projects            Project[]
 
   @@map("gabinetes")
 }
@@ -73,24 +75,27 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete        Gabinete         @relation(fields: [gabineteId], references: [id])
-  sessions        UserSession[]
-  clientesManaged Cliente[]        @relation("AdvogadoClientes")
-  processos       Processo[]       @relation("AdvogadoProcessos")
-  processoEvents  ProcessoEvent[]
-  calendarEvents  CalendarEvent[]
-  documents       Document[]       @relation("UploadedDocuments")
-  auditLogs       AuditLog[]
-  aiConversations AIConversation[]
-  timeEntries     TimeEntry[]
-  expenses        Expense[]
-  clienteInteractions ClienteInteraction[]
-  tasksAssigned     Task[]           @relation("TaskAssignee")
-  tasksCreated      Task[]           @relation("TaskCreator")
-  taskComments      TaskComment[]    @relation("TaskComments")
-  notifications         Notification[]
-  pushSubscriptions     PushSubscription[]
+  gabinete               Gabinete                @relation(fields: [gabineteId], references: [id])
+  sessions               UserSession[]
+  clientesManaged        Cliente[]               @relation("AdvogadoClientes")
+  processos              Processo[]              @relation("AdvogadoProcessos")
+  processoEvents         ProcessoEvent[]
+  calendarEvents         CalendarEvent[]
+  documents              Document[]              @relation("UploadedDocuments")
+  auditLogs              AuditLog[]
+  aiConversations        AIConversation[]
+  timeEntries            TimeEntry[]
+  expenses               Expense[]
+  clienteInteractions    ClienteInteraction[]
+  tasksAssigned          Task[]                  @relation("TaskAssignee")
+  tasksCreated           Task[]                  @relation("TaskCreator")
+  taskComments           TaskComment[]           @relation("TaskComments")
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
   notificationPreference NotificationPreference?
+  projectsManaged        Project[]               @relation("ProjectManager")
+  projectsSponsored      Project[]               @relation("ProjectSponsor")
+  projectMemberships     ProjectMember[]
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -136,11 +141,12 @@ model Cliente {
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete  Gabinete   @relation(fields: [gabineteId], references: [id])
-  advogado  User?      @relation("AdvogadoClientes", fields: [advogadoId], references: [id])
-  processos Processo[]
+  gabinete     Gabinete             @relation(fields: [gabineteId], references: [id])
+  advogado     User?                @relation("AdvogadoClientes", fields: [advogadoId], references: [id])
+  processos    Processo[]
   interactions ClienteInteraction[]
   tasks        Task[]
+  Project      Project[]
 
   @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
   @@index([gabineteId], map: "idx_cliente_gabinete")
@@ -178,12 +184,19 @@ model Processo {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
-  cliente   Cliente         @relation(fields: [clienteId], references: [id])
-  advogado  User            @relation("AdvogadoProcessos", fields: [advogadoId], references: [id])
-  events    ProcessoEvent[]
-  prazos    Prazo[]
-  calendar  CalendarEvent[]
+  // Dynamic workflow support (Sprint 1+)
+  workflowId     String?                 @map("workflow_id") @db.Uuid
+  workflow       Workflow?               @relation(fields: [workflowId], references: [id])
+  stageInstances ProcessoStageInstance[]
+  projectId      String?                 @map("project_id") @db.Uuid
+  project        Project?                @relation(fields: [projectId], references: [id])
+
+  gabinete    Gabinete        @relation(fields: [gabineteId], references: [id])
+  cliente     Cliente         @relation(fields: [clienteId], references: [id])
+  advogado    User            @relation("AdvogadoProcessos", fields: [advogadoId], references: [id])
+  events      ProcessoEvent[]
+  prazos      Prazo[]
+  calendar    CalendarEvent[]
   documents   Document[]
   timeEntries TimeEntry[]
   expenses    Expense[]
@@ -195,6 +208,8 @@ model Processo {
   @@index([gabineteId, lifecycle], map: "idx_processo_gabinete_lifecycle")
   @@index([gabineteId, advogadoId], map: "idx_processo_gabinete_advogado")
   @@index([gabineteId, clienteId], map: "idx_processo_gabinete_cliente")
+  @@index([gabineteId, workflowId], map: "idx_processo_gabinete_workflow")
+  @@index([gabineteId, projectId], map: "idx_processo_gabinete_project")
   @@map("processos")
 }
 
@@ -364,18 +379,18 @@ model AIMessage {
 // ── Subscription ──────────────────────────────────────────
 
 model Subscription {
-  id                    String    @id @default(uuid()) @db.Uuid
-  gabineteId            String    @unique @map("gabinete_id") @db.Uuid
-  plan                  String    @db.VarChar(20) // SubscriptionPlan enum
-  status                String    @default("ACTIVE") @db.VarChar(20) // SubscriptionStatus enum
-  currentPeriodStart    DateTime  @map("current_period_start") @db.Timestamptz
-  currentPeriodEnd      DateTime  @map("current_period_end") @db.Timestamptz
-  cancelledAt           DateTime? @map("cancelled_at") @db.Timestamptz
-  stripeCustomerId      String?   @map("stripe_customer_id") @db.VarChar(100)
-  stripeSubscriptionId  String?   @map("stripe_subscription_id") @db.VarChar(100)
-  multicaixaRef         String?   @map("multicaixa_ref") @db.VarChar(100)
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String    @id @default(uuid()) @db.Uuid
+  gabineteId           String    @unique @map("gabinete_id") @db.Uuid
+  plan                 String    @db.VarChar(20) // SubscriptionPlan enum
+  status               String    @default("ACTIVE") @db.VarChar(20) // SubscriptionStatus enum
+  currentPeriodStart   DateTime  @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd     DateTime  @map("current_period_end") @db.Timestamptz
+  cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz
+  stripeCustomerId     String?   @map("stripe_customer_id") @db.VarChar(100)
+  stripeSubscriptionId String?   @map("stripe_subscription_id") @db.VarChar(100)
+  multicaixaRef        String?   @map("multicaixa_ref") @db.VarChar(100)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
 
@@ -385,15 +400,15 @@ model Subscription {
 // ── Usage Quota ───────────────────────────────────────────
 
 model UsageQuota {
-  id              String   @id @default(uuid()) @db.Uuid
-  gabineteId      String   @unique @map("gabinete_id") @db.Uuid
-  aiQueriesUsed   Int      @default(0) @map("ai_queries_used")
-  docAnalysesUsed Int      @default(0) @map("doc_analyses_used")
-  storageUsedBytes BigInt  @default(0) @map("storage_used_bytes")
-  periodStart     DateTime @map("period_start") @db.Timestamptz
-  periodEnd       DateTime @map("period_end") @db.Timestamptz
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id               String   @id @default(uuid()) @db.Uuid
+  gabineteId       String   @unique @map("gabinete_id") @db.Uuid
+  aiQueriesUsed    Int      @default(0) @map("ai_queries_used")
+  docAnalysesUsed  Int      @default(0) @map("doc_analyses_used")
+  storageUsedBytes BigInt   @default(0) @map("storage_used_bytes")
+  periodStart      DateTime @map("period_start") @db.Timestamptz
+  periodEnd        DateTime @map("period_end") @db.Timestamptz
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
 
@@ -436,7 +451,7 @@ model Expense {
   userId      String    @map("user_id") @db.Uuid
   category    String    @db.VarChar(30) // ExpenseCategory enum
   description String    @db.Text
-  amount      Int       // Centavos AKZ
+  amount      Int // Centavos AKZ
   date        DateTime  @db.Date
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -552,12 +567,12 @@ model Task {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete  Gabinete       @relation(fields: [gabineteId], references: [id])
-  column    TaskColumn     @relation(fields: [columnId], references: [id])
-  assignee  User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy User           @relation("TaskCreator", fields: [createdById], references: [id])
-  processo  Processo?      @relation(fields: [processoId], references: [id])
-  cliente   Cliente?       @relation(fields: [clienteId], references: [id])
+  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
+  column    TaskColumn      @relation(fields: [columnId], references: [id])
+  assignee  User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User            @relation("TaskCreator", fields: [createdById], references: [id])
+  processo  Processo?       @relation(fields: [processoId], references: [id])
+  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
   checklist TaskCheckItem[]
   comments  TaskComment[]
 
@@ -602,15 +617,15 @@ model TaskComment {
 // ── Cliente Interaction (CRM Flow) ───────────────────────
 
 model ClienteInteraction {
-  id         String   @id @default(uuid()) @db.Uuid
-  gabineteId String   @map("gabinete_id") @db.Uuid
-  clienteId  String   @map("cliente_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  type       String   @db.VarChar(20) // CHAMADA, EMAIL, REUNIAO, WHATSAPP, VISITA
-  notes      String?  @db.Text
-  date       DateTime @db.Timestamptz
+  id         String    @id @default(uuid()) @db.Uuid
+  gabineteId String    @map("gabinete_id") @db.Uuid
+  clienteId  String    @map("cliente_id") @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  type       String    @db.VarChar(20) // CHAMADA, EMAIL, REUNIAO, WHATSAPP, VISITA
+  notes      String?   @db.Text
+  date       DateTime  @db.Timestamptz
   deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
   cliente  Cliente  @relation(fields: [clienteId], references: [id])
@@ -654,4 +669,157 @@ model LegislationChunk {
 
   @@index([documentId], map: "idx_chunk_document")
   @@map("legislation_chunks")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Workflow Engine — dynamic stages for processos & projects
+// ═══════════════════════════════════════════════════════════
+
+// A reusable pipeline of stages configured per gabinete.
+// Replaces the hardcoded PROCESSO_STAGES constant, letting firms
+// add/remove stages like Tréplica / Quadruplica at will.
+model Workflow {
+  id          String   @id @default(uuid()) @db.Uuid
+  gabineteId  String   @map("gabinete_id") @db.Uuid
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  scope       String   @db.VarChar(20) // 'PROCESSO' | 'PROJECT'
+  appliesTo   String[] @default([]) @map("applies_to") // e.g. ['CIVEL','COMERCIAL'] or ['MA','COMPLIANCE']
+  isDefault   Boolean  @default(false) @map("is_default")
+  isArchived  Boolean  @default(false) @map("is_archived")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
+  stages    WorkflowStage[]
+  processos Processo[]
+  projects  Project[]
+
+  @@index([gabineteId, scope], map: "idx_workflow_gabinete_scope")
+  @@map("workflows")
+}
+
+model WorkflowStage {
+  id             String   @id @default(uuid()) @db.Uuid
+  workflowId     String   @map("workflow_id") @db.Uuid
+  key            String   @db.VarChar(60) // slug estável: "replica", "treplica"
+  label          String   @db.VarChar(100) // "Tréplica"
+  position       Int      @default(0)
+  color          String?  @db.VarChar(7)
+  category       String?  @db.VarChar(60) // agrupamento visual: "ARTICULADOS"
+  slaHours       Int?     @map("sla_hours")
+  allowsParallel Boolean  @default(false) @map("allows_parallel")
+  isTerminal     Boolean  @default(false) @map("is_terminal") // fase final (arquivo)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  workflow  Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  instances ProcessoStageInstance[]
+
+  @@unique([workflowId, key], map: "uq_stage_workflow_key")
+  @@index([workflowId, position], map: "idx_stage_workflow_position")
+  @@map("workflow_stages")
+}
+
+// A processo can be in N stages in parallel (e.g. "Réplica" + "Incidente").
+// Replaces Processo.stage (kept as legacy for back-compat during migration).
+model ProcessoStageInstance {
+  id         String    @id @default(uuid()) @db.Uuid
+  processoId String    @map("processo_id") @db.Uuid
+  stageId    String    @map("stage_id") @db.Uuid
+  status     String    @default("EM_CURSO") @db.VarChar(20) // PENDENTE|EM_CURSO|CUMPRIDO|SKIPPED
+  enteredAt  DateTime  @default(now()) @map("entered_at") @db.Timestamptz
+  exitedAt   DateTime? @map("exited_at") @db.Timestamptz
+  notes      String?   @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  processo Processo      @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  stage    WorkflowStage @relation(fields: [stageId], references: [id])
+
+  @@index([processoId, status], map: "idx_stageinst_processo_status")
+  @@index([stageId], map: "idx_stageinst_stage")
+  @@map("processo_stage_instances")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Legal Project — container for M&A, Compliance, DD, etc.
+// A Project aggregates processos + tasks + milestones + budget.
+// ═══════════════════════════════════════════════════════════
+model Project {
+  id             String    @id @default(uuid()) @db.Uuid
+  gabineteId     String    @map("gabinete_id") @db.Uuid
+  clienteId      String?   @map("cliente_id") @db.Uuid
+  workflowId     String?   @map("workflow_id") @db.Uuid
+  managerId      String    @map("manager_id") @db.Uuid
+  sponsorId      String?   @map("sponsor_id") @db.Uuid
+  code           String    @db.VarChar(30)
+  name           String    @db.VarChar(300)
+  category       String    @db.VarChar(30) // 'LITIGIO'|'MA'|'COMPLIANCE'|'DUE_DILIGENCE'|'CONTRATO'|'CONSULTORIA'|'OUTRO'
+  status         String    @default("ACTIVO") @db.VarChar(20) // PROPOSTA|ACTIVO|EM_PAUSA|CONCLUIDO|CANCELADO
+  healthStatus   String    @default("GREEN") @map("health_status") @db.VarChar(10) // GREEN|YELLOW|RED
+  scope          String?   @db.Text
+  objectives     String?   @db.Text
+  risksJson      Json?     @map("risks_json")
+  startDate      DateTime? @map("start_date") @db.Timestamptz
+  endDate        DateTime? @map("end_date") @db.Timestamptz
+  actualEndDate  DateTime? @map("actual_end_date") @db.Timestamptz
+  budgetAmount   Int?      @map("budget_amount") // centavos
+  budgetCurrency String    @default("AKZ") @map("budget_currency") @db.VarChar(3)
+  tags           String[]  @default([])
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete   Gabinete           @relation(fields: [gabineteId], references: [id])
+  cliente    Cliente?           @relation(fields: [clienteId], references: [id])
+  workflow   Workflow?          @relation(fields: [workflowId], references: [id])
+  manager    User               @relation("ProjectManager", fields: [managerId], references: [id])
+  sponsor    User?              @relation("ProjectSponsor", fields: [sponsorId], references: [id])
+  members    ProjectMember[]
+  milestones ProjectMilestone[]
+  processos  Processo[]
+
+  @@unique([gabineteId, code], map: "uq_project_gabinete_code")
+  @@index([gabineteId, status], map: "idx_project_gabinete_status")
+  @@index([gabineteId, category], map: "idx_project_gabinete_category")
+  @@index([gabineteId, managerId], map: "idx_project_gabinete_manager")
+  @@index([gabineteId, clienteId], map: "idx_project_gabinete_cliente")
+  @@map("projects")
+}
+
+model ProjectMember {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  role          String   @db.VarChar(20) // RACI: RESPONSIBLE|ACCOUNTABLE|CONSULTED|INFORMED
+  allocationPct Int?     @map("allocation_pct")
+  hourlyRate    Int?     @map("hourly_rate") // centavos/h override
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId], map: "uq_member_project_user")
+  @@index([projectId], map: "idx_member_project")
+  @@map("project_members")
+}
+
+model ProjectMilestone {
+  id          String    @id @default(uuid()) @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  title       String    @db.VarChar(300)
+  description String?   @db.Text
+  dueDate     DateTime  @map("due_date") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  dependsOnId String?   @map("depends_on_id") @db.Uuid
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  dependsOn  ProjectMilestone?  @relation("MilestoneDeps", fields: [dependsOnId], references: [id])
+  dependents ProjectMilestone[] @relation("MilestoneDeps")
+
+  @@index([projectId, position], map: "idx_milestone_project_position")
+  @@map("project_milestones")
 }

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText,
   Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon, CheckSquare,
-  PanelLeftClose, PanelLeftOpen, User,
+  PanelLeftClose, PanelLeftOpen, User, Briefcase,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
@@ -25,6 +25,7 @@ interface NavItem { label: string; href: string; icon: React.ElementType }
 const navSections = [
   { title: 'PRINCIPAL', items: [
     { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { label: 'Projectos', href: '/projectos', icon: Briefcase },
     { label: 'Processos', href: '/processos', icon: Scale },
     { label: 'Clientes', href: '/clientes', icon: Users },
   ]},

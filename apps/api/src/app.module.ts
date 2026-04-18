@@ -26,6 +26,8 @@ import { PortalModule } from './modules/portal/portal.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
+import { ProjectsModule } from './modules/projects/projects.module';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { TasksModule } from './modules/tasks/tasks.module';
     BillingModule,
     BackupModule,
     TasksModule,
+    WorkflowsModule,
+    ProjectsModule,
   ],
   providers: [
     {

@@ -403,4 +403,67 @@ export class ProcessosController {
 
     return { data: result.data };
   }
+
+  // ── Dynamic stage instances (parallel stages) ─────────
+  @Get(':id/stages')
+  async listStageInstances(
+    @GabineteId() gabineteId: string,
+    @Param('id') id: string,
+  ) {
+    const r = await this.processosService.listStageInstances(gabineteId, id);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'PROCESSO_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    return { data: r.data };
+  }
+
+  @Post(':id/stages/enter')
+  async enterStage(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: { stageId: string },
+  ) {
+    const r = await this.processosService.enterStage(gabineteId, user.sub, id, body.stageId);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'PROCESSO_NOT_FOUND' || r.code === 'STAGE_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: r.data };
+  }
+
+  @Post(':id/stages/:instanceId/exit')
+  async exitStage(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Param('instanceId') instanceId: string,
+    @Body() body: { status?: 'CUMPRIDO' | 'SKIPPED' },
+  ) {
+    const r = await this.processosService.exitStage(
+      gabineteId,
+      user.sub,
+      id,
+      instanceId,
+      body.status ?? 'CUMPRIDO',
+    );
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'PROCESSO_NOT_FOUND' || r.code === 'INSTANCE_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: r.data };
+  }
 }
