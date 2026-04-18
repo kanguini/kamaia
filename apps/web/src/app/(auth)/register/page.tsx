@@ -90,8 +90,8 @@ export default function RegisterPage() {
         <p className="text-ink-muted text-sm mt-3">Gestão Jurídica Inteligente</p>
       </div>
 
-      <div className="bg-surface border border-border p-8 shadow-lg">
-        <h2 className="font-display text-2xl font-semibold text-ink mb-6">Criar conta</h2>
+      <div className="bg-surface border border-border p-8">
+        <h2 className="font-display text-2xl font-semibold text-ink mb-6 text-center">Criar conta</h2>
 
         {error && (
           <div className="bg-danger-bg border border-danger/20 text-danger p-3 mb-6 text-sm">
