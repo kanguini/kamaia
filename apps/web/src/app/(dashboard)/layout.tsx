@@ -148,7 +148,7 @@ function ThemeToggle() {
   )
 }
 
-function UserMenu({ collapsed }: { collapsed?: boolean }) {
+function UserMenu({ collapsed, position = 'up' }: { collapsed?: boolean; position?: 'up' | 'down' }) {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -164,30 +164,41 @@ function UserMenu({ collapsed }: { collapsed?: boolean }) {
 
   const user = session?.user
   const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`
+  const isTopbar = position === 'down'
 
   return (
-    <div className="relative flex-1 min-w-0" ref={ref}>
+    <div className={cn('relative', isTopbar ? '' : 'flex-1 min-w-0')} ref={ref}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-label="Menu do utilizador"
         aria-expanded={open}
         aria-haspopup="menu"
-        title={collapsed ? `${user?.firstName} ${user?.lastName}` : undefined}
+        title={collapsed || isTopbar ? `${user?.firstName} ${user?.lastName}` : undefined}
         className={cn(
-          'w-full flex items-center gap-2 rounded-lg transition-colors',
-          'hover:[background:var(--color-sidebar-hover-bg)]',
-          collapsed ? 'justify-center p-1.5' : 'p-1.5',
+          'flex items-center gap-2 rounded-lg transition-colors',
+          isTopbar ? 'p-1.5 border border-border hover:bg-surface-raised' : 'w-full hover:[background:var(--color-sidebar-hover-bg)]',
+          collapsed && !isTopbar ? 'justify-center p-1.5' : '',
+          !collapsed && !isTopbar ? 'p-1.5' : '',
         )}
       >
-        <div className="w-8 h-8 [background:var(--color-sidebar-hover-bg)] rounded-md flex items-center justify-center flex-shrink-0">
-          <span className="[color:var(--color-sidebar-text-muted)] font-mono text-[11px] font-medium">{initials}</span>
+        <div className={cn(
+          'w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0',
+          isTopbar ? 'bg-surface-raised' : '[background:var(--color-sidebar-hover-bg)]',
+        )}>
+          <span className={cn(
+            'font-mono text-[11px] font-medium',
+            isTopbar ? 'text-ink-muted' : '[color:var(--color-sidebar-text-muted)]',
+          )}>{initials}</span>
         </div>
-        {!collapsed && (
+        {!collapsed && !isTopbar && (
           <div className="flex-1 min-w-0 text-left">
             <p className="[color:var(--color-sidebar-text)] text-[13px] font-medium truncate">{user?.firstName} {user?.lastName}</p>
             <p className="[color:var(--color-sidebar-text-ghost)] text-[10px] truncate">{user?.email}</p>
           </div>
+        )}
+        {isTopbar && (
+          <span className="hidden sm:inline pr-2 text-[12px] text-ink-secondary font-medium">{user?.firstName}</span>
         )}
       </button>
 
@@ -195,8 +206,10 @@ function UserMenu({ collapsed }: { collapsed?: boolean }) {
         <div
           role="menu"
           className={cn(
-            'absolute bottom-full mb-2 bg-surface-raised border border-border rounded-lg shadow-xl z-50 overflow-hidden py-1',
-            collapsed ? 'left-0 w-[220px]' : 'left-0 right-0',
+            'absolute bg-surface-raised border border-border rounded-lg shadow-xl z-50 overflow-hidden py-1',
+            isTopbar ? 'top-full mt-2 right-0 w-[240px]' : 'bottom-full mb-2',
+            !isTopbar && collapsed ? 'left-0 w-[220px]' : '',
+            !isTopbar && !collapsed ? 'left-0 right-0' : '',
           )}
         >
           <div className="px-3 py-2 border-b border-border">
@@ -352,7 +365,6 @@ function MobileSidebarOverlay({ open, onClose }: { open: boolean; onClose: () =>
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isCollapsed, toggle: toggleCollapsed } = useSidebarState()
-  const { data: session } = useSession()
 
   return (
     <ToastProvider>
@@ -387,19 +399,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <NewDropdownButton />
-            <div className="flex items-center gap-1 bg-surface-raised rounded-lg px-2 py-1.5 border border-border" style={{ borderWidth: '1px' }}>
-              <div className="hidden sm:flex items-center gap-2 px-2">
-                <div className="w-7 h-7 bg-surface-hover rounded-md flex items-center justify-center">
-                  <span className="text-ink-muted font-mono text-[10px] font-medium">{session?.user?.firstName?.[0]}{session?.user?.lastName?.[0]}</span>
-                </div>
-                <span className="text-[12px] text-ink-secondary font-medium">{session?.user?.firstName}</span>
-              </div>
-              <div className="hidden sm:block w-px h-5 bg-border mx-1" />
-              <NotificationBell />
-              <ThemeToggle />
-            </div>
+            <UserMenu position="down" />
+            <NotificationBell />
+            <ThemeToggle />
           </div>
         </header>
 

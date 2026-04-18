@@ -2,16 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  Plus, Scale, Users, Clock, CheckSquare, Calendar, FileText,
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProcessoFormModal } from '@/components/forms/processo-form-modal'
 
 interface NewItem {
   label: string
   description: string
-  icon: React.ElementType
   onSelect: () => void
 }
 
@@ -21,7 +18,6 @@ export function NewDropdownButton() {
   const router = useRouter()
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
@@ -33,7 +29,6 @@ export function NewDropdownButton() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  // Close on ESC
   useEffect(() => {
     if (!open) return
     const handleEsc = (e: KeyboardEvent) => {
@@ -47,7 +42,6 @@ export function NewDropdownButton() {
     {
       label: 'Processo',
       description: 'Novo processo jurídico',
-      icon: Scale,
       onSelect: () => {
         setOpen(false)
         setShowProcessoModal(true)
@@ -56,7 +50,6 @@ export function NewDropdownButton() {
     {
       label: 'Cliente',
       description: 'Novo cliente ou empresa',
-      icon: Users,
       onSelect: () => {
         setOpen(false)
         router.push('/clientes/novo')
@@ -65,7 +58,6 @@ export function NewDropdownButton() {
     {
       label: 'Prazo',
       description: 'Novo prazo processual',
-      icon: Clock,
       onSelect: () => {
         setOpen(false)
         router.push('/prazos/novo')
@@ -74,7 +66,6 @@ export function NewDropdownButton() {
     {
       label: 'Tarefa',
       description: 'Nova tarefa no Kanban',
-      icon: CheckSquare,
       onSelect: () => {
         setOpen(false)
         router.push('/tarefas')
@@ -83,7 +74,6 @@ export function NewDropdownButton() {
     {
       label: 'Evento',
       description: 'Novo evento na agenda',
-      icon: Calendar,
       onSelect: () => {
         setOpen(false)
         router.push('/agenda/novo')
@@ -92,7 +82,6 @@ export function NewDropdownButton() {
     {
       label: 'Documento',
       description: 'Upload de documento',
-      icon: FileText,
       onSelect: () => {
         setOpen(false)
         router.push('/documentos')
@@ -111,7 +100,7 @@ export function NewDropdownButton() {
           aria-haspopup="menu"
           className={cn(
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-            '[background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] hover:[background:var(--color-btn-primary-hover)]',
+            'border border-border bg-transparent text-ink hover:bg-surface-raised',
           )}
         >
           <Plus className="w-4 h-4" />
@@ -126,26 +115,18 @@ export function NewDropdownButton() {
             <div className="px-3 py-2 border-b border-border">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Criar novo</p>
             </div>
-            {items.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  role="menuitem"
-                  onClick={item.onSelect}
-                  className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-hover transition-colors text-left"
-                >
-                  <div className="w-8 h-8 rounded-md bg-surface flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-ink-muted" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink">{item.label}</p>
-                    <p className="text-xs text-ink-muted truncate">{item.description}</p>
-                  </div>
-                </button>
-              )
-            })}
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                onClick={item.onSelect}
+                className="w-full flex flex-col px-3 py-2 hover:bg-surface-hover transition-colors text-left"
+              >
+                <p className="text-sm font-medium text-ink">{item.label}</p>
+                <p className="text-xs text-ink-muted">{item.description}</p>
+              </button>
+            ))}
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import {
   Scale, Clock, Users,
-  FileDown, TrendingUp, Trophy,
+  TrendingUp, Trophy,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
@@ -139,23 +139,11 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold text-ink mb-1">
-            {getGreeting()}, {session?.user?.firstName}!
-          </h1>
-          <p className="text-ink-muted text-sm">Resumo da sua atividade</p>
-        </div>
-        <button
-          onClick={() => {
-            const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reports/dashboard`
-            window.open(url, '_blank')
-          }}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:text-ink border border-border rounded-lg hover:bg-surface-raised transition-colors"
-        >
-          <FileDown className="w-4 h-4" />
-          Exportar
-        </button>
+      <div>
+        <h1 className="text-3xl font-semibold text-ink mb-1">
+          {getGreeting()}, {session?.user?.firstName}!
+        </h1>
+        <p className="text-ink-muted text-sm">Resumo da sua atividade</p>
       </div>
 
       {/* Stats Row */}
