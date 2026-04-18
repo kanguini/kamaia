@@ -28,6 +28,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
     TasksModule,
     WorkflowsModule,
     ProjectsModule,
+    InvoicesModule,
   ],
   providers: [
     {

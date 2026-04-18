@@ -87,6 +87,14 @@ export function NewDropdownButton() {
         router.push('/documentos')
       },
     },
+    {
+      label: 'Factura',
+      description: 'Emitir factura ao cliente',
+      onSelect: () => {
+        setOpen(false)
+        router.push('/facturas/nova')
+      },
+    },
   ]
 
   return (

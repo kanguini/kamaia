@@ -102,6 +102,9 @@ export async function cleanupGabinete(
     }
   };
 
+  await safeDeleteMany(() => prisma.invoicePayment.deleteMany({ where: { invoice: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.invoiceItem.deleteMany({ where: { invoice: { gabineteId } } }));
+  await safeDeleteMany(() => prisma.invoice.deleteMany({ where }));
   await safeDeleteMany(() => prisma.projectStatusReport.deleteMany({ where: { project: { gabineteId } } }));
   await safeDeleteMany(() => prisma.projectTemplateCustom.deleteMany({ where }));
   await safeDeleteMany(() => prisma.projectMilestone.deleteMany({ where: { project: { gabineteId } } }));

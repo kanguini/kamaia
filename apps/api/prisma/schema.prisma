@@ -50,6 +50,7 @@ model Gabinete {
   workflows           Workflow[]
   projects            Project[]
   projectTemplates    ProjectTemplateCustom[]
+  invoices            Invoice[]
 
   @@map("gabinetes")
 }
@@ -98,6 +99,8 @@ model User {
   projectsSponsored      Project[]               @relation("ProjectSponsor")
   projectMemberships     ProjectMember[]
   projectReportsCreated  ProjectStatusReport[]
+  invoicesCreated        Invoice[]               @relation("InvoiceCreator")
+  paymentsRecorded       InvoicePayment[]        @relation("PaymentRecorder")
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -149,6 +152,7 @@ model Cliente {
   interactions ClienteInteraction[]
   tasks        Task[]
   Project      Project[]
+  invoices     Invoice[]
 
   @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
   @@index([gabineteId], map: "idx_cliente_gabinete")
@@ -203,6 +207,7 @@ model Processo {
   timeEntries TimeEntry[]
   expenses    Expense[]
   tasks       Task[]
+  invoices    Invoice[]
 
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
@@ -430,6 +435,7 @@ model TimeEntry {
   durationMinutes Int       @map("duration_minutes")
   billable        Boolean   @default(true)
   hourlyRate      Int?      @map("hourly_rate") // Centavos AKZ, if null inherits from Processo.feeAmount
+  invoiceId       String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -437,10 +443,12 @@ model TimeEntry {
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
   processo Processo @relation(fields: [processoId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@index([gabineteId, date], map: "idx_timeentry_gabinete_date")
   @@index([gabineteId, processoId], map: "idx_timeentry_gabinete_processo")
   @@index([gabineteId, userId], map: "idx_timeentry_gabinete_user")
+  @@index([invoiceId], map: "idx_timeentry_invoice")
   @@map("time_entries")
 }
 
@@ -455,6 +463,7 @@ model Expense {
   description String    @db.Text
   amount      Int // Centavos AKZ
   date        DateTime  @db.Date
+  invoiceId   String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
@@ -462,9 +471,11 @@ model Expense {
   gabinete Gabinete @relation(fields: [gabineteId], references: [id])
   processo Processo @relation(fields: [processoId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
 
   @@index([gabineteId, date], map: "idx_expense_gabinete_date")
   @@index([gabineteId, processoId], map: "idx_expense_gabinete_processo")
+  @@index([invoiceId], map: "idx_expense_invoice")
   @@map("expenses")
 }
 
@@ -781,6 +792,7 @@ model Project {
   milestones    ProjectMilestone[]
   processos     Processo[]
   statusReports ProjectStatusReport[]
+  invoices      Invoice[]
 
   @@unique([gabineteId, code], map: "uq_project_gabinete_code")
   @@index([gabineteId, status], map: "idx_project_gabinete_status")
@@ -892,4 +904,90 @@ model ProjectStatusReport {
   @@unique([projectId, weekStart], map: "uq_report_project_week")
   @@index([projectId, weekStart(sort: Desc)], map: "idx_report_project_week")
   @@map("project_status_reports")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Invoicing — core business model for solo / small gabinetes.
+//
+// An Invoice aggregates billable TimeEntries and Expenses into a
+// client-facing document. Entries are locked (invoiceId foreign key)
+// the moment they are committed to an invoice so they can't be
+// double-billed. The invoice flows through a lightweight lifecycle:
+//   DRAFT → SENT → PAID | PARTIALLY_PAID | OVERDUE | VOID
+// ═══════════════════════════════════════════════════════════
+model Invoice {
+  id           String   @id @default(uuid()) @db.Uuid
+  gabineteId   String   @map("gabinete_id") @db.Uuid
+  clienteId    String   @map("cliente_id") @db.Uuid
+  processoId   String?  @map("processo_id") @db.Uuid
+  projectId    String?  @map("project_id") @db.Uuid
+  number       String   @db.VarChar(30) // "2026/0001"
+  issueDate    DateTime @default(now()) @map("issue_date") @db.Timestamptz
+  dueDate      DateTime? @map("due_date") @db.Timestamptz
+  status       String   @default("DRAFT") @db.VarChar(20)
+  currency     String   @default("AKZ") @db.VarChar(3)
+  subtotal     Int      @default(0)
+  taxRate      Float    @default(14.0) @map("tax_rate") // IVA Angola geral = 14%
+  taxAmount    Int      @default(0) @map("tax_amount")
+  total        Int      @default(0)
+  amountPaid   Int      @default(0) @map("amount_paid")
+  notes        String?  @db.Text
+  termsText    String?  @map("terms_text") @db.Text
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz
+  paidAt       DateTime? @map("paid_at") @db.Timestamptz
+  voidedAt     DateTime? @map("voided_at") @db.Timestamptz
+  createdById  String   @map("created_by_id") @db.Uuid
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete    Gabinete    @relation(fields: [gabineteId], references: [id])
+  cliente     Cliente     @relation(fields: [clienteId], references: [id])
+  processo    Processo?   @relation(fields: [processoId], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
+  createdBy   User        @relation("InvoiceCreator", fields: [createdById], references: [id])
+  items       InvoiceItem[]
+  timeEntries TimeEntry[]
+  expenses    Expense[]
+  payments    InvoicePayment[]
+
+  @@unique([gabineteId, number], map: "uq_invoice_gabinete_number")
+  @@index([gabineteId, status], map: "idx_invoice_gabinete_status")
+  @@index([gabineteId, clienteId], map: "idx_invoice_gabinete_cliente")
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String @id @default(uuid()) @db.Uuid
+  invoiceId   String @map("invoice_id") @db.Uuid
+  kind        String @db.VarChar(20) // TIME | EXPENSE | CUSTOM
+  description String @db.VarChar(500)
+  quantity    Float  @default(1) // hours for TIME, 1 for EXPENSE/CUSTOM
+  unitPrice   Int    @map("unit_price") // centavos
+  total       Int    // centavos (quantity × unitPrice, rounded)
+  sourceId    String? @map("source_id") @db.Uuid // original TimeEntry or Expense id
+  position    Int    @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, position], map: "idx_item_invoice_position")
+  @@map("invoice_items")
+}
+
+model InvoicePayment {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  amount      Int      // centavos
+  paidAt      DateTime @map("paid_at") @db.Timestamptz
+  method      String?  @db.VarChar(30) // 'TRANSFERENCIA' | 'DINHEIRO' | 'CHEQUE' | 'OUTRO'
+  reference   String?  @db.VarChar(120)
+  notes       String?  @db.Text
+  recordedById String  @map("recorded_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy User    @relation("PaymentRecorder", fields: [recordedById], references: [id])
+
+  @@index([invoiceId], map: "idx_payment_invoice")
+  @@map("invoice_payments")
 }

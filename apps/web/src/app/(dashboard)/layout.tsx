@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText,
   Timer, Receipt, Bot, Settings, Menu, X, LogOut, Bell, Sun, Moon, CheckSquare,
-  PanelLeftClose, PanelLeftOpen, User, Briefcase,
+  PanelLeftClose, PanelLeftOpen, User, Briefcase, Banknote,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
@@ -35,6 +35,7 @@ const navSections = [
     { label: 'Documentos', href: '/documentos', icon: FileText },
     { label: 'Timesheets', href: '/timesheets', icon: Timer },
     { label: 'Despesas', href: '/despesas', icon: Receipt },
+    { label: 'Facturas', href: '/facturas', icon: Banknote },
   ]},
   { title: 'FERRAMENTAS', items: [
     { label: 'Tarefas', href: '/tarefas', icon: CheckSquare },
