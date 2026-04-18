@@ -1,14 +1,16 @@
 'use client'
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Loader2, BookOpen } from 'lucide-react'
+import { ArrowLeft, Loader2, BookOpen, Calculator } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { PrazoType, PaginatedResponse } from '@kamaia/shared-types'
 
@@ -226,6 +228,15 @@ function PrazosNovoContent() {
               )}
             />
             {errors.dueDate && <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>}
+            <BusinessDaysCalculator
+              onCompute={(iso) => {
+                // Format as datetime-local: YYYY-MM-DDTHH:mm
+                const d = new Date(iso)
+                const pad = (n: number) => String(n).padStart(2, '0')
+                const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`
+                setValue('dueDate', local, { shouldValidate: true })
+              }}
+            />
           </div>
 
           {showLegalSuggestion && (
@@ -315,5 +326,115 @@ export default function NovoPrazoPage() {
     <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-pulse text-ink-muted">A carregar...</div></div>}>
       <PrazosNovoContent />
     </Suspense>
+  )
+}
+
+/**
+ * Calculadora de dias úteis — contagem em dias corridos vs úteis (feriados
+ * angolanos auto-seeded no backend). Permite ao advogado introduzir um
+ * número de dias legais (ex: 20 dias para contestar) e obter a data
+ * limite respeitando fins-de-semana e feriados nacionais.
+ */
+function BusinessDaysCalculator({ onCompute }: { onCompute: (iso: string) => void }) {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const [startDate, setStartDate] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  )
+  const [days, setDays] = useState<number>(20)
+  const [result, setResult] = useState<{
+    resultDate: string
+    skippedHolidays: string[]
+  } | null>(null)
+  const [computing, setComputing] = useState(false)
+
+  const compute = async () => {
+    if (!session?.accessToken || days <= 0) return
+    setComputing(true)
+    try {
+      const r = await api<{
+        data: { resultDate: string; skippedHolidays: string[] }
+      }>(
+        `/holidays/compute-business-date?startDate=${new Date(startDate).toISOString()}&days=${days}`,
+        { token: session.accessToken },
+      )
+      setResult(r.data)
+    } catch {
+      toast.error('Erro a calcular dias úteis')
+    } finally {
+      setComputing(false)
+    }
+  }
+
+  return (
+    <details className="mt-2 text-xs">
+      <summary className="cursor-pointer text-ink-muted hover:text-ink inline-flex items-center gap-1.5">
+        <Calculator className="w-3.5 h-3.5" />
+        Calcular em dias úteis (salta feriados angolanos)
+      </summary>
+      <div className="mt-2 bg-surface-raised p-3 space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+          <label className="md:col-span-1">
+            <span className="text-ink-muted">A partir de</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full mt-1 px-2 py-1.5 bg-surface border border-border"
+            />
+          </label>
+          <label className="md:col-span-1">
+            <span className="text-ink-muted">Dias úteis</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(parseInt(e.target.value, 10) || 0)}
+              className="w-full mt-1 px-2 py-1.5 bg-surface border border-border"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={compute}
+            disabled={computing}
+            className="md:col-span-1 px-3 py-1.5 bg-ink text-surface rounded-lg text-xs font-medium disabled:opacity-50"
+          >
+            {computing ? 'A calcular...' : 'Calcular'}
+          </button>
+          {result && (
+            <button
+              type="button"
+              onClick={() => onCompute(result.resultDate)}
+              className="md:col-span-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium"
+            >
+              Usar como prazo
+            </button>
+          )}
+        </div>
+        {result && (
+          <div className="border-t border-border pt-2">
+            <p className="text-ink">
+              <strong>{new Date(result.resultDate).toLocaleDateString('pt-AO')}</strong>
+              {' · '}
+              {new Date(result.resultDate).toLocaleDateString('pt-AO', { weekday: 'long' })}
+            </p>
+            {result.skippedHolidays.length > 0 && (
+              <p className="text-ink-muted mt-1">
+                Feriados saltados ({result.skippedHolidays.length}):{' '}
+                {result.skippedHolidays
+                  .map((d) =>
+                    new Date(d).toLocaleDateString('pt-AO', {
+                      day: '2-digit',
+                      month: 'short',
+                    }),
+                  )
+                  .join(', ')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </details>
   )
 }

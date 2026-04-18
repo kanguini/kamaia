@@ -3,6 +3,8 @@ import { StatsService } from './stats.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
 import { GabineteId } from '../../common/decorators/gabinete-id.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { JwtPayload } from '@kamaia/shared-types';
 
 @Controller('stats')
 @UseGuards(JwtAuthGuard, GabineteGuard)
@@ -43,5 +45,14 @@ export class StatsController {
       processoId,
     );
     return { data: result };
+  }
+
+  @Get('executive')
+  async getExecutive(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const data = await this.statsService.getExecutiveDashboard(gabineteId, user.sub);
+    return { data };
   }
 }

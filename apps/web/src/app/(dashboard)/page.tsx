@@ -2,359 +2,417 @@
 
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import {
-  Scale, Clock, Users,
-  TrendingUp, Trophy,
+  Clock, Users, TrendingUp, AlertTriangle,
+  Briefcase, Banknote, Bell, CircleDollarSign, Receipt,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
-import { PrazoStatus, LIFECYCLE_LABELS } from '@kamaia/shared-types'
 
-// Lazy load recharts to avoid SSR issues
-const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false })
-const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false })
-const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false })
-const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false })
-const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false })
-
-interface DashboardStats {
-  activeProcessos: number
-  upcomingPrazos: number
-  activeClientes: number
-  aiQueriesRemaining: number
-}
-
-interface KPIData {
-  processosByType: Record<string, number>
-  processosByLifecycle: Record<string, number>
-  prazosByStatus: { pendente: number; cumprido: number; expirado: number }
-  revenueByMonth: Array<{ month: string; value: number }>
-  topProcessos: Array<{ id: string; title: string; horas: number; valor: number }>
-  overduePrazos: number
-  totalDocuments: number
-  totalTimeHours: number
-}
-
-interface TaskscoreUser {
-  userId: string
-  userName: string
-  score: number
-  breakdown: {
-    processosCriados: number
-    fasesAvancadas: number
-    prazosCumpridos: number
-    horasRegistadas: number
-    documentosEnviados: number
-    notasAdicionadas: number
+interface ExecutiveDashboard {
+  financial: {
+    revenueBilledThisMonth: number
+    revenuePaidThisMonth: number
+    outstandingTotal: number
+    outstandingInvoices: number
+    wipValue: number
+    currency: string
   }
+  operational: {
+    billableHoursThisMonth: number
+    loggedHoursThisMonth: number
+    billableRatio: number
+    activeProjects: number
+    upcomingPrazos: number
+  }
+  risk: {
+    atRiskProjects: Array<{
+      id: string
+      name: string
+      code: string
+      category: string
+      healthStatus: 'YELLOW' | 'RED'
+      endDate: string | null
+    }>
+    criticalPrazos: Array<{
+      id: string
+      title: string
+      dueDate: string
+      isUrgent: boolean
+      type: string
+      processo: { id: string; processoNumber: string; title: string }
+    }>
+    overduePrazos: number
+    unreadAlerts: number
+    recentAlerts: Array<{
+      id: string
+      type: string
+      subject: string
+      body: string
+      createdAt: string
+      metadata: { projectId?: string; milestoneId?: string }
+    }>
+  }
+  topWipClientes: Array<{
+    clienteId: string
+    clienteName: string
+    hours: number
+    value: number
+  }>
 }
 
-interface UpcomingPrazo {
-  id: string
-  title: string
-  dueDate: string
-  isUrgent: boolean
-  status: PrazoStatus
-  processo: { id: string; processoNumber: string }
+function formatAKZ(centavos: number): string {
+  if (centavos === 0) return '0 AKZ'
+  if (Math.abs(centavos) >= 1_000_000_00) {
+    return `${(centavos / 100_000_000).toFixed(1)}M AKZ`
+  }
+  if (Math.abs(centavos) >= 1_000_00) {
+    return `${(centavos / 100_000).toFixed(1)}k AKZ`
+  }
+  return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  CIVEL: 'Civel',
-  LABORAL: 'Laboral',
-  COMERCIAL: 'Comercial',
-  CRIMINAL: 'Criminal',
-  ADMINISTRATIVO: 'Admin.',
-  FAMILIA: 'Familia',
-  ARBITRAGEM: 'Arbitragem',
+function getGreeting(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
 }
 
-const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#f97316']
-
-function StatCard({ title, value, icon: Icon, loading }: {
-  title: string; value: string | number; icon: React.ElementType; loading?: boolean
-}) {
-  return (
-    <div className="bg-surface-raised p-5 rounded-lg border border-border">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center">
-          <Icon className="w-4 h-4 text-ink-muted" />
-        </div>
-        <p className="text-xs text-ink-muted uppercase tracking-wide">{title}</p>
-      </div>
-      {loading ? (
-        <div className="h-8 w-16 bg-border animate-pulse rounded" />
-      ) : (
-        <p className="text-3xl font-bold text-ink">{value}</p>
-      )}
-    </div>
-  )
-}
-
-function formatAKZ(centavos: number) {
-  return `${(centavos / 100).toLocaleString('pt-AO')} Kz`
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  if (diff < 60_000) return 'agora'
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 60) return `${mins}min`
+  const h = Math.floor(mins / 60)
+  if (h < 24) return `${h}h`
+  const d = Math.floor(h / 24)
+  return `${d}d`
 }
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const { data: stats, loading } = useApi<DashboardStats>('/stats/dashboard')
-  const { data: kpis, loading: kpisLoading } = useApi<KPIData>('/stats/kpis')
-  const { data: taskscore } = useApi<TaskscoreUser[]>('/stats/taskscore?period=month')
-  const { data: prazosData } = useApi<{ upcoming: UpcomingPrazo[]; overdue: UpcomingPrazo[] }>('/prazos/upcoming')
-
-  const prazos = [...(prazosData?.upcoming || []), ...(prazosData?.overdue || [])]
-  const myScore = taskscore?.find(t => t.userId === (session?.user as any)?.id)
-
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Bom dia'
-    if (hour < 18) return 'Boa tarde'
-    return 'Boa noite'
-  }
-
-  // Prepare chart data
-  const typeChartData = kpis
-    ? Object.entries(kpis.processosByType).map(([type, count]) => ({
-        name: TYPE_LABELS[type] || type,
-        value: count,
-      }))
-    : []
-
-  const revenueChartData = kpis?.revenueByMonth.map(r => ({
-    month: r.month.split('-')[1] + '/' + r.month.split('-')[0].slice(2),
-    valor: Math.round(r.value / 100),
-  })) || []
-
-  const lifecycleData = kpis
-    ? Object.entries(kpis.processosByLifecycle).map(([stage, count]) => ({
-        name: LIFECYCLE_LABELS[stage] || stage,
-        count,
-      }))
-    : []
+  const { data, loading } = useApi<ExecutiveDashboard>('/stats/executive')
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-semibold text-ink mb-1">
-          {getGreeting()}, {session?.user?.firstName}!
+    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
+      {/* Greeting */}
+      <header>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">
+          {getGreeting()}, {session?.user?.firstName}
         </h1>
-        <p className="text-ink-muted text-sm">Resumo da sua atividade</p>
-      </div>
+        <p className="text-sm text-ink-muted mt-1">Visão executiva do gabinete</p>
+      </header>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Processos Activos" value={stats?.activeProcessos ?? 0} icon={Scale} loading={loading} />
-        <StatCard title="Prazos Urgentes" value={stats?.upcomingPrazos ?? 0} icon={Clock} loading={loading} />
-        <StatCard title="Clientes" value={stats?.activeClientes ?? 0} icon={Users} loading={loading} />
-        <StatCard title="Horas Registadas" value={kpis?.totalTimeHours ?? 0} icon={TrendingUp} loading={kpisLoading} />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Processos by Type (Pie) */}
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <h2 className="text-sm font-semibold text-ink mb-4">Processos por Tipo</h2>
-          {typeChartData.length > 0 ? (
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={typeChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    labelLine={false}
-                  >
-                    {typeChartData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-[200px] flex items-center justify-center text-ink-muted text-sm">Sem dados</div>
-          )}
+      {loading || !data ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-surface-raised p-5 h-24 animate-pulse" />
+          ))}
         </div>
+      ) : (
+        <>
+          {/* Top KPIs — financial + operational */}
+          <section className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <KpiCard
+              icon={CircleDollarSign}
+              tone="success"
+              title="Facturado este mês"
+              value={formatAKZ(data.financial.revenueBilledThisMonth)}
+              subtitle={`${formatAKZ(data.financial.revenuePaidThisMonth)} já recebidos`}
+              href="/facturas"
+            />
+            <KpiCard
+              icon={Receipt}
+              tone={data.financial.outstandingTotal > 0 ? 'warning' : 'neutral'}
+              title="Em dívida"
+              value={formatAKZ(data.financial.outstandingTotal)}
+              subtitle={`${data.financial.outstandingInvoices} factura(s) pendente(s)`}
+              href="/facturas?status=SENT"
+            />
+            <KpiCard
+              icon={Banknote}
+              tone="neutral"
+              title="WIP por facturar"
+              value={formatAKZ(data.financial.wipValue)}
+              subtitle="timesheets billable ainda não emitidos"
+              href="/facturas/nova"
+            />
+            <KpiCard
+              icon={TrendingUp}
+              tone="neutral"
+              title="Horas facturáveis"
+              value={`${data.operational.billableHoursThisMonth}h`}
+              subtitle={`${Math.round(data.operational.billableRatio * 100)}% de ${data.operational.loggedHoursThisMonth}h totais`}
+              href="/timesheets"
+            />
+            <KpiCard
+              icon={Briefcase}
+              tone="neutral"
+              title="Projectos activos"
+              value={data.operational.activeProjects}
+              subtitle={
+                data.risk.atRiskProjects.length > 0
+                  ? `${data.risk.atRiskProjects.length} em atenção`
+                  : 'todos saudáveis'
+              }
+              href="/projectos"
+            />
+            <KpiCard
+              icon={Clock}
+              tone={
+                data.risk.overduePrazos > 0
+                  ? 'danger'
+                  : data.operational.upcomingPrazos > 3
+                    ? 'warning'
+                    : 'neutral'
+              }
+              title="Prazos esta semana"
+              value={data.operational.upcomingPrazos}
+              subtitle={
+                data.risk.overduePrazos > 0
+                  ? `${data.risk.overduePrazos} já em atraso`
+                  : 'tudo no prazo'
+              }
+              href="/prazos"
+            />
+          </section>
 
-        {/* Revenue by Month (Bar) */}
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <h2 className="text-sm font-semibold text-ink mb-4">Receita Mensal (AKZ)</h2>
-          {revenueChartData.some(r => r.valor > 0) ? (
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueChartData}>
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [`${Number(v).toLocaleString()} Kz`, 'Receita']} />
-                  <Bar dataKey="valor" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-[200px] flex items-center justify-center text-ink-muted text-sm">Sem dados de receita</div>
-          )}
-        </div>
-      </div>
-
-      {/* Pipeline + Taskscore + Prazos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pipeline Overview */}
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <h2 className="text-sm font-semibold text-ink mb-4">Pipeline</h2>
-          <div className="space-y-2">
-            {lifecycleData.map((stage) => {
-              const maxCount = Math.max(...lifecycleData.map(s => s.count), 1)
-              return (
-                <div key={stage.name} className="flex items-center gap-3">
-                  <span className="text-xs text-ink-muted w-24 truncate">{stage.name}</span>
-                  <div className="flex-1 h-5 bg-surface rounded overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500/20 rounded flex items-center px-2"
-                      style={{ width: `${Math.max((stage.count / maxCount) * 100, 8)}%` }}
-                    >
-                      <span className="text-[10px] font-mono text-ink-muted">{stage.count}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Taskscore */}
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-semibold text-ink">Taskscore</h2>
-          </div>
-          {myScore ? (
-            <div className="text-center mb-4">
-              <p className="text-4xl font-bold text-ink">{myScore.score}</p>
-              <p className="text-xs text-ink-muted mt-1">pontos este mes</p>
-            </div>
-          ) : (
-            <div className="text-center mb-4">
-              <p className="text-4xl font-bold text-ink-muted">0</p>
-              <p className="text-xs text-ink-muted mt-1">sem atividade</p>
-            </div>
-          )}
-          {taskscore && taskscore.length > 0 && (
-            <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-[10px] text-ink-muted uppercase tracking-wide">Ranking</p>
-              {taskscore.slice(0, 5).map((user, i) => (
-                <div key={user.userId} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
-                      i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 'bg-surface text-ink-muted',
-                    )}>
-                      {i + 1}
-                    </span>
-                    <span className="text-ink truncate max-w-[120px]">{user.userName}</span>
-                  </div>
-                  <span className="font-mono text-ink-muted text-xs">{user.score} pts</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Proximos Prazos */}
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-ink-muted" />
-            <h2 className="text-sm font-semibold text-ink">Proximos Prazos</h2>
-          </div>
-          {prazos.length === 0 ? (
-            <div className="text-center py-6 text-ink-muted text-sm">Sem prazos pendentes</div>
-          ) : (
-            <div className="space-y-2">
-              {prazos.slice(0, 5).map((prazo) => {
-                const isPast = new Date(prazo.dueDate) < new Date()
-                return (
-                  <Link
-                    key={prazo.id}
-                    href={`/prazos/${prazo.id}`}
-                    className="block p-2 rounded hover:bg-surface transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-ink truncate">{prazo.title}</p>
-                        <p className="text-[10px] font-mono text-ink-muted">{prazo.processo.processoNumber}</p>
-                      </div>
-                      <span className={cn('text-xs font-medium', isPast ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400')}>
-                        {new Date(prazo.dueDate).toLocaleDateString('pt-AO', { day: '2-digit', month: '2-digit' })}
-                      </span>
-                    </div>
-                  </Link>
-                )
-              })}
-              <Link href="/prazos" className="block text-center text-xs text-ink-muted hover:text-ink pt-2">
-                Ver todos →
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Top Processos + Prazos Status */}
-      {kpis && kpis.topProcessos.length > 0 && (
-        <div className="bg-surface-raised rounded-lg border border-border p-5">
-          <h2 className="text-sm font-semibold text-ink mb-4">Top Processos por Valor</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-ink-muted uppercase border-b border-border">
-                  <th className="text-left py-2 pr-4">Processo</th>
-                  <th className="text-right py-2 px-4">Horas</th>
-                  <th className="text-right py-2 pl-4">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kpis.topProcessos.map((p) => (
-                  <tr key={p.id} className="border-b border-border/50">
-                    <td className="py-2 pr-4">
-                      <Link href={`/processos/${p.id}`} className="text-ink hover:underline truncate block max-w-[250px]">
-                        {p.title}
+          {/* Two-column: Risk + WIP/Clientes */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Projectos em atenção */}
+            <section className="bg-surface border border-border">
+              <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-ink-muted" />
+                <h2 className="text-sm font-medium text-ink">Projectos em atenção</h2>
+                <Link
+                  href="/projectos"
+                  className="ml-auto text-[11px] text-ink-muted hover:text-ink"
+                >
+                  ver todos →
+                </Link>
+              </header>
+              {data.risk.atRiskProjects.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-ink-muted text-center">
+                  Todos os projectos saudáveis. ✓
+                </p>
+              ) : (
+                <ul>
+                  {data.risk.atRiskProjects.map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        href={`/projectos/${p.id}`}
+                        className="flex items-center gap-3 px-4 py-2.5 border-b border-border hover:bg-surface-raised"
+                      >
+                        <span
+                          className={cn(
+                            'w-2 h-2 rounded-full flex-shrink-0',
+                            p.healthStatus === 'RED' ? 'bg-red-500' : 'bg-amber-500',
+                          )}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-ink truncate">{p.name}</p>
+                          <p className="text-xs font-mono text-ink-muted">
+                            {p.code} · {p.category}
+                            {p.endDate &&
+                              ` · ${new Date(p.endDate).toLocaleDateString('pt-AO', {
+                                day: '2-digit',
+                                month: 'short',
+                              })}`}
+                          </p>
+                        </div>
                       </Link>
-                    </td>
-                    <td className="text-right py-2 px-4 font-mono text-ink-muted">{p.horas}h</td>
-                    <td className="text-right py-2 pl-4 font-mono text-ink">{formatAKZ(p.valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-      {/* Prazos Status Summary */}
-      {kpis && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{kpis.prazosByStatus.pendente}</p>
-            <p className="text-xs text-ink-muted mt-1">Pendentes</p>
+            {/* Prazos críticos */}
+            <section className="bg-surface border border-border">
+              <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <Clock className="w-4 h-4 text-ink-muted" />
+                <h2 className="text-sm font-medium text-ink">Prazos críticos</h2>
+                <Link
+                  href="/prazos"
+                  className="ml-auto text-[11px] text-ink-muted hover:text-ink"
+                >
+                  ver todos →
+                </Link>
+              </header>
+              {data.risk.criticalPrazos.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-ink-muted text-center">
+                  Sem prazos críticos nos próximos 3 dias.
+                </p>
+              ) : (
+                <ul>
+                  {data.risk.criticalPrazos.map((p) => {
+                    const isPast = new Date(p.dueDate) < new Date()
+                    return (
+                      <li key={p.id}>
+                        <Link
+                          href={`/prazos/${p.id}`}
+                          className="flex items-center gap-3 px-4 py-2.5 border-b border-border hover:bg-surface-raised"
+                        >
+                          <span
+                            className={cn(
+                              'text-xs font-mono px-1.5 py-0.5 rounded',
+                              isPast
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                : p.isUrgent
+                                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                  : 'bg-surface-raised text-ink-muted',
+                            )}
+                          >
+                            {new Date(p.dueDate).toLocaleDateString('pt-AO', {
+                              day: '2-digit',
+                              month: '2-digit',
+                            })}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-ink truncate">{p.title}</p>
+                            <p className="text-xs font-mono text-ink-muted truncate">
+                              {p.processo.processoNumber}
+                            </p>
+                          </div>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+
+            {/* Alerts */}
+            <section className="bg-surface border border-border">
+              <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <Bell className="w-4 h-4 text-ink-muted" />
+                <h2 className="text-sm font-medium text-ink">Alertas</h2>
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] font-mono bg-surface-raised rounded">
+                  {data.risk.unreadAlerts}
+                </span>
+              </header>
+              {data.risk.recentAlerts.length === 0 ? (
+                <p className="px-4 py-6 text-xs text-ink-muted text-center">
+                  Sem alertas por ler.
+                </p>
+              ) : (
+                <ul>
+                  {data.risk.recentAlerts.map((a) => (
+                    <li
+                      key={a.id}
+                      className="px-4 py-2.5 border-b border-border"
+                    >
+                      <p className="text-sm text-ink line-clamp-1">{a.subject}</p>
+                      {a.body && (
+                        <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">
+                          {a.body}
+                        </p>
+                      )}
+                      <p className="text-[10px] font-mono text-ink-muted mt-1">
+                        {formatRelative(a.createdAt)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{kpis.prazosByStatus.cumprido}</p>
-            <p className="text-xs text-ink-muted mt-1">Cumpridos</p>
-          </div>
-          <div className="bg-surface-raised rounded-lg border border-border p-4 text-center">
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">{kpis.prazosByStatus.expirado}</p>
-            <p className="text-xs text-ink-muted mt-1">Expirados</p>
-          </div>
-        </div>
+
+          {/* Top WIP Clientes */}
+          {data.topWipClientes.length > 0 && (
+            <section className="bg-surface border border-border">
+              <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <Users className="w-4 h-4 text-ink-muted" />
+                <h2 className="text-sm font-medium text-ink">
+                  Clientes com mais trabalho por facturar (WIP)
+                </h2>
+              </header>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-surface-raised text-xs text-ink-muted">
+                    <th className="text-left px-4 py-2">Cliente</th>
+                    <th className="text-right px-4 py-2">Horas</th>
+                    <th className="text-right px-4 py-2">Valor</th>
+                    <th className="px-4 py-2 w-24"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.topWipClientes.map((c) => (
+                    <tr key={c.clienteId} className="border-t border-border">
+                      <td className="px-4 py-2">
+                        <Link
+                          href={`/clientes/${c.clienteId}`}
+                          className="text-ink hover:underline"
+                        >
+                          {c.clienteName}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-ink-muted">
+                        {c.hours.toFixed(1)}h
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-ink">
+                        {formatAKZ(c.value)}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Link
+                          href={`/facturas/nova?clienteId=${c.clienteId}`}
+                          className="text-xs text-ink-muted hover:text-ink"
+                        >
+                          Facturar →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+        </>
       )}
     </div>
   )
 }
+
+// ────────────────────────────────────────────────────────────
+
+function KpiCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  href,
+  tone,
+}: {
+  icon: React.ElementType
+  title: string
+  value: string | number
+  subtitle?: string
+  href?: string
+  tone?: 'success' | 'warning' | 'danger' | 'neutral'
+}) {
+  const toneCls =
+    tone === 'success'
+      ? 'text-emerald-600'
+      : tone === 'warning'
+        ? 'text-amber-600'
+        : tone === 'danger'
+          ? 'text-red-600'
+          : 'text-ink'
+
+  const inner = (
+    <div className="bg-surface-raised p-5 hover:bg-surface-hover transition-colors h-full">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4 text-ink-muted" />
+        <p className="text-[10px] font-mono uppercase tracking-wide text-ink-muted">
+          {title}
+        </p>
+      </div>
+      <p className={cn('text-2xl font-semibold', toneCls)}>{value}</p>
+      {subtitle && <p className="text-xs text-ink-muted mt-1">{subtitle}</p>}
+    </div>
+  )
+
+  return href ? <Link href={href}>{inner}</Link> : inner
+}
+

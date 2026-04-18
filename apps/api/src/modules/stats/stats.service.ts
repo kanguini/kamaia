@@ -475,4 +475,238 @@ export class StatsService {
       porProcesso,
     };
   }
+
+  /**
+   * Single-call aggregator for the executive dashboard. Pulls financial,
+   * operational and risk signals in one round-trip so the homepage renders
+   * without waterfalls.
+   */
+  async getExecutiveDashboard(
+    gabineteId: string,
+    userId: string,
+  ): Promise<any> {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const nextMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+    );
+    const weekStart = new Date(now);
+    weekStart.setUTCHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+
+    const [
+      // Financial
+      invoicesThisMonth,
+      outstandingInvoices,
+      totalBillableMinutesThisMonth,
+      totalLoggedMinutesThisMonth,
+      unbilledBillable,
+      // Operational
+      activeProjects,
+      atRiskProjects,
+      upcomingPrazos,
+      criticalPrazos,
+      overduePrazos,
+      unreadNotifications,
+      recentUnread,
+    ] = await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: { in: ['SENT', 'PARTIALLY_PAID', 'PAID'] },
+          issueDate: { gte: monthStart, lt: nextMonthStart },
+        },
+        _sum: { total: true, amountPaid: true },
+        _count: true,
+      }),
+      this.prisma.invoice.aggregate({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: { in: ['SENT', 'PARTIALLY_PAID', 'OVERDUE'] },
+        },
+        _sum: { total: true, amountPaid: true },
+        _count: true,
+      }),
+      this.prisma.timeEntry.aggregate({
+        where: {
+          gabineteId,
+          billable: true,
+          deletedAt: null,
+          date: { gte: monthStart, lt: nextMonthStart },
+        },
+        _sum: { durationMinutes: true },
+      }),
+      this.prisma.timeEntry.aggregate({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          date: { gte: monthStart, lt: nextMonthStart },
+        },
+        _sum: { durationMinutes: true },
+      }),
+      this.prisma.timeEntry.findMany({
+        where: {
+          gabineteId,
+          billable: true,
+          invoiceId: null,
+          deletedAt: null,
+        },
+        select: {
+          durationMinutes: true,
+          hourlyRate: true,
+          processo: {
+            select: {
+              feeAmount: true,
+              cliente: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.project.count({
+        where: { gabineteId, deletedAt: null, status: 'ACTIVO' },
+      }),
+      this.prisma.project.findMany({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: 'ACTIVO',
+          healthStatus: { in: ['YELLOW', 'RED'] },
+        },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          category: true,
+          healthStatus: true,
+          endDate: true,
+          _count: { select: { milestones: true } },
+        },
+        orderBy: { healthStatus: 'desc' },
+        take: 5,
+      }),
+      this.prisma.prazo.count({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: 'PENDENTE',
+          dueDate: { gte: weekStart, lt: weekEnd },
+        },
+      }),
+      this.prisma.prazo.findMany({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: 'PENDENTE',
+          OR: [
+            { isUrgent: true },
+            { dueDate: { lt: new Date(now.getTime() + 3 * 86_400_000) } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          isUrgent: true,
+          type: true,
+          processo: { select: { id: true, processoNumber: true, title: true } },
+        },
+        orderBy: { dueDate: 'asc' },
+        take: 5,
+      }),
+      this.prisma.prazo.count({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          status: 'PENDENTE',
+          dueDate: { lt: now },
+        },
+      }),
+      this.prisma.notification.count({
+        where: { gabineteId, userId, readAt: null },
+      }),
+      this.prisma.notification.findMany({
+        where: { gabineteId, userId, readAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: {
+          id: true,
+          type: true,
+          subject: true,
+          body: true,
+          createdAt: true,
+          metadata: true,
+        },
+      }),
+    ]);
+
+    // Compute WIP value by cliente
+    const wipByClienteMap = new Map<
+      string,
+      { clienteId: string; clienteName: string; hours: number; value: number }
+    >();
+    for (const t of unbilledBillable) {
+      const clienteId = t.processo.cliente.id;
+      const clienteName = t.processo.cliente.name;
+      const rate = t.hourlyRate ?? t.processo.feeAmount ?? 0;
+      const value = Math.round((t.durationMinutes / 60) * rate);
+      const row = wipByClienteMap.get(clienteId) ?? {
+        clienteId,
+        clienteName,
+        hours: 0,
+        value: 0,
+      };
+      row.hours += t.durationMinutes / 60;
+      row.value += value;
+      wipByClienteMap.set(clienteId, row);
+    }
+    const topWipClientes = [...wipByClienteMap.values()]
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const revenueBilledThisMonth =
+      invoicesThisMonth._sum.total ?? 0;
+    const revenuePaidThisMonth =
+      invoicesThisMonth._sum.amountPaid ?? 0;
+    const outstandingTotal =
+      (outstandingInvoices._sum.total ?? 0) -
+      (outstandingInvoices._sum.amountPaid ?? 0);
+
+    const billableHoursThisMonth =
+      (totalBillableMinutesThisMonth._sum.durationMinutes ?? 0) / 60;
+    const loggedHoursThisMonth =
+      (totalLoggedMinutesThisMonth._sum.durationMinutes ?? 0) / 60;
+    const billableRatio =
+      loggedHoursThisMonth > 0
+        ? billableHoursThisMonth / loggedHoursThisMonth
+        : 0;
+
+    return {
+      financial: {
+        revenueBilledThisMonth,
+        revenuePaidThisMonth,
+        outstandingTotal,
+        outstandingInvoices: outstandingInvoices._count,
+        wipValue: topWipClientes.reduce((s, r) => s + r.value, 0),
+        currency: 'AKZ',
+      },
+      operational: {
+        billableHoursThisMonth: Math.round(billableHoursThisMonth * 10) / 10,
+        loggedHoursThisMonth: Math.round(loggedHoursThisMonth * 10) / 10,
+        billableRatio: Math.round(billableRatio * 100) / 100,
+        activeProjects,
+        upcomingPrazos,
+      },
+      risk: {
+        atRiskProjects,
+        criticalPrazos,
+        overduePrazos,
+        unreadAlerts: unreadNotifications,
+        recentAlerts: recentUnread,
+      },
+      topWipClientes,
+    };
+  }
 }

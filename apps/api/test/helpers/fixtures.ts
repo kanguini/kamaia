@@ -102,6 +102,7 @@ export async function cleanupGabinete(
     }
   };
 
+  await safeDeleteMany(() => prisma.holiday.deleteMany({ where: { gabineteId } }));
   await safeDeleteMany(() => prisma.invoicePayment.deleteMany({ where: { invoice: { gabineteId } } }));
   await safeDeleteMany(() => prisma.invoiceItem.deleteMany({ where: { invoice: { gabineteId } } }));
   await safeDeleteMany(() => prisma.invoice.deleteMany({ where }));

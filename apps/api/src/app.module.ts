@@ -29,6 +29,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
+import { HolidaysModule } from './modules/holidays/holidays.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
     WorkflowsModule,
     ProjectsModule,
     InvoicesModule,
+    HolidaysModule,
   ],
   providers: [
     {

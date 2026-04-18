@@ -51,6 +51,7 @@ model Gabinete {
   projects            Project[]
   projectTemplates    ProjectTemplateCustom[]
   invoices            Invoice[]
+  holidays            Holiday[]
 
   @@map("gabinetes")
 }
@@ -990,4 +991,28 @@ model InvoicePayment {
 
   @@index([invoiceId], map: "idx_payment_invoice")
   @@map("invoice_payments")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Feriados / Holidays — business-day calculations for prazos
+//
+// System-wide Angolan public holidays are auto-seeded (gabineteId null).
+// A gabinete can add local/municipal overrides with its own gabineteId.
+// ═══════════════════════════════════════════════════════════
+model Holiday {
+  id         String   @id @default(uuid()) @db.Uuid
+  gabineteId String?  @map("gabinete_id") @db.Uuid // null = system holiday (applies to all)
+  name       String   @db.VarChar(200)
+  date       DateTime @db.Date
+  kind       String   @default("NATIONAL") @db.VarChar(20) // NATIONAL | MUNICIPAL | RELIGIOUS | OTHER
+  recurring  Boolean  @default(false) // if true: date month/day repeats every year
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  gabinete Gabinete? @relation(fields: [gabineteId], references: [id])
+
+  @@unique([gabineteId, date, name], map: "uq_holiday_gabinete_date_name")
+  @@index([date], map: "idx_holiday_date")
+  @@index([gabineteId], map: "idx_holiday_gabinete")
+  @@map("holidays")
 }
