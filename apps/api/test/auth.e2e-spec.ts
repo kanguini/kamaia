@@ -35,6 +35,49 @@ describe('Auth (e2e)', () => {
     expect(res.body.error || res.body.message).toBeDefined();
   });
 
+  it('POST /api/auth/forgot-password + reset-password flow', async () => {
+    // Request reset — always returns 200 even if email doesn't exist
+    const fake = await request(ctx.app.getHttpServer())
+      .post('/api/auth/forgot-password')
+      .send({ email: 'nobody@example.test' });
+    expect([200, 201]).toContain(fake.status);
+
+    const real = await request(ctx.app.getHttpServer())
+      .post('/api/auth/forgot-password')
+      .send({ email: user.email });
+    expect([200, 201]).toContain(real.status);
+
+    // For the test we sign the reset token manually (same algorithm as
+    // the service) so we don't need a mail inbox.
+    const jwt = await import('@nestjs/jwt');
+    const jwtService = new jwt.JwtService({
+      secret: process.env.JWT_SECRET ?? 'test-jwt-secret-for-e2e',
+      signOptions: { expiresIn: '1h' },
+    });
+    const token = jwtService.sign({ sub: user.id, purpose: 'password-reset' });
+
+    // Reset with bad token → 401
+    const bad = await request(ctx.app.getHttpServer())
+      .post('/api/auth/reset-password')
+      .send({ token: 'not-a-real-token-xxxxxxxx', newPassword: 'NovaPass@2026' });
+    expect([400, 401]).toContain(bad.status);
+
+    // Reset with good token → 201
+    const ok = await request(ctx.app.getHttpServer())
+      .post('/api/auth/reset-password')
+      .send({ token, newPassword: 'NovaPass@2026' });
+    expect([200, 201]).toContain(ok.status);
+
+    // Login with new password works
+    const login = await request(ctx.app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: user.email, password: 'NovaPass@2026' });
+    expect([200, 201]).toContain(login.status);
+
+    // Update the test user's password in-memory for any subsequent tests
+    user.password = 'NovaPass@2026';
+  });
+
   it('GET /api/auth/me returns the current user when authorised', async () => {
     const res = await request(ctx.app.getHttpServer())
       .get('/api/auth/me')

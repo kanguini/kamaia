@@ -184,4 +184,11 @@ export class AuthRepository {
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }
+
+  async updatePassword(userId: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
 }

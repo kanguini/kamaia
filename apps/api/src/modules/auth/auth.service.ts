@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthRepository } from './auth.repository';
 import { AuditService } from '../audit/audit.service';
+import { EmailProvider } from '../notifications/providers/email.provider';
 import {
   Result,
   ok,
@@ -31,6 +32,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly configService: ConfigService,
     private auditService: AuditService,
+    private email: EmailProvider,
   ) {}
 
   async register(
@@ -415,6 +417,104 @@ export class AuthService {
     const refreshToken = randomUUID();
 
     return { accessToken, refreshToken };
+  }
+
+  /**
+   * Initiates a password reset. Always returns ok to avoid leaking which
+   * emails exist. If the email matches an active user, signs a JWT with
+   * purpose='password-reset' (1h TTL) and sends a link via Resend.
+   */
+  async forgotPassword(email: string): Promise<Result<void>> {
+    try {
+      const user = await this.authRepository.findUserByEmail(email);
+      if (user && user.isActive && user.gabinete.isActive) {
+        const token = this.jwtService.sign(
+          { sub: user.id, purpose: 'password-reset' },
+          { expiresIn: '1h' },
+        );
+        const frontendBase = (
+          this.configService.get<string>('FRONTEND_URL') ?? ''
+        )
+          .split(',')[0]
+          .trim();
+        const url = `${frontendBase || ''}/reset-password?token=${encodeURIComponent(token)}`;
+        const subject = 'Recuperação de palavra-passe — Kamaia';
+        const html = this.buildResetEmailHtml(user.firstName, url);
+        const res = await this.email.send(user.email, subject, html);
+        this.logger.log(
+          `Password reset for ${email}: email=${res.status} url=${url.slice(0, 80)}…`,
+        );
+      } else {
+        this.logger.log(`Password reset requested for unknown/inactive: ${email}`);
+      }
+      return ok(undefined);
+    } catch (error) {
+      this.logger.error(
+        `forgotPassword failed for ${email}: ${(error as Error).message}`,
+        error as Error,
+      );
+      // Swallow — we don't want to leak state via error codes either.
+      return ok(undefined);
+    }
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<Result<void>> {
+    try {
+      let payload: { sub: string; purpose: string };
+      try {
+        payload = this.jwtService.verify(token);
+      } catch {
+        return err('Token inválido ou expirado', 'INVALID_TOKEN');
+      }
+      if (payload.purpose !== 'password-reset' || !payload.sub) {
+        return err('Token inválido', 'INVALID_TOKEN');
+      }
+
+      const user = await this.authRepository.findUserById(payload.sub);
+      if (!user || !user.isActive) {
+        return err('Utilizador inválido', 'USER_INVALID');
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await this.authRepository.updatePassword(user.id, passwordHash);
+      // Invalidate all existing sessions — force re-login everywhere
+      await this.authRepository.deleteAllUserSessions(user.id);
+
+      await this.auditService.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.USER,
+        entityId: user.id,
+        userId: user.id,
+        gabineteId: user.gabineteId,
+        newValue: { kind: 'password-reset' },
+      });
+
+      return ok(undefined);
+    } catch (error) {
+      this.logger.error(
+        `resetPassword failed: ${(error as Error).message}`,
+        error as Error,
+      );
+      return err('Falha a repor palavra-passe', 'RESET_FAILED');
+    }
+  }
+
+  private buildResetEmailHtml(firstName: string, url: string): string {
+    const safe = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<!doctype html>
+<html><body style="font-family:-apple-system,Inter,sans-serif;color:#111;max-width:520px;margin:24px auto;padding:24px;">
+  <h2 style="margin:0 0 12px;">Recuperação de palavra-passe</h2>
+  <p style="color:#555;line-height:1.5;">Olá ${safe(firstName)},</p>
+  <p style="line-height:1.5;">Recebemos um pedido para repor a sua palavra-passe no Kamaia. Clique no botão abaixo para escolher uma nova — o link expira em 1 hora.</p>
+  <p><a href="${url}" style="display:inline-block;background:#111;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:14px;">Repor palavra-passe</a></p>
+  <p style="color:#737373;font-size:12px;margin-top:24px;">Se não foi você que pediu, pode ignorar este email — a sua palavra-passe não será alterada.</p>
+  <hr style="border:0;border-top:1px solid #eee;margin:24px 0;"/>
+  <p style="color:#999;font-size:11px;">Se o botão não funcionar, cole este URL no browser: ${url}</p>
+</body></html>`;
   }
 
   private sanitizeUser(user: any) {

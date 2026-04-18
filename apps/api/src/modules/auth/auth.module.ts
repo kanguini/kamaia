@@ -7,6 +7,7 @@ import { AuthRepository } from './auth.repository';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuditModule } from '../audit/audit.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuditModule } from '../audit/audit.module';
       }),
     }),
     AuditModule,
+    NotificationsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, AuthRepository, JwtStrategy],

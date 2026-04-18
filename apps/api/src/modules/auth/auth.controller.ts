@@ -20,10 +20,14 @@ import {
   registerSchema,
   refreshSchema,
   loginWithProviderSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   LoginDto,
   RegisterDto,
   RefreshDto,
   LoginWithProviderDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from './auth.dto';
 import { JwtPayload } from '@kamaia/shared-types';
 
@@ -99,6 +103,31 @@ export class AuthController {
     }
 
     return { data: result.data };
+  }
+
+  @Post('forgot-password')
+  @Throttle({ short: { ttl: 60000, limit: 3 } })
+  async forgotPassword(
+    @Body(new ParseZodPipe(forgotPasswordSchema)) dto: ForgotPasswordDto,
+  ) {
+    // Always 200 — don't leak whether the email exists.
+    await this.authService.forgotPassword(dto.email);
+    return { data: { sent: true } };
+  }
+
+  @Post('reset-password')
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  async resetPassword(
+    @Body(new ParseZodPipe(resetPasswordSchema)) dto: ResetPasswordDto,
+  ) {
+    const result = await this.authService.resetPassword(dto.token, dto.newPassword);
+    if (!result.success) {
+      throw new HttpException(
+        { error: result.error, code: result.code || 'RESET_FAILED' },
+        result.code === 'INVALID_TOKEN' ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: { success: true } };
   }
 
   @Post('refresh')
