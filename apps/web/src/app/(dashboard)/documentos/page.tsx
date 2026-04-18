@@ -15,11 +15,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 interface Document {
   id: string
   title: string
-  filename: string
-  category: DocumentCategory
-  fileType: string
+  // Backend uses mimeType (application/pdf etc.) — no separate "fileType" field.
+  mimeType: string
   fileSize: number
-  uploadedAt: string
+  createdAt: string
   uploadedBy: {
     firstName: string
     lastName: string
@@ -27,7 +26,9 @@ interface Document {
   processo?: {
     id: string
     processoNumber: string
+    title?: string
   }
+  category: DocumentCategory
 }
 
 interface Processo {
@@ -58,8 +59,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
-function getFileIcon(fileType: string): React.ReactNode {
-  const type = fileType.toLowerCase()
+function getFileIcon(fileType: string | null | undefined): React.ReactNode {
+  const type = (fileType ?? '').toLowerCase()
   if (type.includes('pdf')) {
     return <FileText className="w-5 h-5 text-danger" />
   }
@@ -548,10 +549,10 @@ export default function DocumentosPage() {
             <div
               key={doc.id}
               className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors cursor-pointer"
-              onClick={() => handleDownload(doc.id, doc.filename)}
+              onClick={() => handleDownload(doc.id, doc.title)}
             >
               <div className="flex items-center gap-4">
-                <div className="flex-shrink-0">{getFileIcon(doc.fileType)}</div>
+                <div className="flex-shrink-0">{getFileIcon(doc.mimeType)}</div>
 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-ink truncate">{doc.title}</h3>
@@ -570,7 +571,7 @@ export default function DocumentosPage() {
                     )}
                   </div>
                   <p className="text-xs text-ink-muted mt-1">
-                    {doc.uploadedBy.firstName} {doc.uploadedBy.lastName} • {formatDate(doc.uploadedAt)}
+                    {doc.uploadedBy?.firstName} {doc.uploadedBy?.lastName} • {formatDate(doc.createdAt)}
                   </p>
                 </div>
 
@@ -580,7 +581,7 @@ export default function DocumentosPage() {
                     aria-label="Transferir documento"
                     onClick={(e) => {
                       e.stopPropagation()
-                      handleDownload(doc.id, doc.filename)
+                      handleDownload(doc.id, doc.title)
                     }}
                     variant="ghost"
                     size="sm"
