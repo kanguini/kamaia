@@ -71,13 +71,12 @@ export default function LoginPage() {
       <div className="text-center">
         <h1 className="sr-only">Kamaia</h1>
         <div aria-hidden="true" className="text-ink inline-block">
-          <Logo height={44} />
+          <Logo height={35} />
         </div>
-        <p className="text-ink-muted text-sm mt-3">Gestão Jurídica Inteligente</p>
       </div>
 
-      <div className="bg-surface border border-border rounded-2xl p-8 shadow-lg">
-        <h2 className="text-xl font-semibold text-ink mb-6">
+      <div className="bg-surface border border-border rounded-2xl p-8">
+        <h2 className="text-xl font-semibold text-ink mb-6 text-center">
           Entrar na conta
         </h2>
 
