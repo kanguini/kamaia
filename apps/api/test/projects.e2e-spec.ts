@@ -314,6 +314,131 @@ describe('Projects (e2e)', () => {
     expect(run2.body.data.overdueAlerts).toBe(0);
   });
 
+  it('status reports: generate snapshot + edit narrative', async () => {
+    const projRes = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({
+        name: 'Projecto Reports',
+        category: 'COMPLIANCE',
+        startDate: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+        endDate: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+        budgetAmount: 500_000_00,
+      });
+    const projectId = projRes.body.data.id;
+
+    // Add a milestone — some completed, some overdue
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({
+        title: 'Assessment',
+        startDate: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+        dueDate: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+      });
+
+    // Generate a report
+    const gen = await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/reports`)
+      .set('Authorization', auth())
+      .send({ summary: 'Primeira semana em curso', risks: [] });
+
+    expect([200, 201]).toContain(gen.status);
+    expect(gen.body.data.milestonesTotal).toBeGreaterThanOrEqual(1);
+    expect(gen.body.data.milestonesOverdue).toBeGreaterThanOrEqual(1);
+    // Health should default to YELLOW (overdue milestone) or RED
+    expect(['YELLOW', 'RED']).toContain(gen.body.data.healthStatus);
+
+    // Edit narrative
+    const patch = await request(ctx.app.getHttpServer())
+      .put(`/api/projects/reports/${gen.body.data.id}`)
+      .set('Authorization', auth())
+      .send({
+        healthStatus: 'RED',
+        summary: 'Atraso no assessment — reagendar kickoff',
+        risks: [
+          {
+            title: 'Equipa sobrecarregada',
+            severity: 'HIGH',
+            mitigation: 'Alocar advogado adicional',
+          },
+        ],
+      });
+    expect(patch.status).toBe(200);
+    expect(patch.body.data.healthStatus).toBe('RED');
+
+    // List returns it
+    const list = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}/reports`)
+      .set('Authorization', auth());
+    expect(list.status).toBe(200);
+    expect(list.body.data.length).toBe(1);
+  });
+
+  it('capacity: returns planned vs actual grid per user × week', async () => {
+    // Seed: create a project + link processo + add user as member with 50%
+    // allocation + log time entries on the processo
+    const cliente = await ctx.prisma.cliente.create({
+      data: { gabineteId: user.gabineteId, name: 'Cli Cap', type: 'INDIVIDUAL' },
+    });
+    const processo = await ctx.prisma.processo.create({
+      data: {
+        gabineteId: user.gabineteId,
+        clienteId: cliente.id,
+        advogadoId: user.id,
+        processoNumber: `P-CAP-${Date.now()}`,
+        title: 'Processo Capacity',
+        type: 'CIVEL',
+        priority: 'MEDIA',
+        status: 'ACTIVO',
+        stage: 'INICIAL',
+      },
+    });
+    const projRes = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({ name: 'Projecto Capacity', category: 'CONSULTORIA' });
+    const projectId = projRes.body.data.id;
+
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/processos/${processo.id}`)
+      .set('Authorization', auth());
+
+    // Update member allocation to 50% (manager already inserted)
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/members`)
+      .set('Authorization', auth())
+      .send({ userId: user.id, role: 'RESPONSIBLE', allocationPct: 50 });
+
+    // Log 10h this week
+    const today = new Date().toISOString().slice(0, 10);
+    await request(ctx.app.getHttpServer())
+      .post('/api/timesheets')
+      .set('Authorization', auth())
+      .send({
+        processoId: processo.id,
+        category: 'PESQUISA',
+        date: today,
+        durationMinutes: 600,
+        description: 'pesquisa extensa',
+        billable: true,
+      });
+
+    const res = await request(ctx.app.getHttpServer())
+      .get('/api/projects/capacity?weeks=2')
+      .set('Authorization', auth());
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.grid.length).toBeGreaterThanOrEqual(1);
+    const me = res.body.data.grid.find((r: any) => r.user.id === user.id);
+    expect(me).toBeDefined();
+    expect(me.plannedPct).toBeGreaterThanOrEqual(50);
+    // Current week bucket should have 600 actual minutes
+    const currentWeek = me.weeks[0];
+    expect(currentWeek.actualMinutes).toBeGreaterThanOrEqual(600);
+    expect(currentWeek.plannedMinutes).toBeGreaterThan(0);
+  });
+
   it('POST /api/projects/from-template with unknown id returns 404', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post('/api/projects/from-template')

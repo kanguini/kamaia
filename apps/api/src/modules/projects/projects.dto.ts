@@ -116,6 +116,30 @@ export const duplicateSystemTemplateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
 });
 
+// ── Status reports ────────────────────────────────────────
+
+const riskSchema = z.object({
+  title: z.string().min(1).max(300),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  mitigation: z.string().optional().nullable(),
+});
+
+export const generateReportSchema = z.object({
+  weekStart: z.string().datetime().optional(),
+  summary: z.string().optional().nullable(),
+  risks: z.array(riskSchema).optional(),
+  healthStatus: z.enum(['GREEN', 'YELLOW', 'RED']).optional(),
+});
+
+export const updateReportSchema = z.object({
+  healthStatus: z.enum(['GREEN', 'YELLOW', 'RED']).optional(),
+  summary: z.string().optional().nullable(),
+  risks: z.array(riskSchema).optional().nullable(),
+});
+
+export type GenerateReportDto = z.infer<typeof generateReportSchema>;
+export type UpdateReportDto = z.infer<typeof updateReportSchema>;
+
 export type FromTemplateDto = z.infer<typeof fromTemplateSchema>;
 export type CreateCustomTemplateDto = z.infer<typeof createCustomTemplateSchema>;
 export type UpdateCustomTemplateDto = z.infer<typeof updateCustomTemplateSchema>;

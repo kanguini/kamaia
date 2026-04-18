@@ -119,10 +119,18 @@ export default function EquipaPage() {
           <h1 className="text-2xl font-semibold text-ink">Equipa</h1>
           <p className="text-sm text-ink-muted mt-1">Gerir membros do gabinete</p>
         </div>
-        <Button onClick={() => setShowInvite(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Convidar Membro
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href="/equipa/capacidade"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-surface-raised"
+          >
+            Capacidade
+          </a>
+          <Button onClick={() => setShowInvite(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Convidar Membro
+          </Button>
+        </div>
       </div>
 
       {tempPassword && (

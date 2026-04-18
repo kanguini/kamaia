@@ -6,6 +6,7 @@ import Link from 'next/link'
 import {
   ArrowLeft, Briefcase, Users, CheckSquare, TrendingUp, Plus,
   Scale, Link as LinkIcon, Unlink, Search, TrendingDown,
+  FileText, AlertTriangle,
 } from 'lucide-react'
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -80,7 +81,30 @@ const TABS = [
   { key: 'milestones', label: 'Cronograma', icon: CheckSquare },
   { key: 'budget', label: 'Orçamento', icon: TrendingUp },
   { key: 'burndown', label: 'Burn-down', icon: TrendingDown },
+  { key: 'status', label: 'Status Reports', icon: FileText },
 ]
+
+interface Risk {
+  title: string
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  mitigation?: string | null
+}
+interface StatusReport {
+  id: string
+  weekStart: string
+  healthStatus: 'GREEN' | 'YELLOW' | 'RED'
+  budgetSnapshot: number | null
+  actualSpentSnapshot: number | null
+  idealSpentSnapshot: number | null
+  hoursLoggedMinutes: number
+  milestonesTotal: number
+  milestonesCompleted: number
+  milestonesOverdue: number
+  risks: Risk[] | null
+  summary: string | null
+  createdBy: { id: string; firstName: string; lastName: string }
+  createdAt: string
+}
 
 interface LinkableProcesso {
   id: string
@@ -109,7 +133,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const { data: session } = useSession()
   const toast = useToast()
   const [tab, setTab] = useState<
-    'overview' | 'processos' | 'team' | 'milestones' | 'budget' | 'burndown'
+    'overview' | 'processos' | 'team' | 'milestones' | 'budget' | 'burndown' | 'status'
   >('overview')
 
   const { data: project, refetch } = useApi<ProjectDetail>(`/projects/${id}`)
@@ -117,6 +141,41 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const { data: burndown } = useApi<BurndownResponse>(
     tab === 'burndown' ? `/projects/${id}/burndown` : null,
   )
+  const { data: reports, refetch: refetchReports } = useApi<StatusReport[]>(
+    tab === 'status' ? `/projects/${id}/reports` : null,
+  )
+
+  const generateReport = async () => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/projects/${id}/reports`, {
+        method: 'POST',
+        token: session.accessToken,
+        body: JSON.stringify({}),
+      })
+      toast.success('Relatório gerado')
+      refetchReports()
+    } catch {
+      toast.error('Erro ao gerar relatório')
+    }
+  }
+
+  const updateReport = async (
+    reportId: string,
+    patch: { healthStatus?: string; summary?: string; risks?: Risk[] },
+  ) => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/projects/reports/${reportId}`, {
+        method: 'PUT',
+        token: session.accessToken,
+        body: JSON.stringify(patch),
+      })
+      refetchReports()
+    } catch {
+      toast.error('Erro ao guardar')
+    }
+  }
 
   // ── Link processo picker state ────────────────────────
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -697,6 +756,283 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           </div>
         </section>
       )}
+
+      {tab === 'status' && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-ink-muted">
+              Snapshot semanal de saúde + KPIs. Automáticos à segunda-feira; podes
+              gerar manualmente a qualquer momento.
+            </p>
+            <button
+              onClick={generateReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-surface rounded-lg text-sm font-medium"
+            >
+              <FileText className="w-4 h-4" />
+              Gerar agora
+            </button>
+          </div>
+
+          {(reports ?? []).length === 0 ? (
+            <div className="p-8 text-center text-sm text-ink-muted bg-surface-raised">
+              Sem relatórios gerados ainda.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(reports ?? []).map((r) => (
+                <ReportCard
+                  key={r.id}
+                  report={r}
+                  onUpdate={(patch) => updateReport(r.id, patch)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
+  )
+}
+
+function healthBadge(status: 'GREEN' | 'YELLOW' | 'RED') {
+  const map = {
+    GREEN: { label: 'Saudável', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
+    YELLOW: { label: 'Atenção', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+    RED: { label: 'Crítico', cls: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
+  } as const
+  const m = map[status]
+  return (
+    <span className={cn('px-2 py-0.5 text-[10px] font-mono uppercase rounded', m.cls)}>
+      {m.label}
+    </span>
+  )
+}
+
+function ReportCard({
+  report,
+  onUpdate,
+}: {
+  report: StatusReport
+  onUpdate: (patch: { healthStatus?: string; summary?: string; risks?: Risk[] }) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [summary, setSummary] = useState(report.summary ?? '')
+  const [risks, setRisks] = useState<Risk[]>(report.risks ?? [])
+  const [health, setHealth] = useState(report.healthStatus)
+
+  const weekLabel = new Date(report.weekStart).toLocaleDateString('pt-AO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  const save = () => {
+    onUpdate({ summary, risks, healthStatus: health })
+    setEditing(false)
+  }
+
+  return (
+    <article className="bg-surface-raised p-5 space-y-3">
+      <header className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-mono text-ink-muted">Semana de {weekLabel}</p>
+          <p className="text-sm text-ink">
+            Gerado por {report.createdBy.firstName} {report.createdBy.lastName}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {healthBadge(report.healthStatus)}
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs text-ink-muted hover:text-ink"
+            >
+              Editar
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* KPIs grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center py-2 border-y border-border">
+        <div>
+          <p className="text-[10px] font-mono uppercase text-ink-muted">Horas</p>
+          <p className="text-sm font-semibold text-ink">
+            {(report.hoursLoggedMinutes / 60).toFixed(1)}h
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-mono uppercase text-ink-muted">Marcos</p>
+          <p className="text-sm font-semibold text-ink">
+            {report.milestonesCompleted}/{report.milestonesTotal}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-mono uppercase text-ink-muted">Atrasados</p>
+          <p
+            className={cn(
+              'text-sm font-semibold',
+              report.milestonesOverdue > 0 ? 'text-red-600' : 'text-ink',
+            )}
+          >
+            {report.milestonesOverdue}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-mono uppercase text-ink-muted">Gasto</p>
+          <p className="text-sm font-semibold text-ink">
+            {report.actualSpentSnapshot != null
+              ? `${(report.actualSpentSnapshot / 100).toLocaleString('pt-AO')}`
+              : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Narrative */}
+      {editing ? (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-mono uppercase text-ink-muted">Saúde</label>
+            <select
+              value={health}
+              onChange={(e) => setHealth(e.target.value as typeof health)}
+              className="w-full px-3 py-2 text-sm bg-surface border border-border"
+            >
+              <option value="GREEN">Saudável</option>
+              <option value="YELLOW">Atenção</option>
+              <option value="RED">Crítico</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-mono uppercase text-ink-muted">Sumário</label>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              placeholder="Pontos-chave da semana, decisões, próximos passos"
+              className="w-full px-3 py-2 text-sm bg-surface border border-border"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-mono uppercase text-ink-muted">Riscos</label>
+            <div className="space-y-2">
+              {risks.map((r, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2">
+                  <input
+                    placeholder="Título"
+                    value={r.title}
+                    onChange={(e) =>
+                      setRisks((rs) =>
+                        rs.map((x, idx) => (idx === i ? { ...x, title: e.target.value } : x)),
+                      )
+                    }
+                    className="col-span-5 px-2 py-1.5 text-sm bg-surface border border-border"
+                  />
+                  <select
+                    value={r.severity}
+                    onChange={(e) =>
+                      setRisks((rs) =>
+                        rs.map((x, idx) =>
+                          idx === i ? { ...x, severity: e.target.value as Risk['severity'] } : x,
+                        ),
+                      )
+                    }
+                    className="col-span-2 px-2 py-1.5 text-sm bg-surface border border-border"
+                  >
+                    <option>LOW</option>
+                    <option>MEDIUM</option>
+                    <option>HIGH</option>
+                    <option>CRITICAL</option>
+                  </select>
+                  <input
+                    placeholder="Mitigação"
+                    value={r.mitigation ?? ''}
+                    onChange={(e) =>
+                      setRisks((rs) =>
+                        rs.map((x, idx) =>
+                          idx === i ? { ...x, mitigation: e.target.value } : x,
+                        ),
+                      )
+                    }
+                    className="col-span-4 px-2 py-1.5 text-sm bg-surface border border-border"
+                  />
+                  <button
+                    onClick={() => setRisks((rs) => rs.filter((_, idx) => idx !== i))}
+                    className="col-span-1 p-1.5 text-ink-muted hover:text-red-600"
+                    aria-label="Remover risco"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() =>
+                  setRisks((rs) => [...rs, { title: '', severity: 'MEDIUM', mitigation: '' }])
+                }
+                className="text-xs text-ink-muted hover:text-ink"
+              >
+                + risco
+              </button>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setEditing(false)
+                setSummary(report.summary ?? '')
+                setRisks(report.risks ?? [])
+                setHealth(report.healthStatus)
+              }}
+              className="px-3 py-1.5 text-xs border border-border rounded-lg"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={save}
+              className="px-3 py-1.5 text-xs bg-ink text-surface rounded-lg font-medium"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {report.summary && (
+            <div>
+              <p className="text-[10px] font-mono uppercase text-ink-muted mb-1">Sumário</p>
+              <p className="text-sm text-ink whitespace-pre-wrap">{report.summary}</p>
+            </div>
+          )}
+          {report.risks && report.risks.length > 0 && (
+            <div>
+              <p className="text-[10px] font-mono uppercase text-ink-muted mb-1">Riscos</p>
+              <div className="space-y-1">
+                {report.risks.map((r, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span
+                      className={cn(
+                        'px-1.5 py-0.5 text-[9px] font-mono rounded',
+                        r.severity === 'CRITICAL' && 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+                        r.severity === 'HIGH' && 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+                        r.severity === 'MEDIUM' && 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+                        r.severity === 'LOW' && 'bg-surface border border-border text-ink-muted',
+                      )}
+                    >
+                      {r.severity}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-ink">{r.title}</p>
+                      {r.mitigation && (
+                        <p className="text-ink-muted text-[11px]">Mitigação: {r.mitigation}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </article>
   )
 }

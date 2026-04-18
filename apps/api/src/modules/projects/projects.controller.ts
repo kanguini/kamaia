@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { ProjectsAlertsService } from './projects-alerts.service';
+import { ProjectReportsService } from './project-reports.service';
+import { CapacityService } from './capacity.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -29,6 +31,8 @@ import {
   createMilestoneSchema,
   updateMilestoneSchema,
   fromTemplateSchema,
+  generateReportSchema,
+  updateReportSchema,
   createCustomTemplateSchema,
   updateCustomTemplateSchema,
   duplicateSystemTemplateSchema,
@@ -39,6 +43,8 @@ import {
   CreateMilestoneDto,
   UpdateMilestoneDto,
   FromTemplateDto,
+  GenerateReportDto,
+  UpdateReportDto,
   CreateCustomTemplateDto,
   UpdateCustomTemplateDto,
   DuplicateSystemTemplateDto,
@@ -50,6 +56,8 @@ export class ProjectsController {
   constructor(
     private svc: ProjectsService,
     private alerts: ProjectsAlertsService,
+    private reports: ProjectReportsService,
+    private capacity: CapacityService,
   ) {}
 
   @Get()
@@ -147,6 +155,81 @@ export class ProjectsController {
   @Roles(KamaiaRole.SOCIO_GESTOR)
   async runAlerts() {
     const data = await this.alerts.runOnce();
+    return { data };
+  }
+
+  // ── Capacity heatmap (gabinete-wide) ────────────────
+  @Get('capacity')
+  async getCapacity(
+    @GabineteId() gabineteId: string,
+    @Query('weekStart') weekStart?: string,
+    @Query('weeks') weeks?: string,
+  ) {
+    const r = await this.capacity.getCapacity(
+      gabineteId,
+      weekStart,
+      weeks ? parseInt(weeks, 10) : undefined,
+    );
+    return this.unwrap(r);
+  }
+
+  // ── Status reports (project-scoped) ──────────────────
+  @Get(':id/reports')
+  async listReports(
+    @GabineteId() gabineteId: string,
+    @Param('id') id: string,
+  ) {
+    const r = await this.reports.list(gabineteId, id);
+    return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
+  }
+
+  @Post(':id/reports')
+  async generateReport(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body(new ParseZodPipe(generateReportSchema)) dto: GenerateReportDto,
+  ) {
+    const r = await this.reports.generate(gabineteId, user.sub, id, dto);
+    return this.unwrap(r, {
+      notFoundCodes: ['PROJECT_NOT_FOUND'],
+      badRequestDefault: true,
+    });
+  }
+
+  @Put('reports/:reportId')
+  async updateReport(
+    @GabineteId() gabineteId: string,
+    @Param('reportId') reportId: string,
+    @Body(new ParseZodPipe(updateReportSchema)) dto: UpdateReportDto,
+  ) {
+    const r = await this.reports.update(gabineteId, reportId, dto);
+    return this.unwrap(r, {
+      notFoundCodes: ['REPORT_NOT_FOUND'],
+      badRequestDefault: true,
+    });
+  }
+
+  @Delete('reports/:reportId')
+  async deleteReport(
+    @GabineteId() gabineteId: string,
+    @Param('reportId') reportId: string,
+  ) {
+    const r = await this.reports.delete(gabineteId, reportId);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'REPORT_NOT_FOUND' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: { success: true } };
+  }
+
+  @Post('reports/generate-all')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR)
+  async generateAllReports() {
+    const data = await this.reports.generateAll();
     return { data };
   }
 
