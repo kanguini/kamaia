@@ -441,9 +441,12 @@ export class AuthService {
         const subject = 'Recuperação de palavra-passe — Kamaia';
         const html = this.buildResetEmailHtml(user.firstName, url);
         const res = await this.email.send(user.email, subject, html);
-        this.logger.log(
-          `Password reset for ${email}: email=${res.status} url=${url.slice(0, 80)}…`,
-        );
+        this.logger.log(`Password reset for ${email}: email=${res.status}`);
+        // In DRY_RUN (Resend key not configured) log the FULL URL so an
+        // operator can rescue a user until email delivery is wired up.
+        if (res.status === 'DRY_RUN') {
+          this.logger.warn(`[DRY_RUN reset-url] ${url}`);
+        }
       } else {
         this.logger.log(`Password reset requested for unknown/inactive: ${email}`);
       }
