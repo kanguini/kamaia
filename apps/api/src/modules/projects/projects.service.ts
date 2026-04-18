@@ -374,6 +374,205 @@ export class ProjectsService {
     }
   }
 
+  // ── Linked processos ─────────────────────────────────
+  /**
+   * Returns processos in the gabinete not yet linked to this project.
+   * Useful for the "pick processo" UI.
+   */
+  async listLinkableProcessos(
+    gabineteId: string,
+    projectId: string,
+    search?: string,
+  ): Promise<Result<any[]>> {
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { id: projectId, gabineteId, deletedAt: null },
+      });
+      if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
+
+      const processos = await this.prisma.processo.findMany({
+        where: {
+          gabineteId,
+          deletedAt: null,
+          OR: [{ projectId: null }, { projectId: { not: projectId } }],
+          ...(search && {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { processoNumber: { contains: search, mode: 'insensitive' } },
+            ],
+          }),
+        },
+        select: {
+          id: true,
+          processoNumber: true,
+          title: true,
+          status: true,
+          type: true,
+          projectId: true,
+          cliente: { select: { id: true, name: true } },
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 50,
+      });
+      return ok(processos);
+    } catch (e) {
+      return err('Failed to list linkable processos', 'LINK_LIST_FAILED');
+    }
+  }
+
+  async linkProcesso(
+    gabineteId: string,
+    projectId: string,
+    processoId: string,
+  ): Promise<Result<any>> {
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { id: projectId, gabineteId, deletedAt: null },
+      });
+      if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
+
+      const processo = await this.prisma.processo.findFirst({
+        where: { id: processoId, gabineteId, deletedAt: null },
+      });
+      if (!processo) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+
+      const updated = await this.prisma.processo.update({
+        where: { id: processoId },
+        data: { projectId },
+        select: {
+          id: true,
+          processoNumber: true,
+          title: true,
+          status: true,
+          projectId: true,
+        },
+      });
+      return ok(updated);
+    } catch (e) {
+      return err('Failed to link processo', 'LINK_PROCESSO_FAILED');
+    }
+  }
+
+  async unlinkProcesso(
+    gabineteId: string,
+    projectId: string,
+    processoId: string,
+  ): Promise<Result<any>> {
+    try {
+      const processo = await this.prisma.processo.findFirst({
+        where: { id: processoId, gabineteId, projectId },
+      });
+      if (!processo) {
+        return err('Processo not linked to this project', 'PROCESSO_NOT_LINKED');
+      }
+      const updated = await this.prisma.processo.update({
+        where: { id: processoId },
+        data: { projectId: null },
+        select: { id: true, projectId: true },
+      });
+      return ok(updated);
+    } catch (e) {
+      return err('Failed to unlink processo', 'UNLINK_PROCESSO_FAILED');
+    }
+  }
+
+  // ── Burn-down (budget vs timeline) ──────────────────
+  /**
+   * Computes a daily burn-down series for the project, aggregating time
+   * entries and expenses from linked processos into a cumulative "spent"
+   * figure plotted against an ideal linear burn line from project start→end.
+   *
+   * Returns { budget, currency, series: [{ date, actualSpent, idealSpent }] }
+   */
+  async getBurndown(gabineteId: string, projectId: string): Promise<Result<any>> {
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { id: projectId, gabineteId, deletedAt: null },
+        include: {
+          members: true,
+          processos: { select: { id: true } },
+        },
+      });
+      if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
+
+      const processoIds = project.processos.map((p) => p.id);
+      const start = project.startDate ?? project.createdAt;
+      const end = project.endDate ?? new Date(Date.now() + 90 * 86_400_000);
+      if (!start) {
+        return err('Project has no start date', 'NO_START_DATE');
+      }
+
+      const rates = new Map<string, number>();
+      project.members.forEach((m) => {
+        if (m.hourlyRate) rates.set(m.userId, m.hourlyRate);
+      });
+
+      const [timeEntries, expenses] = await Promise.all([
+        processoIds.length
+          ? this.prisma.timeEntry.findMany({
+              where: { processoId: { in: processoIds } },
+              select: { date: true, durationMinutes: true, userId: true },
+            })
+          : Promise.resolve([]),
+        processoIds.length
+          ? this.prisma.expense.findMany({
+              where: { processoId: { in: processoIds } },
+              select: { date: true, amount: true },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      // Bucket by day (local date string YYYY-MM-DD)
+      const buckets = new Map<string, number>(); // date → cost in centavos
+      const addToBucket = (d: Date | string, cost: number) => {
+        const key =
+          (typeof d === 'string' ? d : d.toISOString()).slice(0, 10) ?? 'unknown';
+        buckets.set(key, (buckets.get(key) ?? 0) + cost);
+      };
+      timeEntries.forEach((t) => {
+        const rate = rates.get(t.userId) ?? 0;
+        const cost = Math.round((rate * t.durationMinutes) / 60);
+        addToBucket(t.date, cost);
+      });
+      expenses.forEach((e) => addToBucket(e.date, e.amount));
+
+      // Build daily series from start to end
+      const startDay = new Date(start);
+      startDay.setUTCHours(0, 0, 0, 0);
+      const endDay = new Date(end);
+      endDay.setUTCHours(0, 0, 0, 0);
+      const budget = project.budgetAmount ?? 0;
+      const totalDays = Math.max(
+        1,
+        Math.round((endDay.getTime() - startDay.getTime()) / 86_400_000),
+      );
+
+      const series: {
+        date: string;
+        actualSpent: number;
+        idealSpent: number;
+      }[] = [];
+      let cumulative = 0;
+      for (let i = 0; i <= totalDays; i++) {
+        const d = new Date(startDay.getTime() + i * 86_400_000);
+        const key = d.toISOString().slice(0, 10);
+        const daySpend = buckets.get(key) ?? 0;
+        cumulative += daySpend;
+        const idealSpent = budget ? Math.round((budget * i) / totalDays) : 0;
+        series.push({ date: key, actualSpent: cumulative, idealSpent });
+      }
+
+      return ok({
+        budget,
+        currency: project.budgetCurrency,
+        totalSpent: cumulative,
+        series,
+      });
+    } catch (e) {
+      return err('Failed to compute burndown', 'BURNDOWN_FAILED');
+    }
+  }
+
   async deleteMilestone(
     gabineteId: string,
     milestoneId: string,

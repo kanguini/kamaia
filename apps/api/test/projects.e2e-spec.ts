@@ -58,6 +58,83 @@ describe('Projects (e2e)', () => {
     expect(res.body.data.title).toBe('Policy draft v1');
   });
 
+  it('link/unlink processo: POST + DELETE /api/projects/:id/processos/:processoId', async () => {
+    // Seed cliente + processo unlinked
+    const cliente = await ctx.prisma.cliente.create({
+      data: { gabineteId: user.gabineteId, name: 'Cliente Link', type: 'INDIVIDUAL' },
+    });
+    const processo = await ctx.prisma.processo.create({
+      data: {
+        gabineteId: user.gabineteId,
+        clienteId: cliente.id,
+        advogadoId: user.id,
+        processoNumber: `P-LINK-${Date.now()}`,
+        title: 'Processo Linkable',
+        type: 'CIVEL',
+        priority: 'MEDIA',
+        status: 'ACTIVO',
+        stage: 'INICIAL',
+      },
+    });
+    const project = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({ name: 'Projecto Link', category: 'LITIGIO' });
+    const projectId = project.body.data.id;
+
+    // Show in linkable list
+    const list = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}/linkable-processos`)
+      .set('Authorization', auth());
+    expect(list.status).toBe(200);
+    expect(list.body.data.some((p: any) => p.id === processo.id)).toBe(true);
+
+    // Link
+    const linkRes = await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/processos/${processo.id}`)
+      .set('Authorization', auth());
+    expect([200, 201]).toContain(linkRes.status);
+    expect(linkRes.body.data.projectId).toBe(projectId);
+
+    // Detail now shows it
+    const detail = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}`)
+      .set('Authorization', auth());
+    expect(detail.body.data.processos.some((p: any) => p.id === processo.id)).toBe(true);
+
+    // Unlink
+    const unlink = await request(ctx.app.getHttpServer())
+      .delete(`/api/projects/${projectId}/processos/${processo.id}`)
+      .set('Authorization', auth());
+    expect(unlink.status).toBe(200);
+  });
+
+  it('GET /api/projects/:id/burndown returns a day-indexed series with actual vs ideal', async () => {
+    const projRes = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({
+        name: 'Projecto Burndown',
+        category: 'CONSULTORIA',
+        startDate: new Date(Date.now() - 5 * 86_400_000).toISOString(),
+        endDate: new Date(Date.now() + 10 * 86_400_000).toISOString(),
+        budgetAmount: 500_000_00, // 500k AKZ in centavos
+      });
+    const projectId = projRes.body.data.id;
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}/burndown`)
+      .set('Authorization', auth());
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.budget).toBe(500_000_00);
+    expect(Array.isArray(res.body.data.series)).toBe(true);
+    expect(res.body.data.series.length).toBeGreaterThan(10);
+    // Ideal should increase monotonically from 0 toward budget
+    const last = res.body.data.series[res.body.data.series.length - 1];
+    expect(last.idealSpent).toBeGreaterThanOrEqual(res.body.data.series[0].idealSpent);
+  });
+
   it('PUT /api/projects/milestones/:id updates date range + progress (Gantt drag)', async () => {
     const create = await request(ctx.app.getHttpServer())
       .post('/api/projects')

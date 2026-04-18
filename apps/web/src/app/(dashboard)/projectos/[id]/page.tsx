@@ -3,7 +3,14 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ArrowLeft, Briefcase, Users, CheckSquare, TrendingUp, Plus } from 'lucide-react'
+import {
+  ArrowLeft, Briefcase, Users, CheckSquare, TrendingUp, Plus,
+  Scale, Link as LinkIcon, Unlink, Search, TrendingDown,
+} from 'lucide-react'
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  Tooltip, CartesianGrid, Legend,
+} from 'recharts'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
@@ -49,7 +56,13 @@ interface ProjectDetail {
     completedAt: string | null
     dependsOnId: string | null
   }>
-  processos: Array<{ id: string; title: string; processoNumber: string; stage: string | null }>
+  processos: Array<{
+    id: string
+    title: string
+    processoNumber: string
+    stage: string | null
+    status?: string
+  }>
 }
 
 interface Budget {
@@ -62,19 +75,86 @@ interface Budget {
 
 const TABS = [
   { key: 'overview', label: 'Visão geral', icon: Briefcase },
+  { key: 'processos', label: 'Processos', icon: Scale },
   { key: 'team', label: 'Equipa', icon: Users },
   { key: 'milestones', label: 'Cronograma', icon: CheckSquare },
   { key: 'budget', label: 'Orçamento', icon: TrendingUp },
+  { key: 'burndown', label: 'Burn-down', icon: TrendingDown },
 ]
+
+interface LinkableProcesso {
+  id: string
+  processoNumber: string
+  title: string
+  status: string
+  type: string
+  projectId: string | null
+  cliente: { id: string; name: string } | null
+}
+
+interface BurndownPoint {
+  date: string
+  actualSpent: number
+  idealSpent: number
+}
+interface BurndownResponse {
+  budget: number
+  currency: string
+  totalSpent: number
+  series: BurndownPoint[]
+}
 
 export default function ProjectDetailPage({ params }: { params: { id: string } }) {
   const { id } = params
   const { data: session } = useSession()
   const toast = useToast()
-  const [tab, setTab] = useState<'overview' | 'team' | 'milestones' | 'budget'>('overview')
+  const [tab, setTab] = useState<
+    'overview' | 'processos' | 'team' | 'milestones' | 'budget' | 'burndown'
+  >('overview')
 
   const { data: project, refetch } = useApi<ProjectDetail>(`/projects/${id}`)
   const { data: budget } = useApi<Budget>(tab === 'budget' ? `/projects/${id}/budget` : null)
+  const { data: burndown } = useApi<BurndownResponse>(
+    tab === 'burndown' ? `/projects/${id}/burndown` : null,
+  )
+
+  // ── Link processo picker state ────────────────────────
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerSearch, setPickerSearch] = useState('')
+  const { data: linkable, refetch: refetchLinkable } = useApi<LinkableProcesso[]>(
+    pickerOpen ? `/projects/${id}/linkable-processos?search=${encodeURIComponent(pickerSearch)}` : null,
+    [pickerOpen, pickerSearch],
+  )
+
+  const linkProcesso = async (processoId: string) => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/projects/${id}/processos/${processoId}`, {
+        method: 'POST',
+        token: session.accessToken,
+      })
+      toast.success('Processo associado ao projecto')
+      refetch()
+      refetchLinkable()
+    } catch {
+      toast.error('Erro ao associar processo')
+    }
+  }
+
+  const unlinkProcesso = async (processoId: string) => {
+    if (!session?.accessToken) return
+    if (!confirm('Desassociar este processo do projecto?')) return
+    try {
+      await api(`/projects/${id}/processos/${processoId}`, {
+        method: 'DELETE',
+        token: session.accessToken,
+      })
+      toast.success('Processo desassociado')
+      refetch()
+    } catch {
+      toast.error('Erro ao desassociar processo')
+    }
+  }
 
   const [milestoneForm, setMilestoneForm] = useState({ title: '', startDate: '', dueDate: '' })
 
@@ -237,6 +317,121 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         </section>
       )}
 
+      {tab === 'processos' && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-ink-muted">
+              {project.processos.length} processo(s) associado(s)
+            </p>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-surface rounded-lg text-sm font-medium"
+            >
+              <LinkIcon className="w-4 h-4" />
+              Associar processo
+            </button>
+          </div>
+
+          {/* Linked list */}
+          <div className="space-y-2">
+            {project.processos.length === 0 && (
+              <p className="text-sm text-ink-muted text-center py-8">
+                Ainda não há processos associados. Use o botão acima para ligar processos
+                existentes a este projecto.
+              </p>
+            )}
+            {project.processos.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 px-3 py-2 bg-surface border border-border"
+              >
+                <Scale className="w-4 h-4 text-ink-muted" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-ink truncate">
+                    <Link href={`/processos/${p.id}`} className="hover:underline">
+                      {p.title}
+                    </Link>
+                  </p>
+                  <p className="text-xs font-mono text-ink-muted">
+                    {p.processoNumber}
+                    {p.stage ? ` · ${p.stage}` : ''}
+                    {p.status ? ` · ${p.status}` : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => unlinkProcesso(p.id)}
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-ink-muted hover:text-red-600"
+                  aria-label="Desassociar processo"
+                >
+                  <Unlink className="w-3.5 h-3.5" />
+                  Desassociar
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Picker modal */}
+          {pickerOpen && (
+            <div
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              role="dialog"
+              aria-modal="true"
+              onClick={() => setPickerOpen(false)}
+            >
+              <div
+                className="bg-surface border border-border rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Search className="w-4 h-4 text-ink-muted" />
+                  <input
+                    autoFocus
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Pesquisar por número ou título..."
+                    className="flex-1 bg-transparent text-sm focus:outline-none"
+                  />
+                  <button
+                    onClick={() => setPickerOpen(false)}
+                    className="text-xs text-ink-muted hover:text-ink"
+                  >
+                    Fechar
+                  </button>
+                </header>
+                <div className="flex-1 overflow-y-auto">
+                  {(linkable ?? []).length === 0 ? (
+                    <p className="text-sm text-ink-muted text-center py-8">
+                      Nenhum processo disponível.
+                    </p>
+                  ) : (
+                    <ul>
+                      {(linkable ?? []).map((p) => (
+                        <li
+                          key={p.id}
+                          className="flex items-center gap-3 px-4 py-2.5 border-b border-border hover:bg-surface-raised cursor-pointer"
+                          onClick={() => linkProcesso(p.id)}
+                        >
+                          <Scale className="w-4 h-4 text-ink-muted" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-ink truncate">{p.title}</p>
+                            <p className="text-xs font-mono text-ink-muted">
+                              {p.processoNumber} · {p.type}
+                              {p.cliente ? ` · ${p.cliente.name}` : ''}
+                              {p.projectId ? ' · já noutro projecto' : ''}
+                            </p>
+                          </div>
+                          <LinkIcon className="w-4 h-4 text-ink-muted" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {tab === 'team' && (
         <section className="bg-surface-raised p-5">
           <h3 className="text-sm font-medium text-ink mb-3">Equipa (RACI)</h3>
@@ -382,6 +577,123 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             <p className="text-xs text-ink">
               Despesas: {(budget.breakdown.expenseCost / 100).toLocaleString('pt-AO')}
             </p>
+          </div>
+        </section>
+      )}
+
+      {tab === 'burndown' && burndown && (
+        <section className="bg-surface-raised p-5 space-y-4">
+          <header>
+            <h3 className="text-sm font-medium text-ink">Burn-down — gasto vs ideal</h3>
+            <p className="text-xs text-ink-muted">
+              Linha vermelha = gasto real acumulado (timesheets + despesas). Linha
+              tracejada = consumo linear do orçamento até ao fim do projecto.
+            </p>
+          </header>
+
+          {burndown.budget === 0 ? (
+            <p className="text-sm text-ink-muted text-center py-8">
+              Defina um orçamento no projecto para ver a curva ideal.
+            </p>
+          ) : (
+            <div style={{ width: '100%', height: 320 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={burndown.series.map((p) => ({
+                    date: p.date,
+                    'Gasto real': p.actualSpent / 100,
+                    'Ideal': p.idealSpent / 100,
+                    Orçamento: burndown.budget / 100,
+                  }))}
+                  margin={{ top: 10, right: 20, bottom: 10, left: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: 'var(--color-ink-muted)' }}
+                    interval="preserveStartEnd"
+                    tickFormatter={(v: string) => {
+                      const d = new Date(v)
+                      return `${String(d.getDate()).padStart(2, '0')}/${String(
+                        d.getMonth() + 1,
+                      ).padStart(2, '0')}`
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'var(--color-ink-muted)' }}
+                    tickFormatter={(v: number) =>
+                      v >= 1_000_000
+                        ? `${(v / 1_000_000).toFixed(1)}M`
+                        : v >= 1000
+                          ? `${(v / 1000).toFixed(0)}k`
+                          : `${v}`
+                    }
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      fontSize: 12,
+                    }}
+                    formatter={(v) =>
+                      `${Number(v).toLocaleString('pt-AO')} ${burndown.currency}`
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="Gasto real"
+                    stroke="#DC2626"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="Ideal"
+                    stroke="#737373"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="Orçamento"
+                    stroke="#16A34A"
+                    strokeWidth={1}
+                    strokeDasharray="2 4"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border">
+            <div>
+              <p className="text-[10px] font-mono uppercase text-ink-muted">Orçamento</p>
+              <p className="text-lg font-semibold text-ink">
+                {(burndown.budget / 100).toLocaleString('pt-AO')} {burndown.currency}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase text-ink-muted">Gasto</p>
+              <p className="text-lg font-semibold text-ink">
+                {(burndown.totalSpent / 100).toLocaleString('pt-AO')} {burndown.currency}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-mono uppercase text-ink-muted">Restante</p>
+              <p
+                className={cn(
+                  'text-lg font-semibold',
+                  burndown.budget - burndown.totalSpent < 0 ? 'text-red-600' : 'text-ink',
+                )}
+              >
+                {burndown.budget
+                  ? `${((burndown.budget - burndown.totalSpent) / 100).toLocaleString('pt-AO')} ${burndown.currency}`
+                  : '—'}
+              </p>
+            </div>
           </div>
         </section>
       )}

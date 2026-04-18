@@ -166,6 +166,52 @@ export class ProjectsController {
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
+  @Get(':id/burndown')
+  async burndown(@GabineteId() gabineteId: string, @Param('id') id: string) {
+    const r = await this.svc.getBurndown(gabineteId, id);
+    return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
+  }
+
+  // ── Linked processos ────────────────────────────────
+  @Get(':id/linkable-processos')
+  async linkableProcessos(
+    @GabineteId() gabineteId: string,
+    @Param('id') id: string,
+    @Query('search') search?: string,
+  ) {
+    const r = await this.svc.listLinkableProcessos(gabineteId, id, search);
+    return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
+  }
+
+  @Post(':id/processos/:processoId')
+  async linkProcesso(
+    @GabineteId() gabineteId: string,
+    @Param('id') id: string,
+    @Param('processoId') processoId: string,
+  ) {
+    const r = await this.svc.linkProcesso(gabineteId, id, processoId);
+    return this.unwrap(r, {
+      notFoundCodes: ['PROJECT_NOT_FOUND', 'PROCESSO_NOT_FOUND'],
+      badRequestDefault: true,
+    });
+  }
+
+  @Delete(':id/processos/:processoId')
+  async unlinkProcesso(
+    @GabineteId() gabineteId: string,
+    @Param('id') id: string,
+    @Param('processoId') processoId: string,
+  ) {
+    const r = await this.svc.unlinkProcesso(gabineteId, id, processoId);
+    if (!r.success) {
+      throw new HttpException(
+        { error: r.error, code: r.code },
+        r.code === 'PROCESSO_NOT_LINKED' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST,
+      );
+    }
+    return { data: { success: true } };
+  }
+
   private unwrap(
     r: { success: boolean; data?: unknown; error?: string; code?: string },
     opts: { notFoundCodes?: string[]; badRequestDefault?: boolean } = {},
