@@ -132,6 +132,14 @@
     border-radius: 10px;
   }
 
+  /* Cards: remove borders from padded card containers (div/section/a with surface bg + padding) */
+  :is(div, section, a, article, aside)[class*="bg-surface"][class*="p-4"],
+  :is(div, section, a, article, aside)[class*="bg-surface"][class*="p-5"],
+  :is(div, section, a, article, aside)[class*="bg-surface"][class*="p-6"],
+  :is(div, section, a, article, aside)[class*="bg-surface"][class*="p-8"] {
+    border-color: transparent !important;
+  }
+
   /* Form elements: minimal rounding, suave mas presente */
   input[type="text"]:not([class*="rounded"]),
   input[type="email"]:not([class*="rounded"]),

@@ -61,6 +61,12 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
   return { data, loading, error, refetch: fetchData }
 }
 
+export interface MutationError {
+  error: string
+  code?: string
+  status?: number
+}
+
 export function useMutation<TInput, TResult = unknown>(
   endpoint: string,
   method: string = 'POST',
@@ -69,7 +75,15 @@ export function useMutation<TInput, TResult = unknown>(
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const mutate = async (body?: TInput): Promise<TResult | null> => {
+  /**
+   * Executes the mutation. Returns the result on success, or null on failure.
+   * IMPORTANT: also calls `onError` (if provided) with the full backend error
+   * object so callers can branch on `code` without relying on stale state.
+   */
+  const mutate = async (
+    body?: TInput,
+    opts?: { onError?: (err: MutationError) => void },
+  ): Promise<TResult | null> => {
     if (!session?.accessToken) return null
     setLoading(true)
     setError(null)
@@ -84,8 +98,12 @@ export function useMutation<TInput, TResult = unknown>(
       }
       return result as unknown as TResult
     } catch (err: unknown) {
-      const errorObj = err as { error?: string }
-      setError(errorObj?.error || 'Erro na operacao')
+      const errorObj = (err && typeof err === 'object' ? err : {}) as MutationError & {
+        message?: string
+      }
+      const msg = errorObj.error || errorObj.message || 'Erro na operação'
+      setError(msg)
+      opts?.onError?.({ error: msg, code: errorObj.code, status: errorObj.status })
       return null
     } finally {
       setLoading(false)

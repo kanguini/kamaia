@@ -46,22 +46,47 @@ export default function NovoClientePage() {
 
   const toast = useToast()
 
+  const translateError = (code: string | undefined, fallback: string): string => {
+    switch (code) {
+      case 'NIF_EXISTS':
+        return 'Já existe um cliente com esse NIF neste gabinete'
+      case 'QUOTA_EXCEEDED':
+        return 'Limite de clientes atingido. Actualize o plano.'
+      case 'GABINETE_NOT_FOUND':
+        return 'Gabinete não encontrado. Faça login novamente.'
+      case 'FORBIDDEN':
+      case 'INSUFFICIENT_PERMISSIONS':
+        return 'Não tem permissões para criar clientes. Contacte o sócio gestor.'
+      case 'UNAUTHORIZED':
+        return 'Sessão expirada. Por favor reinicie sessão.'
+      case 'VALIDATION_ERROR':
+        return fallback
+      default:
+        return fallback
+    }
+  }
+
   const onSubmit = async (data: CreateClienteData) => {
-    const result = await mutate(data)
+    // Normalize empty strings to undefined (backend expects optional fields absent, not "")
+    const payload: CreateClienteData = {
+      ...data,
+      nif: data.nif?.trim() || undefined,
+      email: data.email?.trim() || undefined,
+      phone: data.phone?.trim() || undefined,
+      address: data.address?.trim() || undefined,
+      notes: data.notes?.trim() || undefined,
+    }
+
+    const result = await mutate(payload, {
+      onError: (e) => {
+        // Branch on stable backend code (never on stale state)
+        toast.error(translateError(e.code, e.error))
+      },
+    })
+
     if (result?.id) {
       toast.success('Cliente criado com sucesso')
       router.push(`/clientes/${result.id}`)
-    } else {
-      // Use specific error message from backend if available
-      const msg = error || 'Erro ao criar cliente'
-      // Translate common backend error codes into friendly Portuguese messages
-      if (msg.toLowerCase().includes('nif') || msg.toLowerCase().includes('already exists')) {
-        toast.error('Já existe um cliente com esse NIF neste gabinete')
-      } else if (msg.toLowerCase().includes('quota')) {
-        toast.error('Limite de clientes atingido. Actualize o plano.')
-      } else {
-        toast.error(msg)
-      }
     }
   }
 
