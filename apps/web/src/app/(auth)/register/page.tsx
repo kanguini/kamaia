@@ -73,12 +73,37 @@ export default function RegisterPage() {
         router.push('/')
         router.refresh()
       }
-    } catch (err: any) {
-      setError(err?.message || 'Erro ao criar conta. Tente novamente.')
+    } catch (err: unknown) {
+      // The api helper throws { error, code, status } — not a standard Error,
+      // so err.message is undefined. Branch on code for friendly messages.
+      const e = (err && typeof err === 'object' ? err : {}) as {
+        error?: string
+        code?: string
+        status?: number
+        message?: string
+      }
+      const friendly = translateAuthError(e.code, e.error)
+      setError(friendly)
+      // Leave a breadcrumb in dev console
+      // eslint-disable-next-line no-console
+      console.error('[register] failed', e)
     } finally {
       setIsLoading(false)
     }
   }
+
+function translateAuthError(code: string | undefined, fallback: string | undefined): string {
+  switch (code) {
+    case 'USER_EXISTS':
+      return 'Já existe uma conta com este email. Faça login ou recupere a palavra-passe.'
+    case 'VALIDATION_FAILED':
+      return fallback || 'Dados inválidos. Verifique os campos e tente novamente.'
+    case 'UNAUTHORIZED':
+      return 'Sessão expirada. Recarregue a página.'
+    default:
+      return fallback || 'Erro ao criar conta. Tente novamente.'
+  }
+}
 
   return (
     <div className="space-y-8">
