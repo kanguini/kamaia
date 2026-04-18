@@ -579,3 +579,131 @@ export const PROJECT_CATEGORY_LABELS: Record<ProjectCategory, string> = {
   [ProjectCategory.CONSULTORIA]: 'Consultoria',
   [ProjectCategory.OUTRO]: 'Outro',
 };
+
+// ── Project Templates (playbooks) ─────────────────────────
+//
+// A template expresses a full engagement blueprint: category, scope blurb,
+// typical duration, and a list of milestones with DAY OFFSETS from the
+// project start (day 0). Users pick a template, provide a name + start date,
+// and the backend materialises everything in one transaction.
+
+export interface MilestoneTemplate {
+  title: string;
+  description?: string;
+  /** Offset in days from the project start (inclusive). */
+  startDayOffset: number;
+  /** Offset in days for the milestone deadline. */
+  dueDayOffset: number;
+}
+
+export interface ProjectTemplate {
+  id: string;
+  category: ProjectCategory;
+  name: string;
+  description: string;
+  scopeBlurb: string;
+  objectivesBlurb?: string;
+  /** Default total duration in days — used when end date isn't provided. */
+  defaultDurationDays: number;
+  milestones: MilestoneTemplate[];
+}
+
+export const PROJECT_TEMPLATES: ProjectTemplate[] = [
+  {
+    id: 'ma-standard',
+    category: ProjectCategory.MA,
+    name: 'Fusão & Aquisição (standard)',
+    description:
+      'Operação de M&A completa: NDA → Term Sheet → DD → SPA → Signing → Closing.',
+    scopeBlurb:
+      'Assessoria jurídica na operação de aquisição, incluindo DD legal, negociação contratual e closing.',
+    objectivesBlurb:
+      'Concluir a operação no prazo acordado, minimizando riscos legais e fiscais.',
+    defaultDurationDays: 180,
+    milestones: [
+      { title: 'NDA assinado', startDayOffset: 0, dueDayOffset: 7 },
+      { title: 'Term Sheet acordado', startDayOffset: 7, dueDayOffset: 21 },
+      { title: 'DD kickoff', startDayOffset: 21, dueDayOffset: 30 },
+      { title: 'Red flags report', startDayOffset: 30, dueDayOffset: 60 },
+      { title: 'SPA draft', startDayOffset: 60, dueDayOffset: 75 },
+      { title: 'Signing', startDayOffset: 75, dueDayOffset: 90 },
+      { title: 'Closing', startDayOffset: 90, dueDayOffset: 120 },
+      { title: 'Integração pós-closing', startDayOffset: 120, dueDayOffset: 180 },
+    ],
+  },
+  {
+    id: 'compliance-programme',
+    category: ProjectCategory.COMPLIANCE,
+    name: 'Programa de Compliance',
+    description:
+      'Implementação de programa de compliance do zero: assessment, gap analysis, políticas, formação e monitorização.',
+    scopeBlurb:
+      'Desenho e implementação de programa de compliance adaptado à realidade da empresa, alinhado com o quadro regulatório angolano.',
+    objectivesBlurb:
+      'Estabelecer controlos internos robustos e cultura de conformidade.',
+    defaultDurationDays: 180,
+    milestones: [
+      { title: 'Assessment inicial', startDayOffset: 0, dueDayOffset: 14 },
+      { title: 'Gap analysis report', startDayOffset: 14, dueDayOffset: 30 },
+      { title: 'Draft políticas', startDayOffset: 30, dueDayOffset: 60 },
+      { title: 'Board approval', startDayOffset: 60, dueDayOffset: 75 },
+      { title: 'Training rollout', startDayOffset: 75, dueDayOffset: 105 },
+      { title: 'Primeiro monitoring report', startDayOffset: 105, dueDayOffset: 180 },
+    ],
+  },
+  {
+    id: 'due-diligence-legal',
+    category: ProjectCategory.DUE_DILIGENCE,
+    name: 'Due Diligence Legal',
+    description:
+      'DD legal padrão: kickoff, data room, revisão, red flags, relatório final.',
+    scopeBlurb:
+      'Revisão legal completa da empresa-alvo, identificação de red flags e emissão de relatório.',
+    defaultDurationDays: 30,
+    milestones: [
+      { title: 'Kickoff + requerimento de documentos', startDayOffset: 0, dueDayOffset: 3 },
+      { title: 'Data room aberto', startDayOffset: 3, dueDayOffset: 7 },
+      { title: 'Revisão legal completa', startDayOffset: 7, dueDayOffset: 21 },
+      { title: 'Red flags identificados', startDayOffset: 21, dueDayOffset: 28 },
+      { title: 'Relatório final', startDayOffset: 28, dueDayOffset: 30 },
+    ],
+  },
+  {
+    id: 'contract-complex',
+    category: ProjectCategory.CONTRATO,
+    name: 'Contrato Complexo (negociação)',
+    description:
+      'Contrato com múltiplas rondas de negociação: term sheet, drafts, negociação, aprovação, assinatura.',
+    scopeBlurb:
+      'Redacção e negociação de contrato complexo, incluindo term sheet, drafts sucessivos e assinatura.',
+    defaultDurationDays: 45,
+    milestones: [
+      { title: 'Term Sheet', startDayOffset: 0, dueDayOffset: 7 },
+      { title: '1º Draft', startDayOffset: 7, dueDayOffset: 14 },
+      { title: 'Ronda 1 de negociação', startDayOffset: 14, dueDayOffset: 21 },
+      { title: 'Final draft', startDayOffset: 21, dueDayOffset: 35 },
+      { title: 'Assinatura', startDayOffset: 35, dueDayOffset: 45 },
+    ],
+  },
+  {
+    id: 'consultoria-parecer',
+    category: ProjectCategory.CONSULTORIA,
+    name: 'Consultoria / Parecer jurídico',
+    description:
+      'Emissão de parecer jurídico: briefing, pesquisa, drafting, entrega.',
+    scopeBlurb:
+      'Análise jurídica e emissão de parecer sobre a matéria solicitada.',
+    defaultDurationDays: 21,
+    milestones: [
+      { title: 'Briefing com o cliente', startDayOffset: 0, dueDayOffset: 3 },
+      { title: 'Pesquisa legal completa', startDayOffset: 3, dueDayOffset: 10 },
+      { title: 'Draft preliminar', startDayOffset: 10, dueDayOffset: 14 },
+      { title: 'Draft final + entrega', startDayOffset: 14, dueDayOffset: 21 },
+    ],
+  },
+];
+
+/** Finds a template by id, returning undefined when not in the catalog. */
+export function findProjectTemplate(id: string): ProjectTemplate | undefined {
+  return PROJECT_TEMPLATES.find((t) => t.id === id);
+}

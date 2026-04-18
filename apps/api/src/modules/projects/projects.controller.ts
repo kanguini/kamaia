@@ -27,12 +27,14 @@ import {
   addMemberSchema,
   createMilestoneSchema,
   updateMilestoneSchema,
+  fromTemplateSchema,
   CreateProjectDto,
   UpdateProjectDto,
   ListProjectsDto,
   AddMemberDto,
   CreateMilestoneDto,
   UpdateMilestoneDto,
+  FromTemplateDto,
 } from './projects.dto';
 
 @Controller('projects')
@@ -47,6 +49,28 @@ export class ProjectsController {
   ) {
     const r = await this.svc.list(gabineteId, q);
     return this.unwrap(r);
+  }
+
+  // ── Templates ───────────────────────────────────────
+  // Must come before `:id` routes so Nest doesn't treat "templates" as an id.
+  @Get('templates')
+  async listTemplates() {
+    return { data: this.svc.listTemplates() };
+  }
+
+  @Post('from-template')
+  @UseGuards(RolesGuard)
+  @Roles(KamaiaRole.SOCIO_GESTOR, KamaiaRole.ADVOGADO_SOLO, KamaiaRole.ADVOGADO_MEMBRO)
+  async createFromTemplate(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(fromTemplateSchema)) dto: FromTemplateDto,
+  ) {
+    const r = await this.svc.createFromTemplate(gabineteId, user.sub, dto);
+    return this.unwrap(r, {
+      notFoundCodes: ['TEMPLATE_NOT_FOUND'],
+      badRequestDefault: true,
+    });
   }
 
   @Get(':id')

@@ -8,6 +8,9 @@ import {
   err,
   AuditAction,
   EntityType,
+  PROJECT_TEMPLATES,
+  findProjectTemplate,
+  ProjectTemplate,
 } from '@kamaia/shared-types';
 import {
   CreateProjectDto,
@@ -16,6 +19,7 @@ import {
   AddMemberDto,
   CreateMilestoneDto,
   UpdateMilestoneDto,
+  FromTemplateDto,
 } from './projects.dto';
 
 @Injectable()
@@ -649,6 +653,105 @@ export class ProjectsService {
   }
 
   // Generates short unique code like "MA-2026-001"
+  // ── Templates ────────────────────────────────────────
+  listTemplates(): ProjectTemplate[] {
+    return PROJECT_TEMPLATES;
+  }
+
+  /**
+   * Materialises a full project + workflow (default for the category) +
+   * milestones from a template. Everything is created in a single
+   * transaction so the project never exists in a partial state.
+   */
+  async createFromTemplate(
+    gabineteId: string,
+    userId: string,
+    dto: FromTemplateDto,
+  ): Promise<Result<any>> {
+    try {
+      const template = findProjectTemplate(dto.templateId);
+      if (!template) return err('Template not found', 'TEMPLATE_NOT_FOUND');
+
+      const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
+      const endDate = new Date(
+        startDate.getTime() + template.defaultDurationDays * 86_400_000,
+      );
+      const code = await this.nextCode(gabineteId, template.category);
+
+      // Resolve default workflow for the category (auto-seeds if needed)
+      const workflow = await this.workflows.getDefaultFor(
+        gabineteId,
+        'PROJECT',
+        template.category,
+      );
+
+      const project = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.project.create({
+          data: {
+            gabineteId,
+            code,
+            name: dto.name,
+            category: template.category,
+            clienteId: dto.clienteId ?? null,
+            managerId: userId,
+            workflowId: workflow?.id ?? null,
+            status: 'ACTIVO',
+            healthStatus: 'GREEN',
+            scope: template.scopeBlurb,
+            objectives: template.objectivesBlurb ?? null,
+            startDate,
+            endDate,
+            budgetAmount: dto.budgetAmount ?? null,
+            tags: [`template:${template.id}`],
+          },
+        });
+
+        // Manager is automatically ACCOUNTABLE
+        await tx.projectMember.create({
+          data: {
+            projectId: created.id,
+            userId,
+            role: 'ACCOUNTABLE',
+          },
+        });
+
+        // Materialise milestones from template offsets
+        await tx.projectMilestone.createMany({
+          data: template.milestones.map((m, i) => ({
+            projectId: created.id,
+            title: m.title,
+            description: m.description ?? null,
+            startDate: new Date(
+              startDate.getTime() + m.startDayOffset * 86_400_000,
+            ),
+            dueDate: new Date(
+              startDate.getTime() + m.dueDayOffset * 86_400_000,
+            ),
+            position: i,
+            progress: 0,
+          })),
+        });
+
+        return created;
+      });
+
+      await this.audit.log({
+        action: AuditAction.CREATE,
+        entity: EntityType.PROCESSO,
+        entityId: project.id,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-from-template', templateId: template.id, code },
+      });
+
+      // Return full detail (with milestones) so the UI can navigate in
+      const full = await this.findById(gabineteId, project.id);
+      return full;
+    } catch (e) {
+      return err('Failed to create project from template', 'TEMPLATE_CREATE_FAILED');
+    }
+  }
+
   private async nextCode(gabineteId: string, category: string): Promise<string> {
     const year = new Date().getFullYear();
     const prefix = category === 'DUE_DILIGENCE' ? 'DD' : category;

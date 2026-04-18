@@ -2,14 +2,19 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Briefcase, Plus, Circle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { Briefcase, Plus, Circle, Sparkles, X } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { EmptyState, LoadingSkeleton } from '@/components/ui'
 import {
   ProjectCategory,
   ProjectStatus,
   PROJECT_CATEGORY_LABELS,
+  ProjectTemplate,
 } from '@kamaia/shared-types'
 
 interface Project {
@@ -40,8 +45,15 @@ const HEALTH_COLORS: Record<string, string> = {
 }
 
 export default function ProjectsListPage() {
+  const router = useRouter()
+  const { data: session } = useSession()
+  const toast = useToast()
   const [category, setCategory] = useState<'ALL' | ProjectCategory>('ALL')
   const [status, setStatus] = useState<'ALL' | ProjectStatus>('ALL')
+  const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [activeTemplate, setActiveTemplate] = useState<ProjectTemplate | null>(null)
+  const [tplForm, setTplForm] = useState({ name: '', startDate: '' })
+  const [creating, setCreating] = useState(false)
 
   const qs = new URLSearchParams()
   if (category !== 'ALL') qs.set('category', category)
@@ -52,6 +64,43 @@ export default function ProjectsListPage() {
     [category, status],
   )
   const projects = data?.data || []
+
+  const { data: templates } = useApi<ProjectTemplate[]>(
+    templatesOpen ? '/projects/templates' : null,
+    [templatesOpen],
+  )
+
+  const createFromTemplate = async () => {
+    if (!activeTemplate || !session?.accessToken) return
+    if (!tplForm.name.trim()) {
+      toast.error('Indique um nome para o projecto')
+      return
+    }
+    setCreating(true)
+    try {
+      const created = await api<{ data: { id: string } }>('/projects/from-template', {
+        method: 'POST',
+        token: session.accessToken,
+        body: JSON.stringify({
+          templateId: activeTemplate.id,
+          name: tplForm.name.trim(),
+          startDate: tplForm.startDate
+            ? new Date(tplForm.startDate).toISOString()
+            : undefined,
+        }),
+      })
+      toast.success('Projecto criado a partir do template')
+      setTemplatesOpen(false)
+      setActiveTemplate(null)
+      setTplForm({ name: '', startDate: '' })
+      router.push(`/projectos/${created.data.id}`)
+    } catch (e: unknown) {
+      const msg = (e as { error?: string })?.error || 'Erro ao criar a partir do template'
+      toast.error(msg)
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
@@ -64,13 +113,22 @@ export default function ProjectsListPage() {
             Gestão de projectos jurídicos — litígio, M&A, Compliance, Due Diligence e mais.
           </p>
         </div>
-        <Link
-          href="/projectos/novo"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-surface rounded-lg text-sm font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Projecto
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTemplatesOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-lg text-sm font-medium hover:bg-surface-raised"
+          >
+            <Sparkles className="w-4 h-4" />
+            Usar template
+          </button>
+          <Link
+            href="/projectos/novo"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-surface rounded-lg text-sm font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Projecto
+          </Link>
+        </div>
       </header>
 
       {/* Filters */}
@@ -135,6 +193,150 @@ export default function ProjectsListPage() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Template picker modal */}
+      {templatesOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            if (!creating) {
+              setTemplatesOpen(false)
+              setActiveTemplate(null)
+            }
+          }}
+        >
+          <div
+            className="bg-surface border border-border rounded-lg w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Escolher template</h2>
+                <p className="text-xs text-ink-muted">
+                  Pré-popula workflow + marcos típicos para a categoria escolhida
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setTemplatesOpen(false)
+                  setActiveTemplate(null)
+                }}
+                className="p-1.5 hover:bg-surface-raised rounded"
+                aria-label="Fechar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </header>
+
+            {!activeTemplate ? (
+              <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(templates ?? []).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveTemplate(t)}
+                    className="text-left p-4 border border-border rounded-lg hover:border-ink hover:bg-surface-raised transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-medium text-ink">{t.name}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 bg-surface-raised border border-border rounded">
+                        {PROJECT_CATEGORY_LABELS[t.category]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-muted line-clamp-2 mb-2">
+                      {t.description}
+                    </p>
+                    <p className="text-[10px] font-mono text-ink-muted">
+                      {t.milestones.length} marcos · {t.defaultDurationDays}d
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                <button
+                  onClick={() => setActiveTemplate(null)}
+                  className="text-xs text-ink-muted hover:text-ink"
+                >
+                  ← voltar à lista
+                </button>
+                <div>
+                  <h3 className="text-base font-semibold text-ink">{activeTemplate.name}</h3>
+                  <p className="text-sm text-ink-muted mt-1">{activeTemplate.description}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-ink mb-1">
+                      Nome do projecto <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      autoFocus
+                      placeholder={`Ex: ${activeTemplate.category === 'MA' ? 'Aquisição Empresa X por Y' : activeTemplate.name}`}
+                      value={tplForm.name}
+                      onChange={(e) => setTplForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-surface border border-border"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-ink mb-1">
+                      Data de início
+                    </label>
+                    <input
+                      type="date"
+                      value={tplForm.startDate}
+                      onChange={(e) => setTplForm((f) => ({ ...f, startDate: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-surface border border-border"
+                    />
+                    <p className="text-[10px] text-ink-muted mt-1">
+                      Se vazio, começa hoje. Duração padrão: {activeTemplate.defaultDurationDays} dias
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-mono uppercase text-ink-muted mb-2">
+                    Marcos que serão criados
+                  </p>
+                  <div className="space-y-1">
+                    {activeTemplate.milestones.map((m, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 px-3 py-1.5 bg-surface-raised"
+                      >
+                        <span className="text-[10px] font-mono text-ink-muted w-20">
+                          d{m.startDayOffset} → d{m.dueDayOffset}
+                        </span>
+                        <span className="text-sm text-ink flex-1">{m.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTemplate && (
+              <footer className="px-5 py-3 border-t border-border flex justify-end gap-2">
+                <button
+                  onClick={() => setActiveTemplate(null)}
+                  disabled={creating}
+                  className="px-3 py-1.5 text-sm border border-border rounded-lg text-ink-muted disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={createFromTemplate}
+                  disabled={creating || !tplForm.name.trim()}
+                  className="px-3 py-1.5 text-sm bg-ink text-surface rounded-lg font-medium disabled:opacity-50"
+                >
+                  {creating ? 'A criar...' : 'Criar projecto'}
+                </button>
+              </footer>
+            )}
+          </div>
         </div>
       )}
     </div>

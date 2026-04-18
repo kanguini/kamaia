@@ -135,6 +135,52 @@ describe('Projects (e2e)', () => {
     expect(last.idealSpent).toBeGreaterThanOrEqual(res.body.data.series[0].idealSpent);
   });
 
+  it('GET /api/projects/templates returns the playbook catalog', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get('/api/projects/templates')
+      .set('Authorization', auth());
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    const ids = res.body.data.map((t: any) => t.id);
+    // Must include the flagship playbooks
+    expect(ids).toContain('ma-standard');
+    expect(ids).toContain('compliance-programme');
+    expect(ids).toContain('due-diligence-legal');
+  });
+
+  it('POST /api/projects/from-template materialises workflow + milestones', async () => {
+    const startDate = new Date('2026-05-01T00:00:00Z').toISOString();
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/projects/from-template')
+      .set('Authorization', auth())
+      .send({
+        templateId: 'ma-standard',
+        name: 'Aquisição Alpha por Beta',
+        startDate,
+      });
+
+    expect([200, 201]).toContain(res.status);
+    expect(res.body.data.name).toBe('Aquisição Alpha por Beta');
+    expect(res.body.data.category).toBe('MA');
+    // The M&A template has 8 milestones
+    expect(res.body.data.milestones.length).toBe(8);
+    // First milestone should be "NDA assinado"
+    expect(res.body.data.milestones[0].title).toBe('NDA assinado');
+    // Workflow auto-attached
+    expect(res.body.data.workflow?.stages?.length).toBeGreaterThan(0);
+  });
+
+  it('POST /api/projects/from-template with unknown id returns 404', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post('/api/projects/from-template')
+      .set('Authorization', auth())
+      .send({ templateId: 'does-not-exist', name: 'X' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.code).toBe('TEMPLATE_NOT_FOUND');
+  });
+
   it('PUT /api/projects/milestones/:id updates date range + progress (Gantt drag)', async () => {
     const create = await request(ctx.app.getHttpServer())
       .post('/api/projects')

@@ -73,6 +73,16 @@ export const updateMilestoneSchema = createMilestoneSchema.partial().extend({
   completedAt: z.string().datetime().optional().nullable(),
 });
 
+export const fromTemplateSchema = z.object({
+  templateId: z.string().min(1),
+  name: z.string().min(1).max(300),
+  clienteId: z.string().uuid().optional().nullable(),
+  startDate: z.string().datetime().optional(),
+  budgetAmount: z.number().int().min(0).optional(),
+});
+
+export type FromTemplateDto = z.infer<typeof fromTemplateSchema>;
+
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 export type ListProjectsDto = z.infer<typeof listProjectsSchema>;
