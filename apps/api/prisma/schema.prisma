@@ -809,8 +809,10 @@ model ProjectMilestone {
   projectId   String    @map("project_id") @db.Uuid
   title       String    @db.VarChar(300)
   description String?   @db.Text
+  startDate   DateTime? @map("start_date") @db.Timestamptz
   dueDate     DateTime  @map("due_date") @db.Timestamptz
   completedAt DateTime? @map("completed_at") @db.Timestamptz
+  progress    Int       @default(0)
   dependsOnId String?   @map("depends_on_id") @db.Uuid
   position    Int       @default(0)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz

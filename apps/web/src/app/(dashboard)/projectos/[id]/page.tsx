@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { PROJECT_CATEGORY_LABELS, ProjectCategory } from '@kamaia/shared-types'
+import { GanttChart, toGanttMilestone } from '@/components/gantt/gantt-chart'
 
 interface Stage {
   id: string
@@ -42,8 +43,11 @@ interface ProjectDetail {
   milestones: Array<{
     id: string
     title: string
+    startDate: string | null
     dueDate: string
+    progress: number
     completedAt: string | null
+    dependsOnId: string | null
   }>
   processos: Array<{ id: string; title: string; processoNumber: string; stage: string | null }>
 }
@@ -72,21 +76,27 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const { data: project, refetch } = useApi<ProjectDetail>(`/projects/${id}`)
   const { data: budget } = useApi<Budget>(tab === 'budget' ? `/projects/${id}/budget` : null)
 
-  const [milestoneForm, setMilestoneForm] = useState({ title: '', dueDate: '' })
+  const [milestoneForm, setMilestoneForm] = useState({ title: '', startDate: '', dueDate: '' })
 
   const addMilestone = async () => {
     if (!session?.accessToken || !milestoneForm.title || !milestoneForm.dueDate) return
     try {
+      const dueISO = new Date(milestoneForm.dueDate).toISOString()
+      // Default to a 7-day span starting today if user didn't specify start
+      const startISO = milestoneForm.startDate
+        ? new Date(milestoneForm.startDate).toISOString()
+        : new Date(Math.min(Date.now(), new Date(milestoneForm.dueDate).getTime())).toISOString()
       await api(`/projects/${id}/milestones`, {
         method: 'POST',
         token: session.accessToken,
         body: JSON.stringify({
           title: milestoneForm.title,
-          dueDate: new Date(milestoneForm.dueDate).toISOString(),
+          startDate: startISO,
+          dueDate: dueISO,
         }),
       })
       toast.success('Marco adicionado')
-      setMilestoneForm({ title: '', dueDate: '' })
+      setMilestoneForm({ title: '', startDate: '', dueDate: '' })
       refetch()
     } catch {
       toast.error('Erro ao adicionar marco')
@@ -101,11 +111,29 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
         token: session.accessToken,
         body: JSON.stringify({
           completedAt: done ? new Date().toISOString() : null,
+          progress: done ? 100 : 0,
         }),
       })
       refetch()
     } catch {
       toast.error('Erro')
+    }
+  }
+
+  const commitMilestoneRange = async (
+    mId: string,
+    patch: { startDate?: string; dueDate?: string; progress?: number },
+  ) => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/projects/milestones/${mId}`, {
+        method: 'PUT',
+        token: session.accessToken,
+        body: JSON.stringify(patch),
+      })
+      refetch()
+    } catch {
+      toast.error('Erro ao actualizar marco')
     }
   }
 
@@ -235,28 +263,44 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
       {tab === 'milestones' && (
         <section className="space-y-4">
-          <div className="flex gap-2">
+          {/* Interactive Gantt */}
+          <GanttChart
+            milestones={project.milestones.map(toGanttMilestone)}
+            onCommit={commitMilestoneRange}
+          />
+
+          {/* Add milestone */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 p-3 bg-surface-raised">
             <input
               placeholder="Título do marco"
               value={milestoneForm.title}
               onChange={(e) => setMilestoneForm((f) => ({ ...f, title: e.target.value }))}
-              className="flex-1 px-3 py-2 text-sm bg-surface border border-border"
+              className="md:col-span-5 px-3 py-2 text-sm bg-surface border border-border"
             />
             <input
               type="date"
+              aria-label="Início"
+              value={milestoneForm.startDate}
+              onChange={(e) => setMilestoneForm((f) => ({ ...f, startDate: e.target.value }))}
+              className="md:col-span-3 px-3 py-2 text-sm bg-surface border border-border"
+            />
+            <input
+              type="date"
+              aria-label="Fim"
               value={milestoneForm.dueDate}
               onChange={(e) => setMilestoneForm((f) => ({ ...f, dueDate: e.target.value }))}
-              className="px-3 py-2 text-sm bg-surface border border-border"
+              className="md:col-span-2 px-3 py-2 text-sm bg-surface border border-border"
             />
             <button
               onClick={addMilestone}
-              className="flex items-center gap-1.5 px-3 py-2 bg-ink text-surface rounded-lg text-sm"
+              className="md:col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 bg-ink text-surface rounded-lg text-sm"
             >
               <Plus className="w-4 h-4" />
               Adicionar
             </button>
           </div>
 
+          {/* Compact list for quick toggle + progress */}
           <div className="space-y-2">
             {project.milestones.map((m) => (
               <div
@@ -268,18 +312,38 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                   checked={!!m.completedAt}
                   onChange={(e) => toggleMilestone(m.id, e.target.checked)}
                 />
-                <div className="flex-1">
-                  <p className={cn('text-sm', m.completedAt && 'line-through text-ink-muted')}>
+                <div className="flex-1 min-w-0">
+                  <p className={cn('text-sm truncate', m.completedAt && 'line-through text-ink-muted')}>
                     {m.title}
                   </p>
                   <p className="text-xs text-ink-muted">
+                    {m.startDate && (
+                      <>
+                        {new Date(m.startDate).toLocaleDateString('pt-AO')} →{' '}
+                      </>
+                    )}
                     {new Date(m.dueDate).toLocaleDateString('pt-AO')}
                   </p>
                 </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={m.progress ?? (m.completedAt ? 100 : 0)}
+                  onChange={(e) =>
+                    commitMilestoneRange(m.id, { progress: parseInt(e.target.value, 10) })
+                  }
+                  className="w-24"
+                  aria-label={`Progresso de ${m.title}`}
+                />
+                <span className="text-xs font-mono text-ink-muted w-10 text-right">
+                  {m.progress ?? 0}%
+                </span>
               </div>
             ))}
             {project.milestones.length === 0 && (
-              <p className="text-sm text-ink-muted text-center py-8">Sem marcos definidos</p>
+              <p className="text-sm text-ink-muted text-center py-4">Sem marcos definidos</p>
             )}
           </div>
         </section>

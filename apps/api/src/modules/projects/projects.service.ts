@@ -327,7 +327,9 @@ export class ProjectsService {
           projectId,
           title: dto.title,
           description: dto.description ?? null,
+          startDate: dto.startDate ? new Date(dto.startDate) : null,
           dueDate: new Date(dto.dueDate),
+          progress: dto.progress ?? 0,
           dependsOnId: dto.dependsOnId ?? null,
           position: dto.position ?? count,
         },
@@ -354,7 +356,11 @@ export class ProjectsService {
         data: {
           ...(dto.title !== undefined && { title: dto.title }),
           ...(dto.description !== undefined && { description: dto.description }),
+          ...(dto.startDate !== undefined && {
+            startDate: dto.startDate ? new Date(dto.startDate) : null,
+          }),
           ...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
+          ...(dto.progress !== undefined && { progress: dto.progress }),
           ...(dto.dependsOnId !== undefined && { dependsOnId: dto.dependsOnId }),
           ...(dto.position !== undefined && { position: dto.position }),
           ...(dto.completedAt !== undefined && {

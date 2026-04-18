@@ -62,7 +62,9 @@ export const updateMemberSchema = addMemberSchema.partial().omit({ userId: true 
 export const createMilestoneSchema = z.object({
   title: z.string().min(1).max(300),
   description: z.string().optional(),
+  startDate: z.string().datetime().optional().nullable(),
   dueDate: z.string().datetime(),
+  progress: z.number().int().min(0).max(100).optional(),
   dependsOnId: z.string().uuid().optional().nullable(),
   position: z.number().int().min(0).optional(),
 });

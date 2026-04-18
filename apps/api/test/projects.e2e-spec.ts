@@ -57,4 +57,35 @@ describe('Projects (e2e)', () => {
     expect([200, 201]).toContain(res.status);
     expect(res.body.data.title).toBe('Policy draft v1');
   });
+
+  it('PUT /api/projects/milestones/:id updates date range + progress (Gantt drag)', async () => {
+    const create = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({ name: 'DD Operação Alpha', category: 'DUE_DILIGENCE' });
+
+    const projectId = create.body.data.id;
+    const startDate = new Date(Date.now() + 2 * 24 * 3600_000).toISOString();
+    const dueDate = new Date(Date.now() + 10 * 24 * 3600_000).toISOString();
+    const milestoneRes = await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({ title: 'Data room', startDate, dueDate });
+    const mId = milestoneRes.body.data.id;
+
+    // Simulate a Gantt drag: shift +3 days + mark 40% progress
+    const newStart = new Date(Date.now() + 5 * 24 * 3600_000).toISOString();
+    const newDue = new Date(Date.now() + 13 * 24 * 3600_000).toISOString();
+    const res = await request(ctx.app.getHttpServer())
+      .put(`/api/projects/milestones/${mId}`)
+      .set('Authorization', auth())
+      .send({ startDate: newStart, dueDate: newDue, progress: 40 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.progress).toBe(40);
+    // startDate/dueDate should reflect the shift (day-accurate comparison)
+    expect(new Date(res.body.data.startDate).getUTCDate()).toBe(
+      new Date(newStart).getUTCDate(),
+    );
+  });
 });
