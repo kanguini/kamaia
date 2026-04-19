@@ -17,9 +17,8 @@
  * and gantt.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
 import { useApi } from '@/hooks/use-api'
 
 // ─────────────────────────────────────────────────────────────
@@ -87,17 +86,6 @@ interface CalendarEvent {
   type: string
 }
 
-interface GanttProject {
-  id: string
-  code: string
-  name: string
-  status: string
-  healthStatus: 'GREEN' | 'YELLOW' | 'RED'
-  startDate: string | null
-  endDate: string | null
-  _count?: { milestones: number }
-}
-
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
@@ -160,11 +148,7 @@ export default function DashboardPage() {
   const { data: calendarEvents } = useApi<CalendarEvent[]>(
     `/calendar/events?startDate=${today.toISOString()}&endDate=${windowEnd.toISOString()}`,
   )
-  const { data: projectsData } = useApi<{ data: GanttProject[] }>(
-    `/projects?status=ACTIVO&limit=8`,
-  )
 
-  const projects = projectsData?.data ?? []
   const prazosAll = [
     ...(upcomingPrazos?.upcoming ?? []),
     ...(upcomingPrazos?.overdue ?? []),
@@ -727,9 +711,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* MAIN 2-COL */}
+        {/* MAIN — capacity ring + month calendar, side-by-side */}
         <div className="k2-dash-main">
-          {/* LEFT — capacity + calendar */}
           <div>
             <div className="k2-section-label">
               <span>Capacidade · esta semana</span>
@@ -740,39 +723,21 @@ export default function DashboardPage() {
               target={billableTarget}
               pct={capacityPct}
             />
+          </div>
 
+          <div>
             <div className="k2-section-label">
-              <span>Próximos 14 dias</span>
+              <span>Agenda do mês</span>
               <span className="num">
                 {prazosAll.length + (calendarEvents?.length ?? 0)} eventos
               </span>
               <span className="line" />
             </div>
-            <DeadlineTimeline
+            <MonthCalendar
               today={today}
               prazos={prazosAll}
               events={calendarEvents ?? []}
             />
-          </div>
-
-          {/* RIGHT — gantt + quick actions */}
-          <div>
-            <div className="k2-section-label">
-              <span>Projectos activos</span>
-              <span className="num">
-                {(exec?.operational.activeProjects ?? 0)
-                  .toString()
-                  .padStart(2, '0')}
-              </span>
-              <span className="line" />
-            </div>
-            <ProjectsGantt projects={projects} />
-
-            <div className="k2-section-label" style={{ marginTop: 40 }}>
-              <span>Acções rápidas</span>
-              <span className="line" />
-            </div>
-            <QuickActions />
           </div>
         </div>
       </div>
@@ -950,7 +915,8 @@ function CapacityViz({
   )
 }
 
-function DeadlineTimeline({
+
+function MonthCalendar({
   today,
   prazos,
   events,
@@ -959,271 +925,236 @@ function DeadlineTimeline({
   prazos: UpcomingPrazo[]
   events: CalendarEvent[]
 }) {
-  const cells = useMemo(() => {
-    // Bucket prazos + events by day offset from today
-    const dayBuckets: Array<{ bad: number; warn: number; ok: number }> = Array.from(
-      { length: 14 },
-      () => ({ bad: 0, warn: 0, ok: 0 }),
-    )
+  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
 
-    const put = (iso: string, tone: 'bad' | 'warn' | 'ok') => {
-      const d = new Date(iso)
-      d.setHours(0, 0, 0, 0)
-      const diff = Math.floor((d.getTime() - today.getTime()) / 86_400_000)
-      if (diff < 0 || diff >= 14) return
-      dayBuckets[diff][tone]++
-    }
-
+  // Bucket markers by YYYY-MM-DD key
+  const markers = useMemo(() => {
+    const map = new Map<string, { urgent: boolean; prazo: boolean; event: boolean }>()
+    const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
     prazos.forEach((p) => {
-      const tone = p.isUrgent
-        ? 'bad'
-        : new Date(p.dueDate) < today
-          ? 'bad'
-          : 'warn'
-      put(p.dueDate, tone)
+      const d = new Date(p.dueDate)
+      const k = key(d)
+      const prev = map.get(k) ?? { urgent: false, prazo: false, event: false }
+      prev.prazo = true
+      if (p.isUrgent) prev.urgent = true
+      map.set(k, prev)
     })
     events.forEach((e) => {
-      put(e.startAt, 'ok')
+      const d = new Date(e.startAt)
+      const k = key(d)
+      const prev = map.get(k) ?? { urgent: false, prazo: false, event: false }
+      prev.event = true
+      map.set(k, prev)
     })
+    return map
+  }, [prazos, events])
 
-    const DOW = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
-    return Array.from({ length: 14 }, (_, i) => {
-      const d = new Date(today)
-      d.setDate(today.getDate() + i)
-      const b = dayBuckets[i]
-      return {
-        date: d,
-        dow: DOW[d.getDay()],
-        isWeekend: d.getDay() === 0 || d.getDay() === 6,
-        buckets: b,
-        total: b.bad + b.warn + b.ok,
-        offset: i,
-      }
-    })
-  }, [today, prazos, events])
+  const monthLabel = cursor
+    .toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+    .replace(/^./, (c: string) => c.toUpperCase())
+
+  // 6-week grid starting on Sunday
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
+  const firstOfMonth = new Date(year, month, 1)
+  const startWeekday = firstOfMonth.getDay() // 0 = Sunday
+  const gridStart = new Date(year, month, 1 - startWeekday)
+
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+
+  const cells = Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(gridStart)
+    d.setDate(gridStart.getDate() + i)
+    const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    return {
+      date: d,
+      inMonth: d.getMonth() === month,
+      isToday: k === todayKey,
+      marker: markers.get(k) ?? null,
+    }
+  })
+
+  const shift = (delta: number) => {
+    const next = new Date(cursor)
+    next.setMonth(next.getMonth() + delta)
+    setCursor(next)
+  }
+
+  const DOW_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
   return (
-    <div>
-      <div className="k2-cal-head">
-        {cells.map((c, i) => (
-          <div key={i} className="k2-cal-dow">
-            {c.dow}
+    <div className="k2-mc">
+      <header className="k2-mc-head">
+        <button
+          type="button"
+          className="k2-mc-nav"
+          aria-label="Mês anterior"
+          onClick={() => shift(-1)}
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+        <div className="k2-mc-title">{monthLabel}</div>
+        <button
+          type="button"
+          className="k2-mc-nav"
+          aria-label="Mês seguinte"
+          onClick={() => shift(1)}
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+      </header>
+
+      <div className="k2-mc-dow">
+        {DOW_LABELS.map((d) => (
+          <div key={d} className="k2-mc-dow-cell">
+            {d}
           </div>
         ))}
       </div>
-      <div className="k2-cal-grid">
+
+      <div className="k2-mc-grid">
         {cells.map((c, i) => {
-          const classes = ['k2-cal-cell']
-          if (i === 0) classes.push('today')
-          else if (c.isWeekend) classes.push('weekend')
+          const classes = ['k2-mc-cell']
+          if (!c.inMonth) classes.push('out')
+          if (c.isToday) classes.push('today')
+          if (c.marker?.urgent) classes.push('has-urgent')
+          else if (c.marker?.prazo) classes.push('has-prazo')
+          else if (c.marker?.event) classes.push('has-event')
           return (
-            <div key={i} className={classes.join(' ')} title={`${c.total} evento(s)`}>
-              <div>
-                <div className="k2-cal-day">{c.date.getDate()}</div>
-                <div className="k2-cal-month">
-                  {c.date
-                    .toLocaleDateString('pt-PT', { month: 'short' })
-                    .replace('.', '')}
-                </div>
-              </div>
-              {c.total > 0 && <div className="k2-cal-count">{c.total}</div>}
-              <div className="k2-cal-events">
-                {Array.from({ length: c.buckets.bad }).map((_, j) => (
-                  <div key={`b${j}`} className="k2-cal-ev bad" />
-                ))}
-                {Array.from({ length: c.buckets.warn }).map((_, j) => (
-                  <div key={`w${j}`} className="k2-cal-ev warn" />
-                ))}
-                {Array.from({ length: c.buckets.ok }).map((_, j) => (
-                  <div key={`o${j}`} className="k2-cal-ev ok" />
-                ))}
-              </div>
+            <div
+              key={i}
+              className={classes.join(' ')}
+              title={c.marker ? 'Tem eventos' : ''}
+            >
+              <span className="num">{c.date.getDate()}</span>
             </div>
           )
         })}
       </div>
-      <div className="k2-cal-legend">
+
+      <div className="k2-mc-legend">
         <span>
-          <span className="k2-cal-legend-dot" style={{ background: 'var(--k2-text)' }} />
-          Urgente
+          <span className="dot urgent" /> Urgente
         </span>
         <span>
-          <span
-            className="k2-cal-legend-dot"
-            style={{ background: 'var(--k2-text-dim)' }}
-          />
-          Prazo
+          <span className="dot prazo" /> Prazo
         </span>
         <span>
-          <span
-            className="k2-cal-legend-dot"
-            style={{ background: 'var(--k2-text-mute)' }}
-          />
-          Agenda
+          <span className="dot event" /> Agenda
         </span>
       </div>
-    </div>
-  )
-}
 
-function ProjectsGantt({ projects }: { projects: GanttProject[] }) {
-  // Compute a shared timeline: min(startDate) → max(endDate)
-  const today = Date.now()
-  const spans = useMemo(() => {
-    if (projects.length === 0) return null
-    const starts = projects
-      .map((p) => (p.startDate ? new Date(p.startDate).getTime() : null))
-      .filter((x): x is number => x !== null)
-    const ends = projects
-      .map((p) => (p.endDate ? new Date(p.endDate).getTime() : null))
-      .filter((x): x is number => x !== null)
-    if (!starts.length || !ends.length) return null
-    const min = Math.min(...starts, today - 30 * 86_400_000)
-    const max = Math.max(...ends, today + 30 * 86_400_000)
-    return { min, max, range: max - min }
-  }, [projects, today])
-
-  if (!spans || projects.length === 0) {
-    return (
-      <div
-        style={{
-          padding: '32px 16px',
-          textAlign: 'center',
-          color: 'var(--k2-text-dim)',
-          fontSize: 13,
-        }}
-      >
-        Sem projectos activos com datas definidas.
-      </div>
-    )
-  }
-
-  const toneFor = (h: 'GREEN' | 'YELLOW' | 'RED'): 'ok' | 'warn' | 'bad' =>
-    h === 'RED' ? 'bad' : h === 'YELLOW' ? 'warn' : 'ok'
-
-  const nowPct = ((today - spans.min) / spans.range) * 100
-
-  return (
-    <div className="k2-gantt">
-      <div className="k2-gantt-head">
-        <div>
-          {projects.length} projectos · {projects.filter((p) => p.healthStatus !== 'GREEN').length}{' '}
-          em atenção
-        </div>
-        <div style={{ fontSize: 10 }}>
-          {new Date(spans.min).toLocaleDateString('pt-PT', {
-            month: 'short',
-          })}{' '}
-          →{' '}
-          {new Date(spans.max).toLocaleDateString('pt-PT', {
-            month: 'short',
-          })}
-        </div>
-      </div>
-      {projects.slice(0, 6).map((p, i) => {
-        const start = p.startDate ? new Date(p.startDate).getTime() : spans.min
-        const end = p.endDate ? new Date(p.endDate).getTime() : spans.max
-        const leftPct = ((start - spans.min) / spans.range) * 100
-        const widthPct = ((end - start) / spans.range) * 100
-        const tone = toneFor(p.healthStatus)
-        return (
-          <Link
-            key={p.id}
-            href={`/projectos/${p.id}`}
-            className="k2-gantt-row"
-            style={{ textDecoration: 'none' }}
-          >
-            <div className="k2-gantt-label">
-              <div className="k2-gantt-num">{String(i + 1).padStart(2, '0')}</div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="k2-gantt-title">{p.name}</div>
-                <div className="k2-gantt-phase">
-                  <span className={`dot ${tone}`} />
-                  {p.code}
-                </div>
-              </div>
-            </div>
-            <div className="k2-gantt-track">
-              <div
-                className={`k2-gantt-bar ${tone}`}
-                style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%` }}
-              />
-              {nowPct >= 0 && nowPct <= 100 && (
-                <div className="k2-gantt-now" style={{ left: `${nowPct}%` }} />
-              )}
-            </div>
-          </Link>
-        )
-      })}
-    </div>
-  )
-}
-
-function QuickActions() {
-  const items: Array<{ href: string; icon: React.ReactNode; label: string; hint: string }> = [
-    {
-      href: '/facturas/nova',
-      label: 'Emitir factura',
-      hint: 'Agregar timesheets',
-      icon: (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="5" y="3" width="14" height="18" rx="2" />
-          <path d="M9 7h6M9 11h6M9 15h4" />
-        </svg>
-      ),
-    },
-    {
-      href: '/projectos/novo',
-      label: 'Novo projecto',
-      hint: 'M&A, Compliance…',
-      icon: (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="7" width="18" height="13" rx="2" />
-          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-        </svg>
-      ),
-    },
-    {
-      href: '/prazos/novo',
-      label: 'Registar prazo',
-      hint: 'Dias úteis automáticos',
-      icon: (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx={12} cy={12} r={9} />
-          <path d="M12 7v5l3 2" />
-        </svg>
-      ),
-    },
-    {
-      href: '/ia-assistente',
-      label: 'IA Assistente',
-      hint: 'Redigir peça',
-      icon: (
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" />
-        </svg>
-      ),
-    },
-  ]
-  return (
-    <div className="k2-qa">
-      {items.map((it) => (
-        <Link
-          key={it.href}
-          href={it.href}
-          className="k2-qa-item"
-          style={{ textDecoration: 'none' }}
-        >
-          <span className="qa-icon">{it.icon}</span>
-          <span className="qa-label">{it.label}</span>
-          <span className="qa-hint">{it.hint}</span>
-          <span className="qa-arrow">
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </span>
-        </Link>
-      ))}
+      <style jsx>{`
+        .k2-mc {
+          padding: 8px 0 24px;
+        }
+        .k2-mc-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .k2-mc-title {
+          font-size: 15px;
+          font-weight: 500;
+          letter-spacing: -0.01em;
+          color: var(--k2-text);
+          text-transform: capitalize;
+        }
+        .k2-mc-nav {
+          width: 32px;
+          height: 32px;
+          display: inline-grid;
+          place-items: center;
+          background: var(--k2-bg-elev);
+          color: var(--k2-text-dim);
+          border: 1px solid var(--k2-border);
+          border-radius: 999px;
+          cursor: pointer;
+          transition: all 120ms;
+        }
+        .k2-mc-nav:hover {
+          color: var(--k2-text);
+          background: var(--k2-bg-hover);
+          border-color: var(--k2-border-strong);
+        }
+        .k2-mc-dow {
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 4px;
+          margin-bottom: 6px;
+        }
+        .k2-mc-dow-cell {
+          text-align: center;
+          font-size: 11px;
+          color: var(--k2-text-mute);
+          letter-spacing: 0.06em;
+          padding: 4px 0;
+        }
+        .k2-mc-grid {
+          display: grid;
+          grid-template-columns: repeat(7, minmax(0, 1fr));
+          gap: 4px;
+        }
+        .k2-mc-cell {
+          aspect-ratio: 1;
+          display: grid;
+          place-items: center;
+          border-radius: 999px;
+          font-variant-numeric: tabular-nums;
+          color: var(--k2-text);
+          font-size: 14px;
+          transition: background 120ms, color 120ms;
+          position: relative;
+        }
+        .k2-mc-cell.out { color: var(--k2-text-mute); opacity: 0.45; }
+        .k2-mc-cell.has-event {
+          background: color-mix(in oklch, var(--k2-text-mute) 18%, transparent);
+        }
+        .k2-mc-cell.has-prazo {
+          background: color-mix(in oklch, var(--k2-accent) 22%, transparent);
+          color: var(--k2-text);
+        }
+        .k2-mc-cell.has-urgent {
+          background: color-mix(in oklch, var(--k2-bad) 32%, transparent);
+          color: var(--k2-text);
+        }
+        .k2-mc-cell.today {
+          background: var(--k2-text);
+          color: var(--k2-bg);
+          font-weight: 600;
+        }
+        .k2-mc-cell.today.has-urgent,
+        .k2-mc-cell.today.has-prazo,
+        .k2-mc-cell.today.has-event {
+          background: var(--k2-text);
+          color: var(--k2-bg);
+        }
+        .k2-mc-legend {
+          display: flex;
+          gap: 18px;
+          margin-top: 18px;
+          font-size: 11px;
+          color: var(--k2-text-dim);
+        }
+        .k2-mc-legend span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .k2-mc-legend .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .k2-mc-legend .dot.urgent { background: var(--k2-bad); }
+        .k2-mc-legend .dot.prazo  { background: var(--k2-accent); }
+        .k2-mc-legend .dot.event  { background: var(--k2-text-mute); }
+      `}</style>
     </div>
   )
 }
