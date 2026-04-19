@@ -30,15 +30,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           min-height: 100vh;
           display: grid;
           grid-template-columns: 1.1fr 0.9fr;
+          align-items: start;          /* permitir que cada coluna siga o seu próprio height */
           background: var(--k2-bg);
           color: var(--k2-text);
           font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
           font-feature-settings: 'tnum', 'zero';
         }
 
-        /* ── Brand panel (animated gradient) ── */
+        /* ── Brand panel (animated gradient) ──
+           position: sticky mantém o painel visível enquanto o formulário
+           cresce (página de registo com 8 campos transborda 100vh). */
         .k2-auth-brand {
-          position: relative;
+          position: sticky;
+          top: 0;
+          height: 100vh;
           overflow: hidden;
           isolation: isolate;
           color: #fff;
@@ -46,7 +51,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           display: flex;
           flex-direction: column;
           justify-content: flex-end;
-          min-height: 100vh;
           background: #0A0F1F;
         }
 
@@ -124,19 +128,24 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         }
         .k2-auth-slogan p + p { margin-top: 4px; }
 
-        /* ── Form panel ── */
+        /* ── Form panel ──
+           Sem justify-content: center. Usamos padding vertical via clamp
+           para que formulários curtos (login) fiquem ~centrados e
+           formulários longos (registo) possam fluir sem cortar. A página
+           scrolla naturalmente; o painel brand à esquerda fica sticky. */
         .k2-auth-form {
-          padding: 48px;
+          min-height: 100vh;
+          padding: clamp(40px, 8vh, 80px) clamp(24px, 6vw, 64px);
           display: flex;
           flex-direction: column;
-          justify-content: center;
+          align-items: center;
           background: var(--k2-bg);
         }
         .k2-auth-form > div.form-wrap {
           display: flex;
           flex-direction: column;
           max-width: 380px;
-          margin: 0 auto;
+          margin: auto 0;              /* centra verticalmente se houver espaço */
           width: 100%;
         }
 
@@ -338,10 +347,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         @media (max-width: 860px) {
           .k2-auth { grid-template-columns: 1fr; }
           .k2-auth-brand {
-            min-height: auto;
+            position: static;          /* stop being sticky when stacked */
+            height: auto;
+            min-height: 220px;
             padding: 28px 28px 36px;
             gap: 24px;
           }
+          .k2-auth-form { min-height: auto; }
           .k2-auth-slogan p { font-size: 22px; }
           .k2-auth-form { padding: 32px 24px 48px; }
         }
