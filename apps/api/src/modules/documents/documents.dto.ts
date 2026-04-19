@@ -14,7 +14,7 @@ export const updateDocumentSchema = z.object({
 
 export const listDocumentsSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  limit: z.coerce.number().min(1).max(500).default(20),
   category: z.nativeEnum(DocumentCategory).optional(),
   processoId: z.string().uuid().optional(),
   search: z.string().optional(),

@@ -14,7 +14,7 @@ export const updateTimeEntrySchema = createTimeEntrySchema.partial().omit({ proc
 
 export const listTimeEntriesSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   processoId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
   category: z.nativeEnum(TimeEntryCategory).optional(),

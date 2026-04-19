@@ -42,7 +42,7 @@ export const updateProjectSchema = createProjectSchema
 
 export const listProjectsSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   status: status.optional(),
   category: category.optional(),
   managerId: z.string().uuid().optional(),
@@ -53,7 +53,7 @@ export const listProjectsSchema = z.object({
 export const addMemberSchema = z.object({
   userId: z.string().uuid(),
   role: raci,
-  allocationPct: z.number().int().min(1).max(100).optional(),
+  allocationPct: z.number().int().min(1).max(500).optional(),
   hourlyRate: z.number().int().min(0).optional(),
 });
 
@@ -64,7 +64,7 @@ export const createMilestoneSchema = z.object({
   description: z.string().optional(),
   startDate: z.string().datetime().optional().nullable(),
   dueDate: z.string().datetime(),
-  progress: z.number().int().min(0).max(100).optional(),
+  progress: z.number().int().min(0).max(500).optional(),
   dependsOnId: z.string().uuid().optional().nullable(),
   position: z.number().int().min(0).optional(),
 });

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const listInvoicesSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   status: z
     .enum(['DRAFT', 'SENT', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'VOID'])
     .optional(),
@@ -25,7 +25,7 @@ export const createInvoiceSchema = z.object({
   processoId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
   dueDate: z.string().datetime().optional(),
-  taxRate: z.number().min(0).max(100).optional(),
+  taxRate: z.number().min(0).max(500).optional(),
   notes: z.string().optional().nullable(),
   termsText: z.string().optional().nullable(),
   timeEntryIds: z.array(z.string().uuid()).optional(),
@@ -44,7 +44,7 @@ export const createInvoiceSchema = z.object({
 
 export const updateInvoiceSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
-  taxRate: z.number().min(0).max(100).optional(),
+  taxRate: z.number().min(0).max(500).optional(),
   notes: z.string().optional().nullable(),
   termsText: z.string().optional().nullable(),
 });

@@ -37,7 +37,7 @@ export const createEventSchema = z.object({
 
 export const listProcessosSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   status: z.nativeEnum(ProcessoStatus).optional(),
   type: z.nativeEnum(ProcessoType).optional(),
   advogadoId: z.string().uuid().optional(),
@@ -48,7 +48,7 @@ export const listProcessosSchema = z.object({
 
 export const listEventsSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
 });
 
 export type CreateProcessoDto = z.infer<typeof createProcessoSchema>;

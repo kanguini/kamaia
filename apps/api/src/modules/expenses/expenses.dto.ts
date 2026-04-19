@@ -13,7 +13,7 @@ export const updateExpenseSchema = createExpenseSchema.partial().omit({ processo
 
 export const listExpensesSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   processoId: z.string().uuid().optional(),
   category: z.nativeEnum(ExpenseCategory).optional(),
   dateFrom: z.string().optional(),

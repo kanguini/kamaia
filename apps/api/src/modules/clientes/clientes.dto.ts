@@ -14,7 +14,7 @@ export const updateClienteSchema = createClienteSchema.partial();
 
 export const listClientesSchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   type: z.enum(['INDIVIDUAL', 'EMPRESA']).optional(),
   search: z.string().optional(),
 });
