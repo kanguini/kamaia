@@ -110,6 +110,27 @@ function formatShortDate(iso: string | null): string {
 function initialsOf(name: string): string {
   return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 }
+/**
+ * Only return a Workflow if it has a usable `stages` array. The /projects
+ * list endpoint embeds a shallow workflow ({id, name}) without stages, so
+ * falling back to it naively crashes MiniTimeline / curIdx math. Prefer the
+ * full workflow fetched via /workflows?scope=PROJECT; otherwise treat as
+ * absent.
+ */
+function resolveWorkflow(
+  mapped: Workflow | undefined,
+  embedded: ProjectListRow['workflow'],
+): Workflow | undefined {
+  if (mapped && Array.isArray(mapped.stages) && mapped.stages.length > 0) return mapped
+  if (
+    embedded &&
+    Array.isArray((embedded as Partial<Workflow>).stages) &&
+    ((embedded as Workflow).stages?.length ?? 0) > 0
+  ) {
+    return embedded as Workflow
+  }
+  return undefined
+}
 
 // ─────────────────────────────────────────────────────────────
 // Page
@@ -355,10 +376,7 @@ export default function ProjectosPage() {
               key={p.id}
               project={p}
               expanded={expandedId === p.id}
-              workflow={
-                workflowForCategory.get(p.category) ??
-                (p.workflow as Workflow | undefined)
-              }
+              workflow={resolveWorkflow(workflowForCategory.get(p.category), p.workflow)}
               onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
               onOpen={() => router.push(`/projectos/${p.id}`)}
               onChangeStage={(sid) => changeStage(p.id, sid)}
@@ -394,17 +412,18 @@ function ProjectRow({
 
   // Derive current stage from endDate position within startDate→endDate
   const curIdx = useMemo(() => {
-    if (!workflow) return 0
-    if (project.status === 'CONCLUIDO') return workflow.stages.length - 1
+    const stages = workflow?.stages
+    if (!stages || stages.length === 0) return 0
+    if (project.status === 'CONCLUIDO') return stages.length - 1
     // Use time progression as a rough proxy
     const start = project.startDate ? new Date(project.startDate).getTime() : 0
     const end = project.endDate ? new Date(project.endDate).getTime() : 0
     if (!start || !end || end <= start) return 0
     const now = Date.now()
     const pct = Math.max(0, Math.min(1, (now - start) / (end - start)))
-    return Math.min(workflow.stages.length - 1, Math.floor(pct * workflow.stages.length))
+    return Math.min(stages.length - 1, Math.floor(pct * stages.length))
   }, [workflow, project])
-  const curStage = workflow?.stages[curIdx]
+  const curStage = workflow?.stages?.[curIdx]
 
   const nextDue = project.endDate ? formatLeft(project.endDate) : null
 
@@ -569,7 +588,15 @@ function ProjectRow({
 }
 
 function MiniTimeline({ workflow, curIdx }: { workflow: Workflow; curIdx: number }) {
-  const total = workflow.stages.length
+  const stages = workflow.stages ?? []
+  if (stages.length === 0) {
+    return (
+      <div style={{ color: 'var(--k2-text-mute)', fontSize: 12 }}>
+        Workflow sem etapas definidas.
+      </div>
+    )
+  }
+  const total = stages.length
   const pct = Math.max(0, ((curIdx + 0.5) / total) * 100)
   return (
     <div className="px-timeline">
@@ -579,7 +606,7 @@ function MiniTimeline({ workflow, curIdx }: { workflow: Workflow; curIdx: number
         className="px-timeline-steps"
         style={{ gridTemplateColumns: `repeat(${total}, 1fr)` }}
       >
-        {workflow.stages.map((s, i) => {
+        {stages.map((s, i) => {
           const state = i < curIdx ? 'done' : i === curIdx ? 'current' : ''
           return (
             <div key={s.id} className={`px-timeline-step ${state}`}>
