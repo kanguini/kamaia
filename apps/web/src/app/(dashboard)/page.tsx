@@ -1049,25 +1049,29 @@ function MonthCalendar({
       </div>
 
       <style jsx>{`
+        /* Compact calendar — fits in the same row as the capacity ring
+           without forcing the page to grow. Cells are squat rectangles
+           (~34px tall) instead of squares so the whole 6-week grid fits
+           in ~250px. */
         .k2-mc {
-          padding: 8px 0 24px;
+          padding: 4px 0 0;
         }
         .k2-mc-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 10px;
         }
         .k2-mc-title {
-          font-size: 15px;
+          font-size: 13px;
           font-weight: 500;
           letter-spacing: -0.01em;
           color: var(--k2-text);
           text-transform: capitalize;
         }
         .k2-mc-nav {
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           display: inline-grid;
           place-items: center;
           background: var(--k2-bg-elev);
@@ -1085,29 +1089,29 @@ function MonthCalendar({
         .k2-mc-dow {
           display: grid;
           grid-template-columns: repeat(7, minmax(0, 1fr));
-          gap: 4px;
-          margin-bottom: 6px;
+          gap: 3px;
+          margin-bottom: 4px;
         }
         .k2-mc-dow-cell {
           text-align: center;
-          font-size: 11px;
+          font-size: 10px;
           color: var(--k2-text-mute);
           letter-spacing: 0.06em;
-          padding: 4px 0;
+          padding: 2px 0;
         }
         .k2-mc-grid {
           display: grid;
           grid-template-columns: repeat(7, minmax(0, 1fr));
-          gap: 4px;
+          gap: 3px;
         }
         .k2-mc-cell {
-          aspect-ratio: 1;
+          height: 32px;
           display: grid;
           place-items: center;
-          border-radius: 999px;
+          border-radius: 8px;
           font-variant-numeric: tabular-nums;
           color: var(--k2-text);
-          font-size: 14px;
+          font-size: 12px;
           transition: background 120ms, color 120ms;
           position: relative;
         }
@@ -1136,19 +1140,20 @@ function MonthCalendar({
         }
         .k2-mc-legend {
           display: flex;
-          gap: 18px;
-          margin-top: 18px;
-          font-size: 11px;
+          gap: 14px;
+          margin-top: 12px;
+          font-size: 10px;
           color: var(--k2-text-dim);
+          flex-wrap: wrap;
         }
         .k2-mc-legend span {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
         }
         .k2-mc-legend .dot {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
         }
         .k2-mc-legend .dot.urgent { background: var(--k2-bad); }
