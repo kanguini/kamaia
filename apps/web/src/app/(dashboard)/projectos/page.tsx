@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
   Sparkles, Search, Plus, Filter, Users, Briefcase, ChevronDown,
-  ChevronRight, ArrowUpRight, Pencil, Timer, FileText,
+  ArrowUpRight, Pencil, Timer, FileText,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { api } from '@/lib/api'
@@ -75,12 +75,6 @@ const STATUSES: { id: ProjectStatus; label: string; short: string }[] = [
   { id: ProjectStatus.EM_PAUSA, label: 'Em pausa', short: 'PAUS' },
   { id: ProjectStatus.CONCLUIDO, label: 'Concluído', short: 'CONC' },
   { id: ProjectStatus.CANCELADO, label: 'Cancelado', short: 'CANC' },
-]
-
-const HEALTH: { id: 'GREEN' | 'YELLOW' | 'RED'; label: string; cls: 'lo' | 'md' | 'hi' }[] = [
-  { id: 'GREEN', label: 'Saudável', cls: 'lo' },
-  { id: 'YELLOW', label: 'Atenção', cls: 'md' },
-  { id: 'RED', label: 'Crítico', cls: 'hi' },
 ]
 
 // ─────────────────────────────────────────────────────────────
@@ -144,7 +138,6 @@ export default function ProjectosPage() {
   const [catFilters, setCatFilters] = useState<ProjectCategory[]>([])
   const [clienteFilters, setClienteFilters] = useState<string[]>([])
   const [managerFilters, setManagerFilters] = useState<string[]>([])
-  const [healthFilters, setHealthFilters] = useState<Array<'GREEN' | 'YELLOW' | 'RED'>>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // `/` focuses search
@@ -182,21 +175,6 @@ export default function ProjectosPage() {
   const { data: membersData } = useApi<MemberOption[]>('/team/members')
   const members = membersData ?? []
 
-  // ── Counts for funnel ────────────────────────────────────
-  const counts = useMemo(() => {
-    const acc: Record<ProjectStatus, number> = {
-      [ProjectStatus.PROPOSTA]: 0,
-      [ProjectStatus.ACTIVO]: 0,
-      [ProjectStatus.EM_PAUSA]: 0,
-      [ProjectStatus.CONCLUIDO]: 0,
-      [ProjectStatus.CANCELADO]: 0,
-    }
-    projects.forEach((p) => {
-      acc[p.status] = (acc[p.status] ?? 0) + 1
-    })
-    return acc
-  }, [projects])
-
   // ── Apply filters ────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -205,7 +183,6 @@ export default function ProjectosPage() {
       if (catFilters.length && !catFilters.includes(p.category)) return false
       if (clienteFilters.length && (!p.cliente || !clienteFilters.includes(p.cliente.id))) return false
       if (managerFilters.length && !managerFilters.includes(p.manager.id)) return false
-      if (healthFilters.length && !healthFilters.includes(p.healthStatus)) return false
       if (q) {
         const blob = [p.code, p.name, p.cliente?.name, p.manager.firstName, p.manager.lastName]
           .filter(Boolean)
@@ -215,9 +192,7 @@ export default function ProjectosPage() {
       }
       return true
     })
-  }, [projects, search, statusFilter, catFilters, clienteFilters, managerFilters, healthFilters])
-
-  const criticalCount = projects.filter((p) => p.healthStatus === 'RED').length
+  }, [projects, search, statusFilter, catFilters, clienteFilters, managerFilters])
 
   const changeStage = async (projectId: string, stageId: string) => {
     if (!session?.accessToken) return
@@ -240,18 +215,9 @@ export default function ProjectosPage() {
     <div className="px-page">
       <style jsx global>{projectosStyles}</style>
 
-      {/* Header strip */}
+      {/* Header strip — minimal */}
       <div className="px-head">
-        <div>
-          <div className="px-title">
-            Projectos <span className="mono">{String(projects.length).padStart(2, '0')}</span>
-          </div>
-          <div className="px-sub">
-            {criticalCount > 0
-              ? `${criticalCount} projecto(s) em estado crítico — atenção`
-              : `${counts[ProjectStatus.ACTIVO]} activos, todos saudáveis`}
-          </div>
-        </div>
+        <div className="px-title">Projectos</div>
         <div className="px-head-actions">
           <button
             className="px-btn-ghost"
@@ -265,38 +231,7 @@ export default function ProjectosPage() {
         </div>
       </div>
 
-      {/* Funnel */}
-      <div className="px-funnel">
-        {STATUSES.map((st, i) => {
-          const count = counts[st.id] || 0
-          const total = projects.length || 1
-          const pct = (count / total) * 100
-          return (
-            <button
-              key={st.id}
-              className={`px-fstep ${statusFilter === st.id ? 'active' : ''}`}
-              onClick={() => setStatusFilter(statusFilter === st.id ? null : st.id)}
-            >
-              <div className="px-fstep-lbl">
-                <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                {st.label}
-              </div>
-              <div className="px-fstep-value mono">
-                {count}
-                <span className="hint">projecto{count === 1 ? '' : 's'}</span>
-              </div>
-              <div className="px-fstep-bar">
-                <div
-                  className="px-fstep-bar-fill"
-                  style={{ width: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
-                />
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Toolbar */}
+      {/* Toolbar — search + filter chips (Estado now lives here) */}
       <div className="px-toolbar">
         <div className="px-search">
           <Search size={14} />
@@ -312,6 +247,13 @@ export default function ProjectosPage() {
             </button>
           )}
         </div>
+        <FilterChip
+          icon={<Filter size={13} />}
+          label="Estado"
+          values={statusFilter ? [statusFilter] : []}
+          options={STATUSES.map((s) => ({ id: s.id, label: s.label }))}
+          onChange={(v) => setStatusFilter((v[0] as ProjectStatus) ?? null)}
+        />
         <FilterChip
           icon={<Filter size={13} />}
           label="Categoria"
@@ -339,26 +281,16 @@ export default function ProjectosPage() {
           }))}
           onChange={setManagerFilters}
         />
-        <FilterChip
-          icon={<Filter size={13} />}
-          label="Saúde"
-          values={healthFilters}
-          options={HEALTH.map((h) => ({ id: h.id, label: h.label }))}
-          onChange={(v) => setHealthFilters(v as Array<'GREEN' | 'YELLOW' | 'RED'>)}
-        />
       </div>
 
       {/* Table */}
       <div className="px-table-wrap">
        <div className="px-table">
         <div className="px-thead">
-          <div />
           <div>Projecto</div>
           <div>Cliente</div>
-          <div>Equipa</div>
-          <div>Fase</div>
           <div>Próximo marco</div>
-          <div>Saúde</div>
+          <div>Responsável</div>
           <div style={{ textAlign: 'right' }}>Estado</div>
         </div>
         {loading && projects.length === 0 ? (
@@ -407,9 +339,6 @@ function ProjectRow({
   onOpen: () => void
   onChangeStage: (sid: string) => void
 }) {
-  const cat = project.category
-  const catLabel = PROJECT_CATEGORY_LABELS[cat]
-  const health = HEALTH.find((h) => h.id === project.healthStatus)!
   const status = STATUSES.find((s) => s.id === project.status)!
 
   // Derive current stage from endDate position within startDate→endDate
@@ -425,8 +354,6 @@ function ProjectRow({
     const pct = Math.max(0, Math.min(1, (now - start) / (end - start)))
     return Math.min(stages.length - 1, Math.floor(pct * stages.length))
   }, [workflow, project])
-  const curStage = workflow?.stages?.[curIdx]
-
   const nextDue = project.endDate ? formatLeft(project.endDate) : null
 
   const clientInitials = project.cliente ? initialsOf(project.cliente.name) : '—'
@@ -439,66 +366,24 @@ function ProjectRow({
         role="button"
         tabIndex={0}
       >
-        <div className="px-row-chev">
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </div>
+        {/* Projecto */}
         <div className="px-cell-name">
-          <div className="px-cell-title">
-            <span className="ref mono">{project.code}</span>
-            <span className="name-text">{project.name}</span>
-          </div>
-          <div className="px-cell-sub">
-            <span className="px-tag">{catLabel}</span>
-            <span className="dot" />
-            <span>
-              {project._count?.processos ?? 0}{' '}
-              {project._count?.processos === 1 ? 'processo' : 'processos'}
-            </span>
-            <span className="dot" />
-            <span>{project._count?.milestones ?? 0} marcos</span>
-            <span className="dot" />
-            <span>
-              Gestor: {project.manager.firstName} {project.manager.lastName}
-            </span>
-          </div>
+          <span className="name-text">{project.name}</span>
         </div>
+        {/* Cliente */}
         <div className="px-client">
           {project.cliente ? (
             <>
               <div className="px-client-av">{clientInitials}</div>
-              <div className="px-client-meta">
-                <div className="px-client-name">{project.cliente.name}</div>
-                <div className="px-client-kind">Cliente</div>
-              </div>
+              <div className="px-client-name">{project.cliente.name}</div>
             </>
           ) : (
-            <div className="px-client-meta">
-              <div className="px-client-name" style={{ color: 'var(--k2-text-mute)' }}>
-                Interno
-              </div>
-              <div className="px-client-kind">Sem cliente</div>
+            <div className="px-client-name" style={{ color: 'var(--k2-text-mute)' }}>
+              Interno
             </div>
           )}
         </div>
-        <div>
-          <div className="px-members-count">{project._count?.members ?? 1}</div>
-        </div>
-        <div className="px-progress">
-          <div className="px-progress-top">
-            <span className="phase">{curStage?.label ?? '—'}</span>
-            <span className="pct mono">
-              {curIdx + 1}/{workflow?.stages.length ?? 1}
-            </span>
-          </div>
-          <div className="px-progress-bar">
-            {(workflow?.stages ?? [{ id: '_' } as WorkflowStage]).map((s, i) => (
-              <div
-                key={s.id}
-                className={`px-progress-seg ${i < curIdx ? 'done' : i === curIdx ? 'current' : ''}`}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Próximo marco */}
         <div className="px-deadline">
           {nextDue ? (
             <>
@@ -510,26 +395,18 @@ function ProjectRow({
               </div>
             </>
           ) : (
-            <>
-              <div className="px-deadline-date" style={{ color: 'var(--k2-text-mute)' }}>
-                —
-              </div>
-              <div className="px-deadline-left">Sem fim definido</div>
-            </>
+            <div className="px-deadline-left" style={{ color: 'var(--k2-text-mute)' }}>
+              —
+            </div>
           )}
         </div>
-        <div>
-          <span className={`px-risk ${health.cls}`}>
-            <span className="dot" />
-            {health.label}
-          </span>
+        {/* Responsável */}
+        <div className="px-manager">
+          {project.manager.firstName} {project.manager.lastName}
         </div>
-        <div className="px-wip">
-          <div className="px-wip-val mono">{status.short}</div>
-          <div className="px-wip-sub">
-            {project._count?.members ?? 1}{' '}
-            {project._count?.members === 1 ? 'membro' : 'membros'}
-          </div>
+        {/* Estado — sinal colorido */}
+        <div className="px-status" title={status.label} aria-label={`Estado: ${status.label}`}>
+          <span className={`px-status-dot ${status.id.toLowerCase()}`} />
         </div>
       </div>
       {expanded && (
@@ -577,7 +454,6 @@ function ProjectRow({
                   value={project.endDate ? formatShortDate(project.endDate) : '—'}
                 />
                 <Fact label="Estado" value={status.label} />
-                <Fact label="Saúde" value={health.label} />
                 <Fact label="Processos" value={String(project._count?.processos ?? 0)} />
                 <Fact label="Marcos" value={String(project._count?.milestones ?? 0)} />
               </div>
@@ -867,13 +743,13 @@ const projectosStyles = `
   background: var(--k2-bg-elev);
 }
 .px-table {
-  min-width: 1100px;
+  min-width: 720px;
 }
 .px-thead, .px-row {
   display: grid;
-  grid-template-columns: 32px 2.2fr 1.4fr 52px 1.3fr 1.1fr 0.9fr 0.7fr;
-  gap: 12px; align-items: center;
-  padding: 12px 20px; border-bottom: 1px solid var(--k2-border);
+  grid-template-columns: 2.4fr 1.4fr 1.4fr 1.2fr 80px;
+  gap: 16px; align-items: center;
+  padding: 14px 20px; border-bottom: 1px solid var(--k2-border);
 }
 .px-thead {
   background: var(--k2-bg-elev-2);
@@ -919,10 +795,31 @@ const projectosStyles = `
 }
 .px-client-meta { min-width: 0; }
 .px-client-name {
-  font-size: 12px; color: var(--k2-text);
+  font-size: 13px; color: var(--k2-text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0;
 }
 .px-client-kind { font-size: 10px; color: var(--k2-text-mute); }
+
+.px-manager {
+  font-size: 13px; color: var(--k2-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Status signal — single coloured dot, centred, colour by status id */
+.px-status {
+  display: flex; justify-content: flex-end; align-items: center;
+}
+.px-status-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 18%, transparent);
+}
+.px-status-dot.proposta  { background: var(--k2-warn); color: var(--k2-warn); }
+.px-status-dot.activo    { background: var(--k2-good); color: var(--k2-good); }
+.px-status-dot.em_pausa  { background: var(--k2-text-mute); color: var(--k2-text-mute); }
+.px-status-dot.concluido { background: var(--k2-accent); color: var(--k2-accent); }
+.px-status-dot.cancelado { background: var(--k2-bad); color: var(--k2-bad); }
 
 .px-members-count {
   font-size: 15px; font-weight: 500; color: var(--k2-text);
