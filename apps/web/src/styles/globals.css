@@ -2,6 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═════════════════════════════════════════════════════════════
+   Kamaia 2.0 tokens — scoped alongside legacy tokens so we can
+   roll out the new design surface-by-surface without breaking
+   the existing pages. Reference: Claude Design "kamaia-2-0".
+   ═════════════════════════════════════════════════════════════ */
+@layer base {
+  :root {
+    /* Light — pure whites + deep-ink */
+    --k2-bg: #ffffff;
+    --k2-bg-elev: #fafafa;
+    --k2-bg-elev-2: #f0f0f0;
+    --k2-bg-hover: #ededed;
+    --k2-border: #e4e4e4;
+    --k2-border-strong: #d0d0d0;
+    --k2-text: #000000;
+    --k2-text-dim: #5a5a5a;
+    --k2-text-mute: #a0a0a0;
+    --k2-accent: #2952d9;
+    --k2-accent-dim: #1e3fb8;
+    --k2-accent-fg: #ffffff;
+    --k2-good: #2a9e5c;
+    --k2-warn: #c8891a;
+    --k2-bad: #c2404f;
+    --k2-radius: 10px;
+    --k2-radius-sm: 7px;
+    --k2-radius-lg: 14px;
+    --k2-sidebar-w: 248px;
+    --k2-topbar-h: 60px;
+  }
+
+  .dark {
+    --k2-bg: #000000;
+    --k2-bg-elev: #0e0e0e;
+    --k2-bg-elev-2: #161616;
+    --k2-bg-hover: #1a1a1a;
+    --k2-border: #1c1c1c;
+    --k2-border-strong: #2a2a2a;
+    --k2-text: #ffffff;
+    --k2-text-dim: #a0a0a0;
+    --k2-text-mute: #5c5c5c;
+    --k2-accent: #4a7dff;
+    --k2-accent-dim: #3460d9;
+    --k2-accent-fg: #ffffff;
+    --k2-good: #6be49a;
+    --k2-warn: #e4b86b;
+    --k2-bad: #e46b7a;
+  }
+}
+
 @layer base {
   /* ═══ LIGHT MODE (default) ═══ */
   :root {
