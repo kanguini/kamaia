@@ -30,8 +30,8 @@ export function Nav() {
       className={cn(
         'sticky top-0 z-40 transition-[background-color,border-color,backdrop-filter] duration-200',
         scrolled
-          ? 'border-b border-white/5 bg-black/70 backdrop-blur-md'
-          : 'border-b border-transparent',
+          ? 'border-b border-white/10 bg-[#0a0f1f]/85 backdrop-blur-md'
+          : 'border-b border-transparent bg-transparent',
       )}
     >
       <div className="shell flex h-[68px] items-center justify-between">

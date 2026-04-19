@@ -91,6 +91,10 @@
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-14px); }
 }
+@keyframes k2-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.6); }
+}
 @media (prefers-reduced-motion: reduce) {
   .k2-float-a, .k2-float-b, .k2-float-c { animation: none !important; }
 }

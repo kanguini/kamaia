@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Nav } from '@/components/Nav'
 import { Footer } from '@/components/Footer'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
-import { DashboardMockup } from '@/components/DashboardMockup'
+import { HeroFloatingCards } from '@/components/HeroFloatingCards'
 import { Reveal } from '@/components/Reveal'
 import { appUrl } from '@/lib/utm'
 
@@ -27,7 +27,21 @@ export default function HomePage() {
 // ─── Hero ────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="relative min-h-screen flex flex-col overflow-hidden">
+    /*
+     * marginTop: -68px pulls the section up behind the sticky nav (68px tall).
+     * paddingTop: 68px compensates so content doesn't overlap the nav.
+     * overflow-x: clip prevents side-overflow from floating cards without
+     * creating a new scroll container (unlike overflow-x: hidden).
+     */
+    <section
+      className="relative flex flex-col"
+      style={{
+        marginTop: '-68px',
+        paddingTop: '68px',
+        minHeight: '100svh',
+        overflowX: 'clip',
+      }}
+    >
       <AnimatedGradient />
 
       {/* Dot-grid overlay */}
@@ -75,7 +89,7 @@ function Hero() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             href={appUrl('/register', 'hero_cta')}
-            className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02] shadow-lg"
+            className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
           >
             Começar grátis
           </Link>
@@ -93,102 +107,14 @@ function Hero() {
         </p>
       </div>
 
-      {/* ── Mockup frame ── */}
-      <div className="relative z-10 flex flex-1 items-end justify-center px-4 pb-0">
-        <div className="relative w-full max-w-5xl mx-auto">
+      {/* ── Floating cards + mockup (client component — mouse parallax) ── */}
+      <HeroFloatingCards />
 
-          {/* Glow orb */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-[15%] top-[8%] -z-0 h-[55%] rounded-full blur-[90px]"
-            style={{
-              background:
-                'radial-gradient(ellipse, rgba(74,125,255,0.28) 0%, rgba(41,82,217,0.12) 55%, transparent 80%)',
-            }}
-          />
-
-          {/* ── Floating card: IA ── */}
-          <div
-            className="absolute -top-6 right-2 sm:right-8 lg:right-14 z-20 hidden sm:block"
-            style={{ animation: 'k2-float-a 6s ease-in-out infinite' }}
-          >
-            <div className="rounded-2xl border border-white/14 bg-black/60 backdrop-blur-xl px-4 py-3 shadow-2xl w-[210px]">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="rounded-full bg-gradient-to-r from-[#b24aff] to-[#4a7dff] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">
-                  IA
-                </span>
-                <span className="text-[11px] font-semibold text-white">Assistente</span>
-              </div>
-              <p className="text-[10px] text-white/55 leading-snug">
-                Petição redigida em 18s
-              </p>
-              <div className="mt-2.5 h-1 w-full rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full w-full rounded-full bg-gradient-to-r from-[#b24aff] to-[#4a7dff]" />
-              </div>
-            </div>
-          </div>
-
-          {/* ── Floating card: Prazo ── */}
-          <div
-            className="absolute -bottom-3 left-2 sm:left-8 lg:left-10 z-20 hidden sm:block"
-            style={{ animation: 'k2-float-b 7s ease-in-out infinite' }}
-          >
-            <div className="flex items-center gap-3 rounded-2xl border border-white/14 bg-black/60 backdrop-blur-xl px-4 py-3 shadow-2xl w-[200px]">
-              <span
-                className="h-2 w-2 flex-shrink-0 rounded-full ring-4"
-                style={{
-                  background: '#e46b7a',
-                  boxShadow: '0 0 0 4px rgba(228,107,122,0.18)',
-                }}
-              />
-              <div>
-                <p className="text-[11px] font-semibold text-white">Prazo em 2 dias</p>
-                <p className="mt-0.5 text-[10px] text-white/50">
-                  Proc. 2024/0847 · Cível
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Floating card: Receita ── */}
-          <div
-            className="absolute top-[38%] -right-2 lg:-right-10 z-20 hidden lg:block"
-            style={{ animation: 'k2-float-c 8s ease-in-out infinite 1.2s' }}
-          >
-            <div className="flex items-center gap-3 rounded-2xl border border-white/14 bg-black/60 backdrop-blur-xl px-4 py-3 shadow-2xl w-[164px]">
-              <span
-                className="h-2 w-2 flex-shrink-0 rounded-full"
-                style={{ background: '#6be49a', boxShadow: '0 0 0 4px rgba(107,228,154,0.18)' }}
-              />
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.1em] text-white/45">
-                  Este mês
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-white">
-                  +14% receita
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Main mockup */}
-          <div
-            className="relative z-10"
-            style={{
-              transform: 'perspective(1800px) rotateX(5deg)',
-              transformOrigin: 'center bottom',
-            }}
-          >
-            <DashboardMockup />
-          </div>
-        </div>
-      </div>
-
-      {/* Gradient fade to black */}
+      {/* Subtle fade into the next section */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-48 z-20"
-        style={{ background: 'linear-gradient(to bottom, transparent, #000 90%)' }}
+        className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-20"
+        style={{ background: 'linear-gradient(to bottom, transparent, #000 95%)' }}
       />
     </section>
   )

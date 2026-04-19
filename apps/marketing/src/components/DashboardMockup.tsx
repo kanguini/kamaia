@@ -132,10 +132,6 @@ export function DashboardMockup({ className }: { className?: string }) {
           overflow: hidden;
           background: var(--k2-bg);
           border: 1px solid var(--k2-border);
-          box-shadow:
-            0 1px 0 0 rgba(255, 255, 255, 0.03) inset,
-            0 24px 80px -24px rgba(74, 125, 255, 0.35),
-            0 60px 120px -40px rgba(0, 0, 0, 0.6);
         }
         .k2-mock-chrome {
           display: flex;

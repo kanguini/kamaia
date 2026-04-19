@@ -4,13 +4,16 @@
  * Animated brand gradient — two cross-fading colour layers + SVG turbulence
  * noise overlay. Ported from apps/web (auth layout). Use as a full-bleed
  * background inside a positioned container.
+ *
+ * 2025-04 update: faster cross-fade (7 s), richer noise (baseFreq 0.65,
+ * 4 octaves, opacity 0.42), faster noise pan (6 s).
  */
 export function AnimatedGradient() {
-  // Inline SVG noise so we don't trigger an extra HTTP request.
+  // Richer fractal noise: lower baseFrequency = coarser grain, 4 octaves for depth.
   const noise =
-    "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'>" +
-    "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/>" +
-    "<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter>" +
+    "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
+    "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/>" +
+    "<feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.65 0'/></filter>" +
     "<rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"
 
   return (
@@ -36,7 +39,7 @@ export function AnimatedGradient() {
             radial-gradient(700px 600px at 85% 80%, #2952d9 0%, transparent 55%),
             linear-gradient(135deg, #1a3a8f 0%, #4a7dff 60%, #0a1a3f 100%);
           opacity: 1;
-          animation: k2-fade-blue 16s ease-in-out infinite;
+          animation: k2-fade-blue 7s ease-in-out infinite;
           will-change: opacity;
         }
         .k2-gradient-root::after {
@@ -48,7 +51,7 @@ export function AnimatedGradient() {
             radial-gradient(700px 600px at 15% 85%, #000000 0%, transparent 55%),
             linear-gradient(135deg, #000000 0%, #0a0a14 55%, #1f1f3a 100%);
           opacity: 0;
-          animation: k2-fade-black 16s ease-in-out infinite;
+          animation: k2-fade-black 7s ease-in-out infinite;
           will-change: opacity;
         }
         .k2-gradient-noise {
@@ -56,11 +59,11 @@ export function AnimatedGradient() {
           inset: -20%;
           z-index: 1;
           background-image: url("${noise}");
-          background-size: 220px 220px;
-          opacity: 0.28;
+          background-size: 200px 200px;
+          opacity: 0.42;
           mix-blend-mode: overlay;
           pointer-events: none;
-          animation: k2-noise-pan 14s linear infinite;
+          animation: k2-noise-pan 6s linear infinite;
           will-change: transform;
         }
         @keyframes k2-fade-blue {
