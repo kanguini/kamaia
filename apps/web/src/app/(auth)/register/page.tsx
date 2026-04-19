@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
 
 const registerSchema = z
@@ -48,6 +48,8 @@ export default function RegisterPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const {
     register,
@@ -142,23 +144,45 @@ export default function RegisterPage() {
 
         <div>
           <label className="field">Palavra-passe</label>
-          <input
-            type="password"
-            {...register('password')}
-            placeholder="Mínimo 8 caracteres"
-            autoComplete="new-password"
-          />
+          <div className="pw-wrap">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              {...register('password')}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           {errors.password && <div className="field-error">{errors.password.message}</div>}
         </div>
 
         <div>
           <label className="field">Confirmar palavra-passe</label>
-          <input
-            type="password"
-            {...register('confirmPassword')}
-            placeholder="Repetir"
-            autoComplete="new-password"
-          />
+          <div className="pw-wrap">
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              {...register('confirmPassword')}
+              placeholder="Repetir"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-label={showConfirm ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+              tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           {errors.confirmPassword && (
             <div className="field-error">{errors.confirmPassword.message}</div>
           )}
@@ -196,6 +220,34 @@ export default function RegisterPage() {
       <p className="alt">
         Já tens conta? <Link href="/login">Entrar</Link>
       </p>
+
+      <style jsx>{`
+        .pw-wrap { position: relative; }
+        .pw-wrap :global(input) { padding-right: 40px; }
+        .pw-toggle {
+          position: absolute;
+          top: 50%;
+          right: 8px;
+          transform: translateY(-50%);
+          width: 28px;
+          height: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          border-radius: 6px;
+          color: var(--k2-text-mute);
+          cursor: pointer;
+          transition: color 120ms, background 120ms;
+        }
+        .pw-toggle:hover { color: var(--k2-text); background: var(--k2-bg-elev); }
+        .pw-toggle:focus-visible {
+          outline: none;
+          color: var(--k2-text);
+          box-shadow: 0 0 0 2px color-mix(in oklch, var(--k2-accent) 35%, transparent);
+        }
+      `}</style>
     </>
   )
 }

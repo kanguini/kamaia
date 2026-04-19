@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { api } from '@/lib/api'
 
 function ResetPasswordForm() {
@@ -16,6 +16,8 @@ function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,26 +109,48 @@ function ResetPasswordForm() {
       <form onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
         <div>
           <label className="field">Nova palavra-passe</label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="Mínimo 8 caracteres"
-            autoComplete="new-password"
-          />
+          <div className="pw-wrap">
+            <input
+              type={showNew ? 'text' : 'password'}
+              required
+              minLength={8}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowNew((v) => !v)}
+              aria-label={showNew ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+              tabIndex={-1}
+            >
+              {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
         <div>
           <label className="field">Confirmar</label>
-          <input
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Repetir"
-            autoComplete="new-password"
-          />
+          <div className="pw-wrap">
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repetir"
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-label={showConfirm ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+              tabIndex={-1}
+            >
+              {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
         <button className="primary" type="submit" disabled={loading}>
           {loading ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -137,6 +161,34 @@ function ResetPasswordForm() {
       <p className="alt">
         Lembraste-te? <Link href="/login">Entrar</Link>
       </p>
+
+      <style jsx>{`
+        .pw-wrap { position: relative; }
+        .pw-wrap :global(input) { padding-right: 40px; }
+        .pw-toggle {
+          position: absolute;
+          top: 50%;
+          right: 8px;
+          transform: translateY(-50%);
+          width: 28px;
+          height: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          border-radius: 6px;
+          color: var(--k2-text-mute);
+          cursor: pointer;
+          transition: color 120ms, background 120ms;
+        }
+        .pw-toggle:hover { color: var(--k2-text); background: var(--k2-bg-elev); }
+        .pw-toggle:focus-visible {
+          outline: none;
+          color: var(--k2-text);
+          box-shadow: 0 0 0 2px color-mix(in oklch, var(--k2-accent) 35%, transparent);
+        }
+      `}</style>
     </>
   )
 }

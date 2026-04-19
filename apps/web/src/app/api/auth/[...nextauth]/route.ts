@@ -1,6 +1,5 @@
 import NextAuth, { NextAuthOptions, User } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import GoogleProvider from 'next-auth/providers/google'
 import { api } from '@/lib/api'
 
 interface AuthResponse {
@@ -70,44 +69,19 @@ const authOptions: NextAuthOptions = {
         }
       },
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      if (account && user) {
-        if (account.provider === 'credentials') {
-          token.accessToken = (user as any).accessToken
-          token.refreshToken = (user as any).refreshToken
-          token.user = {
-            id: user.id,
-            email: user.email!,
-            firstName: (user as any).firstName,
-            lastName: (user as any).lastName,
-            role: (user as any).role,
-            gabineteId: (user as any).gabineteId,
-          }
-        } else if (account.provider === 'google') {
-          try {
-            const response = await api<AuthResponse>('/auth/login-with-provider', {
-              method: 'POST',
-              body: JSON.stringify({
-                provider: 'google',
-                providerAccountId: account.providerAccountId,
-                email: user.email,
-                name: user.name,
-              }),
-            })
-
-            token.accessToken = response.data.tokens.accessToken
-            token.refreshToken = response.data.tokens.refreshToken
-            token.user = response.data.user
-          } catch (error) {
-            console.error('Google auth error:', error)
-            return token
-          }
+      if (account && user && account.provider === 'credentials') {
+        token.accessToken = (user as any).accessToken
+        token.refreshToken = (user as any).refreshToken
+        token.user = {
+          id: user.id,
+          email: user.email!,
+          firstName: (user as any).firstName,
+          lastName: (user as any).lastName,
+          role: (user as any).role,
+          gabineteId: (user as any).gabineteId,
         }
       }
 
