@@ -43,7 +43,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div>
+      <>
         <div
           style={{
             width: 44,
@@ -57,22 +57,22 @@ function ResetPasswordForm() {
         >
           <AlertTriangle size={22} color="var(--k2-bad)" />
         </div>
-        <h1>Link inválido.</h1>
-        <p className="lede">Este link não é válido ou já foi usado.</p>
-        <div style={{ marginTop: 20 }}>
-          <Link href="/forgot-password">
+        <h1>Link inválido</h1>
+        <p className="lede">Este link já foi usado ou expirou.</p>
+        <div style={{ marginTop: 18 }}>
+          <Link href="/forgot-password" style={{ display: 'block' }}>
             <button type="button" className="primary">
               Pedir novo link
             </button>
           </Link>
         </div>
-      </div>
+      </>
     )
   }
 
   if (done) {
     return (
-      <div>
+      <>
         <div
           style={{
             width: 44,
@@ -86,15 +86,20 @@ function ResetPasswordForm() {
         >
           <CheckCircle2 size={22} color="var(--k2-good)" />
         </div>
-        <h1>Palavra-passe actualizada.</h1>
+        <h1>Palavra-passe actualizada</h1>
         <p className="lede">A redireccionar para o login…</p>
-      </div>
+      </>
     )
   }
 
   return (
-    <div>
-      <h1>Nova palavra-passe.</h1>
+    <>
+      <span className="glyph" aria-hidden="true">
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z" />
+        </svg>
+      </span>
+      <h1>Nova palavra-passe</h1>
       <p className="lede">Escolhe uma palavra-passe segura para a tua conta.</p>
 
       {error && <div className="error">{error}</div>}
@@ -108,7 +113,7 @@ function ResetPasswordForm() {
             minLength={8}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="mín. 8 caracteres"
+            placeholder="Mínimo 8 caracteres"
             autoComplete="new-password"
           />
         </div>
@@ -119,7 +124,7 @@ function ResetPasswordForm() {
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="repetir"
+            placeholder="Repetir"
             autoComplete="new-password"
           />
         </div>
@@ -128,7 +133,11 @@ function ResetPasswordForm() {
           Actualizar palavra-passe
         </button>
       </form>
-    </div>
+
+      <p className="alt">
+        Lembraste-te? <Link href="/login">Entrar</Link>
+      </p>
+    </>
   )
 }
 

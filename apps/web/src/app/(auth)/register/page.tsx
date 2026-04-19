@@ -31,16 +31,16 @@ type RegisterFormData = z.infer<typeof registerSchema>
 function translateAuthError(code: string | undefined, fallback: string | undefined): string {
   switch (code) {
     case 'USER_EXISTS':
-      return 'Já existe uma conta com este email. Faz login ou recupera a palavra-passe.'
+      return 'Já existe uma conta com este email.'
     case 'VALIDATION_FAILED':
     case 'VALIDATION_ERROR':
-      return fallback || 'Dados inválidos. Verifica os campos.'
+      return fallback || 'Dados inválidos.'
     case 'DB_SCHEMA_OUT_OF_SYNC':
       return 'Servidor em actualização. Tenta em alguns minutos.'
     case 'GABINETE_NIF_EXISTS':
       return 'Este NIF de gabinete já está registado.'
     default:
-      return fallback || 'Erro ao criar conta. Tenta novamente.'
+      return fallback || 'Erro ao criar conta.'
   }
 }
 
@@ -76,7 +76,7 @@ export default function RegisterPage() {
         password: data.password,
         redirect: false,
       })
-      if (result?.error) setError('Conta criada, mas erro ao fazer login. Tenta novamente.')
+      if (result?.error) setError('Conta criada, mas erro ao iniciar sessão.')
       else {
         router.push('/')
         router.refresh()
@@ -101,13 +101,21 @@ export default function RegisterPage() {
   }
 
   return (
-    <div>
-      <h1>Criar conta.</h1>
-      <p className="lede">Começa a gerir o teu gabinete em 2 minutos.</p>
+    <>
+      <span className="glyph" aria-hidden="true">
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2 L13.5 8.5 L20 10 L13.5 11.5 L12 18 L10.5 11.5 L4 10 L10.5 8.5 Z" />
+        </svg>
+      </span>
+
+      <h1>Criar conta</h1>
+      <p className="lede">
+        Regista o teu gabinete e começa a gerir processos, prazos e facturação em minutos.
+      </p>
 
       {error && <div className="error">{error}</div>}
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'grid', gap: 14 }}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'grid', gap: 12 }}>
         <div className="field-row">
           <div>
             <label className="field">Nome</label>
@@ -123,38 +131,46 @@ export default function RegisterPage() {
 
         <div>
           <label className="field">Email</label>
-          <input type="email" {...register('email')} placeholder="tu@gabinete.ao" autoComplete="email" />
+          <input
+            type="email"
+            {...register('email')}
+            placeholder="tu@gabinete.ao"
+            autoComplete="email"
+          />
           {errors.email && <div className="field-error">{errors.email.message}</div>}
         </div>
 
-        <div className="field-row">
-          <div>
-            <label className="field">Palavra-passe</label>
-            <input
-              type="password"
-              {...register('password')}
-              placeholder="mín. 8 caracteres"
-              autoComplete="new-password"
-            />
-            {errors.password && <div className="field-error">{errors.password.message}</div>}
-          </div>
-          <div>
-            <label className="field">Confirmar</label>
-            <input
-              type="password"
-              {...register('confirmPassword')}
-              placeholder="repetir"
-              autoComplete="new-password"
-            />
-            {errors.confirmPassword && (
-              <div className="field-error">{errors.confirmPassword.message}</div>
-            )}
-          </div>
+        <div>
+          <label className="field">Palavra-passe</label>
+          <input
+            type="password"
+            {...register('password')}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+          />
+          {errors.password && <div className="field-error">{errors.password.message}</div>}
+        </div>
+
+        <div>
+          <label className="field">Confirmar palavra-passe</label>
+          <input
+            type="password"
+            {...register('confirmPassword')}
+            placeholder="Repetir"
+            autoComplete="new-password"
+          />
+          {errors.confirmPassword && (
+            <div className="field-error">{errors.confirmPassword.message}</div>
+          )}
         </div>
 
         <div>
           <label className="field">Nome do gabinete</label>
-          <input type="text" {...register('gabineteName')} placeholder="Ex: Maiato & Associados" />
+          <input
+            type="text"
+            {...register('gabineteName')}
+            placeholder="Ex: Maiato &amp; Associados"
+          />
           {errors.gabineteName && (
             <div className="field-error">{errors.gabineteName.message}</div>
           )}
@@ -162,7 +178,7 @@ export default function RegisterPage() {
 
         <div className="field-row">
           <div>
-            <label className="field">Nº OAA (opcional)</label>
+            <label className="field">Nº OAA</label>
             <input type="text" {...register('oaaNumber')} placeholder="12345" />
           </div>
           <div>
@@ -180,6 +196,6 @@ export default function RegisterPage() {
       <p className="alt">
         Já tens conta? <Link href="/login">Entrar</Link>
       </p>
-    </div>
+    </>
   )
 }

@@ -1,222 +1,346 @@
 /**
- * Auth layout — Kamaia 2.0.
+ * Auth layout — Kamaia 2.0, card-style.
  *
- * Split-screen: brand column (left) with illustration + value props, form
- * column (right) with the page's own content. Shared styles (inputs,
- * buttons, error/ok banners) are declared once here so each auth page
- * stays lean.
+ * Outer page: soft neutral backdrop (bg-elev). A single rounded card
+ * sits centred in the viewport with two columns inside:
+ *   - Left panel (55%): accent gradient with brand mark top-left and a
+ *     marketing tagline bottom-left.
+ *   - Right panel (45%): form content — accent glyph, heading, lede,
+ *     fields, primary action, "or continue with" divider and optional
+ *     social auth buttons.
+ * Responsive collapses to a single-column card below 860px.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="k2-auth">
       <style>{`
+        /* ── Outer page ── */
         .k2-auth {
-          display: grid;
-          grid-template-columns: 1.05fr 1fr;
           min-height: 100vh;
-          background: var(--k2-bg);
+          display: grid;
+          place-items: center;
+          padding: 32px;
+          background: var(--k2-bg-elev);
           color: var(--k2-text);
           font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
           font-feature-settings: 'tnum', 'zero';
         }
+
+        /* ── Card ── */
+        .k2-auth-card {
+          width: min(960px, 100%);
+          min-height: 560px;
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          background: var(--k2-bg);
+          border: 1px solid var(--k2-border);
+          border-radius: 18px;
+          overflow: hidden;
+          box-shadow:
+            0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+            0 20px 60px -20px rgba(0, 0, 0, 0.25);
+        }
+
+        /* ── Brand panel (left) ── */
         .k2-auth-brand {
-          background: var(--k2-bg-elev);
-          border-right: 1px solid var(--k2-border);
+          position: relative;
+          padding: 28px 32px;
+          color: var(--k2-accent-fg);
+          background:
+            radial-gradient(circle at 70% 30%, color-mix(in oklch, var(--k2-accent) 85%, #000) 0%, transparent 55%),
+            radial-gradient(circle at 20% 85%, color-mix(in oklch, var(--k2-accent-dim) 70%, #000) 0%, transparent 50%),
+            linear-gradient(135deg, var(--k2-accent-dim) 0%, var(--k2-accent) 55%, color-mix(in oklch, var(--k2-accent) 70%, #fff) 100%);
           display: flex;
           flex-direction: column;
-          padding: 36px 48px;
-          position: relative;
+          justify-content: space-between;
           overflow: hidden;
+          isolation: isolate;
         }
-        .k2-auth-mark { display: flex; align-items: center; gap: 12px; margin-bottom: auto; z-index: 2; position: relative; }
+        /* Soft light overlay for depth */
+        .k2-auth-brand::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(600px 400px at 110% -10%, rgba(255, 255, 255, 0.22), transparent 60%),
+            radial-gradient(500px 350px at -10% 120%, rgba(0, 0, 0, 0.18), transparent 60%);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .k2-auth-mark {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          z-index: 1;
+          position: relative;
+        }
         .k2-auth-mark .m {
-          width: 36px; height: 36px;
-          border-radius: 9px;
-          background: linear-gradient(135deg, var(--k2-accent), var(--k2-accent-dim));
-          display: grid; place-items: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+          display: grid;
+          place-items: center;
           color: var(--k2-accent-fg);
-          font-weight: 700; font-size: 17px; letter-spacing: -0.02em;
+          font-weight: 700;
+          font-size: 13px;
+          letter-spacing: -0.02em;
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
         }
-        .k2-auth-mark .name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
-        .k2-auth-mark .sub { font-size: 11px; color: var(--k2-text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
-
-        .k2-auth-lede { max-width: 420px; position: relative; z-index: 1; }
-        .k2-auth-lede h2 {
-          font-size: 40px; font-weight: 500; letter-spacing: -0.03em; line-height: 1.04;
-          margin: 0 0 16px; color: var(--k2-text);
-        }
-        .k2-auth-lede h2 em { font-style: normal; color: var(--k2-accent); }
-        .k2-auth-lede p {
-          color: var(--k2-text-dim); font-size: 14px; line-height: 1.6; margin: 0 0 28px;
-        }
-        .k2-auth-bullets {
-          display: grid; gap: 10px; font-size: 13px; color: var(--k2-text-dim);
-          list-style: none; padding: 0; margin: 0;
-        }
-        .k2-auth-bullets li { display: flex; align-items: center; gap: 10px; }
-        .k2-auth-bullets li::before {
-          content: ''; width: 5px; height: 5px; border-radius: 50%;
-          background: var(--k2-accent); flex-shrink: 0;
+        .k2-auth-mark .name {
+          font-weight: 600;
+          font-size: 15px;
+          letter-spacing: -0.01em;
         }
 
-        .k2-auth-illu {
-          position: absolute; right: -40px; bottom: -40px;
-          width: 360px; height: 360px; opacity: 0.35; pointer-events: none;
+        .k2-auth-tagline {
+          position: relative;
+          z-index: 1;
+          max-width: 340px;
         }
-        .k2-auth-foot {
-          margin-top: 40px; font-size: 11px; color: var(--k2-text-mute);
-          letter-spacing: 0.04em; position: relative; z-index: 1;
+        .k2-auth-tagline-sup {
+          font-size: 13px;
+          opacity: 0.85;
+          margin-bottom: 6px;
+        }
+        .k2-auth-tagline h2 {
+          margin: 0;
+          font-size: 32px;
+          font-weight: 500;
+          letter-spacing: -0.025em;
+          line-height: 1.12;
+          color: var(--k2-accent-fg);
         }
 
+        /* ── Form panel (right) ── */
         .k2-auth-form {
-          display: flex; align-items: center; justify-content: center;
-          padding: 48px 32px;
+          padding: 36px 44px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
         }
-        .k2-auth-form > * { width: 100%; max-width: 380px; }
+        .k2-auth-form > div.form-wrap {
+          display: flex;
+          flex-direction: column;
+          max-width: 340px;
+          margin: 0 auto;
+          width: 100%;
+        }
 
+        .k2-auth .glyph {
+          color: var(--k2-accent);
+          margin-bottom: 14px;
+          display: inline-flex;
+        }
+        .k2-auth h1 {
+          font-size: 26px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          margin: 0 0 6px;
+          color: var(--k2-text);
+        }
+        .k2-auth .lede {
+          font-size: 13px;
+          color: var(--k2-text-dim);
+          margin: 0 0 22px;
+          line-height: 1.5;
+        }
+
+        /* ── Form controls ── */
+        .k2-auth label.field {
+          display: block;
+          font-size: 12px;
+          color: var(--k2-text);
+          margin-bottom: 6px;
+          font-weight: 500;
+        }
         .k2-auth input[type='text'],
         .k2-auth input[type='email'],
         .k2-auth input[type='password'] {
-          width: 100%; padding: 9px 12px;
-          background: var(--k2-bg-elev);
+          width: 100%;
+          padding: 10px 12px;
+          background: var(--k2-bg);
           border: 1px solid var(--k2-border);
           border-radius: var(--k2-radius-sm);
-          color: var(--k2-text); font-size: 14px; font-family: inherit;
-          transition: border-color 120ms, background 120ms, box-shadow 120ms;
+          color: var(--k2-text);
+          font-size: 14px;
+          font-family: inherit;
+          transition: border-color 120ms, box-shadow 120ms, background 120ms;
         }
         .k2-auth input:focus-visible {
-          outline: none; border-color: var(--k2-accent); background: var(--k2-bg);
-          box-shadow: 0 0 0 3px color-mix(in oklch, var(--k2-accent) 22%, transparent);
+          outline: none;
+          border-color: var(--k2-accent);
+          box-shadow: 0 0 0 3px color-mix(in oklch, var(--k2-accent) 20%, transparent);
         }
         .k2-auth input::placeholder { color: var(--k2-text-mute); }
 
-        .k2-auth label.field {
-          display: block; font-size: 11px; color: var(--k2-text-dim);
-          letter-spacing: 0.06em; text-transform: uppercase;
-          margin-bottom: 6px; font-weight: 500;
+        .k2-auth .field-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
         }
-        .k2-auth .field-error { font-size: 11px; color: var(--k2-bad); margin-top: 4px; }
+        .k2-auth .field-error {
+          font-size: 11px;
+          color: var(--k2-bad);
+          margin-top: 4px;
+        }
 
+        /* ── Buttons ── */
         .k2-auth button.primary {
-          width: 100%; padding: 10px 14px;
-          background: var(--k2-accent); color: var(--k2-accent-fg);
-          font-size: 14px; font-weight: 500;
-          border: none; border-radius: var(--k2-radius-sm);
-          cursor: pointer; transition: filter 120ms, opacity 120ms;
-          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          width: 100%;
+          padding: 11px 14px;
+          background: var(--k2-text);
+          color: var(--k2-bg);
+          font-size: 14px;
+          font-weight: 500;
+          border: none;
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          transition: filter 120ms, opacity 120ms;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 4px;
         }
-        .k2-auth button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+        .k2-auth button.primary:hover:not(:disabled) { filter: brightness(0.92); }
         .k2-auth button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .k2-auth button.secondary {
-          width: 100%; padding: 10px 14px;
-          background: var(--k2-bg-elev); color: var(--k2-text);
-          font-size: 14px; font-weight: 500;
-          border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm);
-          cursor: pointer; transition: all 120ms;
-          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          width: 100%;
+          padding: 10px 14px;
+          background: var(--k2-bg);
+          color: var(--k2-text);
+          font-size: 14px;
+          font-weight: 500;
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          transition: all 120ms;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
-        .k2-auth button.secondary:hover { border-color: var(--k2-border-strong); background: var(--k2-bg-hover); }
+        .k2-auth button.secondary:hover {
+          border-color: var(--k2-border-strong);
+          background: var(--k2-bg-elev);
+        }
 
-        .k2-auth h1 {
-          font-size: 24px; font-weight: 600; letter-spacing: -0.02em;
-          margin: 0 0 6px; color: var(--k2-text);
+        /* ── Social row ── */
+        .k2-auth .or {
+          text-align: center;
+          font-size: 12px;
+          color: var(--k2-text-mute);
+          margin: 18px 0 12px;
+          position: relative;
         }
-        .k2-auth .lede {
-          font-size: 13px; color: var(--k2-text-dim); margin: 0 0 24px;
+        .k2-auth .or::before,
+        .k2-auth .or::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          width: 32%;
+          height: 1px;
+          background: var(--k2-border);
         }
+        .k2-auth .or::before { left: 0; }
+        .k2-auth .or::after { right: 0; }
+
+        .k2-auth .socials {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+        }
+        .k2-auth .socials button {
+          padding: 10px;
+          background: var(--k2-bg);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 120ms;
+          color: var(--k2-text);
+        }
+        .k2-auth .socials button:hover {
+          border-color: var(--k2-border-strong);
+          background: var(--k2-bg-elev);
+        }
+        .k2-auth .socials svg { width: 18px; height: 18px; }
+
         .k2-auth .alt {
-          margin-top: 20px; font-size: 13px; color: var(--k2-text-dim); text-align: center;
+          margin-top: 22px;
+          font-size: 13px;
+          color: var(--k2-text-dim);
+          text-align: center;
         }
-        .k2-auth .alt a, .k2-auth .alt .link {
-          color: var(--k2-accent); text-decoration: none; font-weight: 500;
-          background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+        .k2-auth .alt a,
+        .k2-auth .alt .link {
+          color: var(--k2-accent);
+          text-decoration: none;
+          font-weight: 500;
+          background: none;
+          border: none;
+          padding: 0;
+          font: inherit;
+          cursor: pointer;
         }
-        .k2-auth .alt a:hover, .k2-auth .alt .link:hover { text-decoration: underline; }
+        .k2-auth .alt a:hover,
+        .k2-auth .alt .link:hover { text-decoration: underline; }
 
         .k2-auth .error {
           padding: 10px 12px;
           background: color-mix(in oklch, var(--k2-bad) 12%, transparent);
           border: 1px solid color-mix(in oklch, var(--k2-bad) 35%, var(--k2-border));
           border-radius: var(--k2-radius-sm);
-          color: var(--k2-bad); font-size: 13px; margin-bottom: 16px;
+          color: var(--k2-bad);
+          font-size: 13px;
+          margin-bottom: 16px;
         }
         .k2-auth .ok {
           padding: 10px 12px;
           background: color-mix(in oklch, var(--k2-good) 12%, transparent);
           border: 1px solid color-mix(in oklch, var(--k2-good) 35%, var(--k2-border));
           border-radius: var(--k2-radius-sm);
-          color: var(--k2-good); font-size: 13px; margin-bottom: 16px;
+          color: var(--k2-good);
+          font-size: 13px;
+          margin-bottom: 16px;
         }
 
-        .k2-auth hr.or {
-          border: none; border-top: 1px solid var(--k2-border);
-          margin: 24px 0 16px; position: relative; text-align: center;
-        }
-        .k2-auth hr.or::after {
-          content: 'ou'; position: absolute; top: -8px; left: 50%;
-          transform: translateX(-50%); padding: 0 10px;
-          background: var(--k2-bg); color: var(--k2-text-mute);
-          font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-        }
-
-        .k2-auth .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        @media (max-width: 900px) {
-          .k2-auth { grid-template-columns: 1fr; }
-          .k2-auth-brand { display: none; }
-          .k2-auth-form { padding: 32px 24px; }
+        @media (max-width: 860px) {
+          .k2-auth-card { grid-template-columns: 1fr; min-height: auto; }
+          .k2-auth-brand {
+            padding: 22px 24px;
+            min-height: 180px;
+          }
+          .k2-auth-form { padding: 28px 24px 32px; }
         }
       `}</style>
 
-      <aside className="k2-auth-brand">
-        <div className="k2-auth-mark">
-          <div className="m">K</div>
-          <div>
+      <div className="k2-auth-card">
+        {/* Brand panel */}
+        <aside className="k2-auth-brand">
+          <div className="k2-auth-mark">
+            <div className="m">K</div>
             <div className="name">Kamaia</div>
-            <div className="sub">Gestão Jurídica</div>
           </div>
-        </div>
 
-        <div className="k2-auth-lede">
-          <h2>
-            A forma <em>inteligente</em> de gerir o teu gabinete.
-          </h2>
-          <p>
-            Processos, prazos, timesheets, facturação e IA assistente numa
-            só plataforma pensada para advogados angolanos.
-          </p>
-          <ul className="k2-auth-bullets">
-            <li>Prazos em dias úteis com feriados nacionais</li>
-            <li>Facturação automática com IVA 14%</li>
-            <li>Projectos jurídicos com Gantt + burn-down</li>
-            <li>IA Assistente para pesquisa e redacção</li>
-          </ul>
-        </div>
+          <div className="k2-auth-tagline">
+            <div className="k2-auth-tagline-sup">Gestão jurídica inteligente</div>
+            <h2>
+              Processos, prazos, facturação e equipa — num só fluxo.
+            </h2>
+          </div>
+        </aside>
 
-        <svg className="k2-auth-illu" viewBox="0 0 360 360" fill="none" aria-hidden="true">
-          <g stroke="var(--k2-border-strong)" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}>
-            <rect x="80" y="70" width="140" height="180" rx="6" />
-            <path d="M100 100 H200 M100 120 H210 M100 140 H180 M100 160 H200 M100 180 H190" opacity="0.6" />
-          </g>
-          <g stroke="var(--k2-border-strong)" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} transform="translate(130 40) rotate(6)">
-            <rect x="80" y="70" width="140" height="180" rx="6" fill="var(--k2-bg-elev)" />
-            <path d="M100 100 H200 M100 120 H210 M100 140 H180 M100 160 H200" opacity="0.6" />
-          </g>
-          <g transform="translate(150 60) rotate(12)">
-            <rect x="80" y="70" width="140" height="180" rx="6" fill="var(--k2-bg-elev)" stroke="var(--k2-accent)" strokeWidth={1.5} />
-            <path d="M100 100 H200 M100 120 H210 M100 140 H180" opacity="0.7" stroke="var(--k2-accent)" strokeLinecap="round" strokeWidth={1.5} />
-            <circle cx="180" cy="200" r="20" fill="var(--k2-accent)" opacity="0.15" />
-            <path d="M170 200 L178 208 L192 193" stroke="var(--k2-accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </g>
-        </svg>
-
-        <div className="k2-auth-foot">
-          © {new Date().getFullYear()} Kamaia · Luanda, Angola
-        </div>
-      </aside>
-
-      <section className="k2-auth-form">{children}</section>
+        {/* Form panel */}
+        <section className="k2-auth-form">
+          <div className="form-wrap">{children}</div>
+        </section>
+      </div>
     </div>
   )
 }
