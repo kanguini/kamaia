@@ -35,6 +35,11 @@ apps/web/test-results/
 apps/web/blob-report/
 apps/web/.playwright/
 
+# Marketing site
+apps/marketing/.next/
+apps/marketing/public/screens/*.png
+apps/marketing/tsconfig.tsbuildinfo
+
 # Logs
 *.log
 npm-debug.log*

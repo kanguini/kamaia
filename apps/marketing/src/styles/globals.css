@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═════════════════════════════════════════════════════════════
+   Kamaia 2.0 marketing tokens — keep values in sync with the web
+   app's globals.css (apps/web/src/styles/globals.css).
+   ═════════════════════════════════════════════════════════════ */
+@layer base {
+  :root {
+    /* Dark-first — marketing site defaults to dark */
+    --k2-bg: #000000;
+    --k2-bg-elev: #0e0e0e;
+    --k2-bg-elev-2: #161616;
+    --k2-bg-hover: #1a1a1a;
+    --k2-border: #1c1c1c;
+    --k2-border-strong: #2a2a2a;
+    --k2-text: #ffffff;
+    --k2-text-dim: #a0a0a0;
+    --k2-text-mute: #5c5c5c;
+    --k2-accent: #4a7dff;
+    --k2-accent-dim: #3460d9;
+    --k2-accent-fg: #ffffff;
+    --k2-good: #6be49a;
+    --k2-warn: #e4b86b;
+    --k2-bad: #e46b7a;
+    --k2-radius-sm: 7px;
+    --k2-radius: 10px;
+    --k2-radius-lg: 14px;
+  }
+
+  .light {
+    --k2-bg: #ffffff;
+    --k2-bg-elev: #fafafa;
+    --k2-bg-elev-2: #f0f0f0;
+    --k2-bg-hover: #ededed;
+    --k2-border: #e4e4e4;
+    --k2-border-strong: #d0d0d0;
+    --k2-text: #000000;
+    --k2-text-dim: #5a5a5a;
+    --k2-text-mute: #a0a0a0;
+    --k2-accent: #2952d9;
+    --k2-accent-dim: #1e3fb8;
+    --k2-accent-fg: #ffffff;
+    --k2-good: #2a9e5c;
+    --k2-warn: #c8891a;
+    --k2-bad: #c2404f;
+  }
+
+  html {
+    background: var(--k2-bg);
+    color: var(--k2-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--k2-bg);
+    color: var(--k2-text);
+    font-family:
+      var(--font-inter), Inter, -apple-system, BlinkMacSystemFont,
+      system-ui, sans-serif;
+    font-feature-settings: 'tnum', 'zero';
+    letter-spacing: -0.005em;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--k2-accent) 40%, transparent);
+    color: var(--k2-text);
+  }
+}
+
+@layer utilities {
+  .shell {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding-inline: clamp(20px, 4vw, 40px);
+  }
+}
