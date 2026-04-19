@@ -45,7 +45,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           padding: 40px 48px;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-end;
           min-height: 100vh;
           background: #0A0F1F;
         }
@@ -111,10 +111,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         .k2-auth-brand > * { position: relative; z-index: 2; }
 
-        .k2-auth-logo {
-          display: inline-flex;
-          color: #fff;
-        }
         .k2-auth-slogan {
           max-width: 560px;
         }
@@ -142,6 +138,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           max-width: 380px;
           margin: 0 auto;
           width: 100%;
+        }
+
+        /* Logo sits centred above the form card */
+        .k2-auth-form-logo {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 32px;
+          color: var(--k2-text);
         }
 
         .k2-auth .glyph {
@@ -356,9 +360,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* Brand panel — animated gradient + noise */}
       <aside className="k2-auth-brand">
         <div className="k2-auth-noise" aria-hidden="true" />
-        <div className="k2-auth-logo">
-          <Logo height={28} />
-        </div>
         <div className="k2-auth-slogan">
           <p>Gestão jurídica inteligente,</p>
           <p>Pessoas, Processos e Tecnologia</p>
@@ -367,7 +368,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Form panel */}
       <section className="k2-auth-form">
-        <div className="form-wrap">{children}</div>
+        <div className="form-wrap">
+          <div className="k2-auth-form-logo">
+            <Logo height={32} />
+          </div>
+          {children}
+        </div>
       </section>
     </div>
   )
