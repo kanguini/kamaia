@@ -39,6 +39,9 @@ apps/web/.playwright/
 apps/marketing/.next/
 apps/marketing/public/screens/*.png
 apps/marketing/tsconfig.tsbuildinfo
+apps/marketing/playwright-report/
+apps/marketing/test-results/
+apps/marketing/.playwright/
 
 # Logs
 *.log

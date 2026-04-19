@@ -262,53 +262,51 @@ export default function PrecosPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {COMPARISON.map((group) => (
-                    <>
-                      <tr key={`group-${group.group}`}>
-                        <td
-                          colSpan={PLANS.length + 1}
-                          className="pt-10 pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/40"
-                        >
-                          {group.group}
+                  {COMPARISON.flatMap((group) => [
+                    <tr key={`group-${group.group}`}>
+                      <td
+                        colSpan={PLANS.length + 1}
+                        className="pt-10 pb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/40"
+                      >
+                        {group.group}
+                      </td>
+                    </tr>,
+                    ...group.rows.map((row, ri) => (
+                      <tr
+                        key={`${group.group}-${ri}`}
+                        className="border-t border-white/5"
+                      >
+                        <td className="sticky left-0 bg-black py-3 text-white/80">
+                          {row.label}
                         </td>
-                      </tr>
-                      {group.rows.map((row, ri) => (
-                        <tr
-                          key={`${group.group}-${ri}`}
-                          className="border-t border-white/5"
-                        >
-                          <td className="sticky left-0 bg-black py-3 text-white/80">
-                            {row.label}
+                        {row.values.map((v, vi) => (
+                          <td
+                            key={vi}
+                            className={
+                              'py-3 text-white/75 ' +
+                              (PLANS[vi]?.featured ? 'font-medium text-white' : '')
+                            }
+                          >
+                            {v === true ? (
+                              <Check
+                                size={15}
+                                className="text-[#6be49a]"
+                                aria-label="Incluído"
+                              />
+                            ) : v === false ? (
+                              <Minus
+                                size={15}
+                                className="text-white/25"
+                                aria-label="Não incluído"
+                              />
+                            ) : (
+                              <span className="text-sm">{v}</span>
+                            )}
                           </td>
-                          {row.values.map((v, vi) => (
-                            <td
-                              key={vi}
-                              className={
-                                'py-3 text-white/75 ' +
-                                (PLANS[vi]?.featured ? 'font-medium text-white' : '')
-                              }
-                            >
-                              {v === true ? (
-                                <Check
-                                  size={15}
-                                  className="text-[#6be49a]"
-                                  aria-label="Incluído"
-                                />
-                              ) : v === false ? (
-                                <Minus
-                                  size={15}
-                                  className="text-white/25"
-                                  aria-label="Não incluído"
-                                />
-                              ) : (
-                                <span className="text-sm">{v}</span>
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </>
-                  ))}
+                        ))}
+                      </tr>
+                    )),
+                  ])}
                 </tbody>
               </table>
             </div>

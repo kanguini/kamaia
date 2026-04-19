@@ -8,6 +8,8 @@
     "start": "next start --port 3002",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "capture-screens": "ts-node --project tsconfig.json scripts/capture-screenshots.ts",
     "clean": "rm -rf .next"
   },
