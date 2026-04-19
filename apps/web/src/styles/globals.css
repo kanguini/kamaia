@@ -52,86 +52,56 @@
 }
 
 @layer base {
-  /* ═══ LIGHT MODE (default) ═══ */
+  /* ═══ LIGHT MODE (default) ═══
+     Legacy --color-* tokens are now aliases to --k2-* so every page
+     that still renders with the old class names inherits the Kamaia
+     2.0 palette automatically. Alert/state tones keep their semantic
+     colours (green/amber/red) which the 2.0 design uses sparingly on
+     badges and status pills. */
   :root {
-    --color-ink: #000000;
-    --color-ink-secondary: #000000;
-    --color-ink-muted: #525252;
-    --color-ink-ghost: #A3A3A3;
+    --color-ink: var(--k2-text);
+    --color-ink-secondary: var(--k2-text);
+    --color-ink-muted: var(--k2-text-dim);
+    --color-ink-ghost: var(--k2-text-mute);
 
-    --color-surface: #FFFFFF;
-    --color-surface-raised: #F5F5F4;
-    --color-surface-hover: #EBEBEA;
+    --color-surface: var(--k2-bg);
+    --color-surface-raised: var(--k2-bg-elev);
+    --color-surface-hover: var(--k2-bg-hover);
 
-    --color-border: #E5E5E3;
-    --color-border-strong: #D4D4D2;
+    --color-border: var(--k2-border);
+    --color-border-strong: var(--k2-border-strong);
 
-    --color-success: #16A34A;
-    --color-success-bg: #DCFCE7;
-    --color-success-text: #166534;
-    --color-warning: #D97706;
-    --color-warning-bg: #FEF3C7;
-    --color-warning-text: #92400E;
-    --color-danger: #DC2626;
-    --color-danger-bg: #FEE2E2;
-    --color-danger-text: #991B1B;
-    --color-info: #2563EB;
-    --color-info-bg: #DBEAFE;
-    --color-info-text: #1E40AF;
+    --color-success: var(--k2-good);
+    --color-success-bg: color-mix(in oklch, var(--k2-good) 12%, transparent);
+    --color-success-text: var(--k2-good);
+    --color-warning: var(--k2-warn);
+    --color-warning-bg: color-mix(in oklch, var(--k2-warn) 12%, transparent);
+    --color-warning-text: var(--k2-warn);
+    --color-danger: var(--k2-bad);
+    --color-danger-bg: color-mix(in oklch, var(--k2-bad) 12%, transparent);
+    --color-danger-text: var(--k2-bad);
+    --color-info: var(--k2-accent);
+    --color-info-bg: color-mix(in oklch, var(--k2-accent) 12%, transparent);
+    --color-info-text: var(--k2-accent);
 
-    --color-sidebar-bg: #FAFAF9;
-    --color-sidebar-text: #000000;
-    --color-sidebar-text-muted: #525252;
-    --color-sidebar-text-ghost: #A3A3A3;
-    --color-sidebar-active-bg: #111111;
-    --color-sidebar-active-text: #FFFFFF;
-    --color-sidebar-hover-bg: #F0F0EE;
-    --color-sidebar-border: #E5E5E3;
+    --color-sidebar-bg: var(--k2-bg-elev);
+    --color-sidebar-text: var(--k2-text);
+    --color-sidebar-text-muted: var(--k2-text-dim);
+    --color-sidebar-text-ghost: var(--k2-text-mute);
+    --color-sidebar-active-bg: var(--k2-bg-hover);
+    --color-sidebar-active-text: var(--k2-text);
+    --color-sidebar-hover-bg: var(--k2-bg-hover);
+    --color-sidebar-border: var(--k2-border);
 
-    --color-btn-primary-bg: #111111;
-    --color-btn-primary-text: #FFFFFF;
-    --color-btn-primary-hover: #333333;
+    --color-btn-primary-bg: var(--k2-accent);
+    --color-btn-primary-text: var(--k2-accent-fg);
+    --color-btn-primary-hover: var(--k2-accent-dim);
   }
 
-  /* ═══ DARK MODE ═══ */
+  /* Dark mode inherits automatically because --k2-* vars already have
+     their dark overrides set earlier in the .dark selector. */
   .dark {
-    --color-ink: #FFFFFF;
-    --color-ink-secondary: #FFFFFF;
-    --color-ink-muted: #9CA3AF;
-    --color-ink-ghost: #6B7280;
-
-    --color-surface: #000000;
-    --color-surface-raised: #0F0F0F;
-    --color-surface-hover: #1A1A1A;
-
-    --color-border: #262626;
-    --color-border-strong: #404040;
-
-    --color-success: #34D399;
-    --color-success-bg: rgba(52,211,153,0.15);
-    --color-success-text: #6EE7B7;
-    --color-warning: #FBBF24;
-    --color-warning-bg: rgba(251,191,36,0.15);
-    --color-warning-text: #FCD34D;
-    --color-danger: #F87171;
-    --color-danger-bg: rgba(248,113,113,0.15);
-    --color-danger-text: #FCA5A5;
-    --color-info: #60A5FA;
-    --color-info-bg: rgba(96,165,250,0.15);
-    --color-info-text: #93C5FD;
-
-    --color-sidebar-bg: #000000;
-    --color-sidebar-text: #FFFFFF;
-    --color-sidebar-text-muted: #FFFFFF;
-    --color-sidebar-text-ghost: #9CA3AF;
-    --color-sidebar-active-bg: rgba(255,255,255,0.12);
-    --color-sidebar-active-text: #FFFFFF;
-    --color-sidebar-hover-bg: rgba(255,255,255,0.06);
-    --color-sidebar-border: rgba(255,255,255,0.08);
-
-    --color-btn-primary-bg: #FFFFFF;
-    --color-btn-primary-text: #000000;
-    --color-btn-primary-hover: #E5E5E5;
+    /* Legacy aliases pick up the dark --k2-* values without extra work. */
   }
 
   html, body {
