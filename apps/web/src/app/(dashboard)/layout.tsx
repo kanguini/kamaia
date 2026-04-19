@@ -14,11 +14,11 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText, Timer, Receipt,
-  Bot, Settings, LogOut, Bell, Sun, Moon, CheckSquare, Briefcase, Banknote,
+  Bot, Settings, LogOut, Sun, Moon, CheckSquare, Briefcase, Banknote,
   ChevronDown, Menu, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,7 @@ import { NewDropdownButton } from '@/components/ui/new-dropdown'
 import { GlobalSearch } from '@/components/ui/global-search'
 import { AIButton } from '@/components/ui/ai-button'
 import { Logo } from '@/components/ui/logo'
+import { NotificationsPopover } from '@/components/ui/notifications-popover'
 
 interface NavItem {
   label: string
@@ -640,7 +641,6 @@ function Topbar({
   onBurger: () => void
 }) {
   const { theme, toggle: toggleTheme } = useTheme()
-  const router = useRouter()
 
   return (
     <header className="k2-topbar">
@@ -664,14 +664,7 @@ function Topbar({
 
       <div className="k2-topbar-actions">
         <AIButton />
-        <button
-          className={cn('k2-icon-btn', hasUnread && 'k2-notif-dot')}
-          onClick={() => router.push('/configuracoes')}
-          aria-label="Notificações"
-          title={hasUnread ? 'Tens notificações não lidas' : 'Sem notificações'}
-        >
-          <Bell size={16} />
-        </button>
+        <NotificationsPopover hasUnread={hasUnread} />
         <button
           className="k2-icon-btn"
           onClick={toggleTheme}

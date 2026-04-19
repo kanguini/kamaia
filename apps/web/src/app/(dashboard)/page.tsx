@@ -300,7 +300,7 @@ export default function DashboardPage() {
           color: var(--k2-text-dim);
         }
 
-        .k2-main {
+        .k2-dash-main {
           display: grid;
           grid-template-columns: 1.4fr 1fr;
           gap: 40px;
@@ -636,7 +636,7 @@ export default function DashboardPage() {
         .k2-qa-item:hover .qa-arrow { transform: translateX(4px); color: var(--k2-accent); }
 
         @media (max-width: 1100px) {
-          .k2-hero, .k2-strip, .k2-main {
+          .k2-hero, .k2-strip, .k2-dash-main {
             grid-template-columns: 1fr;
             padding: 24px 20px;
           }
@@ -693,7 +693,7 @@ export default function DashboardPage() {
         </div>
 
         {/* MAIN 2-COL */}
-        <div className="k2-main">
+        <div className="k2-dash-main">
           {/* LEFT — capacity + calendar */}
           <div>
             <div className="k2-section-label">
