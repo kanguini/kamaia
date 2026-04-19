@@ -19,13 +19,27 @@ export const metadata: Metadata = {
   },
 }
 
+// Runs before the first paint: reads the stored theme (default dark) and sets
+// the .dark class on <html> so the k2 tokens resolve to the right palette
+// immediately. Without this, the page renders in the :root (light) variables
+// for a tick, then flashes to dark once the client hydrates.
+const THEME_BOOTSTRAP = `
+(function(){try{
+  var t = localStorage.getItem('kamaia-theme');
+  if (t !== 'light') { document.documentElement.classList.add('dark'); }
+}catch(e){ document.documentElement.classList.add('dark'); }})();
+`
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-AO">
+    <html lang="pt-AO" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body className={`${inter.variable} ${inter.className}`}>
         <SessionProvider>{children}</SessionProvider>
       </body>
