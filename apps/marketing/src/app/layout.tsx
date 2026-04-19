@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Playfair_Display } from 'next/font/google'
 import Script from 'next/script'
 import '@/styles/globals.css'
 
@@ -12,6 +12,13 @@ const inter = Inter({
   display: 'swap',
 })
 
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+})
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -19,28 +26,30 @@ export const metadata: Metadata = {
     template: '%s · Kamaia',
   },
   description:
-    'Plataforma feita para advogados angolanos. Processos, prazos, timesheets e facturação num só lugar, com assistente IA que redige peças.',
+    'Plataforma completa para advogados, escritórios e gabinetes jurídicos. Processos, prazos, timesheets e facturação num só lugar, com assistente IA.',
   keywords: [
-    'software advocacia angola',
+    'software gestão jurídica',
     'gestão de processos jurídicos',
-    'legal tech angola',
-    'software advogados luanda',
+    'legal tech',
+    'software advogados',
     'gestão gabinete advogados',
+    'plataforma jurídica',
+    'timesheets advocacia',
   ],
   authors: [{ name: 'Kamaia' }],
   openGraph: {
     title: 'Kamaia · Gestão jurídica inteligente',
     description:
-      'Processos, prazos, timesheets e facturação num só lugar. Feito para Angola.',
+      'Processos, prazos, timesheets e facturação num só lugar. Com assistente IA integrado.',
     url: 'https://kamaia.cc',
     siteName: 'Kamaia',
-    locale: 'pt_AO',
+    locale: 'pt',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Kamaia · Gestão jurídica inteligente',
-    description: 'Processos, prazos e facturação num só lugar. Feito para Angola.',
+    description: 'Processos, prazos e facturação num só lugar. Assistente IA integrado.',
   },
   robots: {
     index: true,
@@ -63,10 +72,8 @@ const jsonLd = {
         '@type': 'ContactPoint',
         email: 'hello@kamaia.cc',
         contactType: 'customer service',
-        areaServed: 'AO',
         availableLanguage: ['Portuguese'],
       },
-      areaServed: 'Angola',
       sameAs: [],
     },
     {
@@ -76,7 +83,7 @@ const jsonLd = {
       applicationSubCategory: 'LegalSoftware',
       operatingSystem: 'Web',
       description:
-        'Plataforma de gestão jurídica para advogados angolanos — processos, prazos, timesheets, facturação e assistente IA.',
+        'Plataforma de gestão jurídica para advogados, escritórios e gabinetes — processos, prazos, timesheets, facturação e assistente IA.',
       offers: {
         '@type': 'AggregateOffer',
         priceCurrency: 'AOA',
@@ -95,7 +102,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-AO" className={inter.variable}>
+    <html lang="pt" className={`${inter.variable} ${playfair.variable}`}>
       <head>
         <script
           type="application/ld+json"

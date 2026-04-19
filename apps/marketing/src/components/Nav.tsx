@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Menu, X } from 'lucide-react'
 import { Logo } from './Logo'
 import { ThemeToggle } from './ThemeToggle'
 import { appUrl } from '@/lib/utm'
@@ -80,7 +79,15 @@ export function Nav() {
           aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
           aria-expanded={mobileOpen}
         >
-          {mobileOpen ? <X size={16} /> : <Menu size={16} />}
+          {mobileOpen ? (
+            <span className="text-base leading-none text-white select-none">✕</span>
+          ) : (
+            <span className="flex flex-col gap-[5px] items-center justify-center w-4" aria-hidden="true">
+              <span className="block h-px w-full bg-white/80" />
+              <span className="block h-px w-full bg-white/80" />
+              <span className="block h-px w-3 bg-white/80" />
+            </span>
+          )}
         </button>
       </div>
 

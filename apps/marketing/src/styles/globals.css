@@ -77,3 +77,20 @@
     padding-inline: clamp(20px, 4vw, 40px);
   }
 }
+
+/* ── Floating card animations (Hero decorative elements) ── */
+@keyframes k2-float-a {
+  0%, 100% { transform: translateY(0px) rotate(-1.5deg); }
+  50%       { transform: translateY(-12px) rotate(0deg); }
+}
+@keyframes k2-float-b {
+  0%, 100% { transform: translateY(0px) rotate(1deg); }
+  50%       { transform: translateY(-9px) rotate(0deg); }
+}
+@keyframes k2-float-c {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k2-float-a, .k2-float-b, .k2-float-c { animation: none !important; }
+}

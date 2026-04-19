@@ -24,8 +24,8 @@ export function Footer() {
         <div>
           <Logo height={22} className="text-white" />
           <p className="mt-4 max-w-xs text-sm text-white/60">
-            Gestão jurídica inteligente. Feito em Angola, para advogados
-            angolanos.
+            Gestão jurídica inteligente para advogados, escritórios e gabinetes
+            jurídicos.
           </p>
         </div>
         {Object.entries(LINKS).map(([group, links]) => (
@@ -54,7 +54,6 @@ export function Footer() {
         <div className="shell flex flex-col items-start justify-between gap-4 py-6 text-xs text-white/40 md:flex-row md:items-center">
           <p>© {new Date().getFullYear()} Kamaia. Todos os direitos reservados.</p>
           <p>
-            Feito em Luanda ·{' '}
             <Link href="mailto:hello@kamaia.cc" className="hover:text-white/70">
               hello@kamaia.cc
             </Link>

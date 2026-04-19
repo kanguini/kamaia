@@ -27,10 +27,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <style>{`
         /* ── Root layout ── */
         .k2-auth {
-          min-height: 100vh;
+          height: 100vh;
+          overflow: hidden;
           display: grid;
           grid-template-columns: 1.1fr 0.9fr;
-          align-items: start;          /* permitir que cada coluna siga o seu próprio height */
           background: var(--k2-bg);
           color: var(--k2-text);
           font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -129,12 +129,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         .k2-auth-slogan p + p { margin-top: 4px; }
 
         /* ── Form panel ──
-           Sem justify-content: center. Usamos padding vertical via clamp
-           para que formulários curtos (login) fiquem ~centrados e
-           formulários longos (registo) possam fluir sem cortar. A página
-           scrolla naturalmente; o painel brand à esquerda fica sticky. */
+           height: 100vh + overflow-y: auto garante que formulários longos
+           (registo com 8 campos) façam scroll interno sem transbordar o
+           layout. Formulários curtos (login) ficam centrados via margin: auto. */
         .k2-auth-form {
-          min-height: 100vh;
+          height: 100vh;
+          overflow-y: auto;
           padding: clamp(40px, 8vh, 80px) clamp(24px, 6vw, 64px);
           display: flex;
           flex-direction: column;
@@ -345,17 +345,24 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         /* ── Responsive: stack on narrow viewports ── */
         @media (max-width: 860px) {
-          .k2-auth { grid-template-columns: 1fr; }
+          .k2-auth {
+            height: auto;
+            overflow: visible;
+            grid-template-columns: 1fr;
+          }
           .k2-auth-brand {
-            position: static;          /* stop being sticky when stacked */
+            position: static;
             height: auto;
             min-height: 220px;
             padding: 28px 28px 36px;
             gap: 24px;
           }
-          .k2-auth-form { min-height: auto; }
+          .k2-auth-form {
+            height: auto;
+            overflow-y: visible;
+            padding: 32px 24px 48px;
+          }
           .k2-auth-slogan p { font-size: 22px; }
-          .k2-auth-form { padding: 32px 24px 48px; }
         }
 
         /* ── Motion preferences ── */
