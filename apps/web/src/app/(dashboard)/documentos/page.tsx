@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
-import { FileText, Image, File, Download, Upload, X, Loader2, Search } from 'lucide-react'
+import {
+  FileText, Image, File, Download, Upload, X, Loader2, Search, Filter,
+  ChevronDown,
+} from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
 import { DocumentCategory, PaginatedResponse } from '@kamaia/shared-types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
@@ -361,35 +362,59 @@ export default function DocumentosPage() {
   const { data: session } = useSession()
   const toast = useToast()
   const [showUpload, setShowUpload] = useState(false)
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
-  const [processoFilter, setProcessoFilter] = useState<string>('ALL')
+  const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | null>(null)
+  const [processoFilter, setProcessoFilter] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
 
-  const hasActiveFilters = search !== '' || categoryFilter !== 'ALL' || processoFilter !== 'ALL'
-
-  const clearFilters = () => {
-    setSearch('')
-    setCategoryFilter('ALL')
-    setProcessoFilter('ALL')
-  }
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch, categoryFilter, processoFilter])
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault()
+        document.getElementById('doc-search')?.focus()
+      }
+    }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [])
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
-    if (categoryFilter !== 'ALL') params.append('category', categoryFilter)
-    if (processoFilter !== 'ALL') params.append('processoId', processoFilter)
-    if (search) params.append('search', search)
+    if (categoryFilter) params.append('category', categoryFilter)
+    if (processoFilter) params.append('processoId', processoFilter)
+    if (debouncedSearch) params.append('search', debouncedSearch)
+    params.append('limit', '200')
     return `/documents?${params.toString()}`
-  }, [categoryFilter, processoFilter, search])
+  }, [categoryFilter, processoFilter, debouncedSearch])
 
   const {
     data: documents,
     loading,
     error,
     refetch,
-  } = useApi<PaginatedResponse<Document>>(endpoint, [categoryFilter, processoFilter, search])
+  } = useApi<PaginatedResponse<Document>>(endpoint, [
+    categoryFilter,
+    processoFilter,
+    debouncedSearch,
+  ])
+  const all = documents?.data ?? []
+  const visible = useMemo(
+    () => all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [all, page],
+  )
 
   const { data: storage, refetch: refetchStorage } = useApi<StorageInfo>('/documents/storage')
-  const { data: processos } = useApi<PaginatedResponse<Processo>>('/processos?limit=1000')
+  const { data: processosData } = useApi<PaginatedResponse<Processo>>('/processos?limit=1000')
+  const processos = processosData?.data ?? []
 
   const handleUploadSuccess = () => {
     toast.success('Documento enviado com sucesso')
@@ -423,187 +448,382 @@ export default function DocumentosPage() {
     })
   }
 
-  const getStorageBarColor = (percentage: number) => {
-    if (percentage < 50) return 'bg-success'
-    if (percentage < 80) return 'bg-warning'
-    return 'bg-danger'
-  }
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Documentos</h1>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-        >
-          <Upload className="w-4 h-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Enviar Documento</span>
-          <span className="sm:hidden">Enviar</span>
-        </button>
+    <div className="px-page">
+      <style jsx global>{documentosStyles}</style>
+
+      <div className="px-head">
+        <div className="px-title">Documentos</div>
+        <div className="px-head-actions">
+          <button
+            type="button"
+            onClick={() => setShowUpload(true)}
+            className="px-btn-primary"
+          >
+            <Upload size={14} /> Enviar documento
+          </button>
+        </div>
       </div>
 
-      {/* Storage bar */}
       {storage && (
-        <div className="bg-surface-raised p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-ink-muted">Armazenamento</p>
-            <p className="text-sm font-mono text-ink">
-              {formatFileSize(storage.used)} / {formatFileSize(storage.limit)} usados
-            </p>
+        <div className="px-storage">
+          <div className="px-storage-head">
+            <span>Armazenamento</span>
+            <span className="mono">
+              {formatFileSize(storage.used)} / {formatFileSize(storage.limit)}
+            </span>
           </div>
-          <div className="h-2 bg-border rounded-full overflow-hidden">
+          <div className="px-storage-bar">
             <div
-              className={cn('h-full transition-all', getStorageBarColor(storage.percentage))}
+              className={cn(
+                'px-storage-fill',
+                storage.percentage < 50
+                  ? 'good'
+                  : storage.percentage < 80
+                    ? 'warn'
+                    : 'bad',
+              )}
               style={{ width: `${Math.min(storage.percentage, 100)}%` }}
             />
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-surface-raised p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" aria-hidden="true" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Procurar documentos..."
-              aria-label="Procurar documentos"
-              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
-            />
-          </div>
-
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            aria-label="Filtrar por categoria"
-            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent min-h-[40px]"
-          >
-            <option value="ALL">Todas as Categorias</option>
-            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={processoFilter}
-            onChange={(e) => setProcessoFilter(e.target.value)}
-            aria-label="Filtrar por processo"
-            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent min-h-[40px]"
-          >
-            <option value="ALL">Todos os Processos</option>
-            {processos?.data.map((processo) => (
-              <option key={processo.id} value={processo.id}>
-                {processo.processoNumber}
-              </option>
-            ))}
-          </select>
+      <div className="px-toolbar">
+        <div className="px-search">
+          <Search size={14} />
+          <input
+            id="doc-search"
+            placeholder="Pesquisar por título... (/)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className="px-search-clear" onClick={() => setSearch('')}>
+              ×
+            </button>
+          )}
         </div>
+        <DocFilterChip
+          label="Categoria"
+          value={categoryFilter}
+          options={Object.entries(CATEGORY_LABELS).map(([id, label]) => ({
+            id: id as DocumentCategory,
+            label,
+          }))}
+          onChange={setCategoryFilter}
+        />
+        <DocFilterChip
+          label="Processo"
+          value={processoFilter}
+          options={processos.map((p) => ({ id: p.id, label: p.processoNumber }))}
+          onChange={setProcessoFilter}
+        />
       </div>
 
-      {error && (
-        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
-      )}
+      {error && <div className="px-error">{error}</div>}
 
-      {loading ? (
-        <LoadingSkeleton count={5} label="A carregar documentos" />
-      ) : !documents || documents.data.length === 0 ? (
-        hasActiveFilters ? (
-          <EmptyState
-            icon={Search}
-            title="Nenhum resultado"
-            description="Nenhum documento corresponde aos filtros aplicados"
-            action={
+      <div className="px-table-wrap">
+        <div className="px-table">
+          <div className="px-thead">
+            <div>Ficheiro</div>
+            <div>Categoria</div>
+            <div>Processo</div>
+            <div>Enviado por</div>
+            <div style={{ textAlign: 'right' }}>Tamanho</div>
+          </div>
+
+          {loading && all.length === 0 ? (
+            <div className="px-empty">A carregar documentos…</div>
+          ) : all.length === 0 ? (
+            <div className="px-empty">
+              Sem documentos a mostrar.{' '}
               <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-              >
-                Limpar filtros
-              </button>
-            }
-          />
-        ) : (
-          <EmptyState
-            icon={FileText}
-            title="Nenhum documento"
-            description="Envie o seu primeiro ficheiro"
-            action={
-              <button
+                type="button"
                 onClick={() => setShowUpload(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
+                className="px-linkish"
               >
-                <Upload className="w-4 h-4" aria-hidden="true" />
-                Enviar Documento
+                Enviar o primeiro
               </button>
-            }
-          />
-        )
-      ) : (
-        <div className="space-y-3">
-          {documents.data.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors cursor-pointer"
-              onClick={() => handleDownload(doc.id, doc.title)}
-            >
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0">{getFileIcon(doc.mimeType)}</div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-ink truncate">{doc.title}</h3>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-xs px-2 py-0.5 bg-muted/10 text-ink-muted rounded-full border border-muted/20">
-                      {CATEGORY_LABELS[doc.category]}
-                    </span>
-                    {doc.processo && (
-                      <Link
-                        href={`/processos/${doc.processo.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-info hover:underline font-mono"
-                      >
-                        {doc.processo.processoNumber}
-                      </Link>
-                    )}
-                  </div>
-                  <p className="text-xs text-ink-muted mt-1">
-                    {doc.uploadedBy?.firstName} {doc.uploadedBy?.lastName} • {formatDate(doc.createdAt)}
-                  </p>
+              .
+            </div>
+          ) : (
+            visible.map((doc) => (
+              <div
+                key={doc.id}
+                className="px-row"
+                role="button"
+                tabIndex={0}
+                onClick={() => handleDownload(doc.id, doc.title)}
+              >
+                <div className="px-cell-file">
+                  <span className="px-file-icon">{getFileIcon(doc.mimeType)}</span>
+                  <span className="name-text">{doc.title}</span>
                 </div>
-
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-sm text-ink-muted font-mono">{formatFileSize(doc.fileSize)}</span>
-                  <IconButton
-                    aria-label="Transferir documento"
+                <div className="px-meta">{CATEGORY_LABELS[doc.category]}</div>
+                <div className="px-meta mono">
+                  {doc.processo ? doc.processo.processoNumber : '—'}
+                </div>
+                <div className="px-meta">
+                  <div>
+                    {doc.uploadedBy?.firstName} {doc.uploadedBy?.lastName}
+                  </div>
+                  <div className="sub">{formatDate(doc.createdAt)}</div>
+                </div>
+                <div className="px-status" aria-label="Tamanho">
+                  <span className="px-count-pill">{formatFileSize(doc.fileSize)}</span>
+                  <button
+                    type="button"
+                    className="px-status-check"
+                    title="Transferir"
+                    aria-label="Transferir"
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDownload(doc.id, doc.title)
                     }}
-                    variant="ghost"
-                    size="sm"
                   >
-                    <Download className="w-4 h-4" />
-                  </IconButton>
+                    <Download size={13} />
+                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-
-          {documents.nextCursor && (
-            <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface-raised transition-colors">
-                Carregar mais
-              </button>
-            </div>
+            ))
           )}
+        </div>
+      </div>
+
+      {all.length > PAGE_SIZE && (
+        <div className="px-pagination">
+          <span className="px-pagination-info">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, all.length)} de{' '}
+            {all.length}
+          </span>
+          <div className="px-pagination-nav">
+            <button
+              type="button"
+              className="px-pagination-btn"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              aria-label="Página anterior"
+            >
+              ‹
+            </button>
+            <span className="px-pagination-page">
+              {page} / {Math.ceil(all.length / PAGE_SIZE)}
+            </span>
+            <button
+              type="button"
+              className="px-pagination-btn"
+              onClick={() => setPage((p) => (p * PAGE_SIZE < all.length ? p + 1 : p))}
+              disabled={page * PAGE_SIZE >= all.length}
+              aria-label="Página seguinte"
+            >
+              ›
+            </button>
+          </div>
         </div>
       )}
 
-      <UploadModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={handleUploadSuccess} />
+      <UploadModal
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   )
 }
+
+// ── Inline filter chip (same shape as other lists) ──
+function DocFilterChip<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T | null
+  options: { id: T; label: string }[]
+  onChange: (v: T | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const active = value != null
+  const displayLabel = active
+    ? options.find((o) => o.id === value)?.label ?? label
+    : label
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    window.addEventListener('click', h)
+    return () => window.removeEventListener('click', h)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className={`px-chip ${active ? 'on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Filter size={13} />
+        <span>{displayLabel}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <div className="px-popover">
+          <button
+            type="button"
+            className={`px-popover-item ${value == null ? 'on' : ''}`}
+            onClick={() => {
+              onChange(null)
+              setOpen(false)
+            }}
+          >
+            <span className="px-check">{value == null ? '●' : ''}</span>
+            Todos
+          </button>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`px-popover-item ${value === o.id ? 'on' : ''}`}
+              onClick={() => {
+                onChange(o.id)
+                setOpen(false)
+              }}
+            >
+              <span className="px-check">{value === o.id ? '●' : ''}</span>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const documentosStyles = `
+.px-page {
+  margin: -1rem -1.5rem -1.5rem;
+  padding: 24px clamp(20px, 3vw, 40px) 48px;
+  color: var(--k2-text);
+  background: var(--k2-bg);
+  min-width: 0; max-width: 100%; overflow-x: clip;
+}
+.px-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.px-title { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.px-head-actions { display: flex; align-items: center; gap: 8px; }
+.px-btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500; background: var(--k2-accent); color: var(--k2-accent-fg); border: none; border-radius: var(--k2-radius-sm); cursor: pointer; transition: filter 120ms; }
+.px-btn-primary:hover { filter: brightness(1.08); }
+
+.px-storage {
+  padding: 12px 16px; border: 1px solid var(--k2-border);
+  border-radius: var(--k2-radius); background: var(--k2-bg);
+  margin-bottom: 16px;
+}
+.px-storage-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--k2-text-dim); margin-bottom: 8px;
+}
+.px-storage-head .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--k2-text);
+}
+.px-storage-bar { height: 4px; background: var(--k2-bg-hover); border-radius: 2px; overflow: hidden; }
+.px-storage-fill { height: 100%; transition: width 200ms; }
+.px-storage-fill.good { background: var(--k2-good); }
+.px-storage-fill.warn { background: var(--k2-warn); }
+.px-storage-fill.bad  { background: var(--k2-bad); }
+
+.px-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.px-search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); color: var(--k2-text-mute); }
+.px-search input { flex: 1; background: transparent; border: none; outline: none; color: var(--k2-text); font-size: 13px; font-family: inherit; }
+.px-search input::placeholder { color: var(--k2-text-mute); }
+.px-search-clear { background: transparent; border: none; color: var(--k2-text-mute); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+
+.px-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 12px; font-weight: 500; background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); color: var(--k2-text-dim); cursor: pointer; transition: all 120ms; }
+.px-chip:hover { color: var(--k2-text); border-color: var(--k2-border-strong); }
+.px-chip.on { color: var(--k2-text); border-color: var(--k2-accent); background: color-mix(in oklch, var(--k2-accent) 10%, var(--k2-bg)); }
+
+.px-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; min-width: 200px; max-height: 320px; overflow-y: auto; padding: 6px; background: var(--k2-bg); border: 1px solid var(--k2-border-strong); border-radius: var(--k2-radius); box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5); }
+.px-popover-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; font-size: 13px; color: var(--k2-text-dim); background: transparent; border: none; border-radius: 6px; cursor: pointer; text-align: left; }
+.px-popover-item:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
+.px-popover-item.on { color: var(--k2-text); }
+.px-check { width: 14px; display: inline-grid; place-items: center; font-size: 10px; color: var(--k2-accent); line-height: 1; }
+
+.px-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg); background: var(--k2-bg); }
+.px-table { min-width: 780px; }
+.px-thead, .px-row {
+  display: grid;
+  grid-template-columns: 2.6fr 1fr 0.9fr 1.6fr 150px;
+  gap: 16px; align-items: center;
+  padding: 14px 20px; border-bottom: 1px solid var(--k2-border);
+}
+.px-thead { background: transparent; font-size: 10px; color: var(--k2-text-mute); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+.px-row { cursor: pointer; transition: background 120ms; }
+.px-row:hover { background: var(--k2-bg-hover); }
+.px-row:last-child { border-bottom: none; }
+
+.px-cell-file { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.px-cell-file .name-text {
+  font-size: 14px; font-weight: 500; color: var(--k2-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.px-file-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: var(--k2-bg-hover); border-radius: 6px;
+}
+.px-meta { font-size: 12px; color: var(--k2-text-dim); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px-meta.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.px-meta .sub { font-size: 11px; color: var(--k2-text-mute); }
+
+.px-status { display: flex; align-items: center; justify-content: flex-end; gap: 8px; position: relative; }
+.px-count-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 10px; font-size: 11px; font-weight: 500;
+  background: var(--k2-bg-hover); color: var(--k2-text);
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.px-status-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0;
+  background: transparent; border: 1px solid var(--k2-border);
+  border-radius: 6px; color: var(--k2-text-dim); cursor: pointer;
+  opacity: 0; transition: opacity 120ms, color 120ms, border-color 120ms;
+}
+.px-row:hover .px-status-check,
+.px-row:focus-visible .px-status-check {
+  opacity: 1;
+}
+.px-status-check:hover { color: var(--k2-text); border-color: var(--k2-border-strong); }
+
+.px-empty { padding: 40px 20px; text-align: center; color: var(--k2-text-mute); font-size: 13px; }
+.px-linkish { background: transparent; border: none; color: var(--k2-accent); cursor: pointer; font: inherit; padding: 0; }
+.px-linkish:hover { text-decoration: underline; }
+
+.px-error {
+  padding: 12px 16px;
+  background: color-mix(in oklch, var(--k2-bad) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--k2-bad) 30%, var(--k2-border));
+  border-radius: var(--k2-radius); color: var(--k2-bad); font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.px-pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 0; font-size: 12px; color: var(--k2-text-dim); }
+.px-pagination-info { font-variant-numeric: tabular-nums; }
+.px-pagination-nav { display: inline-flex; align-items: center; gap: 8px; }
+.px-pagination-page { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: var(--k2-text); }
+.px-pagination-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; background: transparent; border: 1px solid var(--k2-border); border-radius: 6px; color: var(--k2-text-dim); cursor: pointer; font-size: 14px; transition: all 120ms; }
+.px-pagination-btn:hover:not(:disabled) { color: var(--k2-text); border-color: var(--k2-border-strong); }
+.px-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .px-page { padding: 16px 20px; }
+  .px-thead { display: none; }
+  .px-row { grid-template-columns: 1fr; gap: 6px; padding: 14px 16px; }
+}
+`

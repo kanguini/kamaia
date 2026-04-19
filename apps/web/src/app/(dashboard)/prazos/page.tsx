@@ -1,11 +1,18 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+/**
+ * Prazos — slim list matching /projectos /processos /clientes.
+ */
+
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Clock, AlertTriangle, CheckCircle, Search } from 'lucide-react'
-import { useApi, useMutation } from '@/hooks/use-api'
-import { cn } from '@/lib/utils'
-import { EmptyState, LoadingSkeleton, FilterTabs, IconButton } from '@/components/ui'
+import { useRouter } from 'next/navigation'
+import {
+  Search, Plus, Filter, ArrowUpRight, ChevronDown, Check,
+} from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { useApi } from '@/hooks/use-api'
+import { api } from '@/lib/api'
 import { PrazoType, PrazoStatus, PaginatedResponse } from '@kamaia/shared-types'
 
 interface Prazo {
@@ -15,611 +22,584 @@ interface Prazo {
   dueDate: string
   status: PrazoStatus
   isUrgent: boolean
-  processo: {
-    id: string
-    processoNumber: string
-    title: string
-  }
+  processo: { id: string; processoNumber: string; title: string }
 }
 
-interface PrazoStats {
-  urgentes: number
-  pendentes: number
-  cumpridos: number
-}
-
-const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
-  [PrazoType.CONTESTACAO]: 'Contestacao',
+const TYPE_LABEL: Record<PrazoType, string> = {
+  [PrazoType.CONTESTACAO]: 'Contestação',
   [PrazoType.RECURSO]: 'Recurso',
   [PrazoType.RESPOSTA]: 'Resposta',
-  [PrazoType.ALEGACOES]: 'Alegacoes',
+  [PrazoType.ALEGACOES]: 'Alegações',
   [PrazoType.AUDIENCIA]: 'Audiência',
   [PrazoType.OUTRO]: 'Outro',
 }
+const STATUS_LABEL: Record<PrazoStatus, string> = {
+  [PrazoStatus.PENDENTE]: 'Pendente',
+  [PrazoStatus.CUMPRIDO]: 'Cumprido',
+  [PrazoStatus.EXPIRADO]: 'Expirado',
+  [PrazoStatus.CANCELADO]: 'Cancelado',
+}
 
-function getRelativeTime(date: Date): string {
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-PT', {
+    day: '2-digit',
+    month: 'short',
+  }).replace('.', '')
+}
+function formatLeft(iso: string): { text: string; cls: 'over' | 'urgent' | 'normal' } {
   const now = new Date()
-  const diff = date.getTime() - now.getTime()
-  const diffAbs = Math.abs(diff)
-
-  const minutes = Math.floor(diffAbs / (1000 * 60))
-  const hours = Math.floor(diffAbs / (1000 * 60 * 60))
-  const days = Math.floor(diffAbs / (1000 * 60 * 60 * 24))
-
-  if (diff < 0) {
-    // Past
-    if (minutes < 60) return `ha ${minutes} min`
-    if (hours < 24) return `ha ${hours} horas`
-    return `ha ${days} dias`
-  } else {
-    // Future
-    if (minutes < 60) return `em ${minutes} min`
-    if (hours < 24) return `em ${hours} horas`
-    return `em ${days} dias`
-  }
-}
-
-function isToday(date: Date): boolean {
-  const today = new Date()
-  return date.toDateString() === today.toDateString()
-}
-
-function isTomorrow(date: Date): boolean {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  return date.toDateString() === tomorrow.toDateString()
-}
-
-function isThisWeek(date: Date): boolean {
-  const now = new Date()
-  const weekFromNow = new Date()
-  weekFromNow.setDate(now.getDate() + 7)
-  return date > now && date <= weekFromNow
+  now.setHours(0, 0, 0, 0)
+  const d = new Date(iso)
+  d.setHours(0, 0, 0, 0)
+  const days = Math.floor((d.getTime() - now.getTime()) / 86_400_000)
+  if (days < 0) return { text: `${-days}d em atraso`, cls: 'over' }
+  if (days === 0) return { text: 'Hoje', cls: 'urgent' }
+  if (days <= 7) return { text: `${days}d`, cls: 'urgent' }
+  return { text: `${days}d`, cls: 'normal' }
 }
 
 export default function PrazosPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
-  const [typeFilter, setTypeFilter] = useState<string>('ALL')
-  const [urgentOnly, setUrgentOnly] = useState(false)
-  const [search, setSearch] = useState<string>('')
+  const router = useRouter()
+  const { data: session } = useSession()
 
-  const hasActiveFilters = search !== '' || statusFilter !== 'ALL' || typeFilter !== 'ALL' || urgentOnly
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<PrazoStatus | null>(
+    PrazoStatus.PENDENTE,
+  )
+  const [typeFilter, setTypeFilter] = useState<PrazoType | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
 
-  const clearFilters = () => {
-    setSearch('')
-    setStatusFilter('ALL')
-    setTypeFilter('ALL')
-    setUrgentOnly(false)
-  }
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter, typeFilter])
+
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
+        e.preventDefault()
+        document.getElementById('pz-search')?.focus()
+      }
+    }
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [])
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams()
-    if (statusFilter !== 'ALL') params.append('status', statusFilter)
-    if (typeFilter !== 'ALL') params.append('type', typeFilter)
-    if (urgentOnly) params.append('urgentOnly', 'true')
+    if (statusFilter) params.append('status', statusFilter)
+    if (typeFilter) params.append('type', typeFilter)
+    params.append('limit', '200')
     return `/prazos?${params.toString()}`
-  }, [statusFilter, typeFilter, urgentOnly])
+  }, [statusFilter, typeFilter])
 
-  const { data, loading, error, refetch } = useApi<PaginatedResponse<Prazo>>(endpoint, [
-    statusFilter,
-    typeFilter,
-    urgentOnly,
-  ])
+  const { data, loading, error, refetch } = useApi<PaginatedResponse<Prazo>>(
+    endpoint,
+    [statusFilter, typeFilter],
+  )
+  const all = data?.data ?? []
 
-  const { mutate: completePrazo } = useMutation(`/prazos/ID/complete`, 'PATCH')
+  // Client-side search across title + processo + type
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return all
+    return all.filter((p) => {
+      const blob = [
+        p.title,
+        p.processo.processoNumber,
+        p.processo.title,
+        TYPE_LABEL[p.type],
+      ]
+        .join(' ')
+        .toLowerCase()
+      return blob.includes(q)
+    })
+  }, [all, search])
 
-  const handleComplete = async () => {
-    const result = await completePrazo(undefined)
-    if (result !== null) {
+  const visible = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  )
+
+  const onComplete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!session?.accessToken) return
+    try {
+      await api(`/prazos/${id}/complete`, {
+        method: 'PATCH',
+        token: session.accessToken,
+      })
       refetch()
+    } catch {
+      /* non-fatal; row continues to show pending */
     }
   }
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-AO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  const getStatusBadge = (status: PrazoStatus) => {
-    const styles = {
-      [PrazoStatus.PENDENTE]: 'bg-warning-bg text-warning-text border-warning',
-      [PrazoStatus.CUMPRIDO]: 'bg-success-bg text-success-text border-success',
-      [PrazoStatus.EXPIRADO]: 'bg-danger-bg text-danger-text border-danger',
-      [PrazoStatus.CANCELADO]: 'bg-surface-raised text-ink-muted border-border',
-    }
-    return (
-      <span
-        className={cn(
-          'inline-flex items-center px-2 py-0.5 text-xs font-mono rounded-full border',
-          styles[status],
-        )}
-      >
-        {status}
-      </span>
-    )
-  }
-
-  // Calculate stats
-  const stats: PrazoStats = useMemo(() => {
-    if (!data?.data) return { urgentes: 0, pendentes: 0, cumpridos: 0 }
-
-    const now = new Date()
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-
-    return {
-      urgentes: data.data.filter(p => p.status === PrazoStatus.PENDENTE && p.isUrgent).length,
-      pendentes: data.data.filter(p => p.status === PrazoStatus.PENDENTE).length,
-      cumpridos: data.data.filter(p =>
-        p.status === PrazoStatus.CUMPRIDO && new Date(p.dueDate) >= thisMonth
-      ).length,
-    }
-  }, [data])
-
-  // Group prazos by proximity for PENDENTES view
-  const groupedPrazos = useMemo(() => {
-    if (!data?.data) return {}
-    if (statusFilter !== 'ALL' && statusFilter !== PrazoStatus.PENDENTE) {
-      return { all: data.data }
-    }
-
-    const pendentes = data.data.filter(p => p.status === PrazoStatus.PENDENTE)
-    const now = new Date()
-
-    const groups: Record<string, Prazo[]> = {
-      atrasados: [],
-      hoje: [],
-      amanha: [],
-      estaSemana: [],
-      proximo: [],
-    }
-
-    pendentes.forEach(prazo => {
-      const dueDate = new Date(prazo.dueDate)
-
-      if (dueDate < now) {
-        groups.atrasados.push(prazo)
-      } else if (isToday(dueDate)) {
-        groups.hoje.push(prazo)
-      } else if (isTomorrow(dueDate)) {
-        groups.amanha.push(prazo)
-      } else if (isThisWeek(dueDate)) {
-        groups.estaSemana.push(prazo)
-      } else {
-        groups.proximo.push(prazo)
-      }
-    })
-
-    return groups
-  }, [data, statusFilter])
-
-  const showGrouped = statusFilter === 'ALL' || statusFilter === PrazoStatus.PENDENTE
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Prazos</h1>
-        <Link
-          href="/prazos/novo"
-          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-        >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Novo Prazo</span>
-          <span className="sm:hidden">Novo</span>
-        </Link>
-      </div>
+    <div className="px-page">
+      <style jsx global>{listStyles}</style>
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-4 py-2 bg-danger-bg border border-danger">
-          <span className="text-xs font-mono text-danger-text">{stats.urgentes} urgentes</span>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-warning-bg border border-warning">
-          <span className="text-xs font-mono text-warning-text">{stats.pendentes} pendentes</span>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-success-bg border border-success">
-          <span className="text-xs font-mono text-success-text">{stats.cumpridos} cumpridos este mes</span>
+      <div className="px-head">
+        <div className="px-title">Prazos</div>
+        <div className="px-head-actions">
+          <Link href="/prazos/novo" className="px-btn-primary">
+            <Plus size={14} /> Novo prazo
+          </Link>
         </div>
       </div>
 
-      <div className="bg-surface-raised p-4 space-y-4">
-        <FilterTabs
+      <div className="px-toolbar">
+        <div className="px-search">
+          <Search size={14} />
+          <input
+            id="pz-search"
+            placeholder="Pesquisar por título, processo, tipo... (/)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className="px-search-clear" onClick={() => setSearch('')}>
+              ×
+            </button>
+          )}
+        </div>
+        <FilterChip
+          icon={<Filter size={13} />}
+          label="Estado"
           value={statusFilter}
-          onChange={setStatusFilter}
-          label="Filtrar por status"
-          tabs={[
-            { value: 'ALL', label: 'Todos' },
-            { value: PrazoStatus.PENDENTE, label: 'Pendentes' },
-            { value: PrazoStatus.CUMPRIDO, label: 'Cumpridos' },
-            { value: PrazoStatus.EXPIRADO, label: 'Expirados' },
-            { value: PrazoStatus.CANCELADO, label: 'Cancelados' },
-          ]}
+          options={Object.values(PrazoStatus).map((id) => ({
+            id,
+            label: STATUS_LABEL[id],
+          }))}
+          onChange={(v) => setStatusFilter(v as PrazoStatus | null)}
         />
+        <FilterChip
+          icon={<Filter size={13} />}
+          label="Tipo"
+          value={typeFilter}
+          options={Object.values(PrazoType).map((id) => ({
+            id,
+            label: TYPE_LABEL[id],
+          }))}
+          onChange={(v) => setTypeFilter(v as PrazoType | null)}
+        />
+      </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted" aria-hidden="true" />
-            <input
-              type="search"
-              placeholder="Pesquisar prazos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Pesquisar prazos"
-              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
-            />
+      {error && <div className="px-error">{error}</div>}
+
+      <div className="px-table-wrap">
+        <div className="px-table">
+          <div className="px-thead">
+            <div>Prazo</div>
+            <div>Processo</div>
+            <div>Tipo</div>
+            <div>Vencimento</div>
+            <div style={{ textAlign: 'right' }}>Estado</div>
           </div>
 
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            aria-label="Filtrar por tipo"
-            className="px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono text-sm min-h-[40px]"
-          >
-            <option value="ALL">Todos os Tipos</option>
-            {Object.entries(PRAZO_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-
-          <label className="flex items-center gap-2 px-4 py-2.5 bg-surface border border-border  cursor-pointer hover:bg-surface-raised transition-colors">
-            <input
-              type="checkbox"
-              checked={urgentOnly}
-              onChange={(e) => setUrgentOnly(e.target.checked)}
-              aria-label="Apenas urgentes"
-              className="w-4 h-4 text-ink border-border rounded focus:ring-2 focus:ring-ink"
-            />
-            <span className="text-sm font-medium text-ink">Apenas urgentes</span>
-          </label>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>
-      )}
-
-      {loading ? (
-        <LoadingSkeleton count={5} label="A carregar prazos" />
-      ) : !data || data.data.length === 0 ? (
-        hasActiveFilters ? (
-          <EmptyState
-            icon={Search}
-            title="Nenhum resultado"
-            description="Nenhum prazo corresponde aos filtros aplicados"
-            action={
-              <button
-                onClick={clearFilters}
-                className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
-              >
-                Limpar filtros
-              </button>
-            }
-          />
-        ) : (
-          <EmptyState
-            icon={Clock}
-            title="Nenhum prazo"
-            description="Comece por criar o seu primeiro prazo"
-            action={
-              <Link href="/prazos/novo" className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium  hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]">
-                <Plus className="w-4 h-4" aria-hidden="true" />
-                Novo Prazo
+          {loading && all.length === 0 ? (
+            <div className="px-empty">A carregar prazos…</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-empty">
+              Sem prazos a mostrar. Ajuste filtros ou{' '}
+              <Link href="/prazos/novo" style={{ color: 'var(--k2-accent)' }}>
+                registe um novo
               </Link>
-            }
-          />
-        )
-      ) : showGrouped ? (
-        <div className="space-y-6">
-          {groupedPrazos.atrasados && groupedPrazos.atrasados.length > 0 && (
-            <div>
-              <h2 className="font-display text-xl font-semibold text-danger mb-3">Atrasados</h2>
-              <div className="space-y-3">
-                {groupedPrazos.atrasados.map((prazo) => (
-                  <div
-                    key={prazo.id}
-                    className="bg-danger/5 border-l-4 border-danger  p-4 hover:bg-danger/10 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
-                        </Link>
-                        <Link
-                          href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-ink-muted hover:underline"
-                        >
-                          {prazo.processo.processoNumber}
-                        </Link>
-                        <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                            {PRAZO_TYPE_LABELS[prazo.type]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-danger mb-1">
-                          {getRelativeTime(new Date(prazo.dueDate))}
-                        </p>
-                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                        {getStatusBadge(prazo.status)}
-                        {prazo.status === PrazoStatus.PENDENTE && (
-                          <IconButton
-                            aria-label="Marcar como cumprido"
-                            onClick={handleComplete}
-                            variant="default"
-                            size="sm"
-                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Cumprido</span>
-                          </IconButton>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              .
             </div>
-          )}
-
-          {groupedPrazos.hoje && groupedPrazos.hoje.length > 0 && (
-            <div>
-              <h2 className="font-display text-xl font-semibold text-warning mb-3">Hoje</h2>
-              <div className="space-y-3">
-                {groupedPrazos.hoje.map((prazo) => (
-                  <div
-                    key={prazo.id}
-                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
-                        </Link>
-                        <Link
-                          href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-ink-muted hover:underline"
-                        >
-                          {prazo.processo.processoNumber}
-                        </Link>
-                        <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                            {PRAZO_TYPE_LABELS[prazo.type]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-warning mb-1">Hoje</p>
-                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                        {getStatusBadge(prazo.status)}
-                        {prazo.status === PrazoStatus.PENDENTE && (
-                          <IconButton
-                            aria-label="Marcar como cumprido"
-                            onClick={handleComplete}
-                            variant="default"
-                            size="sm"
-                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Cumprido</span>
-                          </IconButton>
-                        )}
-                      </div>
-                    </div>
+          ) : (
+            visible.map((p) => {
+              const left = formatLeft(p.dueDate)
+              const effectiveStatus =
+                p.isUrgent && p.status === PrazoStatus.PENDENTE
+                  ? 'urgente'
+                  : p.status.toLowerCase()
+              const effectiveLabel =
+                p.isUrgent && p.status === PrazoStatus.PENDENTE
+                  ? 'Urgente'
+                  : STATUS_LABEL[p.status]
+              return (
+                <div
+                  key={p.id}
+                  className="px-row"
+                  onClick={() => router.push(`/prazos/${p.id}`)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="px-cell-name">
+                    <span className="name-text">{p.title}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {groupedPrazos.amanha && groupedPrazos.amanha.length > 0 && (
-            <div>
-              <h2 className="font-display text-xl font-semibold text-ink mb-3">Amanha</h2>
-              <div className="space-y-3">
-                {groupedPrazos.amanha.map((prazo) => (
-                  <div
-                    key={prazo.id}
-                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
-                        </Link>
-                        <Link
-                          href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-ink-muted hover:underline"
-                        >
-                          {prazo.processo.processoNumber}
-                        </Link>
-                        <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                            {PRAZO_TYPE_LABELS[prazo.type]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-ink mb-1">
-                          {getRelativeTime(new Date(prazo.dueDate))}
-                        </p>
-                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                        {getStatusBadge(prazo.status)}
-                        {prazo.status === PrazoStatus.PENDENTE && (
-                          <IconButton
-                            aria-label="Marcar como cumprido"
-                            onClick={handleComplete}
-                            variant="default"
-                            size="sm"
-                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Cumprido</span>
-                          </IconButton>
-                        )}
-                      </div>
-                    </div>
+                  <div className="px-linked">
+                    <span className="mono">{p.processo.processoNumber}</span>
+                    <span className="muted">{p.processo.title}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {groupedPrazos.estaSemana && groupedPrazos.estaSemana.length > 0 && (
-            <div>
-              <h2 className="font-display text-xl font-semibold text-ink mb-3">Esta Semana</h2>
-              <div className="space-y-3">
-                {groupedPrazos.estaSemana.map((prazo) => (
-                  <div
-                    key={prazo.id}
-                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
-                        </Link>
-                        <Link
-                          href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-ink-muted hover:underline"
-                        >
-                          {prazo.processo.processoNumber}
-                        </Link>
-                        <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                            {PRAZO_TYPE_LABELS[prazo.type]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-ink mb-1">
-                          {getRelativeTime(new Date(prazo.dueDate))}
-                        </p>
-                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                        {getStatusBadge(prazo.status)}
-                        {prazo.status === PrazoStatus.PENDENTE && (
-                          <IconButton
-                            aria-label="Marcar como cumprido"
-                            onClick={handleComplete}
-                            variant="default"
-                            size="sm"
-                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Cumprido</span>
-                          </IconButton>
-                        )}
-                      </div>
-                    </div>
+                  <div className="px-meta">{TYPE_LABEL[p.type]}</div>
+                  <div className="px-deadline">
+                    <span className="date mono">{formatDate(p.dueDate)}</span>
+                    <span className={`left ${left.cls}`}>{left.text}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {groupedPrazos.proximo && groupedPrazos.proximo.length > 0 && (
-            <div>
-              <h2 className="font-display text-xl font-semibold text-ink mb-3">Proximo</h2>
-              <div className="space-y-3">
-                {groupedPrazos.proximo.map((prazo) => (
-                  <div
-                    key={prazo.id}
-                    className="bg-surface border border-border p-4 hover:bg-surface-raised/80 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-label="Urgente" />}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/prazos/${prazo.id}`} className="block">
-                          <h3 className="font-semibold text-ink mb-1 hover:text-ink transition-colors">{prazo.title}</h3>
-                        </Link>
-                        <Link
-                          href={`/processos/${prazo.processo.id}`}
-                          className="text-sm font-mono text-ink-muted hover:underline"
-                        >
-                          {prazo.processo.processoNumber}
-                        </Link>
-                        <div className="mt-2">
-                          <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                            {PRAZO_TYPE_LABELS[prazo.type]}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-medium text-ink mb-1">
-                          {getRelativeTime(new Date(prazo.dueDate))}
-                        </p>
-                        <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                        {getStatusBadge(prazo.status)}
-                        {prazo.status === PrazoStatus.PENDENTE && (
-                          <IconButton
-                            aria-label="Marcar como cumprido"
-                            onClick={handleComplete}
-                            variant="default"
-                            size="sm"
-                            className="mt-2 !w-auto !h-auto px-2 py-1 text-success hover:bg-success/10"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            <span className="ml-1 text-xs">Cumprido</span>
-                          </IconButton>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {data.data.map((prazo) => (
-            <Link
-              key={prazo.id}
-              href={`/prazos/${prazo.id}`}
-              className="block bg-surface border border-border p-4 hover:bg-surface-raised/80 motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-            >
-              <div className="flex items-start gap-3">
-                {prazo.isUrgent && <AlertTriangle className="w-5 h-5 text-danger flex-shrink-0 mt-0.5" aria-hidden="true" />}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-ink mb-1">{prazo.title}</h3>
-                  <Link
-                    href={`/processos/${prazo.processo.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-sm font-mono text-ink-muted hover:underline"
-                  >
-                    {prazo.processo.processoNumber}
-                  </Link>
-                  <div className="mt-2">
-                    <span className="text-xs px-2 py-1 bg-muted/10 text-ink-muted rounded-full">
-                      {PRAZO_TYPE_LABELS[prazo.type]}
+                  <div className="px-status" aria-label={`Estado: ${effectiveLabel}`}>
+                    <span className={`px-status-dot ${effectiveStatus}`} />
+                    <span className="px-status-label">{effectiveLabel}</span>
+                    {p.status === PrazoStatus.PENDENTE && (
+                      <button
+                        type="button"
+                        className="px-status-check"
+                        title="Marcar como cumprido"
+                        aria-label="Marcar como cumprido"
+                        onClick={(e) => onComplete(p.id, e)}
+                      >
+                        <Check size={13} />
+                      </button>
+                    )}
+                    <span className="px-status-arrow" aria-hidden="true">
+                      <ArrowUpRight size={14} />
                     </span>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs text-ink-muted mb-2">{formatDate(prazo.dueDate)}</p>
-                  {getStatusBadge(prazo.status)}
-                </div>
-              </div>
-            </Link>
-          ))}
-
-          {data.nextCursor && (
-            <div className="flex justify-center pt-4">
-              <button className="px-6 py-2.5 border border-border  text-sm font-medium text-ink-muted hover:bg-surface-raised transition-colors">
-                Carregar mais
-              </button>
-            </div>
+              )
+            })
           )}
+        </div>
+      </div>
+
+      {filtered.length > PAGE_SIZE && (
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Subcomponents
+// ─────────────────────────────────────────────────────────────
+function FilterChip<T extends string>({
+  icon,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  icon?: React.ReactNode
+  label: string
+  value: T | null
+  options: { id: T; label: string }[]
+  onChange: (v: T | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const active = value != null
+  const displayLabel = active
+    ? options.find((o) => o.id === value)?.label ?? label
+    : label
+
+  useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    window.addEventListener('click', h)
+    return () => window.removeEventListener('click', h)
+  }, [open])
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className={`px-chip ${active ? 'on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {icon}
+        <span>{displayLabel}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <div className="px-popover">
+          <button
+            type="button"
+            className={`px-popover-item ${value == null ? 'on' : ''}`}
+            onClick={() => {
+              onChange(null)
+              setOpen(false)
+            }}
+          >
+            <span className="px-check">{value == null ? '●' : ''}</span>
+            Todos
+          </button>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className={`px-popover-item ${value === o.id ? 'on' : ''}`}
+              onClick={() => {
+                onChange(o.id)
+                setOpen(false)
+              }}
+            >
+              <span className="px-check">{value === o.id ? '●' : ''}</span>
+              {o.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
   )
 }
+
+function Pagination({
+  page,
+  total,
+  pageSize,
+  onChange,
+}: {
+  page: number
+  total: number
+  pageSize: number
+  onChange: (p: number) => void
+}) {
+  const pages = Math.ceil(total / pageSize)
+  return (
+    <div className="px-pagination">
+      <span className="px-pagination-info">
+        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} de {total}
+      </span>
+      <div className="px-pagination-nav">
+        <button
+          type="button"
+          className="px-pagination-btn"
+          onClick={() => onChange(Math.max(1, page - 1))}
+          disabled={page === 1}
+          aria-label="Página anterior"
+        >
+          ‹
+        </button>
+        <span className="px-pagination-page">
+          {page} / {pages}
+        </span>
+        <button
+          type="button"
+          className="px-pagination-btn"
+          onClick={() => onChange(page * pageSize < total ? page + 1 : page)}
+          disabled={page * pageSize >= total}
+          aria-label="Página seguinte"
+        >
+          ›
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────────────────────
+const listStyles = `
+.px-page {
+  margin: -1rem -1.5rem -1.5rem;
+  padding: 24px clamp(20px, 3vw, 40px) 48px;
+  color: var(--k2-text);
+  background: var(--k2-bg);
+  min-width: 0; max-width: 100%; overflow-x: clip;
+}
+
+.px-head {
+  display: flex; align-items: end; justify-content: space-between;
+  gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.px-title {
+  font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+}
+.px-head-actions { display: flex; align-items: center; gap: 8px; }
+
+.px-btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; font-size: 13px; font-weight: 500;
+  background: var(--k2-accent); color: var(--k2-accent-fg);
+  border: none; border-radius: var(--k2-radius-sm);
+  cursor: pointer; text-decoration: none; transition: filter 120ms;
+}
+.px-btn-primary:hover { filter: brightness(1.08); }
+
+.px-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.px-search {
+  flex: 1; min-width: 220px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--k2-bg);
+  border: 1px solid var(--k2-border); border-radius: var(--k2-radius);
+  color: var(--k2-text-mute);
+}
+.px-search input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--k2-text); font-size: 13px; font-family: inherit;
+}
+.px-search input::placeholder { color: var(--k2-text-mute); }
+.px-search-clear {
+  background: transparent; border: none; color: var(--k2-text-mute);
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px;
+}
+
+.px-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; font-size: 12px; font-weight: 500;
+  background: var(--k2-bg); border: 1px solid var(--k2-border);
+  border-radius: var(--k2-radius-sm); color: var(--k2-text-dim);
+  cursor: pointer; transition: all 120ms;
+}
+.px-chip:hover { color: var(--k2-text); border-color: var(--k2-border-strong); }
+.px-chip.on {
+  color: var(--k2-text); border-color: var(--k2-accent);
+  background: color-mix(in oklch, var(--k2-accent) 10%, var(--k2-bg));
+}
+
+.px-popover {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  min-width: 200px; padding: 6px;
+  background: var(--k2-bg); border: 1px solid var(--k2-border-strong);
+  border-radius: var(--k2-radius);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+}
+.px-popover-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 6px 10px; font-size: 13px; color: var(--k2-text-dim);
+  background: transparent; border: none; border-radius: 6px;
+  cursor: pointer; text-align: left;
+}
+.px-popover-item:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
+.px-popover-item.on { color: var(--k2-text); }
+.px-check {
+  width: 14px; display: inline-grid; place-items: center;
+  font-size: 10px; color: var(--k2-accent); line-height: 1;
+}
+
+.px-table-wrap {
+  width: 100%; max-width: 100%; overflow-x: auto;
+  border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg);
+  background: var(--k2-bg);
+}
+.px-table { min-width: 780px; }
+.px-thead, .px-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.6fr 1fr 1.2fr 180px;
+  gap: 16px; align-items: center;
+  padding: 14px 20px; border-bottom: 1px solid var(--k2-border);
+}
+.px-thead {
+  background: transparent;
+  font-size: 10px; color: var(--k2-text-mute);
+  letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+}
+.px-row { cursor: pointer; transition: background 120ms; }
+.px-row:hover { background: var(--k2-bg-hover); }
+.px-row:last-child { border-bottom: none; }
+
+.px-cell-name .name-text {
+  font-size: 14px; font-weight: 500; color: var(--k2-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.px-linked { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.px-linked .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; color: var(--k2-text);
+}
+.px-linked .muted {
+  font-size: 11px; color: var(--k2-text-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.px-meta { font-size: 13px; color: var(--k2-text-dim); }
+
+.px-deadline { display: flex; flex-direction: column; gap: 2px; }
+.px-deadline .date { font-size: 13px; color: var(--k2-text); }
+.px-deadline .left { font-size: 11px; color: var(--k2-text-mute); }
+.px-deadline .left.over   { color: var(--k2-bad); }
+.px-deadline .left.urgent { color: var(--k2-warn); }
+
+.px-status {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; position: relative;
+}
+.px-status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 15%, transparent);
+}
+.px-status-dot.urgente   { background: var(--k2-bad); color: var(--k2-bad); }
+.px-status-dot.pendente  { background: var(--k2-warn); color: var(--k2-warn); }
+.px-status-dot.cumprido  { background: var(--k2-good); color: var(--k2-good); }
+.px-status-dot.expirado  { background: var(--k2-bad); color: var(--k2-bad); }
+.px-status-dot.cancelado { background: var(--k2-text-mute); color: var(--k2-text-mute); }
+
+.px-status-label {
+  font-size: 12px; color: var(--k2-text-dim);
+  letter-spacing: -0.005em; white-space: nowrap;
+}
+.px-status-arrow {
+  display: inline-flex; align-items: center;
+  color: var(--k2-text-mute); opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease, color 120ms ease;
+}
+.px-status-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0;
+  background: transparent; border: 1px solid var(--k2-border);
+  border-radius: 50%;
+  color: var(--k2-text-dim); cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.px-row:hover .px-status-arrow,
+.px-row:focus-visible .px-status-arrow,
+.px-row:hover .px-status-check,
+.px-row:focus-visible .px-status-check {
+  opacity: 1; transform: translateX(0);
+}
+.px-status-check:hover {
+  color: var(--k2-good); border-color: var(--k2-good);
+}
+
+.px-empty {
+  padding: 40px 20px; text-align: center;
+  color: var(--k2-text-mute); font-size: 13px;
+}
+.px-error {
+  padding: 12px 16px;
+  background: color-mix(in oklch, var(--k2-bad) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--k2-bad) 30%, var(--k2-border));
+  border-radius: var(--k2-radius);
+  color: var(--k2-bad); font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.px-pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 4px 0; font-size: 12px; color: var(--k2-text-dim);
+}
+.px-pagination-info { font-variant-numeric: tabular-nums; }
+.px-pagination-nav { display: inline-flex; align-items: center; gap: 8px; }
+.px-pagination-page {
+  min-width: 52px; text-align: center;
+  font-variant-numeric: tabular-nums; color: var(--k2-text);
+}
+.px-pagination-btn {
+  width: 28px; height: 28px;
+  display: inline-grid; place-items: center;
+  background: transparent; border: 1px solid var(--k2-border);
+  border-radius: 6px; color: var(--k2-text-dim);
+  cursor: pointer; font-size: 14px; transition: all 120ms;
+}
+.px-pagination-btn:hover:not(:disabled) {
+  color: var(--k2-text); border-color: var(--k2-border-strong);
+}
+.px-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 900px) {
+  .px-page { padding: 16px 20px; }
+  .px-thead { display: none; }
+  .px-row { grid-template-columns: 1fr; gap: 6px; padding: 14px 16px; }
+}
+`
