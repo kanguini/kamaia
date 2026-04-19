@@ -30,6 +30,10 @@ apps/api/prisma/*.db
 
 # Testing
 coverage/
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/blob-report/
+apps/web/.playwright/
 
 # Logs
 *.log
