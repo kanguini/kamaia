@@ -187,7 +187,7 @@ export default function DashboardPage() {
           background: var(--k2-bg);
           color: var(--k2-text);
           min-height: 100%;
-          margin: -1rem -1.5rem -1.5rem -1.5rem; /* cancel dashboard-layout padding */
+          margin: -1rem -1.5rem -1.5rem; /* cancel dashboard-layout padding so hero spans edge-to-edge */
           font-feature-settings: 'tnum', 'zero';
         }
         .k2-hero {
