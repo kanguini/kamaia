@@ -349,7 +349,8 @@ export default function ProjectosPage() {
       </div>
 
       {/* Table */}
-      <div className="px-table">
+      <div className="px-table-wrap">
+       <div className="px-table">
         <div className="px-thead">
           <div />
           <div>Projecto</div>
@@ -383,6 +384,7 @@ export default function ProjectosPage() {
             />
           ))
         )}
+       </div>
       </div>
     </div>
   )
@@ -729,10 +731,13 @@ function FilterChip({
 const projectosStyles = `
 .px-page {
   margin: -1rem -1.5rem -1.5rem;
-  padding: 24px 40px 48px;
+  padding: 24px clamp(20px, 3vw, 40px) 48px;
   color: var(--k2-text);
   background: var(--k2-bg);
   font-feature-settings: 'tnum', 'zero';
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .px-page .mono { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
@@ -855,10 +860,14 @@ const projectosStyles = `
   font-size: 11px; color: var(--k2-accent); line-height: 1;
 }
 
+/* Wide table scrolls horizontally inside its wrapper (never the page). */
+.px-table-wrap {
+  width: 100%; max-width: 100%; overflow-x: auto;
+  border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg);
+  background: var(--k2-bg-elev);
+}
 .px-table {
-  background: var(--k2-bg-elev); border: 1px solid var(--k2-border);
-  border-radius: var(--k2-radius-lg); overflow: hidden;
-  min-width: 1100px; overflow-x: auto;
+  min-width: 1100px;
 }
 .px-thead, .px-row {
   display: grid;

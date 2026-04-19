@@ -261,7 +261,8 @@ export default function ProcessosPage() {
             />
           </div>
 
-          <div className="px-table">
+          <div className="px-table-wrap">
+           <div className="px-table">
             <div
               className="px-thead"
               style={{ gridTemplateColumns: '32px 2.2fr 1.3fr 1.1fr 1.3fr 1.2fr 0.8fr 0.7fr' }}
@@ -295,6 +296,7 @@ export default function ProcessosPage() {
                 />
               ))
             )}
+           </div>
           </div>
         </>
       )}
@@ -545,10 +547,13 @@ function FilterChip({
 const sharedListStyles = `
 .px-page {
   margin: -1rem -1.5rem -1.5rem;
-  padding: 24px 40px 48px;
+  padding: 24px clamp(20px, 3vw, 40px) 48px;
   color: var(--k2-text);
   background: var(--k2-bg);
   font-feature-settings: 'tnum', 'zero';
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .px-page .mono { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .px-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -587,7 +592,8 @@ const sharedListStyles = `
 .px-popover-item:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
 .px-popover-item.on { color: var(--k2-text); }
 .px-check { width: 14px; height: 14px; display: inline-grid; place-items: center; font-size: 11px; color: var(--k2-accent); line-height: 1; }
-.px-table { background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg); overflow: hidden; min-width: 1100px; overflow-x: auto; }
+.px-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg); background: var(--k2-bg-elev); }
+.px-table { min-width: 1100px; }
 .px-thead, .px-row { display: grid; gap: 12px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--k2-border); }
 .px-thead { background: var(--k2-bg-elev-2); font-size: 10px; color: var(--k2-text-mute); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
 .px-row { cursor: pointer; transition: background 120ms; }

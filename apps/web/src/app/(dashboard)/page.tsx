@@ -189,14 +189,18 @@ export default function DashboardPage() {
           min-height: 100%;
           margin: -1rem -1.5rem -1.5rem; /* cancel dashboard-layout padding so hero spans edge-to-edge */
           font-feature-settings: 'tnum', 'zero';
+          min-width: 0;
+          max-width: 100%;
+          overflow-x: hidden;
         }
         .k2-hero {
           display: grid;
-          grid-template-columns: 1.3fr 1fr;
+          grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
           gap: 24px;
-          padding: 36px 40px 28px;
+          padding: 36px clamp(20px, 3vw, 40px) 28px;
           align-items: end;
           margin-bottom: 8px;
+          min-width: 0;
         }
         .k2-hero-date {
           font-size: 12px;
@@ -246,10 +250,11 @@ export default function DashboardPage() {
 
         .k2-strip {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 0;
-          padding: 0 40px;
+          padding: 0 clamp(20px, 3vw, 40px);
           margin-bottom: 40px;
+          min-width: 0;
         }
         .k2-stat {
           padding: 20px 24px 20px 0;
@@ -302,10 +307,11 @@ export default function DashboardPage() {
 
         .k2-dash-main {
           display: grid;
-          grid-template-columns: 1.4fr 1fr;
-          gap: 40px;
-          padding: 0 40px 48px;
+          grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+          gap: clamp(20px, 2.5vw, 40px);
+          padding: 0 clamp(20px, 3vw, 40px) 48px;
           align-items: start;
+          min-width: 0;
         }
         .k2-section-label {
           font-size: 10px;
@@ -360,7 +366,7 @@ export default function DashboardPage() {
 
         .k2-cal-head {
           display: grid;
-          grid-template-columns: repeat(14, 1fr);
+          grid-template-columns: repeat(14, minmax(0, 1fr));
           gap: 6px;
           margin-bottom: 10px;
         }
@@ -373,7 +379,7 @@ export default function DashboardPage() {
         }
         .k2-cal-grid {
           display: grid;
-          grid-template-columns: repeat(14, 1fr);
+          grid-template-columns: repeat(14, minmax(0, 1fr));
           gap: 6px;
         }
         .k2-cal-cell {
@@ -483,7 +489,7 @@ export default function DashboardPage() {
         }
         .k2-gantt-head {
           display: grid;
-          grid-template-columns: 280px 1fr;
+          grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
           align-items: end;
           padding: 0 0 10px;
           font-size: 10px;
@@ -493,7 +499,7 @@ export default function DashboardPage() {
         }
         .k2-gantt-row {
           display: grid;
-          grid-template-columns: 280px 1fr;
+          grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
           align-items: center;
           padding: 18px 0;
           position: relative;
@@ -635,12 +641,41 @@ export default function DashboardPage() {
         .k2-qa-item .qa-arrow { color: var(--k2-text-mute); transition: transform 200ms; }
         .k2-qa-item:hover .qa-arrow { transform: translateX(4px); color: var(--k2-accent); }
 
-        @media (max-width: 1100px) {
-          .k2-hero, .k2-strip, .k2-dash-main {
-            grid-template-columns: 1fr;
-            padding: 24px 20px;
+        /* Stats go 4 → 2 cols on mid viewports so text doesn't stretch */
+        @media (max-width: 1400px) {
+          .k2-strip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
           .k2-stat + .k2-stat::before { display: none; }
+        }
+        /* Main 2-col collapses at laptop widths */
+        @media (max-width: 1200px) {
+          .k2-dash-main {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 32px;
+          }
+        }
+        /* Hero + stats collapse on tablet */
+        @media (max-width: 900px) {
+          .k2-hero {
+            grid-template-columns: minmax(0, 1fr);
+            padding: 24px 20px;
+          }
+          .k2-hero-illu { display: none; }   /* illustration gracefully drops on small screens */
+          .k2-strip {
+            grid-template-columns: minmax(0, 1fr);
+            padding: 0 20px;
+          }
+          .k2-dash-main { padding: 0 20px 32px; }
+          .k2-hero-title { font-size: 32px; }
+        }
+        /* Extra small — ensure gantt label column doesn't crowd out the bar */
+        @media (max-width: 640px) {
+          .k2-gantt-head,
+          .k2-gantt-row {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .k2-hero-title { font-size: 26px; }
         }
       `}</style>
 

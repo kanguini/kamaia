@@ -79,13 +79,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <ToastProvider>
       <style jsx global>{`
         /* Kamaia 2.0 — base reset scoped to the dashboard shell */
-        html, body { background: var(--k2-bg); color: var(--k2-text); }
+        html, body {
+          background: var(--k2-bg);
+          color: var(--k2-text);
+          overflow-x: hidden;       /* never let any child cause a page-level horizontal scroll */
+          max-width: 100vw;
+        }
         body { font-feature-settings: 'tnum', 'zero'; letter-spacing: -0.005em; }
 
         .k2-shell {
           display: grid;
-          grid-template-columns: var(--k2-sidebar-w) 1fr;
+          grid-template-columns: var(--k2-sidebar-w) minmax(0, 1fr);
           min-height: 100vh;
+          width: 100%;
+          max-width: 100vw;
           background: var(--k2-bg);
           color: var(--k2-text);
           font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -386,9 +393,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
 
         .k2-main {
-          min-width: 0;
+          min-width: 0;           /* allow shrink in the grid */
+          max-width: 100%;
           display: flex;
           flex-direction: column;
+          overflow-x: hidden;     /* trap any stray inner overflow */
         }
 
         /* ─── Mobile ─── */
