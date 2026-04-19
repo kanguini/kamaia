@@ -78,13 +78,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <ToastProvider>
       <style jsx global>{`
-        /* Kamaia 2.0 — base reset scoped to the dashboard shell */
-        html, body {
-          background: var(--k2-bg);
-          color: var(--k2-text);
-          overflow-x: hidden;       /* never let any child cause a page-level horizontal scroll */
-          max-width: 100vw;
-        }
+        /* Kamaia 2.0 — base reset scoped to the dashboard shell.
+           We deliberately DO NOT put overflow-x on html/body — that would
+           break position:sticky on the sidebar (any overflow value other
+           than "visible" on an ancestor creates a scroll context and
+           cancels sticky). Horizontal-overflow safety lives on .k2-main
+           (the content column) and on .k2-shell via overflow-x:clip
+           (clip hides overflow without establishing a scroll container). */
+        html, body { background: var(--k2-bg); color: var(--k2-text); }
         body { font-feature-settings: 'tnum', 'zero'; letter-spacing: -0.005em; }
 
         .k2-shell {
@@ -93,6 +94,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           min-height: 100vh;
           width: 100%;
           max-width: 100vw;
+          overflow-x: clip;         /* stops runaway children without killing sticky descendants */
           background: var(--k2-bg);
           color: var(--k2-text);
           font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -106,8 +108,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           flex-direction: column;
           position: sticky;
           top: 0;
+          align-self: start;        /* required inside a grid cell for sticky to anchor to viewport */
           height: 100vh;
-          overflow: hidden;
+          max-height: 100vh;
+          overflow: hidden;         /* inner scroll belongs to .k2-nav-group, not the sidebar itself */
+          z-index: 10;
         }
         .k2-sb-head {
           padding: 18px 18px 14px;
@@ -397,7 +402,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           max-width: 100%;
           display: flex;
           flex-direction: column;
-          overflow-x: hidden;     /* trap any stray inner overflow */
+          overflow-x: clip;       /* local horizontal containment, no scroll context */
         }
 
         /* ─── Mobile ─── */

@@ -553,7 +553,7 @@ const sharedListStyles = `
   font-feature-settings: 'tnum', 'zero';
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 .px-page .mono { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .px-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }

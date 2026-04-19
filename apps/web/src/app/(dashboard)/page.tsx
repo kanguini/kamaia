@@ -191,7 +191,7 @@ export default function DashboardPage() {
           font-feature-settings: 'tnum', 'zero';
           min-width: 0;
           max-width: 100%;
-          overflow-x: hidden;
+          overflow-x: clip;
         }
         .k2-hero {
           display: grid;
