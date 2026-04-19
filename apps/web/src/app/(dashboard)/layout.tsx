@@ -28,6 +28,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { NewDropdownButton } from '@/components/ui/new-dropdown'
 import { GlobalSearch } from '@/components/ui/global-search'
 import { AIButton } from '@/components/ui/ai-button'
+import { Logo } from '@/components/ui/logo'
 
 interface NavItem {
   label: string
@@ -108,32 +109,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         .k2-brand {
           display: flex;
-          align-items: center;
-          gap: 10px;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
           min-width: 0;
         }
-        .k2-brand-mark {
-          width: 28px;
-          height: 28px;
-          border-radius: 7px;
-          background: linear-gradient(135deg, var(--k2-accent), var(--k2-accent-dim));
-          display: grid;
-          place-items: center;
-          color: var(--k2-accent-fg);
-          font-weight: 700;
-          font-size: 13px;
-          letter-spacing: -0.02em;
-          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-          flex-shrink: 0;
-        }
-        .k2-brand-name {
-          font-weight: 600;
-          font-size: 14px;
-          letter-spacing: -0.01em;
+        .k2-brand-logo {
+          display: inline-flex;
           color: var(--k2-text);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          line-height: 0;
         }
         .k2-brand-sub {
           font-size: 10px;
@@ -143,6 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          max-width: 100%;
         }
         .k2-ws-btn {
           width: 24px;
@@ -478,10 +463,11 @@ function Sidebar({
     <aside className={cn('k2-sidebar', open && 'open')}>
       <div className="k2-sb-head">
         <div className="k2-brand">
-          <div className="k2-brand-mark">K</div>
-          <div style={{ minWidth: 0 }}>
-            <div className="k2-brand-name">Kamaia</div>
-            <div className="k2-brand-sub">{gabineteName}</div>
+          <div className="k2-brand-logo" aria-label="Kamaia">
+            <Logo height={20} />
+          </div>
+          <div className="k2-brand-sub" title={gabineteName}>
+            {gabineteName}
           </div>
         </div>
         <button className="k2-ws-btn" onClick={onClose} aria-label="Fechar menu">
