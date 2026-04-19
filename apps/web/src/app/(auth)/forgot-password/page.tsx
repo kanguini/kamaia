@@ -3,15 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Loader2, CheckCircle2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
-import { Logo } from '@/components/ui/logo'
 
-/**
- * Forgot-password — sends a reset link via backend. Always shows a generic
- * success message (whether or not the email exists) to avoid enumeration
- * attacks.
- */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,110 +24,82 @@ export default function ForgotPasswordPage() {
       setSent(true)
     } catch (err: unknown) {
       const msg = (err as { error?: string })?.error
-      setError(msg || 'Erro ao enviar pedido. Tente novamente.')
+      setError(msg || 'Erro ao enviar pedido. Tenta novamente.')
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="sr-only">Kamaia</h1>
-        <div aria-hidden="true" className="text-ink inline-block">
-          <Logo height={35} />
+  if (sent) {
+    return (
+      <div>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            background: 'color-mix(in oklch, var(--k2-good) 20%, transparent)',
+            display: 'grid',
+            placeItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <CheckCircle2 size={22} color="var(--k2-good)" />
+        </div>
+        <h1>Pedido enviado.</h1>
+        <p className="lede">
+          Se <strong style={{ color: 'var(--k2-text)' }}>{email}</strong>{' '}
+          corresponder a uma conta, recebeste um email com o link de
+          recuperação. Expira em 1 hora.
+        </p>
+        <p className="alt">
+          Não recebeste? Verifica a pasta de spam ou{' '}
+          <button type="button" className="link" onClick={() => setSent(false)}>
+            tenta outro email
+          </button>
+          .
+        </p>
+        <div style={{ marginTop: 28 }}>
+          <Link href="/login">
+            <button type="button" className="secondary">
+              ← Voltar ao login
+            </button>
+          </Link>
         </div>
       </div>
+    )
+  }
 
-      <div className="bg-surface border border-border p-8">
-        {sent ? (
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h2 className="font-display text-xl font-semibold text-ink">
-              Pedido enviado
-            </h2>
-            <p className="text-sm text-ink-muted leading-relaxed">
-              Se <strong className="text-ink">{email}</strong> corresponder a uma
-              conta, um email com instruções para repor a palavra-passe foi
-              enviado. O link expira em 1 hora.
-            </p>
-            <p className="text-xs text-ink-muted">
-              Não recebeu? Verifique a pasta de spam. Ou{' '}
-              <button
-                onClick={() => setSent(false)}
-                className="underline text-ink-muted hover:text-ink"
-              >
-                tentar outro email
-              </button>
-              .
-            </p>
-            <Link
-              href="/login"
-              className="inline-block mt-2 text-sm text-ink-muted hover:text-ink"
-            >
-              ← Voltar ao login
-            </Link>
-          </div>
-        ) : (
-          <>
-            <h2 className="font-display text-2xl font-semibold text-ink mb-2 text-center">
-              Recuperar palavra-passe
-            </h2>
-            <p className="text-ink-muted text-sm mb-6 text-center">
-              Introduza o seu email para receber um link de recuperação.
-            </p>
+  return (
+    <div>
+      <h1>Recuperar palavra-passe.</h1>
+      <p className="lede">
+        Introduz o teu email e enviamos-te um link para definires uma nova.
+      </p>
 
-            {error && (
-              <div className="bg-danger-bg border border-danger/20 text-danger p-3 mb-4 text-sm">
-                {error}
-              </div>
-            )}
+      {error && <div className="error">{error}</div>}
 
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
-                >
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
-                  placeholder="seu@email.com"
-                />
-              </div>
+      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
+        <div>
+          <label className="field">Email</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@gabinete.ao"
+            autoComplete="email"
+          />
+        </div>
+        <button className="primary" type="submit" disabled={loading || !email.trim()}>
+          {loading ? <Loader2 size={14} className="animate-spin" /> : null}
+          Enviar link de recuperação
+        </button>
+      </form>
 
-              <button
-                type="submit"
-                disabled={loading || !email.trim()}
-                className={cn(
-                  'w-full [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium py-2.5 rounded-lg',
-                  'hover:[background:var(--color-btn-primary-hover)] transition-colors',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                  'flex items-center justify-center gap-2',
-                )}
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                Enviar link de recuperação
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-ink-muted">
-              Lembrou-se da palavra-passe?{' '}
-              <Link href="/login" className="text-ink font-medium hover:underline">
-                Entrar
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
+      <p className="alt">
+        Lembraste-te? <Link href="/login">Entrar</Link>
+      </p>
     </div>
   )
 }

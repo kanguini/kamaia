@@ -4,9 +4,7 @@ import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
-import { Logo } from '@/components/ui/logo'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
@@ -21,18 +19,10 @@ function ResetPasswordForm() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!token) {
-      setError('Link inválido. Volte a pedir a recuperação.')
-      return
-    }
-    if (newPassword.length < 8) {
-      setError('A palavra-passe deve ter pelo menos 8 caracteres.')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setError('As palavras-passe não coincidem.')
-      return
-    }
+    if (!token) return setError('Link inválido. Pede um novo.')
+    if (newPassword.length < 8) return setError('A palavra-passe deve ter pelo menos 8 caracteres.')
+    if (newPassword !== confirmPassword) return setError('As palavras-passe não coincidem.')
+
     setLoading(true)
     setError(null)
     try {
@@ -41,14 +31,11 @@ function ResetPasswordForm() {
         body: JSON.stringify({ token, newPassword }),
       })
       setDone(true)
-      setTimeout(() => router.push('/login'), 2500)
+      setTimeout(() => router.push('/login'), 2200)
     } catch (err: unknown) {
       const e = err as { code?: string; error?: string }
-      if (e.code === 'INVALID_TOKEN') {
-        setError('Link expirou ou é inválido. Peça um novo.')
-      } else {
-        setError(e.error || 'Erro ao repor palavra-passe.')
-      }
+      if (e.code === 'INVALID_TOKEN') setError('Link expirou ou é inválido. Pede um novo.')
+      else setError(e.error || 'Erro ao repor palavra-passe.')
     } finally {
       setLoading(false)
     }
@@ -56,131 +43,105 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="text-center space-y-3">
-        <div className="mx-auto w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-          <AlertTriangle className="w-6 h-6 text-red-600" />
-        </div>
-        <h2 className="font-display text-xl font-semibold text-ink">Link inválido</h2>
-        <p className="text-sm text-ink-muted">
-          Este link não é válido ou já foi usado.
-        </p>
-        <Link
-          href="/forgot-password"
-          className="inline-block mt-2 text-sm text-ink hover:underline font-medium"
+      <div>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            background: 'color-mix(in oklch, var(--k2-bad) 20%, transparent)',
+            display: 'grid',
+            placeItems: 'center',
+            marginBottom: 18,
+          }}
         >
-          Pedir novo link
-        </Link>
+          <AlertTriangle size={22} color="var(--k2-bad)" />
+        </div>
+        <h1>Link inválido.</h1>
+        <p className="lede">Este link não é válido ou já foi usado.</p>
+        <div style={{ marginTop: 20 }}>
+          <Link href="/forgot-password">
+            <button type="button" className="primary">
+              Pedir novo link
+            </button>
+          </Link>
+        </div>
       </div>
     )
   }
 
   if (done) {
     return (
-      <div className="text-center space-y-4">
-        <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-          <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+      <div>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            background: 'color-mix(in oklch, var(--k2-good) 20%, transparent)',
+            display: 'grid',
+            placeItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <CheckCircle2 size={22} color="var(--k2-good)" />
         </div>
-        <h2 className="font-display text-xl font-semibold text-ink">
-          Palavra-passe actualizada
-        </h2>
-        <p className="text-sm text-ink-muted">
-          A redireccionar para o login...
-        </p>
+        <h1>Palavra-passe actualizada.</h1>
+        <p className="lede">A redireccionar para o login…</p>
       </div>
     )
   }
 
   return (
-    <>
-      <h2 className="font-display text-2xl font-semibold text-ink mb-2 text-center">
-        Nova palavra-passe
-      </h2>
-      <p className="text-ink-muted text-sm mb-6 text-center">
-        Escolha uma nova palavra-passe para a sua conta.
-      </p>
+    <div>
+      <h1>Nova palavra-passe.</h1>
+      <p className="lede">Escolhe uma palavra-passe segura para a tua conta.</p>
 
-      {error && (
-        <div className="bg-danger-bg border border-danger/20 text-danger p-3 mb-4 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <div className="error">{error}</div>}
 
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
         <div>
-          <label
-            htmlFor="newPassword"
-            className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
-          >
-            Nova palavra-passe
-          </label>
+          <label className="field">Nova palavra-passe</label>
           <input
-            id="newPassword"
             type="password"
             required
             minLength={8}
-            autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="mín. 8 caracteres"
+            autoComplete="new-password"
           />
         </div>
         <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-[11px] font-medium text-ink-secondary tracking-[0.03em] mb-2"
-          >
-            Confirmar palavra-passe
-          </label>
+          <label className="field">Confirmar</label>
           <input
-            id="confirmPassword"
             type="password"
             required
-            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+            placeholder="repetir"
+            autoComplete="new-password"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className={cn(
-            'w-full [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium py-2.5 rounded-lg',
-            'hover:[background:var(--color-btn-primary-hover)] transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'flex items-center justify-center gap-2',
-          )}
-        >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        <button className="primary" type="submit" disabled={loading}>
+          {loading ? <Loader2 size={14} className="animate-spin" /> : null}
           Actualizar palavra-passe
         </button>
       </form>
-    </>
+    </div>
   )
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="sr-only">Kamaia</h1>
-        <div aria-hidden="true" className="text-ink inline-block">
-          <Logo height={35} />
+    <Suspense
+      fallback={
+        <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}>
+          <Loader2 size={22} color="var(--k2-text-mute)" className="animate-spin" />
         </div>
-      </div>
-
-      <div className="bg-surface border border-border p-8">
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="w-6 h-6 animate-spin text-ink-muted" />
-            </div>
-          }
-        >
-          <ResetPasswordForm />
-        </Suspense>
-      </div>
-    </div>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   )
 }
