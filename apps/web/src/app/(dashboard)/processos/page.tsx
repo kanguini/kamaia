@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Search, Plus, Filter, Users, ChevronDown, ChevronRight, ArrowUpRight,
+  Search, Plus, Filter, Users, ArrowUpRight, ChevronDown,
   Scale, LayoutList, Columns3,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
@@ -99,8 +99,13 @@ export default function ProcessosPage() {
   const [typeFilters, setTypeFilters] = useState<ProcessoType[]>([])
   const [clienteFilters, setClienteFilters] = useState<string[]>([])
   const [advogadoFilters, setAdvogadoFilters] = useState<string[]>([])
-  const [priorityFilters, setPriorityFilters] = useState<ProcessoPriority[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter, typeFilters, clienteFilters, advogadoFilters])
 
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
@@ -121,17 +126,6 @@ export default function ProcessosPage() {
   const { data: membersData } = useApi<MemberOption[]>('/team/members')
   const members = membersData ?? []
 
-  const counts = useMemo(() => {
-    const acc: Record<ProcessoStatus, number> = {
-      [ProcessoStatus.ACTIVO]: 0,
-      [ProcessoStatus.SUSPENSO]: 0,
-      [ProcessoStatus.ENCERRADO]: 0,
-      [ProcessoStatus.ARQUIVADO]: 0,
-    }
-    processos.forEach((p) => { acc[p.status] = (acc[p.status] ?? 0) + 1 })
-    return acc
-  }, [processos])
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return processos.filter((p) => {
@@ -139,7 +133,6 @@ export default function ProcessosPage() {
       if (typeFilters.length && !typeFilters.includes(p.type)) return false
       if (clienteFilters.length && !clienteFilters.includes(p.cliente.id)) return false
       if (advogadoFilters.length && !advogadoFilters.includes(p.advogado.id)) return false
-      if (priorityFilters.length && !priorityFilters.includes(p.priority)) return false
       if (q) {
         const blob = [
           p.processoNumber, p.title, p.cliente.name,
@@ -150,29 +143,14 @@ export default function ProcessosPage() {
       }
       return true
     })
-  }, [processos, search, statusFilter, typeFilters, clienteFilters, advogadoFilters, priorityFilters])
-
-  const urgentPrazos = processos.reduce(
-    (s, p) => s + (p.prazos?.filter((pz) => pz.isUrgent).length ?? 0),
-    0,
-  )
+  }, [processos, search, statusFilter, typeFilters, clienteFilters, advogadoFilters])
 
   return (
     <div className="px-page">
       <style jsx global>{sharedListStyles}</style>
 
       <div className="px-head">
-        <div>
-          <div className="px-title">
-            Processos{' '}
-            <span className="mono">{String(processos.length).padStart(2, '0')}</span>
-          </div>
-          <div className="px-sub">
-            {urgentPrazos > 0
-              ? `${urgentPrazos} prazo(s) urgente(s) a monitorizar`
-              : `${counts[ProcessoStatus.ACTIVO]} activos · ${counts[ProcessoStatus.ENCERRADO]} encerrados`}
-          </div>
-        </div>
+        <div className="px-title">Processos</div>
         <div className="px-head-actions">
           <div className="px-view-toggle">
             <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Lista">
@@ -194,34 +172,6 @@ export default function ProcessosPage() {
         </Suspense>
       ) : (
         <>
-          <div className="px-funnel" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            {STATUSES.map((st, i) => {
-              const count = counts[st.id] || 0
-              const total = processos.length || 1
-              const pct = (count / total) * 100
-              return (
-                <button
-                  key={st.id}
-                  className={`px-fstep ${statusFilter === st.id ? 'active' : ''}`}
-                  onClick={() => setStatusFilter(statusFilter === st.id ? null : st.id)}
-                >
-                  <div className="px-fstep-lbl">
-                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                    {st.label}
-                  </div>
-                  <div className="px-fstep-value mono">
-                    {count}
-                    <span className="hint">processo{count === 1 ? '' : 's'}</span>
-                  </div>
-                  <div className="px-fstep-bar">
-                    <div className="px-fstep-bar-fill"
-                      style={{ width: `${Math.max(pct, count > 0 ? 8 : 0)}%` }} />
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
           <div className="px-toolbar">
             <div className="px-search">
               <Search size={14} />
@@ -235,6 +185,12 @@ export default function ProcessosPage() {
                 <button className="px-search-clear" onClick={() => setSearch('')}>×</button>
               )}
             </div>
+            <FilterChip
+              icon={<Filter size={13} />} label="Estado"
+              values={statusFilter ? [statusFilter] : []}
+              options={STATUSES.map((s) => ({ id: s.id, label: s.label }))}
+              onChange={(v) => setStatusFilter((v[0] as ProcessoStatus) ?? null)}
+            />
             <FilterChip
               icon={<Filter size={13} />} label="Tipo"
               values={typeFilters as string[]}
@@ -253,27 +209,15 @@ export default function ProcessosPage() {
               options={members.map((m) => ({ id: m.id, label: `${m.firstName} ${m.lastName}` }))}
               onChange={setAdvogadoFilters}
             />
-            <FilterChip
-              icon={<Filter size={13} />} label="Prioridade"
-              values={priorityFilters}
-              options={PRIORITY.map((p) => ({ id: p.id, label: p.label }))}
-              onChange={(v) => setPriorityFilters(v as ProcessoPriority[])}
-            />
           </div>
 
           <div className="px-table-wrap">
            <div className="px-table">
-            <div
-              className="px-thead"
-              style={{ gridTemplateColumns: '32px 2.2fr 1.3fr 1.1fr 1.3fr 1.2fr 0.8fr 0.7fr' }}
-            >
-              <div />
+            <div className="px-thead">
               <div>Processo</div>
               <div>Cliente</div>
-              <div>Advogado</div>
-              <div>Fase</div>
               <div>Próximo prazo</div>
-              <div>Prioridade</div>
+              <div>Advogado</div>
               <div style={{ textAlign: 'right' }}>Estado</div>
             </div>
             {loading && processos.length === 0 ? (
@@ -286,18 +230,53 @@ export default function ProcessosPage() {
                 </Link>.
               </div>
             ) : (
-              filtered.map((p) => (
-                <ProcessoRow
-                  key={p.id}
-                  processo={p}
-                  expanded={expandedId === p.id}
-                  onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                  onOpen={() => router.push(`/processos/${p.id}`)}
-                />
-              ))
+              filtered
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((p) => (
+                  <ProcessoRow
+                    key={p.id}
+                    processo={p}
+                    expanded={expandedId === p.id}
+                    onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                    onOpen={() => router.push(`/processos/${p.id}`)}
+                  />
+                ))
             )}
            </div>
           </div>
+
+          {filtered.length > PAGE_SIZE && (
+            <div className="px-pagination">
+              <span className="px-pagination-info">
+                {(page - 1) * PAGE_SIZE + 1}
+                –
+                {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+              </span>
+              <div className="px-pagination-nav">
+                <button
+                  type="button"
+                  className="px-pagination-btn"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  aria-label="Página anterior"
+                >‹</button>
+                <span className="px-pagination-page">
+                  {page} / {Math.ceil(filtered.length / PAGE_SIZE)}
+                </span>
+                <button
+                  type="button"
+                  className="px-pagination-btn"
+                  onClick={() =>
+                    setPage((p) =>
+                      p * PAGE_SIZE < filtered.length ? p + 1 : p,
+                    )
+                  }
+                  disabled={page * PAGE_SIZE >= filtered.length}
+                  aria-label="Página seguinte"
+                >›</button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -339,70 +318,41 @@ function ProcessoRow({
     <>
       <div
         className={`px-row ${expanded ? 'expanded' : ''}`}
-        style={{ gridTemplateColumns: '32px 2.2fr 1.3fr 1.1fr 1.3fr 1.2fr 0.8fr 0.7fr' }}
         onClick={onToggle}
         role="button"
         tabIndex={0}
       >
-        <div className="px-row-chev">
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </div>
+        {/* Processo */}
         <div className="px-cell-name">
-          <div className="px-cell-title">
-            <span className="ref mono">{processo.processoNumber}</span>
-            <span className="name-text">{processo.title}</span>
-          </div>
-          <div className="px-cell-sub">
-            <span className="px-tag">{TYPE_LABELS[processo.type]}</span>
-            {processo.courtCaseNumber && (<><span className="dot" /><span className="mono">{processo.courtCaseNumber}</span></>)}
-            {processo.court && (<><span className="dot" /><span>{processo.court}</span></>)}
-            {processo.opposingParty && (<><span className="dot" /><span>vs. {processo.opposingParty}</span></>)}
-          </div>
+          <span className="name-text">{processo.title}</span>
         </div>
+        {/* Cliente */}
         <div className="px-client">
           <div className="px-client-av">{clientInitials}</div>
-          <div className="px-client-meta">
-            <div className="px-client-name">{processo.cliente.name}</div>
-            <div className="px-client-kind">Cliente</div>
-          </div>
+          <div className="px-client-name">{processo.cliente.name}</div>
         </div>
-        <div className="px-client-meta">
-          <div className="px-client-name">{processo.advogado.firstName} {processo.advogado.lastName}</div>
-          <div className="px-client-kind">Responsável</div>
-        </div>
-        <div className="px-progress">
-          <div className="px-progress-top">
-            <span className="phase">{stages[curIdx] ?? processo.stage ?? '—'}</span>
-            <span className="pct mono">{curIdx + 1}/{stages.length || 1}</span>
-          </div>
-          <div className="px-progress-bar">
-            {(stages.length ? stages : ['_']).map((s, i) => (
-              <div key={`${s}-${i}`} className={`px-progress-seg ${i < curIdx ? 'done' : i === curIdx ? 'current' : ''}`} />
-            ))}
-          </div>
-        </div>
+        {/* Próximo prazo */}
         <div className="px-deadline">
           {nextPrazo && left ? (
             <>
               <div className="px-deadline-date mono">{formatShortDate(nextPrazo.dueDate)}</div>
-              <div className={`px-deadline-left ${left.cls}`}>{nextPrazo.title} · {left.text}</div>
+              <div className={`px-deadline-left ${left.cls}`}>{left.text}</div>
             </>
           ) : (
-            <>
-              <div className="px-deadline-date" style={{ color: 'var(--k2-text-mute)' }}>—</div>
-              <div className="px-deadline-left">Sem prazos</div>
-            </>
+            <div className="px-deadline-left" style={{ color: 'var(--k2-text-mute)' }}>—</div>
           )}
         </div>
-        <div>
-          <span className={`px-risk ${priority.cls}`}>
-            <span className="dot" />
-            {priority.label}
-          </span>
+        {/* Advogado */}
+        <div className="px-manager">
+          {processo.advogado.firstName} {processo.advogado.lastName}
         </div>
-        <div className="px-wip">
-          <div className="px-wip-val mono">{status.short}</div>
-          <div className="px-wip-sub">{processo._count?.prazos ?? processo.prazos?.length ?? 0} prazos</div>
+        {/* Estado — sinal + label + arrow hover */}
+        <div className="px-status" aria-label={`Estado: ${status.label}`}>
+          <span className={`px-status-dot ${status.id.toLowerCase()}`} />
+          <span className="px-status-label">{status.label}</span>
+          <span className="px-status-arrow" aria-hidden="true">
+            <ArrowUpRight size={14} />
+          </span>
         </div>
       </div>
       {expanded && (
@@ -557,9 +507,7 @@ const sharedListStyles = `
 }
 .px-page .mono { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .px-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-.px-title { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; display: flex; align-items: baseline; gap: 10px; }
-.px-title .mono { font-size: 20px; color: var(--k2-text-mute); font-weight: 400; }
-.px-sub { color: var(--k2-text-dim); font-size: 13px; margin-top: 4px; }
+.px-title { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .px-head-actions { display: flex; align-items: center; gap: 8px; }
 .px-view-toggle { display: inline-flex; background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); overflow: hidden; }
 .px-view-toggle button { padding: 6px 10px; background: transparent; border: none; color: var(--k2-text-mute); cursor: pointer; display: inline-flex; align-items: center; transition: all 120ms; }
@@ -578,8 +526,8 @@ const sharedListStyles = `
 .px-fstep-value .hint { font-size: 11px; color: var(--k2-text-mute); font-weight: 400; }
 .px-fstep-bar { margin-top: 10px; height: 3px; background: var(--k2-bg-elev-2); border-radius: 2px; overflow: hidden; }
 .px-fstep-bar-fill { height: 100%; background: var(--k2-accent); border-radius: 2px; }
-.px-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px; background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); }
-.px-search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); color: var(--k2-text-mute); }
+.px-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.px-search { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); color: var(--k2-text-mute); }
 .px-search input { flex: 1; background: transparent; border: none; outline: none; color: var(--k2-text); font-size: 13px; font-family: inherit; }
 .px-search input::placeholder { color: var(--k2-text-mute); }
 .px-search-clear { background: transparent; border: none; color: var(--k2-text-mute); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
@@ -592,10 +540,10 @@ const sharedListStyles = `
 .px-popover-item:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
 .px-popover-item.on { color: var(--k2-text); }
 .px-check { width: 14px; height: 14px; display: inline-grid; place-items: center; font-size: 11px; color: var(--k2-accent); line-height: 1; }
-.px-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg); background: var(--k2-bg-elev); }
+.px-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg); background: var(--k2-bg); }
 .px-table { min-width: 1100px; }
-.px-thead, .px-row { display: grid; gap: 12px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--k2-border); }
-.px-thead { background: var(--k2-bg-elev-2); font-size: 10px; color: var(--k2-text-mute); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+.px-thead, .px-row { display: grid; grid-template-columns: 2.4fr 1.4fr 1.4fr 1.2fr 170px; gap: 16px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--k2-border); }
+.px-thead { background: transparent; font-size: 10px; color: var(--k2-text-mute); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
 .px-row { cursor: pointer; transition: background 120ms; }
 .px-row:hover, .px-row.expanded { background: var(--k2-bg-hover); }
 .px-row-chev { color: var(--k2-text-mute); }
@@ -608,7 +556,17 @@ const sharedListStyles = `
 .px-client { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .px-client-av { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--k2-text-dim), var(--k2-text-mute)); color: var(--k2-bg); font-size: 10px; font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
 .px-client-meta { min-width: 0; }
-.px-client-name { font-size: 12px; color: var(--k2-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px-client-name { font-size: 13px; color: var(--k2-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.px-manager { font-size: 13px; color: var(--k2-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px-status { display: flex; align-items: center; justify-content: flex-end; gap: 8px; position: relative; }
+.px-status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 15%, transparent); }
+.px-status-label { font-size: 12px; color: var(--k2-text-dim); letter-spacing: -0.005em; white-space: nowrap; }
+.px-status-arrow { display: inline-flex; align-items: center; color: var(--k2-text-mute); opacity: 0; transform: translateX(-4px); transition: opacity 120ms ease, transform 120ms ease, color 120ms ease; }
+.px-row:hover .px-status-arrow, .px-row:focus-visible .px-status-arrow { opacity: 1; transform: translateX(0); color: var(--k2-text); }
+.px-status-dot.activo { background: var(--k2-good); color: var(--k2-good); }
+.px-status-dot.suspenso { background: var(--k2-warn); color: var(--k2-warn); }
+.px-status-dot.arquivado { background: var(--k2-text-mute); color: var(--k2-text-mute); }
+.px-status-dot.encerrado { background: var(--k2-accent); color: var(--k2-accent); }
 .px-client-kind { font-size: 10px; color: var(--k2-text-mute); }
 .px-progress { min-width: 120px; }
 .px-progress-top { display: flex; justify-content: space-between; font-size: 11px; color: var(--k2-text-mute); margin-bottom: 4px; }
@@ -653,6 +611,14 @@ const sharedListStyles = `
 .px-timeline-step.current .lbl { color: var(--k2-text); font-weight: 500; }
 .px-timeline-step .date { font-size: 10px; color: var(--k2-text-mute); margin-top: 2px; }
 .px-empty { padding: 40px 20px; text-align: center; color: var(--k2-text-mute); font-size: 13px; }
+
+.px-pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 0; font-size: 12px; color: var(--k2-text-dim); }
+.px-pagination-info { font-variant-numeric: tabular-nums; }
+.px-pagination-nav { display: inline-flex; align-items: center; gap: 8px; }
+.px-pagination-page { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: var(--k2-text); }
+.px-pagination-btn { width: 28px; height: 28px; display: inline-grid; place-items: center; background: transparent; border: 1px solid var(--k2-border); border-radius: 6px; color: var(--k2-text-dim); cursor: pointer; font-size: 14px; transition: all 120ms; }
+.px-pagination-btn:hover:not(:disabled) { color: var(--k2-text); border-color: var(--k2-border-strong); }
+.px-pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 1200px) {
   .px-page { padding: 16px 20px; }
   .px-funnel { grid-template-columns: repeat(2, 1fr) !important; }

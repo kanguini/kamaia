@@ -139,6 +139,14 @@ export default function ProjectosPage() {
   const [clienteFilters, setClienteFilters] = useState<string[]>([])
   const [managerFilters, setManagerFilters] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
+
+  // Any change to filters or search resets the cursor to page 1 so we never
+  // render an empty page at the bottom of a shrinking result set.
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter, catFilters, clienteFilters, managerFilters])
 
   // `/` focuses search
   useEffect(() => {
@@ -304,20 +312,60 @@ export default function ProjectosPage() {
             .
           </div>
         ) : (
-          filtered.map((p) => (
-            <ProjectRow
-              key={p.id}
-              project={p}
-              expanded={expandedId === p.id}
-              workflow={resolveWorkflow(workflowForCategory.get(p.category), p.workflow)}
-              onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
-              onOpen={() => router.push(`/projectos/${p.id}`)}
-              onChangeStage={(sid) => changeStage(p.id, sid)}
-            />
-          ))
+          filtered
+            .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+            .map((p) => (
+              <ProjectRow
+                key={p.id}
+                project={p}
+                expanded={expandedId === p.id}
+                workflow={resolveWorkflow(workflowForCategory.get(p.category), p.workflow)}
+                onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                onOpen={() => router.push(`/projectos/${p.id}`)}
+                onChangeStage={(sid) => changeStage(p.id, sid)}
+              />
+            ))
         )}
        </div>
       </div>
+
+      {/* Pagination — only when there is more than one page */}
+      {filtered.length > PAGE_SIZE && (
+        <div className="px-pagination">
+          <span className="px-pagination-info">
+            {(page - 1) * PAGE_SIZE + 1}
+            –
+            {Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+          </span>
+          <div className="px-pagination-nav">
+            <button
+              type="button"
+              className="px-pagination-btn"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              aria-label="Página anterior"
+            >
+              ‹
+            </button>
+            <span className="px-pagination-page">
+              {page} / {Math.ceil(filtered.length / PAGE_SIZE)}
+            </span>
+            <button
+              type="button"
+              className="px-pagination-btn"
+              onClick={() =>
+                setPage((p) =>
+                  p * PAGE_SIZE < filtered.length ? p + 1 : p,
+                )
+              }
+              disabled={page * PAGE_SIZE >= filtered.length}
+              aria-label="Página seguinte"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -404,9 +452,13 @@ function ProjectRow({
         <div className="px-manager">
           {project.manager.firstName} {project.manager.lastName}
         </div>
-        {/* Estado — sinal colorido */}
-        <div className="px-status" title={status.label} aria-label={`Estado: ${status.label}`}>
+        {/* Estado — sinal colorido + label + affordance ao hover */}
+        <div className="px-status" aria-label={`Estado: ${status.label}`}>
           <span className={`px-status-dot ${status.id.toLowerCase()}`} />
+          <span className="px-status-label">{status.label}</span>
+          <span className="px-status-arrow" aria-hidden="true">
+            <ArrowUpRight size={14} />
+          </span>
         </div>
       </div>
       {expanded && (
@@ -678,16 +730,16 @@ const projectosStyles = `
 }
 .px-fstep-bar-fill { height: 100%; background: var(--k2-accent); border-radius: 2px; }
 
+/* Toolbar is just a flex row — no wrapping background/card so the
+   search field below is the only shape visible. */
 .px-toolbar {
   display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
-  padding: 10px; background: var(--k2-bg-elev);
-  border: 1px solid var(--k2-border); border-radius: var(--k2-radius);
 }
 .px-search {
   flex: 1; min-width: 220px;
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; background: var(--k2-bg);
-  border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm);
+  padding: 10px 14px; background: var(--k2-bg);
+  border: 1px solid var(--k2-border); border-radius: var(--k2-radius);
   color: var(--k2-text-mute);
 }
 .px-search input {
@@ -736,23 +788,23 @@ const projectosStyles = `
   font-size: 11px; color: var(--k2-accent); line-height: 1;
 }
 
-/* Wide table scrolls horizontally inside its wrapper (never the page). */
+/* Table is one single outlined card on pure bg — no nested elev layer. */
 .px-table-wrap {
   width: 100%; max-width: 100%; overflow-x: auto;
   border: 1px solid var(--k2-border); border-radius: var(--k2-radius-lg);
-  background: var(--k2-bg-elev);
+  background: var(--k2-bg);
 }
 .px-table {
   min-width: 720px;
 }
 .px-thead, .px-row {
   display: grid;
-  grid-template-columns: 2.4fr 1.4fr 1.4fr 1.2fr 80px;
+  grid-template-columns: 2.4fr 1.4fr 1.4fr 1.2fr 170px;
   gap: 16px; align-items: center;
   padding: 14px 20px; border-bottom: 1px solid var(--k2-border);
 }
 .px-thead {
-  background: var(--k2-bg-elev-2);
+  background: transparent;
   font-size: 10px; color: var(--k2-text-mute);
   letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
 }
@@ -806,14 +858,36 @@ const projectosStyles = `
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-/* Status signal — single coloured dot, centred, colour by status id */
+/* Status signal — coloured dot + label, centred; chev appears on row hover */
 .px-status {
-  display: flex; justify-content: flex-end; align-items: center;
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px;
+  position: relative;
 }
 .px-status-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  display: inline-block;
-  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 18%, transparent);
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklch, currentColor 15%, transparent);
+}
+.px-status-label {
+  font-size: 12px;
+  color: var(--k2-text-dim);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.px-status-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--k2-text-mute);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease, color 120ms ease;
+}
+.px-row:hover .px-status-arrow,
+.px-row:focus-visible .px-status-arrow {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--k2-text);
 }
 .px-status-dot.proposta  { background: var(--k2-warn); color: var(--k2-warn); }
 .px-status-dot.activo    { background: var(--k2-good); color: var(--k2-good); }
@@ -935,6 +1009,39 @@ const projectosStyles = `
 .px-empty {
   padding: 40px 20px; text-align: center;
   color: var(--k2-text-mute); font-size: 13px;
+}
+
+.px-pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 4px 0;
+  font-size: 12px; color: var(--k2-text-dim);
+}
+.px-pagination-info {
+  font-variant-numeric: tabular-nums;
+}
+.px-pagination-nav {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.px-pagination-page {
+  min-width: 52px; text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--k2-text);
+}
+.px-pagination-btn {
+  width: 28px; height: 28px;
+  display: inline-grid; place-items: center;
+  background: transparent;
+  border: 1px solid var(--k2-border);
+  border-radius: 6px;
+  color: var(--k2-text-dim);
+  cursor: pointer; font-size: 14px;
+  transition: all 120ms;
+}
+.px-pagination-btn:hover:not(:disabled) {
+  color: var(--k2-text); border-color: var(--k2-border-strong);
+}
+.px-pagination-btn:disabled {
+  opacity: 0.4; cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {
