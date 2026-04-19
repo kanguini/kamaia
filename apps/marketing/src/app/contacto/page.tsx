@@ -53,8 +53,8 @@ export default function ContactoPage({
                 <ChannelCard
                   icon={Mail}
                   title="Email"
-                  value="hello@kamaia.ao"
-                  href="mailto:hello@kamaia.ao"
+                  value="hello@kamaia.cc"
+                  href="mailto:hello@kamaia.cc"
                   hint="Resposta em até 1 dia útil"
                 />
                 <ChannelCard
@@ -83,10 +83,10 @@ export default function ContactoPage({
                     Já tens conta?
                   </p>
                   <Link
-                    href="https://app.kamaia.ao/login"
+                    href="https://app.kamaia.cc/login"
                     className="mt-2 inline-block text-white underline underline-offset-4"
                   >
-                    Entra em app.kamaia.ao →
+                    Entra em app.kamaia.cc →
                   </Link>
                 </div>
               </aside>

@@ -17,7 +17,7 @@ export function DashboardMockup({ className }: { className?: string }) {
           <span className="dot" />
           <span className="dot" />
           <span className="dot" />
-          <span className="url">app.kamaia.ao</span>
+          <span className="url">app.kamaia.cc</span>
         </div>
 
         <div className="k2-mock-body">

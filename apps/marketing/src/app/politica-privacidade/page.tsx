@@ -42,7 +42,7 @@ export default function PoliticaPrivacidadePage() {
                 gabinetes na plataforma.
               </p>
               <p>
-                Contactos: <a href="mailto:privacidade@kamaia.ao">privacidade@kamaia.ao</a>
+                Contactos: <a href="mailto:privacidade@kamaia.cc">privacidade@kamaia.cc</a>
               </p>
             </section>
 
@@ -132,7 +132,7 @@ export default function PoliticaPrivacidadePage() {
               </ul>
               <p>
                 Envia o pedido para{' '}
-                <a href="mailto:privacidade@kamaia.ao">privacidade@kamaia.ao</a>.
+                <a href="mailto:privacidade@kamaia.cc">privacidade@kamaia.cc</a>.
                 Respondemos em até 15 dias úteis.
               </p>
             </section>
@@ -173,7 +173,7 @@ export default function PoliticaPrivacidadePage() {
                 Dúvidas ou reclamações relacionadas com privacidade:
               </p>
               <ul>
-                <li>Email: <a href="mailto:privacidade@kamaia.ao">privacidade@kamaia.ao</a></li>
+                <li>Email: <a href="mailto:privacidade@kamaia.cc">privacidade@kamaia.cc</a></li>
                 <li>Morada: GMS Advogados, Luanda, Angola</li>
               </ul>
             </section>

@@ -59,7 +59,7 @@ export async function submitContact(input: ContactInput): Promise<ContactResult>
     `.trim()
 
     await resend.emails.send({
-      from: 'Kamaia <hello@kamaia.ao>',
+      from: 'Kamaia <hello@kamaia.cc>',
       to: NOTIFY,
       replyTo: data.email,
       subject,
@@ -72,7 +72,7 @@ export async function submitContact(input: ContactInput): Promise<ContactResult>
     return {
       ok: false,
       error:
-        'Não foi possível enviar a mensagem. Tenta novamente ou escreve para hello@kamaia.ao.',
+        'Não foi possível enviar a mensagem. Tenta novamente ou escreve para hello@kamaia.cc.',
     }
   }
 }

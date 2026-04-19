@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://kamaia.ao'
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://kamaia.cc'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const routes: Array<{

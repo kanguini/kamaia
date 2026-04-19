@@ -39,7 +39,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
         <h3 className="mt-3 text-lg font-medium text-white">Mensagem enviada</h3>
         <p className="mt-2 text-sm text-white/70">
           Recebemos o teu contacto. Respondemos em 1 dia útil. Se for urgente,
-          escreve directamente para hello@kamaia.ao.
+          escreve directamente para hello@kamaia.cc.
         </p>
         <button
           type="button"

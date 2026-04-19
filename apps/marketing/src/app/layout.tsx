@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import '@/styles/globals.css'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://kamaia.ao'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://kamaia.cc'
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
 
 const inter = Inter({
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title: 'Kamaia · Gestão jurídica inteligente',
     description:
       'Processos, prazos, timesheets e facturação num só lugar. Feito para Angola.',
-    url: 'https://kamaia.ao',
+    url: 'https://kamaia.cc',
     siteName: 'Kamaia',
     locale: 'pt_AO',
     type: 'website',
@@ -61,7 +61,7 @@ const jsonLd = {
       logo: `${SITE_URL}/og/logo-square.png`,
       contactPoint: {
         '@type': 'ContactPoint',
-        email: 'hello@kamaia.ao',
+        email: 'hello@kamaia.cc',
         contactType: 'customer service',
         areaServed: 'AO',
         availableLanguage: ['Portuguese'],

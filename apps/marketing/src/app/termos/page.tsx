@@ -194,7 +194,7 @@ export default function TermosPage() {
               <h2>13. Contacto</h2>
               <p>
                 Dúvidas sobre estes Termos:{' '}
-                <a href="mailto:legal@kamaia.ao">legal@kamaia.ao</a> ou{' '}
+                <a href="mailto:legal@kamaia.cc">legal@kamaia.cc</a> ou{' '}
                 <a href="/contacto">contacta-nos pelo formulário</a>.
               </p>
             </section>

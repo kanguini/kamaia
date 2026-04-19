@@ -27,14 +27,14 @@ test.describe('Marketing · pages render', () => {
   }
 })
 
-test.describe('Marketing · CTAs point to app.kamaia.ao', () => {
+test.describe('Marketing · CTAs point to app.kamaia.cc', () => {
   test('hero "Começar grátis" carries UTM', async ({ page }) => {
     await page.goto('/')
     const cta = page
       .getByRole('link', { name: /Começar grátis/ })
       .first()
     const href = await cta.getAttribute('href')
-    expect(href).toMatch(/app\.kamaia\.ao\/register/)
+    expect(href).toMatch(/app\.kamaia\.cc\/register/)
     expect(href).toMatch(/utm_source=site/)
     expect(href).toMatch(/utm_medium=hero_cta/)
   })
@@ -43,7 +43,7 @@ test.describe('Marketing · CTAs point to app.kamaia.ao', () => {
     await page.goto('/')
     const login = page.getByRole('link', { name: /^Entrar$/ }).first()
     const href = await login.getAttribute('href')
-    expect(href).toMatch(/app\.kamaia\.ao\/login/)
+    expect(href).toMatch(/app\.kamaia\.cc\/login/)
   })
 })
 

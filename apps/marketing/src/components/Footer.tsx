@@ -5,7 +5,7 @@ const LINKS = {
   Produto: [
     { href: '/funcionalidades', label: 'Funcionalidades' },
     { href: '/precos', label: 'Preços' },
-    { href: 'https://app.kamaia.ao', label: 'Aceder à aplicação', external: true },
+    { href: 'https://app.kamaia.cc', label: 'Aceder à aplicação', external: true },
   ],
   Empresa: [
     { href: '/sobre', label: 'Sobre' },
@@ -55,8 +55,8 @@ export function Footer() {
           <p>© {new Date().getFullYear()} Kamaia. Todos os direitos reservados.</p>
           <p>
             Feito em Luanda ·{' '}
-            <Link href="mailto:hello@kamaia.ao" className="hover:text-white/70">
-              hello@kamaia.ao
+            <Link href="mailto:hello@kamaia.cc" className="hover:text-white/70">
+              hello@kamaia.cc
             </Link>
           </p>
         </div>

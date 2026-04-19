@@ -1,6 +1,6 @@
 # Kamaia — Marketing site
 
-Next.js 14 App Router site público em `kamaia.ao`. Separado da aplicação
+Next.js 14 App Router site público em `kamaia.cc`. Separado da aplicação
 autenticada (`apps/web`) para optimizar SEO, bundle e deploy independente.
 
 ## Desenvolvimento
