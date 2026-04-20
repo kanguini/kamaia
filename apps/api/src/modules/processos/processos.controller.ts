@@ -71,25 +71,6 @@ export class ProcessosController {
     return { data: result.data };
   }
 
-  @Get('kanban')
-  async kanban(
-    @GabineteId() gabineteId: string,
-    @CurrentUser() user: JwtPayload,
-    @Query('type') type?: string,
-  ) {
-    const advogadoId = user.role === KamaiaRole.ADVOGADO_MEMBRO ? user.sub : undefined;
-    const result = await this.processosService.findForKanban(gabineteId, type, advogadoId);
-
-    if (!result.success) {
-      throw new HttpException(
-        { error: result.error, code: 'KANBAN_FETCH_FAILED' },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    return { data: result.data };
-  }
-
   @Get('pipeline')
   async pipeline(@GabineteId() gabineteId: string) {
     const result = await this.processosService.getPipelineCounts(gabineteId);

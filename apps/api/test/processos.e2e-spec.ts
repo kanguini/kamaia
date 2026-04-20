@@ -57,15 +57,6 @@ describe('Processos (e2e)', () => {
     expect(res.body.data?.title).toBe('Processo E2E');
   });
 
-  it('GET /api/processos/kanban returns processos grouped by stage', async () => {
-    const res = await request(ctx.app.getHttpServer())
-      .get('/api/processos/kanban')
-      .set('Authorization', auth());
-
-    expect(res.status).toBe(200);
-    expect(res.body.data).toBeDefined();
-  });
-
   it('PUT /api/processos/:id/strategy persists the strategy and logs an event', async () => {
     const create = await request(ctx.app.getHttpServer())
       .post('/api/processos')

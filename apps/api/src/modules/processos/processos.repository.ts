@@ -204,36 +204,6 @@ export class ProcessosRepository {
     return this.findById(gabineteId, id);
   }
 
-  async findForKanban(gabineteId: string, type?: string, advogadoId?: string) {
-    const where: any = { gabineteId, deletedAt: null, status: 'ACTIVO' };
-    if (type) where.type = type;
-    if (advogadoId) where.advogadoId = advogadoId;
-
-    return this.prisma.processo.findMany({
-      where,
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        id: true,
-        processoNumber: true,
-        title: true,
-        type: true,
-        status: true,
-        stage: true,
-        lifecycle: true,
-        priority: true,
-        tags: true,
-        updatedAt: true,
-        cliente: { select: { id: true, name: true } },
-        prazos: {
-          where: { deletedAt: null, status: 'PENDENTE' },
-          select: { id: true, dueDate: true, isUrgent: true },
-          orderBy: { dueDate: 'asc' },
-          take: 1,
-        },
-      },
-    });
-  }
-
   async findPipelineCounts(gabineteId: string) {
     return this.prisma.processo.groupBy({
       by: ['lifecycle'],

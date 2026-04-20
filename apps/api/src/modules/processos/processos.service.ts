@@ -445,34 +445,6 @@ export class ProcessosService {
     }
   }
 
-  // ── Kanban ─────────────────────────────────────────────
-
-  async findForKanban(
-    gabineteId: string,
-    type?: string,
-    advogadoId?: string,
-  ): Promise<Result<any>> {
-    try {
-      const processos = await this.processosRepository.findForKanban(
-        gabineteId,
-        type,
-        advogadoId,
-      );
-
-      // Group by stage
-      const grouped: Record<string, any[]> = {};
-      for (const p of processos) {
-        const stage = p.stage || 'Sem Fase';
-        if (!grouped[stage]) grouped[stage] = [];
-        grouped[stage].push(p);
-      }
-
-      return ok(grouped);
-    } catch (error) {
-      return err('Failed to load kanban', 'KANBAN_FAILED');
-    }
-  }
-
   // ── Pipeline ───────────────────────────────────────────
 
   async getPipelineCounts(

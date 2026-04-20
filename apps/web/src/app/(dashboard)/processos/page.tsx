@@ -7,17 +7,14 @@
  * rows + mini stage timeline) but maps to the real Processo model:
  * processoNumber / ProcessoType / ProcessoStatus / ProcessoPriority /
  * court / opposingParty / prazos[].
- *
- * Kanban fallback preserved (drag-and-drop by stage) via the existing
- * kanban-view component.
  */
 
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Search, Plus, Filter, Users, ArrowUpRight, ChevronDown,
-  Scale, LayoutList, Columns3,
+  Scale,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import {
@@ -27,8 +24,6 @@ import {
   PROCESSO_STAGES,
 } from '@kamaia/shared-types'
 import { ProcessoFormModal } from '@/components/forms/processo-form-modal'
-
-const KanbanView = lazy(() => import('./kanban-view'))
 
 interface ProcessoListRow {
   id: string
@@ -94,7 +89,6 @@ function initialsOf(name: string): string {
 export default function ProcessosPage() {
   const router = useRouter()
 
-  const [view, setView] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProcessoStatus | null>(null)
   const [typeFilters, setTypeFilters] = useState<ProcessoType[]>([])
@@ -154,27 +148,13 @@ export default function ProcessosPage() {
       <div className="px-head">
         <div className="px-title">Processos</div>
         <div className="px-head-actions">
-          <div className="px-view-toggle">
-            <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')} title="Lista">
-              <LayoutList size={14} />
-            </button>
-            <button className={view === 'kanban' ? 'on' : ''} onClick={() => setView('kanban')} title="Kanban">
-              <Columns3 size={14} />
-            </button>
-          </div>
           <button type="button" onClick={() => setShowNewProcesso(true)} className="px-btn-primary">
             <Plus size={14} /> Novo processo
           </button>
         </div>
       </div>
 
-      {view === 'kanban' ? (
-        <Suspense fallback={<div className="px-empty">A carregar Kanban…</div>}>
-          <KanbanView />
-        </Suspense>
-      ) : (
-        <>
-          <div className="px-toolbar">
+      <div className="px-toolbar">
             <div className="px-search">
               <Search size={14} />
               <input
@@ -279,8 +259,6 @@ export default function ProcessosPage() {
               </div>
             </div>
           )}
-        </>
-      )}
 
       <ProcessoFormModal
         open={showNewProcesso}
@@ -517,11 +495,6 @@ const sharedListStyles = `
 .px-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .px-title { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
 .px-head-actions { display: flex; align-items: center; gap: 8px; }
-.px-view-toggle { display: inline-flex; background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); overflow: hidden; }
-.px-view-toggle button { padding: 6px 10px; background: transparent; border: none; color: var(--k2-text-mute); cursor: pointer; display: inline-flex; align-items: center; transition: all 120ms; }
-.px-view-toggle button + button { border-left: 1px solid var(--k2-border); }
-.px-view-toggle button:hover { color: var(--k2-text); background: var(--k2-bg-hover); }
-.px-view-toggle button.on { background: var(--k2-bg-hover); color: var(--k2-text); }
 .px-btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 13px; font-weight: 500; border-radius: var(--k2-radius-sm); border: 1px solid transparent; cursor: pointer; transition: all 120ms; text-decoration: none; background: var(--k2-accent); color: var(--k2-accent-fg); }
 .px-btn-primary:hover { filter: brightness(1.08); }
 .px-funnel { display: grid; gap: 8px; margin-bottom: 16px; }
