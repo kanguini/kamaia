@@ -70,7 +70,7 @@ function parseDuration(input: string): number | null {
 }
 
 function formatMoney(centavos: number): string {
-  return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
+  return `${(centavos / 100).toLocaleString('pt-AO')} AOA`
 }
 
 export default function TimesheetsPage() {

@@ -285,15 +285,15 @@ export class ProjectReportsService {
       if (report.budgetSnapshot != null && report.budgetSnapshot > 0) {
         rows.push([
           'Orçamento',
-          `${(report.budgetSnapshot / 100).toLocaleString('pt-AO')} AKZ`,
+          `${(report.budgetSnapshot / 100).toLocaleString('pt-AO')} AOA`,
         ]);
         rows.push([
           'Gasto real',
-          `${((report.actualSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AKZ`,
+          `${((report.actualSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AOA`,
         ]);
         rows.push([
           'Ideal à data',
-          `${((report.idealSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AKZ`,
+          `${((report.idealSpentSnapshot ?? 0) / 100).toLocaleString('pt-AO')} AOA`,
         ]);
       }
       for (const [k, v] of rows) {

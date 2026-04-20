@@ -44,7 +44,7 @@ describe('Expenses (e2e)', () => {
         processoId,
         category: 'EMOLUMENTOS',
         description: 'Taxa de justiça',
-        amount: 150000, // centavos (1500 AKZ)
+        amount: 150000, // centavos (1500 AOA)
         date: new Date().toISOString().slice(0, 10),
       });
 

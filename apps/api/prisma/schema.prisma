@@ -183,7 +183,7 @@ model Processo {
   lifecycle       String    @default("ATENDIMENTO") @db.VarChar(30) // ProcessoLifecycle enum
   tags            String[]  @default([])
   feeType         String?   @map("fee_type") @db.VarChar(20) // FIXO | HORA | PERCENTAGEM | PRO_BONO
-  feeAmount       Int?      @map("fee_amount") // Centavos AKZ
+  feeAmount       Int?      @map("fee_amount") // Centavos AOA
   notes           String?   @db.Text
   openedAt        DateTime  @default(now()) @map("opened_at") @db.Timestamptz
   closedAt        DateTime? @map("closed_at") @db.Timestamptz
@@ -435,7 +435,7 @@ model TimeEntry {
   date            DateTime  @db.Date
   durationMinutes Int       @map("duration_minutes")
   billable        Boolean   @default(true)
-  hourlyRate      Int?      @map("hourly_rate") // Centavos AKZ, if null inherits from Processo.feeAmount
+  hourlyRate      Int?      @map("hourly_rate") // Centavos AOA, if null inherits from Processo.feeAmount
   invoiceId       String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -462,7 +462,7 @@ model Expense {
   userId      String    @map("user_id") @db.Uuid
   category    String    @db.VarChar(30) // ExpenseCategory enum
   description String    @db.Text
-  amount      Int // Centavos AKZ
+  amount      Int // Centavos AOA
   date        DateTime  @db.Date
   invoiceId   String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
@@ -691,7 +691,7 @@ model LegislationChunk {
 
 // A reusable pipeline of stages configured per gabinete.
 // Replaces the hardcoded PROCESSO_STAGES constant, letting firms
-// add/remove stages like Tréplica / Quadruplica at will.
+// add/remove stages (ex: Tréplica, Articulados Supervenientes) at will.
 model Workflow {
   id          String   @id @default(uuid()) @db.Uuid
   gabineteId  String   @map("gabinete_id") @db.Uuid
@@ -778,7 +778,7 @@ model Project {
   endDate        DateTime? @map("end_date") @db.Timestamptz
   actualEndDate  DateTime? @map("actual_end_date") @db.Timestamptz
   budgetAmount   Int?      @map("budget_amount") // centavos
-  budgetCurrency String    @default("AKZ") @map("budget_currency") @db.VarChar(3)
+  budgetCurrency String    @default("AOA") @map("budget_currency") @db.VarChar(3)
   tags           String[]  @default([])
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -926,7 +926,7 @@ model Invoice {
   issueDate    DateTime @default(now()) @map("issue_date") @db.Timestamptz
   dueDate      DateTime? @map("due_date") @db.Timestamptz
   status       String   @default("DRAFT") @db.VarChar(20)
-  currency     String   @default("AKZ") @db.VarChar(3)
+  currency     String   @default("AOA") @db.VarChar(3)
   subtotal     Int      @default(0)
   taxRate      Float    @default(14.0) @map("tax_rate") // IVA Angola geral = 14%
   taxAmount    Int      @default(0) @map("tax_amount")

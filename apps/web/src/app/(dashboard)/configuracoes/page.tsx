@@ -635,7 +635,7 @@ function WorkflowsLink() {
           <div>
             <p className="text-sm font-medium text-ink">Workflows</p>
             <p className="text-xs text-ink-muted">
-              Configurar fases dos processos (ex: Tréplica, Quadruplica) e projectos
+              Configurar fases dos processos (ex: Tréplica, Articulados Supervenientes) e projectos
             </p>
           </div>
         </div>

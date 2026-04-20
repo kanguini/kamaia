@@ -156,8 +156,8 @@ export default function KanbanView() {
   )
 
   // Load the gabinete's workflow for this processo type (auto-seeds on first use).
-  // Stage labels come straight from DB, so adding Tréplica/Quadruplica or custom
-  // parallel stages in the editor is reflected live.
+  // Stage labels come straight from DB, so adding Tréplica / Articulados Supervenientes
+  // or custom parallel stages in the editor is reflected live.
   const { data: workflows } = useApi<Workflow[]>(
     `/workflows?scope=PROCESSO&appliesTo=${selectedType}`,
     [selectedType],

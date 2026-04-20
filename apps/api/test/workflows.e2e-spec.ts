@@ -35,10 +35,11 @@ describe('Workflows (e2e)', () => {
     expect(Array.isArray(res.body.data)).toBe(true);
     const civel = res.body.data.find((w: any) => w.appliesTo.includes('CIVEL'));
     expect(civel).toBeDefined();
-    // Tréplica and Quadruplica must be present — the core user request
+    // Tréplica e Articulados Supervenientes devem estar presentes
+    // (terminologia correcta do CPC angolano, arts. 502-503 e 506).
     const labels = civel.stages.map((s: any) => s.label);
     expect(labels).toContain('Tréplica');
-    expect(labels).toContain('Quadruplica');
+    expect(labels).toContain('Articulados Supervenientes');
   });
 
   it('POST /api/workflows/:id/stages adds a new custom stage', async () => {

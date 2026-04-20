@@ -81,7 +81,7 @@ export default function TermosPage() {
                   Trial de 14 dias gratuito. Não é necessário cartão de crédito
                 </li>
                 <li>
-                  Planos pagos facturados mensal ou anualmente, em AKZ
+                  Planos pagos facturados mensal ou anualmente, em AOA
                 </li>
                 <li>
                   Desconto de 15% na facturação anual antecipada

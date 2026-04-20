@@ -14,7 +14,7 @@ import {
  * Invoicing core — aggregates billable TimeEntries + Expenses into an
  * Invoice, locks them by FK so they can't be double-billed, and manages
  * the lifecycle (draft → sent → paid). All totals are stored in centavos
- * (AKZ × 100) to avoid float rounding.
+ * (AOA × 100) to avoid float rounding.
  */
 @Injectable()
 export class InvoicesService {

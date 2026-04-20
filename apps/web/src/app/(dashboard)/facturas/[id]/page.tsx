@@ -380,7 +380,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
               >
                 <div>
                   <p className="text-ink font-mono">
-                    {(p.amount / 100).toLocaleString('pt-AO')} AKZ
+                    {(p.amount / 100).toLocaleString('pt-AO')} AOA
                   </p>
                   <p className="text-ink-muted">
                     {new Date(p.paidAt).toLocaleDateString('pt-AO')}
@@ -428,12 +428,12 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           >
             <h2 className="text-lg font-semibold text-ink">Registar pagamento</h2>
             <p className="text-xs text-ink-muted">
-              Em dívida: {(outstanding / 100).toLocaleString('pt-AO')} AKZ
+              Em dívida: {(outstanding / 100).toLocaleString('pt-AO')} AOA
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-1">
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Valor (AKZ)
+                  Valor (AOA)
                 </label>
                 <input
                   type="number"

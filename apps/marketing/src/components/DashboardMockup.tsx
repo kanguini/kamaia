@@ -50,13 +50,13 @@ export function DashboardMockup({ className }: { className?: string }) {
               <h3>
                 Boa tarde, Helder. <em>2 prazos</em> esta semana.
               </h3>
-              <p>65.0k AKZ em dívida · 1 factura(s) por liquidar.</p>
+              <p>65.0k AOA em dívida · 1 factura(s) por liquidar.</p>
             </div>
 
             <div className="k2-mock-strip">
-              <Stat label="Facturado · Abril" value="65.0k" unit="AKZ" />
-              <Stat label="Em dívida" value="65.0k" unit="AKZ" tone="bad" />
-              <Stat label="WIP por facturar" value="6.6M" unit="AKZ" tone="good" />
+              <Stat label="Facturado · Abril" value="65.0k" unit="AOA" />
+              <Stat label="Em dívida" value="65.0k" unit="AOA" tone="bad" />
+              <Stat label="WIP por facturar" value="6.6M" unit="AOA" tone="good" />
               <Stat label="Projectos activos" value="3" />
             </div>
 

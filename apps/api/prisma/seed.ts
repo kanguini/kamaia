@@ -149,7 +149,7 @@ async function main() {
       opposingLawyer: 'Dr. Pedro Neto',
       priority: 'ALTA',
       feeType: 'FIXO',
-      feeAmount: 50000000, // 500,000 AKZ in centavos
+      feeAmount: 50000000, // 500,000 AOA in centavos
     },
   });
 
@@ -171,7 +171,7 @@ async function main() {
       court: 'Tribunal Provincial de Luanda — Sala do Civel',
       priority: 'MEDIA',
       feeType: 'HORA',
-      feeAmount: 2500000, // 25,000 AKZ/hora in centavos
+      feeAmount: 2500000, // 25,000 AOA/hora in centavos
     },
   });
 
@@ -193,7 +193,7 @@ async function main() {
       court: 'Tribunal Provincial de Luanda — Sala da Familia',
       priority: 'MEDIA',
       feeType: 'FIXO',
-      feeAmount: 30000000, // 300,000 AKZ
+      feeAmount: 30000000, // 300,000 AOA
     },
   });
 

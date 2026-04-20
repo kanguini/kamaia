@@ -42,7 +42,7 @@ describe('Executive Dashboard (e2e)', () => {
         category: 'PESQUISA',
         description: 'WIP research',
         date: new Date(),
-        durationMinutes: 180, // 3 hours × 10k = 30k AKZ
+        durationMinutes: 180, // 3 hours × 10k = 30k AOA
         billable: true,
       },
     });

@@ -433,7 +433,7 @@ export default function NewInvoicePage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="Preço unit. (AKZ)"
+                  placeholder="Preço unit. (AOA)"
                   value={c.unitPrice || ''}
                   onChange={(e) =>
                     setCustomItems((cs) =>
@@ -499,7 +499,7 @@ export default function NewInvoicePage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-ink mb-1">
-                  Taxa horária por defeito (AKZ, para entradas sem taxa definida)
+                  Taxa horária por defeito (AOA, para entradas sem taxa definida)
                 </label>
                 <input
                   type="number"
@@ -537,17 +537,17 @@ export default function NewInvoicePage() {
             <aside className="bg-surface p-4 space-y-1">
               <p className="text-[10px] font-mono uppercase text-ink-muted">Subtotal</p>
               <p className="text-sm font-semibold text-ink mb-2">
-                {(subtotal / 100).toLocaleString('pt-AO')} AKZ
+                {(subtotal / 100).toLocaleString('pt-AO')} AOA
               </p>
               <p className="text-[10px] font-mono uppercase text-ink-muted">
                 IVA ({form.taxRate}%)
               </p>
               <p className="text-sm text-ink mb-2">
-                {(tax / 100).toLocaleString('pt-AO')} AKZ
+                {(tax / 100).toLocaleString('pt-AO')} AOA
               </p>
               <p className="text-[10px] font-mono uppercase text-ink-muted">Total</p>
               <p className="text-2xl font-semibold text-ink">
-                {(total / 100).toLocaleString('pt-AO')} AKZ
+                {(total / 100).toLocaleString('pt-AO')} AOA
               </p>
               <button
                 onClick={emit}

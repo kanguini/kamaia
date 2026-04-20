@@ -31,8 +31,8 @@ interface Workflow {
 
 /**
  * Workflow editor — lets a gabinete manager add custom stages like Tréplica
- * or Quadruplica (or any parallel phase) without code changes. Changes here
- * propagate immediately to the Kanban.
+ * or Articulados Supervenientes (or any parallel phase) without code changes.
+ * Changes here propagate immediately to the Kanban.
  */
 export default function WorkflowsPage() {
   const { data: session } = useSession()
@@ -121,8 +121,8 @@ export default function WorkflowsPage() {
         <GitBranch className="w-12 h-12 text-ink-muted mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-ink mb-2">Nenhum workflow configurado</h2>
         <p className="text-ink-muted mb-6">
-          Semeie os workflows padrão (Cível com Tréplica e Quadruplica, Laboral, Criminal,
-          M&A, Compliance, etc.) para começar.
+          Semeie os workflows padrão (Cível com Tréplica e Articulados Supervenientes,
+          Laboral, Criminal, M&A, Compliance, etc.) para começar.
         </p>
         <button
           onClick={seedIfEmpty}

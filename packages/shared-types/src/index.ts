@@ -449,7 +449,7 @@ export const PROCESSO_STAGE_TEMPLATES: Record<ProcessoType, StageTemplate[]> = {
     { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
     { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
     { key: 'treplica', label: 'Tréplica', category: 'ARTICULADOS' },
-    { key: 'quadruplica', label: 'Quadruplica', category: 'ARTICULADOS' },
+    { key: 'articulados-supervenientes', label: 'Articulados Supervenientes', category: 'ARTICULADOS', allowsParallel: true },
     { key: 'incidente', label: 'Incidente', category: 'PARALELO', allowsParallel: true },
     { key: 'audiencia-previa', label: 'Audiência Prévia', category: 'JULGAMENTO' },
     { key: 'instrucao', label: 'Instrução', category: 'JULGAMENTO' },

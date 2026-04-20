@@ -66,7 +66,7 @@ Lançar em 4 semanas um site público em `kamaia.ao` (ou `kamaia.co.ao` / `.com`
 > A plataforma feita para advogados angolanos. Processos, prazos, timesheets e facturação num só lugar. Com assistente IA que redige peças.
 
 **Provas / diferenciadores:**
-1. **Feito para Angola** — AKZ, feriados angolanos, dias úteis, OAA, WAT timezone
+1. **Feito para Angola** — AOA, feriados angolanos, dias úteis, OAA, WAT timezone
 2. **Alertas de prazo automáticos** — email + SMS + push antes dos prazos processuais
 3. **IA Assistente jurídica** — redacção de peças, resumos de processos, pesquisa jurisprudencial (Gemini-powered)
 4. **Multi-tenant com RLS** — isolamento total de dados entre gabinetes; ninguém vê processos de outros gabinetes
@@ -115,14 +115,14 @@ app.kamaia.ao/register →  registo da app real
    - Processos com workflows customizáveis
    - Prazos com dias úteis angolanos
    - Clientes + Portal
-   - Facturação AKZ
+   - Facturação AOA
    - Timesheets + Despesas
    - IA Assistente
 
 4. **"Feito para Angola"** (secção de diferenciação)
    - Bandeira estilizada + mapa
-   - Lista: AKZ · Feriados públicos · Horário de Luanda · OAA · Dados em território · Audiente ARSEG-compliance
-   - Screenshot de uma factura real emitida em AKZ
+   - Lista: AOA · Feriados públicos · Horário de Luanda · OAA · Dados em território · Audiente ARSEG-compliance
+   - Screenshot de uma factura real emitida em AOA
 
 5. **Social proof / testemunhos**
    - 3 testemunhos de advogados (a obter — ver Fase pre-launch)
@@ -163,8 +163,8 @@ Estrutura da tabela já existe no backend (`SubscriptionPlan` enum). Planos púb
 | Plano | Preço | Utilizadores | Processos | Storage | IA queries |
 |---|---|---|---|---|---|
 | **Trial** | Gratis 14d | Até 3 | Ilimitado | 1 GB | 50 |
-| **Solo** | ~15.000 AKZ/mês | 1 | 100 activos | 5 GB | 200 |
-| **Gabinete** | ~45.000 AKZ/mês | Até 10 | Ilimitado | 50 GB | 1.000 |
+| **Solo** | ~15.000 AOA/mês | 1 | 100 activos | 5 GB | 200 |
+| **Gabinete** | ~45.000 AOA/mês | Até 10 | Ilimitado | 50 GB | 1.000 |
 | **Pro Business** | sob consulta | Ilimitado | Ilimitado | 500 GB | Ilimitado |
 
 **Nota sobre preços:** os valores acima são placeholders; precisa validação comercial antes do launch. Ver item 10 (riscos).

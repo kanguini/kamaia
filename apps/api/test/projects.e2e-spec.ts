@@ -118,7 +118,7 @@ describe('Projects (e2e)', () => {
         category: 'CONSULTORIA',
         startDate: new Date(Date.now() - 5 * 86_400_000).toISOString(),
         endDate: new Date(Date.now() + 10 * 86_400_000).toISOString(),
-        budgetAmount: 500_000_00, // 500k AKZ in centavos
+        budgetAmount: 500_000_00, // 500k AOA in centavos
       });
     const projectId = projRes.body.data.id;
 

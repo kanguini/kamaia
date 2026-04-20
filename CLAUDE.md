@@ -21,7 +21,7 @@
 - Cursor-based pagination para listas (nao offset)
 - Error handling: usar Result type com ok()/err()
 - Datas: sempre UTC no backend, converter para WAT (UTC+1) no frontend
-- Moeda: AKZ — armazenar em inteiros (centavos), nunca floats
+- Moeda: AOA (Kwanza) — armazenar em inteiros (centavos), nunca floats
 
 ## Modulos
 1. Auth + RBAC + Gabinete (Sprint 0) ← ACTUAL

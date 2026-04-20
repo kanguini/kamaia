@@ -45,12 +45,12 @@ describe('Invoices (e2e)', () => {
         priority: 'MEDIA',
         status: 'ACTIVO',
         stage: 'INICIAL',
-        feeAmount: 15_000_00, // 15k AKZ / hour
+        feeAmount: 15_000_00, // 15k AOA / hour
       },
     });
     processoId = processo.id;
 
-    // 2 timesheets (total 3h billable) + 1 expense (5k AKZ)
+    // 2 timesheets (total 3h billable) + 1 expense (5k AOA)
     const t1 = await ctx.prisma.timeEntry.create({
       data: {
         gabineteId: user.gabineteId,

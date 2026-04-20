@@ -201,7 +201,7 @@ export function ProcessoFormModal({ open, onClose, onSuccess }: ProcessoFormModa
               </Select>
             </FormField>
             {feeType && feeType !== 'PRO_BONO' && (
-              <FormField label={feeType === 'PERCENTAGEM' ? 'Percentagem (%)' : 'Valor (AKZ)'}>
+              <FormField label={feeType === 'PERCENTAGEM' ? 'Percentagem (%)' : 'Valor (AOA)'}>
                 <Input
                   type="number"
                   step="0.01"

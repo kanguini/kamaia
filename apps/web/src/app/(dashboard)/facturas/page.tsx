@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<InvoiceStatus, string> = {
 }
 
 function fmtAkz(centavos: number): string {
-  return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
+  return `${(centavos / 100).toLocaleString('pt-AO')} AOA`
 }
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'

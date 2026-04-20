@@ -76,7 +76,7 @@ Estas bloqueiam/permitem tarefas específicas. **Devem começar no dia 1**, em p
   - `AnimatedGradient` como background
 - [ ] Secção "Problema → Solução" (3 cards em grid)
 - [ ] Secção "Funcionalidades em destaque" (6 cards, 2×3 em desktop, 1 coluna em mobile)
-- [ ] Secção "Feito para Angola" (AKZ, feriados, OAA, WAT)
+- [ ] Secção "Feito para Angola" (AOA, feriados, OAA, WAT)
 - [ ] Secção social proof placeholder (cards vazios com estrutura)
 - [ ] CTA final + footer
 - [ ] `/funcionalidades/page.tsx` — deep dive alternado esquerda/direita com screenshots

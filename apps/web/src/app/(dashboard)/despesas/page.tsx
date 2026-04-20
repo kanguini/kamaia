@@ -47,7 +47,7 @@ const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
 }
 
 function formatMoney(centavos: number): string {
-  return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
+  return `${(centavos / 100).toLocaleString('pt-AO')} AOA`
 }
 
 export default function DespesasPage() {
@@ -225,7 +225,7 @@ export default function DespesasPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-ink mb-2">Valor (AKZ)</label>
+              <label className="block text-sm font-medium text-ink mb-2">Valor (AOA)</label>
               <input
                 type="number"
                 value={formAmount}

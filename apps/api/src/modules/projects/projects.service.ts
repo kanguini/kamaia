@@ -141,7 +141,7 @@ export class ProjectsService {
           startDate: dto.startDate ? new Date(dto.startDate) : null,
           endDate: dto.endDate ? new Date(dto.endDate) : null,
           budgetAmount: dto.budgetAmount ?? null,
-          budgetCurrency: dto.budgetCurrency ?? 'AKZ',
+          budgetCurrency: dto.budgetCurrency ?? 'AOA',
           tags: dto.tags ?? [],
         },
         include: {

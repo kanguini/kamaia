@@ -9,7 +9,7 @@ import { appUrl } from '@/lib/utm'
 export const metadata: Metadata = {
   title: 'Preços',
   description:
-    'Planos Kamaia — Solo, Gabinete e Pro Business. 14 dias grátis em qualquer plano. Preços em AKZ, sem taxas escondidas.',
+    'Planos Kamaia — Solo, Gabinete e Pro Business. 14 dias grátis em qualquer plano. Preços em AOA, sem taxas escondidas.',
 }
 
 interface Plan {
@@ -43,7 +43,7 @@ const PLANS: Plan[] = [
     id: 'solo',
     name: 'Solo',
     price: '15.000',
-    unit: 'AKZ / mês',
+    unit: 'AOA / mês',
     headline: 'Advogado solo',
     cta: { label: 'Escolher Solo', href: appUrl('/register', 'pricing', 'SOLO') },
     includes: [
@@ -58,7 +58,7 @@ const PLANS: Plan[] = [
     id: 'gabinete',
     name: 'Gabinete',
     price: '45.000',
-    unit: 'AKZ / mês',
+    unit: 'AOA / mês',
     headline: 'Gabinetes 2–10 advogados',
     featured: true,
     cta: { label: 'Escolher Gabinete', href: appUrl('/register', 'pricing', 'GABINETE') },
@@ -119,7 +119,7 @@ const COMPARISON: Array<{ group: string; rows: Array<{ label: string; values: (s
   {
     group: 'Facturação & reporting',
     rows: [
-      { label: 'Facturação AKZ', values: [true, true, true, true] },
+      { label: 'Facturação AOA', values: [true, true, true, true] },
       { label: 'Timesheets e despesas', values: [true, true, true, true] },
       { label: 'Relatórios avançados', values: [false, false, true, true] },
       { label: 'Exportação contabilística', values: [false, false, true, true] },

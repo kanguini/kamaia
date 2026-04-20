@@ -170,7 +170,7 @@ export function ProjectoFormModal({ open, onClose, onSuccess }: ProjectoFormModa
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">Orçamento (AKZ)</label>
+            <label className="block text-sm font-medium text-ink mb-1.5">Orçamento (AOA)</label>
             <input
               type="number"
               min="0"

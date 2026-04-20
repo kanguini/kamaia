@@ -266,7 +266,7 @@ export default function EditarProcessoPage({ params }: { params: { id: string } 
 
               <div>
                 <label className="block text-sm font-mono font-medium text-ink mb-2">
-                  Valor em AKZ
+                  Valor em AOA
                 </label>
                 <input
                   type="number"

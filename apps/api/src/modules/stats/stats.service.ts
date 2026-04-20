@@ -690,7 +690,7 @@ export class StatsService {
         outstandingTotal,
         outstandingInvoices: outstandingInvoices._count,
         wipValue: topWipClientes.reduce((s, r) => s + r.value, 0),
-        currency: 'AKZ',
+        currency: 'AOA',
       },
       operational: {
         billableHoursThisMonth: Math.round(billableHoursThisMonth * 10) / 10,

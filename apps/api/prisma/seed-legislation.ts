@@ -216,8 +216,8 @@ const LEGISLATION: LegislationSeed[] = [
         content:
           'Art. 4.o (Capital social)\n\n' +
           'O capital social minimo e:\n' +
-          'a) Sociedades por quotas: AKZ 1.000.000,00 (um milhao de kwanzas);\n' +
-          'b) Sociedades anonimas: AKZ 20.000.000,00 (vinte milhoes de kwanzas).\n\n' +
+          'a) Sociedades por quotas: AOA 1.000.000,00 (um milhao de kwanzas);\n' +
+          'b) Sociedades anonimas: AOA 20.000.000,00 (vinte milhoes de kwanzas).\n\n' +
           'O capital social deve estar integralmente subscrito no acto de constituicao.',
       },
       {

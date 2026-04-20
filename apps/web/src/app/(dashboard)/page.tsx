@@ -96,13 +96,13 @@ function greeting(): string {
   return 'Boa noite'
 }
 
-/** Compacts centavos into K / M AKZ with 1 decimal, keeping the unit
+/** Compacts centavos into K / M AOA with 1 decimal, keeping the unit
  *  as a separate span so the hero can style it smaller. */
 function fmtAkz(centavos: number): { v: string; u: string } {
   const akz = centavos / 100
-  if (Math.abs(akz) >= 1_000_000) return { v: (akz / 1_000_000).toFixed(1), u: 'M AKZ' }
-  if (Math.abs(akz) >= 1_000) return { v: (akz / 1_000).toFixed(1), u: 'k AKZ' }
-  return { v: akz.toLocaleString('pt-AO'), u: 'AKZ' }
+  if (Math.abs(akz) >= 1_000_000) return { v: (akz / 1_000_000).toFixed(1), u: 'M AOA' }
+  if (Math.abs(akz) >= 1_000) return { v: (akz / 1_000).toFixed(1), u: 'k AOA' }
+  return { v: akz.toLocaleString('pt-AO'), u: 'AOA' }
 }
 
 function monthName(d: Date): string {

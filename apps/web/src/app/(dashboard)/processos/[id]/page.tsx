@@ -277,11 +277,11 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
   }
 
   const formatMoney = (amount: number) => {
-    return `${amount.toLocaleString('pt-AO')} AKZ`
+    return `${amount.toLocaleString('pt-AO')} AOA`
   }
 
   const formatMoneyCentavos = (centavos: number): string => {
-    return `${(centavos / 100).toLocaleString('pt-AO')} AKZ`
+    return `${(centavos / 100).toLocaleString('pt-AO')} AOA`
   }
 
   const formatFileSize = (bytes: number): string => {
