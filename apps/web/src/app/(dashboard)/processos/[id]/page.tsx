@@ -21,6 +21,7 @@ import {
   Download,
   File,
   Image as ImageIcon,
+  Gavel,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
@@ -32,10 +33,15 @@ import {
   ProcessoEventType,
   PROCESSO_STAGES,
   PrazoStatus,
+  TramitacaoAutor,
+  TRAMITACAO_AUTOR_LABELS,
+  TRAMITACAO_ACTO_TYPES,
+  type PaginatedResponse,
 } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 import { PipelineBar } from '@/components/ui/pipeline-bar'
 import { api } from '@/lib/api'
+import { TramitacaoFormModal } from '@/components/forms/tramitacao-form-modal'
 
 interface ProcessoEvent {
   id: string
@@ -61,6 +67,27 @@ interface Document {
   filename: string
   fileType: string
   fileSize: number
+}
+
+interface Tramitacao {
+  id: string
+  autor: TramitacaoAutor
+  actoType: string
+  title: string
+  description: string | null
+  actoDate: string
+  advancedToStage: string | null
+  generatedPrazo: {
+    id: string
+    title: string
+    dueDate: string
+    status: PrazoStatus
+  } | null
+  createdAt: string
+  user: {
+    firstName: string
+    lastName: string
+  }
 }
 
 interface Rentabilidade {
@@ -144,8 +171,13 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
   const router = useRouter()
   const { data: session } = useSession()
   const [noteText, setNoteText] = useState('')
+  const [tramitacaoOpen, setTramitacaoOpen] = useState(false)
 
   const { data: processo, loading, error, refetch } = useApi<Processo>(`/processos/${id}`)
+  const {
+    data: tramitacoesData,
+    refetch: refetchTramitacoes,
+  } = useApi<PaginatedResponse<Tramitacao>>(`/tramitacoes?processoId=${id}&limit=50`)
   const { data: rentabilidade } = useApi<Rentabilidade>(`/stats/rentabilidade?processoId=${id}`)
   const { mutate: deleteProcesso, loading: deleting } = useMutation(`/processos/${id}`, 'DELETE')
   const { mutate: advanceStage, loading: advancing } = useMutation(
@@ -509,6 +541,22 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
         </div>
       </div>
 
+      {/* Tramitação — actos processuais registados pelo advogado. */}
+      <TramitacaoTimeline
+        tramitacoes={tramitacoesData?.data || []}
+        onRegister={() => setTramitacaoOpen(true)}
+      />
+
+      <TramitacaoFormModal
+        open={tramitacaoOpen}
+        onClose={() => setTramitacaoOpen(false)}
+        onSuccess={() => {
+          refetchTramitacoes()
+          refetch()
+        }}
+        processoId={id}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-surface-raised p-6">
@@ -715,6 +763,130 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
               <p className="text-2xl font-semibold text-ink">{rentabilidade.margemLucro}%</p>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Tramitação Timeline ──────────────────────────────────────
+// Actos processuais registados pelo advogado (≠ ProcessoEvent, que é audit
+// trail do sistema). Cada item mostra autor, tipo, data e automações
+// disparadas (Prazo gerado, fase avançada).
+
+function TramitacaoTimeline({
+  tramitacoes,
+  onRegister,
+}: {
+  tramitacoes: Tramitacao[]
+  onRegister: () => void
+}) {
+  const getActoLabel = (key: string) =>
+    TRAMITACAO_ACTO_TYPES.find((a) => a.key === key)?.label ?? key
+
+  const getAutorStyle = (autor: TramitacaoAutor) => {
+    const map: Record<TramitacaoAutor, string> = {
+      [TramitacaoAutor.NOS]: 'bg-info/10 text-info border-info/20',
+      [TramitacaoAutor.TRIBUNAL]: 'bg-ink/10 text-ink border-ink/20',
+      [TramitacaoAutor.CONTRAPARTE]: 'bg-warning/10 text-warning border-warning/20',
+      [TramitacaoAutor.MINISTERIO_PUBLICO]: 'bg-danger/10 text-danger border-danger/20',
+      [TramitacaoAutor.OUTRO]: 'bg-muted/10 text-ink-muted border-muted/20',
+    }
+    return map[autor]
+  }
+
+  const formatActoDate = (date: string) =>
+    new Date(date).toLocaleDateString('pt-AO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+
+  return (
+    <div className="bg-surface-raised p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Gavel className="w-5 h-5 text-ink" />
+          <h2 className="font-display text-2xl font-semibold text-ink">Tramitação</h2>
+          <span className="text-xs font-mono text-ink-muted">
+            ({tramitacoes.length} {tramitacoes.length === 1 ? 'acto' : 'actos'})
+          </span>
+        </div>
+        <button
+          onClick={onRegister}
+          className="flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] text-sm font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Registar Acto
+        </button>
+      </div>
+
+      {tramitacoes.length === 0 ? (
+        <div className="text-center py-10">
+          <Gavel className="w-10 h-10 text-ink-muted mx-auto mb-3" />
+          <p className="text-ink-muted text-sm mb-1">
+            Nenhum acto processual registado ainda.
+          </p>
+          <p className="text-xs text-ink-muted">
+            Comece com um template (≈10s) — citação, contestação, sentença…
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tramitacoes.map((t) => (
+            <div
+              key={t.id}
+              className="bg-surface border border-border p-4 hover:border-border-strong transition-colors"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full border',
+                        getAutorStyle(t.autor),
+                      )}
+                    >
+                      {TRAMITACAO_AUTOR_LABELS[t.autor]}
+                    </span>
+                    <span className="text-xs font-mono text-ink-muted">
+                      {getActoLabel(t.actoType)}
+                    </span>
+                    <span className="text-xs font-mono text-ink-muted">•</span>
+                    <span className="text-xs font-mono text-ink-muted">
+                      {formatActoDate(t.actoDate)}
+                    </span>
+                  </div>
+                  <p className="font-medium text-ink">{t.title}</p>
+                  {t.description && (
+                    <p className="text-sm text-ink-muted mt-1 line-clamp-2">
+                      {t.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {t.generatedPrazo && (
+                      <Link
+                        href={`/prazos/${t.generatedPrazo.id}`}
+                        className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 bg-warning/10 text-warning border border-warning/20 rounded-full hover:bg-warning/20 transition-colors"
+                      >
+                        <Clock className="w-3 h-3" />
+                        Prazo: {t.generatedPrazo.title}
+                      </Link>
+                    )}
+                    {t.advancedToStage && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 bg-info/10 text-info border border-info/20 rounded-full">
+                        <ArrowRight className="w-3 h-3" />
+                        Fase → {t.advancedToStage}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right text-[10px] font-mono text-ink-muted whitespace-nowrap">
+                  {t.user.firstName} {t.user.lastName}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
