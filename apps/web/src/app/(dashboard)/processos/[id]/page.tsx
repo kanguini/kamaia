@@ -36,12 +36,22 @@ import {
   TramitacaoAutor,
   TRAMITACAO_AUTOR_LABELS,
   TRAMITACAO_ACTO_TYPES,
+  AudienciaType,
+  AudienciaStatus,
+  AUDIENCIA_TYPE_LABELS,
+  AUDIENCIA_STATUS_LABELS,
+  AUDIENCIA_ALLOWED_TRANSITIONS,
   type PaginatedResponse,
 } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 import { PipelineBar } from '@/components/ui/pipeline-bar'
 import { api } from '@/lib/api'
 import { TramitacaoFormModal } from '@/components/forms/tramitacao-form-modal'
+import {
+  AudienciaFormModal,
+  type AudienciaModalMode,
+  type AudienciaLite,
+} from '@/components/forms/audiencia-form-modal'
 
 interface ProcessoEvent {
   id: string
@@ -67,6 +77,25 @@ interface Document {
   filename: string
   fileType: string
   fileSize: number
+}
+
+interface Audiencia {
+  id: string
+  type: AudienciaType | string
+  status: AudienciaStatus | string
+  scheduledAt: string
+  heldAt: string | null
+  durationMinutes: number | null
+  location: string | null
+  judge: string | null
+  notes: string | null
+  outcome: string | null
+  previousId: string | null
+  createdAt: string
+  user: {
+    firstName: string
+    lastName: string
+  }
 }
 
 interface Tramitacao {
@@ -172,12 +201,21 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
   const { data: session } = useSession()
   const [noteText, setNoteText] = useState('')
   const [tramitacaoOpen, setTramitacaoOpen] = useState(false)
+  const [audienciaModal, setAudienciaModal] = useState<{
+    open: boolean
+    mode: AudienciaModalMode
+    audiencia: AudienciaLite | null
+  }>({ open: false, mode: 'schedule', audiencia: null })
 
   const { data: processo, loading, error, refetch } = useApi<Processo>(`/processos/${id}`)
   const {
     data: tramitacoesData,
     refetch: refetchTramitacoes,
   } = useApi<PaginatedResponse<Tramitacao>>(`/tramitacoes?processoId=${id}&limit=50`)
+  const {
+    data: audienciasData,
+    refetch: refetchAudiencias,
+  } = useApi<PaginatedResponse<Audiencia>>(`/audiencias?processoId=${id}&limit=50`)
   const { data: rentabilidade } = useApi<Rentabilidade>(`/stats/rentabilidade?processoId=${id}`)
   const { mutate: deleteProcesso, loading: deleting } = useMutation(`/processos/${id}`, 'DELETE')
   const { mutate: advanceStage, loading: advancing } = useMutation(
@@ -557,6 +595,33 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
         processoId={id}
       />
 
+      {/* Audiências — entidade própria com ciclo de vida (agendar → realizar /
+          adiar / cancelar). Cada adiamento cria uma nova linha linkada via
+          previousId (histórico preservado). */}
+      <AudienciaSection
+        audiencias={audienciasData?.data || []}
+        onSchedule={() =>
+          setAudienciaModal({ open: true, mode: 'schedule', audiencia: null })
+        }
+        onAction={(mode, audiencia) =>
+          setAudienciaModal({ open: true, mode, audiencia })
+        }
+      />
+
+      <AudienciaFormModal
+        open={audienciaModal.open}
+        onClose={() =>
+          setAudienciaModal((s) => ({ ...s, open: false }))
+        }
+        onSuccess={() => {
+          refetchAudiencias()
+          refetch()
+        }}
+        mode={audienciaModal.mode}
+        processoId={id}
+        audiencia={audienciaModal.audiencia}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-surface-raised p-6">
@@ -887,6 +952,181 @@ function TramitacaoTimeline({
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Audiências Section ────────────────────────────────────────
+// Audiência é entidade de 1ª classe (≠ Tramitação). Ciclo de vida:
+// AGENDADA → REALIZADA | ADIADA | CANCELADA. Só AGENDADA é mutável;
+// as acções disponíveis por card são computadas a partir das
+// transições permitidas.
+
+function AudienciaSection({
+  audiencias,
+  onSchedule,
+  onAction,
+}: {
+  audiencias: Audiencia[]
+  onSchedule: () => void
+  onAction: (mode: 'postpone' | 'markHeld' | 'cancel', audiencia: AudienciaLite) => void
+}) {
+  const formatDateTime = (iso: string) =>
+    new Date(iso).toLocaleString('pt-AO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+  const statusStyle: Record<string, string> = {
+    AGENDADA: 'bg-info/10 text-info border-info/20',
+    REALIZADA: 'bg-success/10 text-success border-success/20',
+    ADIADA: 'bg-warning/10 text-warning border-warning/20',
+    CANCELADA: 'bg-muted/10 text-ink-muted border-muted/20',
+  }
+
+  const canTransitionTo = (status: string, target: AudienciaStatus): boolean => {
+    const allowed = AUDIENCIA_ALLOWED_TRANSITIONS[status as AudienciaStatus]
+    return Array.isArray(allowed) && allowed.includes(target)
+  }
+
+  // Ordena: AGENDADAs primeiro (por data ascendente), depois resto por data descendente.
+  const sorted = [...audiencias].sort((a, b) => {
+    const aActive = a.status === 'AGENDADA'
+    const bActive = b.status === 'AGENDADA'
+    if (aActive !== bActive) return aActive ? -1 : 1
+    const ta = new Date(a.scheduledAt).getTime()
+    const tb = new Date(b.scheduledAt).getTime()
+    return aActive ? ta - tb : tb - ta
+  })
+
+  return (
+    <div className="bg-surface-raised p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Scale className="w-5 h-5 text-ink" />
+          <h2 className="font-display text-2xl font-semibold text-ink">Audiências</h2>
+          <span className="text-xs font-mono text-ink-muted">
+            ({audiencias.length}{' '}
+            {audiencias.length === 1 ? 'audiência' : 'audiências'})
+          </span>
+        </div>
+        <button
+          onClick={onSchedule}
+          className="flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] text-sm font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Agendar Audiência
+        </button>
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="text-center py-10">
+          <Scale className="w-10 h-10 text-ink-muted mx-auto mb-3" />
+          <p className="text-ink-muted text-sm mb-1">
+            Nenhuma audiência agendada.
+          </p>
+          <p className="text-xs text-ink-muted">
+            Audiências têm ciclo próprio — adiamentos preservam o histórico.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((a) => {
+            const typeLabel =
+              AUDIENCIA_TYPE_LABELS[a.type as AudienciaType] ?? a.type
+            const statusLabel =
+              AUDIENCIA_STATUS_LABELS[a.status as AudienciaStatus] ?? a.status
+            const isScheduled = a.status === 'AGENDADA'
+
+            const audLite: AudienciaLite = {
+              id: a.id,
+              type: a.type,
+              status: a.status,
+              scheduledAt: a.scheduledAt,
+              location: a.location,
+              judge: a.judge,
+            }
+
+            return (
+              <div
+                key={a.id}
+                className="bg-surface border border-border p-4 hover:border-border-strong transition-colors"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full border bg-ink/10 text-ink border-ink/20">
+                        {typeLabel}
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full border',
+                          statusStyle[a.status] ?? statusStyle.CANCELADA,
+                        )}
+                      >
+                        {statusLabel}
+                      </span>
+                      {a.previousId && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 bg-muted/10 text-ink-muted border border-muted/20 rounded-full">
+                          <RefreshCw className="w-3 h-3" />
+                          reagendada
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-medium text-ink font-mono">
+                      {formatDateTime(a.scheduledAt)}
+                    </p>
+                    {(a.location || a.judge) && (
+                      <p className="text-sm text-ink-muted mt-0.5">
+                        {[a.location, a.judge].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {a.outcome && (
+                      <p className="text-sm text-ink-muted mt-2 italic line-clamp-2">
+                        {a.outcome}
+                      </p>
+                    )}
+                    {isScheduled && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {canTransitionTo(a.status, AudienciaStatus.REALIZADA) && (
+                          <button
+                            onClick={() => onAction('markHeld', audLite)}
+                            className="text-[11px] font-mono px-2.5 py-1 bg-success/10 text-success border border-success/20 hover:bg-success/20 transition-colors"
+                          >
+                            Realizada
+                          </button>
+                        )}
+                        {canTransitionTo(a.status, AudienciaStatus.ADIADA) && (
+                          <button
+                            onClick={() => onAction('postpone', audLite)}
+                            className="text-[11px] font-mono px-2.5 py-1 bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors"
+                          >
+                            Adiar
+                          </button>
+                        )}
+                        {canTransitionTo(a.status, AudienciaStatus.CANCELADA) && (
+                          <button
+                            onClick={() => onAction('cancel', audLite)}
+                            className="text-[11px] font-mono px-2.5 py-1 bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20 transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right text-[10px] font-mono text-ink-muted whitespace-nowrap">
+                    {a.user.firstName} {a.user.lastName}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
