@@ -11,6 +11,7 @@ import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
 import { ClientesModule } from './modules/clientes/clientes.module';
 import { ProcessosModule } from './modules/processos/processos.module';
 import { PrazosModule } from './modules/prazos/prazos.module';
+import { TramitacoesModule } from './modules/tramitacoes/tramitacoes.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { StatsModule } from './modules/stats/stats.module';
@@ -48,6 +49,7 @@ import { SeedModule } from './modules/seed/seed.module';
     ClientesModule,
     ProcessosModule,
     PrazosModule,
+    TramitacoesModule,
     CalendarModule,
     DocumentsModule,
     StatsModule,

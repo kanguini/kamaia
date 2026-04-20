@@ -52,6 +52,7 @@ model Gabinete {
   projectTemplates    ProjectTemplateCustom[]
   invoices            Invoice[]
   holidays            Holiday[]
+  tramitacoes         Tramitacao[]
 
   @@map("gabinetes")
 }
@@ -102,6 +103,7 @@ model User {
   projectReportsCreated  ProjectStatusReport[]
   invoicesCreated        Invoice[]               @relation("InvoiceCreator")
   paymentsRecorded       InvoicePayment[]        @relation("PaymentRecorder")
+  tramitacoes            Tramitacao[]
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -209,6 +211,7 @@ model Processo {
   expenses    Expense[]
   tasks       Task[]
   invoices    Invoice[]
+  tramitacoes Tramitacao[]
 
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
@@ -240,6 +243,46 @@ model ProcessoEvent {
   @@map("processo_events")
 }
 
+// ── Tramitação (Acto Processual) ──────────────────────────
+// Acto registado explicitamente pelo advogado — entrada rica com autor
+// controlado (NOS / TRIBUNAL / CONTRAPARTE / MINISTERIO_PUBLICO / OUTRO),
+// tipo de acto normalizado (citação, contestação, despacho, sentença,
+// acórdão, etc.) e automações opcionais: pode gerar um Prazo vinculado
+// e/ou disparar avanço de fase processual. Distinto de ProcessoEvent,
+// que é o audit trail automático do sistema.
+
+model Tramitacao {
+  id               String    @id @default(uuid()) @db.Uuid
+  gabineteId       String    @map("gabinete_id") @db.Uuid
+  processoId       String    @map("processo_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid // quem registou
+
+  autor            String    @db.VarChar(30)                   // TramitacaoAutor enum
+  actoType         String    @map("acto_type") @db.VarChar(60) // slug controlado
+  title            String    @db.VarChar(300)
+  description      String?   @db.Text
+  actoDate         DateTime  @map("acto_date") @db.Date        // data do acto (pode ser anterior a createdAt)
+
+  // Automações
+  generatedPrazoId String?   @map("generated_prazo_id") @db.Uuid
+  advancedToStage  String?   @map("advanced_to_stage") @db.VarChar(100) // WorkflowStage key ou label
+
+  metadata         Json?     @db.JsonB
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete         Gabinete  @relation(fields: [gabineteId], references: [id])
+  processo         Processo  @relation(fields: [processoId], references: [id])
+  user             User      @relation(fields: [userId], references: [id])
+  generatedPrazo   Prazo?    @relation("TramitacaoGeneratedPrazo", fields: [generatedPrazoId], references: [id])
+
+  @@index([gabineteId, processoId, actoDate], map: "idx_tramitacao_processo_date")
+  @@index([processoId, autor], map: "idx_tramitacao_processo_autor")
+  @@index([processoId, actoType], map: "idx_tramitacao_processo_type")
+  @@map("tramitacoes")
+}
+
 // ── Prazo (Deadline) ──────────────────────────────────────
 
 model Prazo {
@@ -258,8 +301,9 @@ model Prazo {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  processo Processo @relation(fields: [processoId], references: [id])
+  gabinete           Gabinete     @relation(fields: [gabineteId], references: [id])
+  processo           Processo     @relation(fields: [processoId], references: [id])
+  tramitacoesOrigem  Tramitacao[] @relation("TramitacaoGeneratedPrazo")
 
   @@index([gabineteId, dueDate], map: "idx_prazo_gabinete_due")
   @@index([gabineteId, status], map: "idx_prazo_gabinete_status")

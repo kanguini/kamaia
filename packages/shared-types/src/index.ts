@@ -228,6 +228,201 @@ export enum ProcessoEventType {
   STATUS_CHANGE = 'STATUS_CHANGE',
 }
 
+// ── Tramitação (Acto Processual) ──────────────────────────
+// Autor do acto — segue o modelo do CPC angolano. "Nós" = o gabinete
+// (nós praticámos o acto); "Ministério Público" separado da Contraparte
+// porque em acções penais/públicas tem peso processual distinto.
+
+export enum TramitacaoAutor {
+  NOS = 'NOS',
+  TRIBUNAL = 'TRIBUNAL',
+  CONTRAPARTE = 'CONTRAPARTE',
+  MINISTERIO_PUBLICO = 'MINISTERIO_PUBLICO',
+  OUTRO = 'OUTRO',
+}
+
+export const TRAMITACAO_AUTOR_LABELS: Record<TramitacaoAutor, string> = {
+  [TramitacaoAutor.NOS]: 'Nós',
+  [TramitacaoAutor.TRIBUNAL]: 'Tribunal',
+  [TramitacaoAutor.CONTRAPARTE]: 'Contraparte',
+  [TramitacaoAutor.MINISTERIO_PUBLICO]: 'Ministério Público',
+  [TramitacaoAutor.OUTRO]: 'Outro',
+};
+
+// Vocabulário controlado de tipos de acto. Baseado no CPC angolano e
+// prática forense. Categoria agrupa-os visualmente no seletor UI.
+
+export interface ActoTypeDefinition {
+  key: string;
+  label: string;
+  category:
+    | 'INICIAL'
+    | 'COMUNICACAO'
+    | 'ARTICULADOS'
+    | 'DECISAO'
+    | 'AUDIENCIA'
+    | 'REQUERIMENTOS'
+    | 'RECURSO'
+    | 'EXECUCAO'
+    | 'OUTRO';
+}
+
+export const TRAMITACAO_ACTO_TYPES: ActoTypeDefinition[] = [
+  // INICIAL
+  { key: 'peticao-inicial', label: 'Petição Inicial', category: 'INICIAL' },
+  { key: 'distribuicao', label: 'Distribuição', category: 'INICIAL' },
+  { key: 'citacao', label: 'Citação', category: 'INICIAL' },
+
+  // COMUNICACAO
+  { key: 'notificacao', label: 'Notificação', category: 'COMUNICACAO' },
+  { key: 'carta-precatoria', label: 'Carta Precatória', category: 'COMUNICACAO' },
+
+  // ARTICULADOS (arts. 467-508 CPC angolano)
+  { key: 'contestacao', label: 'Contestação', category: 'ARTICULADOS' },
+  { key: 'reconvencao', label: 'Reconvenção', category: 'ARTICULADOS' },
+  { key: 'replica', label: 'Réplica', category: 'ARTICULADOS' },
+  { key: 'treplica', label: 'Tréplica', category: 'ARTICULADOS' },
+  { key: 'articulado-superveniente', label: 'Articulado Superveniente', category: 'ARTICULADOS' },
+
+  // DECISÕES
+  { key: 'despacho-liminar', label: 'Despacho Liminar', category: 'DECISAO' },
+  { key: 'despacho-saneador', label: 'Despacho Saneador', category: 'DECISAO' },
+  { key: 'despacho', label: 'Despacho', category: 'DECISAO' },
+  { key: 'sentenca', label: 'Sentença', category: 'DECISAO' },
+  { key: 'acordao', label: 'Acórdão', category: 'DECISAO' },
+
+  // AUDIÊNCIA
+  { key: 'audiencia-previa', label: 'Audiência Prévia', category: 'AUDIENCIA' },
+  { key: 'audiencia-julgamento', label: 'Audiência de Julgamento', category: 'AUDIENCIA' },
+  { key: 'acta', label: 'Acta de Audiência', category: 'AUDIENCIA' },
+
+  // REQUERIMENTOS
+  { key: 'requerimento', label: 'Requerimento', category: 'REQUERIMENTOS' },
+  { key: 'requerimento-probatorio', label: 'Requerimento Probatório', category: 'REQUERIMENTOS' },
+  { key: 'junta-documento', label: 'Junção de Documento', category: 'REQUERIMENTOS' },
+
+  // RECURSO (Lei 6/21)
+  { key: 'recurso-apelacao', label: 'Recurso de Apelação', category: 'RECURSO' },
+  { key: 'recurso-agravo', label: 'Recurso de Agravo', category: 'RECURSO' },
+  { key: 'recurso-revista', label: 'Recurso de Revista', category: 'RECURSO' },
+
+  // EXECUÇÃO
+  { key: 'penhora', label: 'Penhora', category: 'EXECUCAO' },
+  { key: 'embargo', label: 'Embargo', category: 'EXECUCAO' },
+
+  // OUTRO
+  { key: 'outro', label: 'Outro', category: 'OUTRO' },
+];
+
+export const TRAMITACAO_CATEGORY_LABELS: Record<ActoTypeDefinition['category'], string> = {
+  INICIAL: 'Inicial',
+  COMUNICACAO: 'Comunicação',
+  ARTICULADOS: 'Articulados',
+  DECISAO: 'Decisão',
+  AUDIENCIA: 'Audiência',
+  REQUERIMENTOS: 'Requerimentos',
+  RECURSO: 'Recurso',
+  EXECUCAO: 'Execução',
+  OUTRO: 'Outro',
+};
+
+// Templates com automações embebidas — cobrem os actos mais recorrentes
+// no dia-a-dia do gabinete. Entrada "Template" (≈ 10s): preenche tipo +
+// autor + título e pode disparar criação de Prazo e avanço de fase.
+
+export interface TramitacaoTemplate {
+  key: string;
+  label: string;           // nome no selector
+  actoType: string;        // key de ActoTypeDefinition
+  autor: TramitacaoAutor;
+  defaultTitle: string;
+  defaultDescription?: string;
+  // Automação: ao registar, cria-se Prazo com estes parâmetros
+  generatePrazo?: {
+    type: string;          // PrazoType enum
+    title: string;
+    daysAfter: number;     // dias contínuos (UI converte em úteis se precisar)
+    alertHoursBefore?: number;
+  };
+  // Automação: ao registar, avança processo para esta fase (key do WorkflowStage)
+  advanceToStage?: string;
+}
+
+export const TRAMITACAO_TEMPLATES: TramitacaoTemplate[] = [
+  {
+    key: 'citacao-recebida',
+    label: 'Citação recebida',
+    actoType: 'citacao',
+    autor: TramitacaoAutor.TRIBUNAL,
+    defaultTitle: 'Citação recebida',
+    generatePrazo: {
+      type: 'CONTESTACAO',
+      title: 'Contestar (20 dias CPC art. 486.º)',
+      daysAfter: 20,
+      alertHoursBefore: 72,
+    },
+    advanceToStage: 'citacao',
+  },
+  {
+    key: 'contestacao-apresentada',
+    label: 'Contestação apresentada',
+    actoType: 'contestacao',
+    autor: TramitacaoAutor.NOS,
+    defaultTitle: 'Contestação apresentada',
+    advanceToStage: 'contestacao',
+  },
+  {
+    key: 'replica-contraparte',
+    label: 'Réplica apresentada (contraparte)',
+    actoType: 'replica',
+    autor: TramitacaoAutor.CONTRAPARTE,
+    defaultTitle: 'Réplica apresentada pela contraparte',
+    generatePrazo: {
+      type: 'RESPOSTA',
+      title: 'Tréplica',
+      daysAfter: 10,
+      alertHoursBefore: 48,
+    },
+    advanceToStage: 'replica',
+  },
+  {
+    key: 'despacho-saneador',
+    label: 'Despacho saneador',
+    actoType: 'despacho-saneador',
+    autor: TramitacaoAutor.TRIBUNAL,
+    defaultTitle: 'Despacho saneador proferido',
+  },
+  {
+    key: 'sentenca-proferida',
+    label: 'Sentença proferida',
+    actoType: 'sentenca',
+    autor: TramitacaoAutor.TRIBUNAL,
+    defaultTitle: 'Sentença proferida',
+    generatePrazo: {
+      type: 'RECURSO',
+      title: 'Recurso de apelação (Lei 6/21)',
+      daysAfter: 30,
+      alertHoursBefore: 72,
+    },
+    advanceToStage: 'sentenca',
+  },
+  {
+    key: 'recurso-interposto',
+    label: 'Recurso interposto',
+    actoType: 'recurso-apelacao',
+    autor: TramitacaoAutor.NOS,
+    defaultTitle: 'Recurso de apelação interposto',
+    advanceToStage: 'recurso',
+  },
+  {
+    key: 'audiencia-agendada',
+    label: 'Audiência agendada',
+    actoType: 'audiencia-julgamento',
+    autor: TramitacaoAutor.TRIBUNAL,
+    defaultTitle: 'Audiência de julgamento agendada',
+  },
+];
+
 // ── Result Type ───────────────────────────────────────────
 
 export type Result<T, E = string> =
