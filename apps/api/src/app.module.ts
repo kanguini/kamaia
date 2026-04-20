@@ -10,6 +10,7 @@ import { UsersModule } from './modules/users/users.module';
 import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
 import { ClientesModule } from './modules/clientes/clientes.module';
 import { ProcessosModule } from './modules/processos/processos.module';
+import { AtendimentosModule } from './modules/atendimentos/atendimentos.module';
 import { PrazosModule } from './modules/prazos/prazos.module';
 import { TramitacoesModule } from './modules/tramitacoes/tramitacoes.module';
 import { AudienciasModule } from './modules/audiencias/audiencias.module';
@@ -48,6 +49,7 @@ import { SeedModule } from './modules/seed/seed.module';
     UsersModule,
     GabinetesModule,
     ClientesModule,
+    AtendimentosModule,
     ProcessosModule,
     PrazosModule,
     TramitacoesModule,

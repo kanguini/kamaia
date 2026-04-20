@@ -37,6 +37,7 @@ export enum EntityType {
   SUBSCRIPTION = 'SUBSCRIPTION',
   TASK = 'TASK',
   TASK_COLUMN = 'TASK_COLUMN',
+  ATENDIMENTO = 'ATENDIMENTO',
 }
 
 export enum ProcessoType {
@@ -81,6 +82,46 @@ export enum ProcessoPriority {
   ALTA = 'ALTA',
   MEDIA = 'MEDIA',
   BAIXA = 'BAIXA',
+}
+
+// ── Atendimento (Lead / Prospecto) ─────────────────────────
+// Entry point of the legal pipeline. A prospecto/lead who made
+// contact and must be qualified before becoming Cliente + Processo.
+
+export enum AtendimentoStatus {
+  NOVO = 'NOVO',
+  EM_ANALISE = 'EM_ANALISE',
+  QUALIFICADO = 'QUALIFICADO',
+  CONVERTIDO = 'CONVERTIDO',
+  PERDIDO = 'PERDIDO',
+}
+
+export const ATENDIMENTO_STATUS_LABELS: Record<AtendimentoStatus, string> = {
+  [AtendimentoStatus.NOVO]: 'Novo',
+  [AtendimentoStatus.EM_ANALISE]: 'Em análise',
+  [AtendimentoStatus.QUALIFICADO]: 'Qualificado',
+  [AtendimentoStatus.CONVERTIDO]: 'Convertido',
+  [AtendimentoStatus.PERDIDO]: 'Perdido',
+}
+
+export enum AtendimentoSource {
+  WHATSAPP = 'WHATSAPP',
+  EMAIL = 'EMAIL',
+  TELEFONE = 'TELEFONE',
+  REFERENCIA = 'REFERENCIA',
+  PRESENCIAL = 'PRESENCIAL',
+  WEBSITE = 'WEBSITE',
+  OUTRO = 'OUTRO',
+}
+
+export const ATENDIMENTO_SOURCE_LABELS: Record<AtendimentoSource, string> = {
+  [AtendimentoSource.WHATSAPP]: 'WhatsApp',
+  [AtendimentoSource.EMAIL]: 'Email',
+  [AtendimentoSource.TELEFONE]: 'Telefone',
+  [AtendimentoSource.REFERENCIA]: 'Referência',
+  [AtendimentoSource.PRESENCIAL]: 'Presencial',
+  [AtendimentoSource.WEBSITE]: 'Website',
+  [AtendimentoSource.OUTRO]: 'Outro',
 }
 
 export enum ProcessoLifecycle {

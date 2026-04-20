@@ -19,7 +19,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   LayoutDashboard, Scale, Users, Calendar, Clock, FileText, Timer, Receipt,
   Bot, Settings, LogOut, Sun, Moon, CheckSquare, Briefcase, Banknote,
-  ChevronDown, Menu, X,
+  ChevronDown, Menu, X, Inbox,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useApi } from '@/hooks/use-api'
@@ -42,6 +42,7 @@ interface NavItem {
 // Primary work nav + secondary tools nav.
 const WORK_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Atendimento', href: '/atendimentos', icon: Inbox, countEndpoint: '/atendimentos?status=NOVO&limit=1', countPath: 'total' },
   { label: 'Projectos', href: '/projectos', icon: Briefcase, countEndpoint: '/projects?status=ACTIVO&limit=1', countPath: 'total' },
   { label: 'Processos', href: '/processos', icon: Scale, countEndpoint: '/processos?status=ACTIVO&limit=1', countPath: 'total' },
   { label: 'Clientes', href: '/clientes', icon: Users, countEndpoint: '/clientes?limit=1', countPath: 'total' },
@@ -373,6 +374,7 @@ function useInitials(user?: {
 function computeCrumb(pathname: string): { root: string; current: string } {
   const segMap: Record<string, string> = {
     '': 'Dashboard',
+    atendimentos: 'Atendimento',
     projectos: 'Projectos',
     processos: 'Processos',
     clientes: 'Clientes',
