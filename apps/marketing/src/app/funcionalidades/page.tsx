@@ -22,7 +22,7 @@ import { appUrl } from '@/lib/utm'
 export const metadata: Metadata = {
   title: 'Funcionalidades',
   description:
-    'Dashboard executivo, processos, prazos, clientes, facturação, timesheets, agenda, documentos e IA assistente — tudo num só fluxo pensado para gabinetes angolanos.',
+    'Dashboard executivo, processos, prazos, clientes, facturação, timesheets, agenda, documentos e IA assistente — tudo num só fluxo pensado para gabinetes jurídicos.',
 }
 
 interface Module {
@@ -78,7 +78,7 @@ const MODULES: Module[] = [
     eyebrow: 'Prazos',
     title: 'Impossível esquecer um prazo.',
     subtitle:
-      'Cálculo automático em dias úteis, incluindo feriados angolanos. Alertas em 3 canais antes das datas críticas.',
+      'Cálculo automático em dias úteis com suporte a feriados nacionais. Alertas em 3 canais antes das datas críticas.',
     bullets: [
       'Alertas 7d / 3d / 1d via email, SMS e push',
       'Tipos: contestação, recurso, resposta, alegações, audiência',
@@ -93,7 +93,7 @@ const MODULES: Module[] = [
     subtitle:
       'O gabinete tem um CRM. O cliente tem acesso aos seus processos 24/7 sem telefonar.',
     bullets: [
-      'Individual ou Empresa com NIF angolano',
+      'Individual ou Empresa com NIF / número de contribuinte',
       'Contactos, endereço, cartas de nomeação',
       'Portal com processos, documentos e facturas próprias',
       'Histórico de comunicação',
@@ -106,7 +106,7 @@ const MODULES: Module[] = [
     subtitle:
       'Agrega horas facturáveis e despesas por cliente ou processo. Gera factura profissional pronta a enviar.',
     bullets: [
-      'Moeda AKZ com separador decimal angolano',
+      'Moeda configurável com formatação local correcta',
       'Estados: rascunho, enviada, parcial, paga, vencida, anulada',
       'PDF com o logotipo do gabinete e cabeçalho legal',
       'KPIs de facturação em tempo real',

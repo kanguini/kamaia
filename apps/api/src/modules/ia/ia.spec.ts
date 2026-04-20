@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { IaService } from './ia.service';
 import { IaRepository } from './ia.repository';
 import { AuditService } from '../audit/audit.service';
+import { RagService } from '../rag/rag.service';
 
 describe('IaService', () => {
   let service: IaService;
@@ -28,6 +30,20 @@ describe('IaService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            // GEMINI_API_KEY not set → service uses fallback mock responses
+            get: jest.fn().mockReturnValue(undefined),
+          },
+        },
+        {
+          provide: RagService,
+          useValue: {
+            retrieveContext: jest.fn().mockResolvedValue({ success: false }),
+            formatContextForPrompt: jest.fn().mockReturnValue(''),
           },
         },
       ],
@@ -108,24 +124,17 @@ describe('IaService', () => {
     });
   });
 
-  describe('generateMockResponse', () => {
-    it('should generate prazo-related response', () => {
-      const response = (service as any).generateMockResponse(
-        'Qual e o prazo para contestar?',
-        {},
-      );
-
-      expect(response).toContain('20 dias uteis');
-      expect(response).toContain('Art. 486.o CPC');
+  describe('generateResponse (fallback mode)', () => {
+    it('should return a non-empty fallback string when Gemini is not configured', async () => {
+      // Gemini API key is mocked to undefined, so the service uses the fallback path
+      const response = await (service as any).generateResponse('Qual é o prazo para contestar?', []);
+      expect(typeof response).toBe('string');
+      expect(response.length).toBeGreaterThan(10);
     });
 
-    it('should generate default response for unknown topic', () => {
-      const response = (service as any).generateMockResponse(
-        'Random question',
-        {},
-      );
-
-      expect(response).toContain('legislacao especifica');
+    it('should return fallback response mentioning demo mode', async () => {
+      const response = await (service as any).generateResponse('Random question', []);
+      expect(response).toContain('demonstracao');
     });
   });
 });

@@ -8,7 +8,7 @@ import { Reveal } from '@/components/Reveal'
 export const metadata: Metadata = {
   title: 'Sobre',
   description:
-    'Kamaia é construído por advogados para advogados. Conhece a missão, a equipa e as decisões de engenharia que nos diferenciam.',
+    'Kamaia é construído por advogados para advogados. Conhece a missão, a equipa e as decisões técnicas que tornam o Kamaia diferente.',
 }
 
 export default function SobrePage() {
@@ -26,13 +26,13 @@ export default function SobrePage() {
                 Tecnologia jurídica
                 <br />
                 <span style={{ color: '#9cb6ff' }}>
-                  feita para profissionais angolanos.
+                  feita por e para advogados.
                 </span>
               </h1>
               <p className="mt-6 max-w-2xl text-lg text-white/75">
-                Kamaia nasce de uma dor real: gerir um gabinete em Angola com
-                ferramentas pensadas para outras realidades. Excel, emails,
-                WhatsApps e papel não chegam.
+                Kamaia nasce de uma dor real: gerir um gabinete com ferramentas
+                improvisadas. Excel, emails, WhatsApps e papel não chegam para
+                uma prática moderna.
               </p>
             </Reveal>
           </div>
@@ -52,8 +52,8 @@ export default function SobrePage() {
             <Reveal delay={0.08}>
               <div className="space-y-5 text-[15px] leading-relaxed text-white/75">
                 <p>
-                  A profissão jurídica em Angola passa por uma transformação.
-                  Mais clientes, mais tipos de processos, mais exigências de
+                  A profissão jurídica passa por uma transformação. Mais
+                  clientes, mais tipos de processos, mais exigências de
                   compliance. Menos tempo para os casos em si.
                 </p>
                 <p>
@@ -64,9 +64,8 @@ export default function SobrePage() {
                 </p>
                 <p>
                   Somos ambiciosos mas específicos: não queremos ser o próximo
-                  SaaS internacional com tradução portuguesa. Queremos ser o
-                  produto certo para o contexto angolano. Feriados,
-                  dias úteis, Ordem dos Advogados, AKZ — tudo no sítio certo.
+                  SaaS genérico com má tradução. Queremos ser o produto certo
+                  para quem exerce advocacia — com os detalhes no sítio certo.
                 </p>
               </div>
             </Reveal>
@@ -102,8 +101,8 @@ export default function SobrePage() {
                 </p>
                 <p>
                   A equipa está a crescer. Se és advogado, developer ou
-                  designer em Angola e queres trabalhar num produto que muda a
-                  forma como os gabinetes operam,{' '}
+                  designer e queres trabalhar num produto que muda a forma como
+                  os gabinetes operam,{' '}
                   <Link
                     href="/contacto"
                     className="text-white underline underline-offset-4"
@@ -145,15 +144,15 @@ export default function SobrePage() {
                 },
                 {
                   icon: Server,
-                  title: 'Infraestrutura compatível',
+                  title: 'Infraestrutura segura',
                   body:
-                    'Dados e backups em território legal para clientes angolanos, encriptação AES-256 em rest e TLS 1.3 em trânsito.',
+                    'Dados e backups encriptados em repouso (AES-256) e em trânsito (TLS 1.3). Conformidade com as exigências legais aplicáveis.',
                 },
                 {
                   icon: Globe2,
-                  title: 'Portugues de Angola, primeiro',
+                  title: 'Português jurídico, primeiro',
                   body:
-                    'Interface, emails, templates e atalhos de teclado em português de Angola. Nada de traduções pobres.',
+                    'Interface, emails e templates em português jurídico. Workflows, prazos e formatos calibrados para a prática real.',
                 },
               ].map((v, i) => (
                 <Reveal key={v.title} delay={i * 0.05}>

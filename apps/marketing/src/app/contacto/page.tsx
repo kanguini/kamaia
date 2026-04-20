@@ -9,7 +9,7 @@ import { ContactForm } from './ContactForm'
 export const metadata: Metadata = {
   title: 'Contacto',
   description:
-    'Fala connosco. Agenda uma demo ou tira dúvidas sobre o Kamaia — plataforma de gestão jurídica para advogados angolanos.',
+    'Fala connosco. Agenda uma demo ou tira dúvidas sobre o Kamaia — plataforma de gestão jurídica para advogados e escritórios.',
 }
 
 export default function ContactoPage({
