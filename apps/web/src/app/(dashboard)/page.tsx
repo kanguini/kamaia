@@ -126,7 +126,11 @@ function Spark({ color = 'var(--k2-text-dim)' }: { color?: string }) {
 // ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const firstName = session?.user?.firstName ?? ''
+  // Fall back to the email local-part so the greeting never renders as "—"
+  // when the session is still hydrating or came from a pre-migration JWT.
+  const firstName =
+    session?.user?.firstName ||
+    (session?.user?.email ? session.user.email.split('@')[0] : '')
 
   const { data: exec, loading } = useApi<ExecutiveDashboard>('/stats/executive')
 
@@ -788,7 +792,8 @@ function HeroBand({
           <span style={{ textTransform: 'capitalize' }}>{today}</span>
         </div>
         <h1 className="k2-hero-title">
-          {greeting()}, {firstName || '—'}.<br />
+          {firstName ? `${greeting()}, ${firstName}.` : `${greeting()}.`}
+          <br />
           <em>{highlight}</em> esta semana.
         </h1>
         <p className="k2-hero-sub">{sub}</p>

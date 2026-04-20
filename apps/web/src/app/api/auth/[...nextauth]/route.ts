@@ -28,6 +28,17 @@ interface RefreshResponse {
   }
 }
 
+interface MeResponse {
+  data: {
+    id: string
+    email: string
+    firstName: string
+    lastName: string
+    role: string
+    gabineteId: string
+  }
+}
+
 const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -109,6 +120,27 @@ const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('JWT decode error:', error)
+        }
+      }
+
+      // Self-heal: tokens minted before the session callback wrote `token.user`
+      // still carry a valid accessToken, but the UI would render firstName/lastName
+      // as undefined. Hydrate once from /users/me so the chrome stops showing "—".
+      if (!token.user && token.accessToken) {
+        try {
+          const me = await api<MeResponse>('/users/me', {
+            token: token.accessToken as string,
+          })
+          token.user = {
+            id: me.data.id,
+            email: me.data.email,
+            firstName: me.data.firstName,
+            lastName: me.data.lastName,
+            role: me.data.role,
+            gabineteId: me.data.gabineteId,
+          }
+        } catch (error) {
+          console.error('JWT hydrate /users/me error:', error)
         }
       }
 

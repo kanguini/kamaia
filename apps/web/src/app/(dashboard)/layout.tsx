@@ -356,12 +356,15 @@ function useInitials(user?: {
   lastName?: string
   email?: string
 }): string {
-  if (!user) return '—'
+  // Never fall back to "—" here — the chip shows the initials next to
+  // the display name, and an em-dash reads as a broken state to users.
+  if (!user) return 'U'
   const first = user.firstName?.[0]
   const last = user.lastName?.[0]
   if (first && last) return (first + last).toUpperCase()
+  if (first) return first.toUpperCase()
   if (user.email) return user.email.slice(0, 2).toUpperCase()
-  return '—'
+  return 'U'
 }
 
 /** Breadcrumb derived from the current pathname.
