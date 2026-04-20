@@ -4,11 +4,16 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Scale, User, Building2, DollarSign, FileText } from 'lucide-react'
+import { Scale, User, Building2, DollarSign, FileText, Plus } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { Modal, Button, FormField, Input, Textarea, Select } from '@/components/ui'
 import { ProcessoType, ClienteType, PaginatedResponse } from '@kamaia/shared-types'
+import { ClienteFormModal } from './cliente-form-modal'
+
+// Sentinel do <select> que dispara o sub-modal de criação de cliente.
+// Usado em vez de botão externo para manter o fluxo dentro do dropdown.
+const NEW_CLIENTE_SENTINEL = '__new_cliente__'
 
 const PROCESSO_TYPE_LABELS: Record<ProcessoType, string> = {
   [ProcessoType.CIVEL]: 'Cível',
@@ -61,9 +66,13 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
 
 export function ProcessoFormModal({ open, onClose, onSuccess }: ProcessoFormModalProps) {
   const toast = useToast()
-  const { data: clientesData } = useApi<PaginatedResponse<Cliente>>(open ? '/clientes?limit=100' : null, [open])
+  const { data: clientesData, refetch: refetchClientes } = useApi<PaginatedResponse<Cliente>>(
+    open ? '/clientes?limit=100' : null,
+    [open],
+  )
   const { mutate, loading, error } = useMutation<FormData, { id: string }>('/processos', 'POST')
   const [feeType, setFeeType] = useState<string>('')
+  const [showClienteModal, setShowClienteModal] = useState(false)
 
   const clientes = clientesData?.data || []
 
@@ -71,11 +80,19 @@ export function ProcessoFormModal({ open, onClose, onSuccess }: ProcessoFormModa
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { priority: 'MEDIA' },
   })
+
+  /** Callback do ClienteFormModal — recarrega a lista e auto-selecciona
+   *  o novo cliente para que o utilizador continue o fluxo sem interrupção. */
+  const handleClienteCreated = async (cliente: { id: string }) => {
+    await refetchClientes()
+    setValue('clienteId', cliente.id, { shouldValidate: true })
+  }
 
   const onSubmit = async (data: FormData) => {
     const result = await mutate(data)
@@ -146,18 +163,45 @@ export function ProcessoFormModal({ open, onClose, onSuccess }: ProcessoFormModa
         <div>
           <SectionHeader icon={User} title="Cliente" />
           <FormField label="Cliente" required error={errors.clienteId?.message}>
-            <Select {...register('clienteId')}>
-              <option value="">Seleccione um cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.nif ? `(${c.nif})` : ''}
-                </option>
-              ))}
-            </Select>
+            {(() => {
+              // `register` devolve o handler onChange do RHF; capturamos uma
+              // vez para podermos delegar quando o utilizador NÃO escolheu a
+              // sentinel de criar-novo-cliente.
+              const { onChange: rhfOnChange, ...rest } = register('clienteId')
+              return (
+                <Select
+                  {...rest}
+                  onChange={(e) => {
+                    if (e.target.value === NEW_CLIENTE_SENTINEL) {
+                      setShowClienteModal(true)
+                      e.target.value = ''
+                      setValue('clienteId', '', { shouldValidate: false })
+                      return
+                    }
+                    rhfOnChange(e)
+                  }}
+                >
+                  <option value="">Seleccione um cliente</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.nif ? `(${c.nif})` : ''}
+                    </option>
+                  ))}
+                  {/* CTA sempre disponível — separador visual + acção de criar */}
+                  <option disabled>──────────</option>
+                  <option value={NEW_CLIENTE_SENTINEL}>+ Criar novo cliente…</option>
+                </Select>
+              )
+            })()}
             {clientes.length === 0 && (
-              <p className="text-xs text-ink-muted mt-1">
-                Sem clientes. Crie um cliente primeiro.
-              </p>
+              <button
+                type="button"
+                onClick={() => setShowClienteModal(true)}
+                className="mt-2 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Sem clientes registados — criar o primeiro
+              </button>
             )}
           </FormField>
         </div>
@@ -224,6 +268,15 @@ export function ProcessoFormModal({ open, onClose, onSuccess }: ProcessoFormModa
           </Button>
         </div>
       </form>
+
+      {/* Sub-modal de criação de cliente — aparece em overlay por cima
+          deste modal. O Modal component usa portais, por isso o stacking
+          funciona sem ajustes extra de z-index. */}
+      <ClienteFormModal
+        open={showClienteModal}
+        onClose={() => setShowClienteModal(false)}
+        onSuccess={handleClienteCreated}
+      />
     </Modal>
   )
 }

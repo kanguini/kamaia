@@ -10,6 +10,9 @@ import {
   ProjectCategory,
   PROJECT_CATEGORY_LABELS,
 } from '@kamaia/shared-types'
+import { ClienteFormModal } from './cliente-form-modal'
+
+const NEW_CLIENTE_SENTINEL = '__new_cliente__'
 
 interface ClienteOption {
   id: string
@@ -49,10 +52,13 @@ export function ProjectoFormModal({ open, onClose, onSuccess }: ProjectoFormModa
     'POST',
   )
 
-  const { data: clientesData } = useApi<{ data: ClienteOption[] }>('/clientes?limit=100')
+  const { data: clientesData, refetch: refetchClientes } = useApi<{ data: ClienteOption[] }>(
+    '/clientes?limit=100',
+  )
   const clientes = clientesData?.data || []
 
   const [form, setForm] = useState(initialForm)
+  const [showClienteModal, setShowClienteModal] = useState(false)
 
   const handleClose = () => {
     setForm(initialForm)
@@ -126,7 +132,13 @@ export function ProjectoFormModal({ open, onClose, onSuccess }: ProjectoFormModa
             <label className="block text-sm font-medium text-ink mb-1.5">Cliente</label>
             <select
               value={form.clienteId}
-              onChange={(e) => setForm((f) => ({ ...f, clienteId: e.target.value }))}
+              onChange={(e) => {
+                if (e.target.value === NEW_CLIENTE_SENTINEL) {
+                  setShowClienteModal(true)
+                  return
+                }
+                setForm((f) => ({ ...f, clienteId: e.target.value }))
+              }}
               className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
             >
               <option value="">— Sem cliente (interno) —</option>
@@ -135,6 +147,8 @@ export function ProjectoFormModal({ open, onClose, onSuccess }: ProjectoFormModa
                   {c.name}
                 </option>
               ))}
+              <option disabled>──────────</option>
+              <option value={NEW_CLIENTE_SENTINEL}>+ Criar novo cliente…</option>
             </select>
           </div>
         </div>
@@ -212,6 +226,15 @@ export function ProjectoFormModal({ open, onClose, onSuccess }: ProjectoFormModa
           </button>
         </div>
       </form>
+
+      <ClienteFormModal
+        open={showClienteModal}
+        onClose={() => setShowClienteModal(false)}
+        onSuccess={async (c) => {
+          await refetchClientes()
+          setForm((f) => ({ ...f, clienteId: c.id }))
+        }}
+      />
     </Modal>
   )
 }

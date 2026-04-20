@@ -8,6 +8,9 @@ import { ArrowLeft, Loader2, Check } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
+import { ClienteFormModal } from '@/components/forms/cliente-form-modal'
+
+const NEW_CLIENTE_SENTINEL = '__new_cliente__'
 
 interface ClienteOption {
   id: string
@@ -43,10 +46,11 @@ export default function NewInvoicePage() {
   const { data: session } = useSession()
   const toast = useToast()
 
-  const { data: clientesData } = useApi<{ data: ClienteOption[] }>(
+  const { data: clientesData, refetch: refetchClientes } = useApi<{ data: ClienteOption[] }>(
     '/clientes?limit=200',
   )
   const clientes = clientesData?.data ?? []
+  const [showClienteModal, setShowClienteModal] = useState(false)
 
   const today = new Date()
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -202,7 +206,13 @@ export default function NewInvoicePage() {
           <label className="block text-xs font-medium text-ink mb-1">Cliente</label>
           <select
             value={form.clienteId}
-            onChange={(e) => setForm((f) => ({ ...f, clienteId: e.target.value }))}
+            onChange={(e) => {
+              if (e.target.value === NEW_CLIENTE_SENTINEL) {
+                setShowClienteModal(true)
+                return
+              }
+              setForm((f) => ({ ...f, clienteId: e.target.value }))
+            }}
             className="w-full px-3 py-2 text-sm bg-surface border border-border"
           >
             <option value="">— Seleccionar —</option>
@@ -212,6 +222,8 @@ export default function NewInvoicePage() {
                 {c.nif ? ` · ${c.nif}` : ''}
               </option>
             ))}
+            <option disabled>──────────</option>
+            <option value={NEW_CLIENTE_SENTINEL}>+ Criar novo cliente…</option>
           </select>
         </div>
         <div>
@@ -565,6 +577,15 @@ export default function NewInvoicePage() {
           </section>
         </>
       ) : null}
+
+      <ClienteFormModal
+        open={showClienteModal}
+        onClose={() => setShowClienteModal(false)}
+        onSuccess={async (c) => {
+          await refetchClientes()
+          setForm((f) => ({ ...f, clienteId: c.id }))
+        }}
+      />
     </div>
   )
 }

@@ -25,7 +25,12 @@ type CreateClienteData = z.infer<typeof createClienteSchema>
 interface ClienteFormModalProps {
   open: boolean
   onClose: () => void
-  onSuccess?: () => void
+  /**
+   * Disparado quando o cliente é criado com sucesso. Recebe o id
+   * do novo cliente — útil para formulários que precisam de o
+   * auto-seleccionar no dropdown de origem (ex: novo processo).
+   */
+  onSuccess?: (cliente: { id: string }) => void
 }
 
 const translateError = (code: string | undefined, fallback: string): string => {
@@ -94,7 +99,7 @@ export function ClienteFormModal({ open, onClose, onSuccess }: ClienteFormModalP
 
     if (result?.id) {
       toast.success('Cliente criado com sucesso')
-      onSuccess?.()
+      onSuccess?.({ id: result.id })
       handleClose()
     }
   }
