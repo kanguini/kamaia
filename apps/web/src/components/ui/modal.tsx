@@ -58,16 +58,6 @@ export function Modal({
   if (!open) return null
 
   return (
-    <>
-      <style>{`
-        @keyframes k2-modal-in {
-          from { opacity: 0; transform: scale(0.97) translateY(6px); }
-          to   { opacity: 1; transform: scale(1)    translateY(0); }
-        }
-        .k2-modal-panel {
-          animation: k2-modal-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-      `}</style>
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-[8vh] bg-black/40"
       onClick={closeOnBackdrop ? onClose : undefined}
@@ -80,8 +70,7 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          'relative w-full bg-surface rounded-2xl shadow-2xl ring-1 ring-black/10 mb-8',
-          'k2-modal-panel',
+          'relative w-full bg-surface rounded-2xl shadow-2xl ring-1 ring-black/10 mb-8 k2-modal-panel',
           sizeClasses[size],
         )}
         onClick={(e) => e.stopPropagation()}
@@ -110,6 +99,5 @@ export function Modal({
         <div className="p-6">{children}</div>
       </div>
     </div>
-    </>
   )
 }
