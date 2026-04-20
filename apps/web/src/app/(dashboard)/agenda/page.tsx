@@ -6,6 +6,7 @@ import { Plus, ChevronLeft, ChevronRight, X, MapPin, Clock, FileText, AlertTrian
 import { useApi, useMutation } from '@/hooks/use-api'
 import { cn } from '@/lib/utils'
 import { CalendarEventType } from '@kamaia/shared-types'
+import { AgendaEventFormModal } from '@/components/forms/agenda-event-form-modal'
 
 type ViewMode = 'month' | 'week' | 'day'
 
@@ -206,6 +207,7 @@ export default function AgendaPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [view, setView] = useState<ViewMode>('month')
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [showNewEvent, setShowNewEvent] = useState(false)
 
   const { startDate, endDate } = useMemo(() => {
     const start = new Date(currentDate)
@@ -282,13 +284,14 @@ export default function AgendaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="font-display text-4xl font-semibold text-ink">Agenda</h1>
-        <Link
-          href="/agenda/novo"
+        <button
+          type="button"
+          onClick={() => setShowNewEvent(true)}
           className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors"
         >
           <Plus className="w-4 h-4" />
           Novo Evento
-        </Link>
+        </button>
       </div>
 
       {/* Controls */}
@@ -398,6 +401,12 @@ export default function AgendaPage() {
           onComplete={selectedEvent.source === 'prazo' ? handleComplete : undefined}
         />
       )}
+
+      <AgendaEventFormModal
+        open={showNewEvent}
+        onClose={() => setShowNewEvent(false)}
+        onSuccess={() => { setShowNewEvent(false); refetch() }}
+      />
     </div>
   )
 }

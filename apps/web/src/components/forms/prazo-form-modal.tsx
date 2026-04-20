@@ -1,0 +1,426 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Loader2, BookOpen, Calculator } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { useApi, useMutation } from '@/hooks/use-api'
+import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api'
+import { Modal } from '@/components/ui'
+import { cn } from '@/lib/utils'
+import { PrazoType, PaginatedResponse } from '@kamaia/shared-types'
+
+const PRAZO_TYPE_LABELS: Record<PrazoType, string> = {
+  [PrazoType.CONTESTACAO]: 'Contestacao',
+  [PrazoType.RECURSO]: 'Recurso',
+  [PrazoType.RESPOSTA]: 'Resposta',
+  [PrazoType.ALEGACOES]: 'Alegacoes',
+  [PrazoType.AUDIENCIA]: 'Audiência',
+  [PrazoType.OUTRO]: 'Outro',
+}
+
+const ALERT_OPTIONS = [
+  { value: '24', label: '24 horas' },
+  { value: '48', label: '48 horas' },
+  { value: '72', label: '72 horas' },
+  { value: '168', label: '1 semana' },
+]
+
+const createPrazoSchema = z.object({
+  processoId: z.string().min(1, 'Processo e obrigatorio'),
+  type: z.nativeEnum(PrazoType, { required_error: 'Tipo e obrigatorio' }),
+  title: z.string().min(1, 'Titulo e obrigatorio'),
+  description: z.string().optional(),
+  dueDate: z.string().min(1, 'Data limite e obrigatoria'),
+  alertBeforeHours: z.number().optional(),
+  isUrgent: z.boolean().optional(),
+})
+
+type CreatePrazoData = z.infer<typeof createPrazoSchema>
+
+interface Processo {
+  id: string
+  processoNumber: string
+  title: string
+}
+
+interface PrazoFormModalProps {
+  open: boolean
+  onClose: () => void
+  onSuccess?: () => void
+  defaultProcessoId?: string
+}
+
+export function PrazoFormModal({ open, onClose, onSuccess, defaultProcessoId }: PrazoFormModalProps) {
+  const { data: processosData } = useApi<PaginatedResponse<Processo>>(
+    '/processos?limit=50&status=ACTIVO',
+  )
+  const { mutate, loading, error } = useMutation<CreatePrazoData, { id: string }>(
+    '/prazos',
+    'POST',
+  )
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<CreatePrazoData>({
+    resolver: zodResolver(createPrazoSchema),
+    defaultValues: {
+      processoId: defaultProcessoId || '',
+      isUrgent: false,
+      alertBeforeHours: 48,
+    },
+  })
+
+  const formData = watch()
+  const processos = processosData?.data || []
+  const toast = useToast()
+
+  // Auto-fill title based on type
+  useEffect(() => {
+    if (formData.type && !formData.title) {
+      const titles: Record<PrazoType, string> = {
+        [PrazoType.CONTESTACAO]: 'Prazo de Contestacao',
+        [PrazoType.RECURSO]: 'Prazo de Recurso',
+        [PrazoType.RESPOSTA]: 'Prazo de Resposta',
+        [PrazoType.ALEGACOES]: 'Prazo de Alegacoes',
+        [PrazoType.AUDIENCIA]: 'Prazo de Audiencia',
+        [PrazoType.OUTRO]: 'Prazo',
+      }
+      setValue('title', titles[formData.type])
+    }
+  }, [formData.type, formData.title, setValue])
+
+  const handleClose = () => {
+    reset({
+      processoId: defaultProcessoId || '',
+      isUrgent: false,
+      alertBeforeHours: 48,
+    })
+    onClose()
+  }
+
+  const onSubmit = async (data: CreatePrazoData) => {
+    const result = await mutate(data)
+    if (result?.id) {
+      toast.success('Prazo criado com sucesso')
+      onSuccess?.()
+      handleClose()
+    } else {
+      toast.error('Erro ao criar prazo')
+    }
+  }
+
+  const showLegalSuggestion =
+    formData.type === PrazoType.CONTESTACAO || formData.type === PrazoType.RECURSO
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Novo Prazo" size="lg">
+      {error && (
+        <div className="bg-danger/10 border border-danger/20 text-danger p-3 mb-6 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">
+            Processo <span className="text-danger">*</span>
+          </label>
+          {processos.length === 0 ? (
+            <div className="bg-warning/10 border border-warning/20 p-6 text-center">
+              <p className="text-warning mb-4">Nenhum processo activo encontrado</p>
+            </div>
+          ) : (
+            <select
+              {...register('processoId')}
+              className={cn(
+                'w-full px-4 py-2.5 bg-surface border transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+                errors.processoId ? 'border-danger' : 'border-border',
+              )}
+            >
+              <option value="">Selecione um processo</option>
+              {processos.map((processo) => (
+                <option key={processo.id} value={processo.id}>
+                  {processo.processoNumber} - {processo.title}
+                </option>
+              ))}
+            </select>
+          )}
+          {errors.processoId && (
+            <p className="text-danger text-sm mt-1">{errors.processoId.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">
+            Tipo <span className="text-danger">*</span>
+          </label>
+          <select
+            {...register('type')}
+            className={cn(
+              'w-full px-4 py-2.5 bg-surface border transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+              errors.type ? 'border-danger' : 'border-border',
+            )}
+          >
+            <option value="">Selecione o tipo</option>
+            {Object.entries(PRAZO_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {errors.type && <p className="text-danger text-sm mt-1">{errors.type.message}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">
+            Titulo <span className="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            {...register('title')}
+            className={cn(
+              'w-full px-4 py-2.5 bg-surface border transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+              errors.title ? 'border-danger' : 'border-border',
+            )}
+            placeholder="Ex: Prazo de Contestacao"
+          />
+          {errors.title && <p className="text-danger text-sm mt-1">{errors.title.message}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">Descricao</label>
+          <textarea
+            {...register('description')}
+            rows={3}
+            className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-none"
+            placeholder="Notas adicionais sobre este prazo"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">
+            Data Limite <span className="text-danger">*</span>
+          </label>
+          <input
+            type="datetime-local"
+            {...register('dueDate')}
+            className={cn(
+              'w-full px-4 py-2.5 bg-surface border transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent',
+              errors.dueDate ? 'border-danger' : 'border-border',
+            )}
+          />
+          {errors.dueDate && <p className="text-danger text-sm mt-1">{errors.dueDate.message}</p>}
+          <BusinessDaysCalculator
+            onCompute={(iso) => {
+              const d = new Date(iso)
+              const pad = (n: number) => String(n).padStart(2, '0')
+              const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`
+              setValue('dueDate', local, { shouldValidate: true })
+            }}
+          />
+        </div>
+
+        {showLegalSuggestion && (
+          <div className="bg-surface-raised border border-border-strong p-4">
+            <div className="flex items-start gap-3">
+              <BookOpen className="w-5 h-5 text-ink flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-ink mb-1">Prazo legal sugerido:</p>
+                <p className="text-sm text-ink-muted">
+                  {formData.type === PrazoType.CONTESTACAO
+                    ? 'Art. 486.º CPC — 20 dias para contestar a partir da citacao'
+                    : 'Art. 643.º CPC — 15 dias para interpor recurso'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-mono font-medium text-ink mb-2">
+            Alertar antes
+          </label>
+          <select
+            {...register('alertBeforeHours', { valueAsNumber: true })}
+            className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+          >
+            {ALERT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register('isUrgent')}
+              className="w-5 h-5 text-ink border-border rounded focus:ring-2 focus:ring-ink"
+            />
+            <div>
+              <span className="text-sm font-medium text-ink">Marcar como urgente</span>
+              <p className="text-xs text-ink-muted">
+                Prazos urgentes recebem destaque especial no dashboard
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-center gap-4 pt-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className={cn(
+              'flex-1 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium py-2.5',
+              'hover:[background:var(--color-btn-primary-hover)] transition-colors',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'flex items-center justify-center gap-2',
+            )}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Criando...
+              </>
+            ) : (
+              'Criar Prazo'
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            className="px-6 py-2.5 border border-border text-sm font-medium text-ink-muted hover:bg-surface transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+/**
+ * Calculadora de dias úteis — contagem em dias corridos vs úteis (feriados
+ * angolanos auto-seeded no backend). Permite ao advogado introduzir um
+ * número de dias legais (ex: 20 dias para contestar) e obter a data
+ * limite respeitando fins-de-semana e feriados nacionais.
+ */
+function BusinessDaysCalculator({ onCompute }: { onCompute: (iso: string) => void }) {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const [startDate, setStartDate] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  )
+  const [days, setDays] = useState<number>(20)
+  const [result, setResult] = useState<{
+    resultDate: string
+    skippedHolidays: string[]
+  } | null>(null)
+  const [computing, setComputing] = useState(false)
+
+  const compute = async () => {
+    if (!session?.accessToken || days <= 0) return
+    setComputing(true)
+    try {
+      const r = await api<{
+        data: { resultDate: string; skippedHolidays: string[] }
+      }>(
+        `/holidays/compute-business-date?startDate=${new Date(startDate).toISOString()}&days=${days}`,
+        { token: session.accessToken },
+      )
+      setResult(r.data)
+    } catch {
+      toast.error('Erro a calcular dias úteis')
+    } finally {
+      setComputing(false)
+    }
+  }
+
+  return (
+    <details className="mt-2 text-xs">
+      <summary className="cursor-pointer text-ink-muted hover:text-ink inline-flex items-center gap-1.5">
+        <Calculator className="w-3.5 h-3.5" />
+        Calcular em dias úteis (salta feriados angolanos)
+      </summary>
+      <div className="mt-2 bg-surface-raised p-3 space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+          <label className="md:col-span-1">
+            <span className="text-ink-muted">A partir de</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full mt-1 px-2 py-1.5 bg-surface border border-border"
+            />
+          </label>
+          <label className="md:col-span-1">
+            <span className="text-ink-muted">Dias úteis</span>
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(parseInt(e.target.value, 10) || 0)}
+              className="w-full mt-1 px-2 py-1.5 bg-surface border border-border"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={compute}
+            disabled={computing}
+            className="md:col-span-1 px-3 py-1.5 bg-ink text-surface rounded-lg text-xs font-medium disabled:opacity-50"
+          >
+            {computing ? 'A calcular...' : 'Calcular'}
+          </button>
+          {result && (
+            <button
+              type="button"
+              onClick={() => onCompute(result.resultDate)}
+              className="md:col-span-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium"
+            >
+              Usar como prazo
+            </button>
+          )}
+        </div>
+        {result && (
+          <div className="border-t border-border pt-2">
+            <p className="text-ink">
+              <strong>{new Date(result.resultDate).toLocaleDateString('pt-AO')}</strong>
+              {' · '}
+              {new Date(result.resultDate).toLocaleDateString('pt-AO', { weekday: 'long' })}
+            </p>
+            {result.skippedHolidays.length > 0 && (
+              <p className="text-ink-muted mt-1">
+                Feriados saltados ({result.skippedHolidays.length}):{' '}
+                {result.skippedHolidays
+                  .map((d) =>
+                    new Date(d).toLocaleDateString('pt-AO', {
+                      day: '2-digit',
+                      month: 'short',
+                    }),
+                  )
+                  .join(', ')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}

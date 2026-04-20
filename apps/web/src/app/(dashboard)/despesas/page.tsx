@@ -7,7 +7,7 @@ import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { EmptyState, LoadingSkeleton, IconButton } from '@/components/ui'
+import { EmptyState, LoadingSkeleton, IconButton, Modal } from '@/components/ui'
 import { ExpenseCategory } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 
@@ -172,10 +172,13 @@ export default function DespesasPage() {
         <p className="text-3xl font-semibold text-ink">{formatMoney(totalAmount)}</p>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="bg-surface-raised p-6">
-          <h2 className="font-display text-2xl font-semibold text-ink mb-4">Nova Despesa</h2>
-
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Nova Despesa"
+        size="md"
+      >
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-ink mb-2">Processo</label>
@@ -183,7 +186,7 @@ export default function DespesasPage() {
                 value={formProcessoId}
                 onChange={(e) => setFormProcessoId(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               >
                 <option value="">Seleccionar processo</option>
                 {processos?.map((p) => (
@@ -199,7 +202,7 @@ export default function DespesasPage() {
               <select
                 value={formCategory}
                 onChange={(e) => setFormCategory(e.target.value as ExpenseCategory)}
-                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               >
                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -210,14 +213,14 @@ export default function DespesasPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-ink mb-2">Descricao</label>
+              <label className="block text-sm font-medium text-ink mb-2">Descrição</label>
               <input
                 type="text"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 required
-                placeholder="Descricao da despesa"
-                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+                placeholder="Descrição da despesa"
+                className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               />
             </div>
 
@@ -231,7 +234,7 @@ export default function DespesasPage() {
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono"
+                className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent font-mono"
               />
             </div>
 
@@ -242,7 +245,7 @@ export default function DespesasPage() {
                 value={formDate}
                 onChange={(e) => setFormDate(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
+                className="w-full px-4 py-2.5 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent"
               />
             </div>
           </div>
@@ -254,7 +257,7 @@ export default function DespesasPage() {
               type="submit"
               disabled={creating}
               className={cn(
-                'px-6 py-2.5 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium ',
+                'px-6 py-2.5 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium',
                 'hover:[background:var(--color-btn-primary-hover)] transition-colors',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
               )}
@@ -264,13 +267,13 @@ export default function DespesasPage() {
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-6 py-2.5 border border-border text-ink font-medium  hover:bg-surface-raised transition-colors"
+              className="px-6 py-2.5 border border-border text-ink font-medium hover:bg-surface-raised transition-colors"
             >
               Cancelar
             </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {error && (
         <div className="bg-danger/10 border border-danger/20 text-danger  p-4" role="alert">{error}</div>

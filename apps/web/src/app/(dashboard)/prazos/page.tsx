@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react'
 import { useApi } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { PrazoType, PrazoStatus, PaginatedResponse } from '@kamaia/shared-types'
+import { PrazoFormModal } from '@/components/forms/prazo-form-modal'
 
 interface Prazo {
   id: string
@@ -68,6 +69,7 @@ export default function PrazosPage() {
   )
   const [typeFilter, setTypeFilter] = useState<PrazoType | null>(null)
   const [page, setPage] = useState(1)
+  const [showNewPrazo, setShowNewPrazo] = useState(false)
   const PAGE_SIZE = 20
 
   useEffect(() => {
@@ -142,9 +144,9 @@ export default function PrazosPage() {
       <div className="px-head">
         <div className="px-title">Prazos</div>
         <div className="px-head-actions">
-          <Link href="/prazos/novo" className="px-btn-primary">
+          <button type="button" onClick={() => setShowNewPrazo(true)} className="px-btn-primary">
             <Plus size={14} /> Novo prazo
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -271,6 +273,12 @@ export default function PrazosPage() {
           onChange={setPage}
         />
       )}
+
+      <PrazoFormModal
+        open={showNewPrazo}
+        onClose={() => setShowNewPrazo(false)}
+        onSuccess={() => { setShowNewPrazo(false); refetch() }}
+      />
     </div>
   )
 }

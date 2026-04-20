@@ -7,7 +7,7 @@ import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { EmptyState, LoadingSkeleton, IconButton, FormField } from '@/components/ui'
+import { EmptyState, LoadingSkeleton, IconButton, FormField, Modal } from '@/components/ui'
 import { TimeEntryCategory } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 
@@ -80,6 +80,8 @@ export default function TimesheetsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+
+  const [showForm, setShowForm] = useState(false)
 
   const [formProcessoId, setFormProcessoId] = useState<string>('')
   const [formCategory, setFormCategory] = useState<TimeEntryCategory>(TimeEntryCategory.PESQUISA)
@@ -165,6 +167,7 @@ export default function TimesheetsPage() {
       setFormDuration('')
       setFormDescription('')
       setFormBillable(true)
+      setShowForm(false)
       refetch()
     } else {
       toast.error('Erro ao registar entrada')
@@ -214,126 +217,150 @@ export default function TimesheetsPage() {
     <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold text-ink">Timesheets</h1>
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium px-4 sm:px-6 py-2.5 hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
+        >
+          <Timer className="w-4 h-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Registar Tempo</span>
+          <span className="sm:hidden">Registar</span>
+        </button>
       </div>
 
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-surface-raised p-5">
             <p className="text-xs font-mono text-ink-muted uppercase mb-2">Total esta semana</p>
-            <p className="text-2xl font-semibold text-ink">{formatDuration(summary.totalMinutes)}</p>
+            <p className="text-2xl font-semibold text-ink">{formatDuration(summary.totalMinutes ?? 0)}</p>
           </div>
           <div className="bg-surface-raised p-5">
-            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Horas facturavel</p>
+            <p className="text-xs font-mono text-ink-muted uppercase mb-2">Horas facturável</p>
             <p className="text-2xl font-semibold text-ink">
-              {formatDuration(summary.billableMinutes)}
+              {formatDuration(summary.billableMinutes ?? 0)}
             </p>
           </div>
           <div className="bg-surface-raised p-5">
             <p className="text-xs font-mono text-ink-muted uppercase mb-2">Valor estimado</p>
-            <p className="text-2xl font-semibold text-ink">{formatMoney(summary.estimatedValue)}</p>
+            <p className="text-2xl font-semibold text-ink">{formatMoney(summary.estimatedValue ?? 0)}</p>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-surface-raised p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 mb-3">
-          <FormField label="Processo" required>
-            <select
-              value={formProcessoId}
-              onChange={(e) => setFormProcessoId(e.target.value)}
-              required
-              aria-label="Seleccionar processo"
-              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
-            >
-              <option value="">Seleccionar</option>
-              {processos?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.processoNumber}
-                </option>
-              ))}
-            </select>
-          </FormField>
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title="Registar Tempo"
+        size="lg"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <FormField label="Processo" required>
+              <select
+                value={formProcessoId}
+                onChange={(e) => setFormProcessoId(e.target.value)}
+                required
+                aria-label="Seleccionar processo"
+                className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
+              >
+                <option value="">Seleccionar</option>
+                {processos?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.processoNumber} — {p.title}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-          <FormField label="Categoria" required>
-            <select
-              value={formCategory}
-              onChange={(e) => setFormCategory(e.target.value as TimeEntryCategory)}
-              aria-label="Categoria"
-              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
-            >
-              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </FormField>
+            <FormField label="Categoria" required>
+              <select
+                value={formCategory}
+                onChange={(e) => setFormCategory(e.target.value as TimeEntryCategory)}
+                aria-label="Categoria"
+                className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
+              >
+                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-          <FormField label="Data" required>
-            <input
-              type="date"
-              value={formDate}
-              onChange={(e) => setFormDate(e.target.value)}
-              required
-              aria-label="Data"
-              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
-            />
-          </FormField>
-
-          <FormField label="Duracao" required hint="Formato: HH:MM">
-            <input
-              type="text"
-              value={formDuration}
-              onChange={(e) => setFormDuration(e.target.value)}
-              placeholder="02:30"
-              required
-              aria-label="Duracao"
-              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm font-mono min-h-[40px]"
-            />
-          </FormField>
-
-          <FormField label="Descricao" required>
-            <input
-              type="text"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              placeholder="Descricao"
-              required
-              aria-label="Descricao"
-              className="w-full px-3 py-2 bg-surface border border-border  focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
-            />
-          </FormField>
-
-          <FormField label="Facturavel">
-            <label className="flex items-center gap-2 px-3 py-2 bg-surface border border-border  cursor-pointer min-h-[40px]">
+            <FormField label="Data" required>
               <input
-                type="checkbox"
-                checked={formBillable}
-                onChange={(e) => setFormBillable(e.target.checked)}
-                aria-label="Facturavel"
-                className="w-4 h-4 text-ink border-border rounded focus:ring-2 focus:ring-ink"
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                required
+                aria-label="Data"
+                className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
               />
-              <span className="text-sm text-ink">Sim</span>
-            </label>
-          </FormField>
-        </div>
+            </FormField>
 
-        {formError && (
-          <p className="text-danger text-sm mb-3">{formError}</p>
-        )}
+            <FormField label="Duração" required hint="Formato: HH:MM">
+              <input
+                type="text"
+                value={formDuration}
+                onChange={(e) => setFormDuration(e.target.value)}
+                placeholder="02:30"
+                required
+                aria-label="Duração"
+                className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm font-mono min-h-[40px]"
+              />
+            </FormField>
 
-        <button
-          type="submit"
-          disabled={creating}
-          className={cn(
-            'px-6 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium ',
-            'hover:[background:var(--color-btn-primary-hover)] transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
+            <FormField label="Descrição" required>
+              <input
+                type="text"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder="Descrição da actividade"
+                required
+                aria-label="Descrição"
+                className="w-full px-3 py-2 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent text-sm min-h-[40px]"
+              />
+            </FormField>
+
+            <FormField label="Facturável">
+              <label className="flex items-center gap-2 px-3 py-2 bg-surface border border-border cursor-pointer min-h-[40px]">
+                <input
+                  type="checkbox"
+                  checked={formBillable}
+                  onChange={(e) => setFormBillable(e.target.checked)}
+                  aria-label="Facturável"
+                  className="w-4 h-4 text-ink border-border rounded focus:ring-2 focus:ring-ink"
+                />
+                <span className="text-sm text-ink">Sim</span>
+              </label>
+            </FormField>
+          </div>
+
+          {formError && (
+            <p className="text-danger text-sm mb-4">{formError}</p>
           )}
-        >
-          {creating ? 'A guardar...' : 'Guardar'}
-        </button>
-      </form>
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={creating}
+              className={cn(
+                'px-6 py-2.5 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium',
+                'hover:[background:var(--color-btn-primary-hover)] transition-colors',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+            >
+              {creating ? 'A guardar...' : 'Guardar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-6 py-2.5 border border-border text-ink font-medium hover:bg-surface-raised transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <div className="bg-surface-raised p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -395,6 +422,15 @@ export default function TimesheetsPage() {
           icon={Timer}
           title="Nenhum registo de tempo"
           description="Comece por registar o seu primeiro timesheet"
+          action={
+            <button
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] font-medium hover:[background:var(--color-btn-primary-hover)] transition-colors min-h-[40px]"
+            >
+              <Timer className="w-4 h-4" aria-hidden="true" />
+              Registar Tempo
+            </button>
+          }
         />
       ) : (
         <div className="space-y-6">

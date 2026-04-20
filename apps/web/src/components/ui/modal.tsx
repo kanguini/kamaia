@@ -58,8 +58,18 @@ export function Modal({
   if (!open) return null
 
   return (
+    <>
+      <style>{`
+        @keyframes k2-modal-in {
+          from { opacity: 0; transform: scale(0.97) translateY(6px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .k2-modal-panel {
+          animation: k2-modal-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+      `}</style>
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 motion-safe:backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-[8vh] bg-black/40"
       onClick={closeOnBackdrop ? onClose : undefined}
       aria-hidden="true"
     >
@@ -70,15 +80,16 @@ export function Modal({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          'w-full bg-surface shadow-lg max-h-[90vh] overflow-y-auto',
+          'relative w-full bg-surface rounded-2xl shadow-2xl ring-1 ring-black/10 mb-8',
+          'k2-modal-panel',
           sizeClasses[size],
         )}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
       >
-        <div className="flex items-start justify-between p-6 border-b border-border">
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border">
           <div className="flex-1">
-            <h2 id={titleId} className="font-display text-2xl font-semibold text-ink">
+            <h2 id={titleId} className="font-display text-xl font-semibold text-ink leading-tight">
               {title}
             </h2>
             {description && (
@@ -91,13 +102,14 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Fechar"
-            className="ml-4 p-1 text-ink-muted hover:text-ink hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+            className="ml-4 -mt-0.5 p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
           >
-            <X className="w-5 h-5" aria-hidden="true" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
         <div className="p-6">{children}</div>
       </div>
     </div>
+    </>
   )
 }

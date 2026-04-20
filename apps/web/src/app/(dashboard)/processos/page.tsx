@@ -26,6 +26,7 @@ import {
   ProcessoPriority,
   PROCESSO_STAGES,
 } from '@kamaia/shared-types'
+import { ProcessoFormModal } from '@/components/forms/processo-form-modal'
 
 const KanbanView = lazy(() => import('./kanban-view'))
 
@@ -101,6 +102,7 @@ export default function ProcessosPage() {
   const [advogadoFilters, setAdvogadoFilters] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [showNewProcesso, setShowNewProcesso] = useState(false)
   const PAGE_SIZE = 20
 
   useEffect(() => {
@@ -160,9 +162,9 @@ export default function ProcessosPage() {
               <Columns3 size={14} />
             </button>
           </div>
-          <Link href="/processos/novo" className="px-btn-primary">
+          <button type="button" onClick={() => setShowNewProcesso(true)} className="px-btn-primary">
             <Plus size={14} /> Novo processo
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -279,6 +281,12 @@ export default function ProcessosPage() {
           )}
         </>
       )}
+
+      <ProcessoFormModal
+        open={showNewProcesso}
+        onClose={() => setShowNewProcesso(false)}
+        onSuccess={() => setShowNewProcesso(false)}
+      />
     </div>
   )
 }

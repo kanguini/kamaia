@@ -14,7 +14,6 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import {
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { api } from '@/lib/api'
+import { ProjectoFormModal } from '@/components/forms/projecto-form-modal'
 import {
   ProjectCategory,
   ProjectStatus,
@@ -140,6 +140,7 @@ export default function ProjectosPage() {
   const [managerFilters, setManagerFilters] = useState<string[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [showNewProjecto, setShowNewProjecto] = useState(false)
   const PAGE_SIZE = 20
 
   // Any change to filters or search resets the cursor to page 1 so we never
@@ -233,9 +234,13 @@ export default function ProjectosPage() {
           >
             <Sparkles size={14} /> Workflows
           </button>
-          <Link href="/projectos/novo" className="px-btn-primary">
+          <button
+            type="button"
+            className="px-btn-primary"
+            onClick={() => setShowNewProjecto(true)}
+          >
             <Plus size={14} /> Novo projecto
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -306,9 +311,20 @@ export default function ProjectosPage() {
         ) : filtered.length === 0 ? (
           <div className="px-empty">
             Sem projectos a mostrar. Ajuste filtros ou{' '}
-            <Link href="/projectos/novo" style={{ color: 'var(--k2-accent)' }}>
+            <button
+              type="button"
+              onClick={() => setShowNewProjecto(true)}
+              style={{
+                color: 'var(--k2-accent)',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
+            >
               crie um novo
-            </Link>
+            </button>
             .
           </div>
         ) : (
@@ -328,6 +344,16 @@ export default function ProjectosPage() {
         )}
        </div>
       </div>
+
+      <ProjectoFormModal
+        open={showNewProjecto}
+        onClose={() => setShowNewProjecto(false)}
+        onSuccess={(id) => {
+          setShowNewProjecto(false)
+          refetch()
+          router.push(`/projectos/${id}`)
+        }}
+      />
 
       {/* Pagination — only when there is more than one page */}
       {filtered.length > PAGE_SIZE && (

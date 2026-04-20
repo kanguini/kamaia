@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Plus, Filter, ArrowUpRight, ChevronDown } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { ClienteType, PaginatedResponse } from '@kamaia/shared-types'
+import { ClienteFormModal } from '@/components/forms/cliente-form-modal'
 
 interface Cliente {
   id: string
@@ -33,6 +34,7 @@ export default function ClientesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<ClienteType | null>(null)
   const [page, setPage] = useState(1)
+  const [showNewCliente, setShowNewCliente] = useState(false)
   const PAGE_SIZE = 20
 
   // Debounce search input → 300ms
@@ -88,9 +90,9 @@ export default function ClientesPage() {
       <div className="px-head">
         <div className="px-title">Clientes</div>
         <div className="px-head-actions">
-          <Link href="/clientes/novo" className="px-btn-primary">
+          <button type="button" onClick={() => setShowNewCliente(true)} className="px-btn-primary">
             <Plus size={14} /> Novo cliente
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -211,6 +213,12 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      <ClienteFormModal
+        open={showNewCliente}
+        onClose={() => setShowNewCliente(false)}
+        onSuccess={() => setShowNewCliente(false)}
+      />
     </div>
   )
 }
