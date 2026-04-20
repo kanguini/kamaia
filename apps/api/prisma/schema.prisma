@@ -53,6 +53,7 @@ model Gabinete {
   invoices            Invoice[]
   holidays            Holiday[]
   tramitacoes         Tramitacao[]
+  audiencias          Audiencia[]
 
   @@map("gabinetes")
 }
@@ -104,6 +105,7 @@ model User {
   invoicesCreated        Invoice[]               @relation("InvoiceCreator")
   paymentsRecorded       InvoicePayment[]        @relation("PaymentRecorder")
   tramitacoes            Tramitacao[]
+  audiencias             Audiencia[]
 
   @@unique([gabineteId, email], map: "uq_user_gabinete_email")
   @@unique([provider, providerId], map: "uq_user_provider")
@@ -212,6 +214,7 @@ model Processo {
   tasks       Task[]
   invoices    Invoice[]
   tramitacoes Tramitacao[]
+  audiencias  Audiencia[]
 
   @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
   @@index([gabineteId], map: "idx_processo_gabinete")
@@ -281,6 +284,51 @@ model Tramitacao {
   @@index([processoId, autor], map: "idx_tramitacao_processo_autor")
   @@index([processoId, actoType], map: "idx_tramitacao_processo_type")
   @@map("tramitacoes")
+}
+
+// ── Audiência ─────────────────────────────────────────────
+// Acto judicial presencial com ciclo de vida próprio: agendamento,
+// realização ou adiamento. Distinto de Tramitacao (que regista o acto
+// de "audiencia-agendada") — a Audiencia é a entidade que sobrevive a
+// múltiplos adiamentos, mantém histórico e gere preparação (testemunhas,
+// peças). Cada adiamento cria uma nova Audiencia ligada à anterior.
+
+model Audiencia {
+  id              String    @id @default(uuid()) @db.Uuid
+  gabineteId      String    @map("gabinete_id") @db.Uuid
+  processoId      String    @map("processo_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid // quem agendou
+
+  type            String    @db.VarChar(40)  // AudienciaType enum
+  status          String    @default("AGENDADA") @db.VarChar(20) // AudienciaStatus enum
+
+  scheduledAt     DateTime  @map("scheduled_at") @db.Timestamptz
+  heldAt          DateTime? @map("held_at") @db.Timestamptz
+  durationMinutes Int?      @map("duration_minutes")
+
+  location        String?   @db.VarChar(200)  // sala / tribunal
+  judge           String?   @db.VarChar(200)
+  notes           String?   @db.Text          // preparação / observações
+  outcome         String?   @db.Text          // narrativa pós-audiência
+
+  // Relação histórica: nova audiência após adiamento liga-se à anterior
+  previousId      String?   @map("previous_id") @db.Uuid
+  previous        Audiencia? @relation("AudienciaHistorico", fields: [previousId], references: [id])
+  next            Audiencia[] @relation("AudienciaHistorico")
+
+  metadata        Json?     @db.JsonB         // testemunhas, peças, lista de presenças
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  gabinete        Gabinete  @relation(fields: [gabineteId], references: [id])
+  processo        Processo  @relation(fields: [processoId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([gabineteId, processoId, scheduledAt], map: "idx_audiencia_processo_scheduled")
+  @@index([gabineteId, status], map: "idx_audiencia_gabinete_status")
+  @@index([gabineteId, scheduledAt], map: "idx_audiencia_gabinete_scheduled")
+  @@map("audiencias")
 }
 
 // ── Prazo (Deadline) ──────────────────────────────────────

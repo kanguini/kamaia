@@ -423,6 +423,68 @@ export const TRAMITACAO_TEMPLATES: TramitacaoTemplate[] = [
   },
 ];
 
+// ── Audiência ─────────────────────────────────────────────
+// Tipos alinhados ao CPC angolano. Audiência Prévia (art. 508.º-A)
+// cumpre o saneamento oral; Julgamento produz prova. A "Produção
+// Antecipada de Prova" cobre casos de testemunha fora do país ou
+// doença grave (arts. 520.º e segs.).
+
+export enum AudienciaType {
+  AUDIENCIA_PREVIA = 'AUDIENCIA_PREVIA',
+  JULGAMENTO = 'JULGAMENTO',
+  DISCUSSAO_JULGAMENTO = 'DISCUSSAO_JULGAMENTO',
+  PRODUCAO_ANTECIPADA_PROVA = 'PRODUCAO_ANTECIPADA_PROVA',
+  TENTATIVA_CONCILIACAO = 'TENTATIVA_CONCILIACAO',
+  INSTRUCAO = 'INSTRUCAO',
+  INTERROGATORIO = 'INTERROGATORIO',
+  OUTRA = 'OUTRA',
+}
+
+export const AUDIENCIA_TYPE_LABELS: Record<AudienciaType, string> = {
+  [AudienciaType.AUDIENCIA_PREVIA]: 'Audiência Prévia',
+  [AudienciaType.JULGAMENTO]: 'Julgamento',
+  [AudienciaType.DISCUSSAO_JULGAMENTO]: 'Discussão e Julgamento',
+  [AudienciaType.PRODUCAO_ANTECIPADA_PROVA]: 'Produção Antecipada de Prova',
+  [AudienciaType.TENTATIVA_CONCILIACAO]: 'Tentativa de Conciliação',
+  [AudienciaType.INSTRUCAO]: 'Instrução',
+  [AudienciaType.INTERROGATORIO]: 'Interrogatório',
+  [AudienciaType.OUTRA]: 'Outra',
+};
+
+// Ciclo de vida: AGENDADA → REALIZADA | ADIADA | CANCELADA.
+// ADIADA cria uma nova Audiência linkada via previousId.
+
+export enum AudienciaStatus {
+  AGENDADA = 'AGENDADA',
+  REALIZADA = 'REALIZADA',
+  ADIADA = 'ADIADA',
+  CANCELADA = 'CANCELADA',
+}
+
+export const AUDIENCIA_STATUS_LABELS: Record<AudienciaStatus, string> = {
+  [AudienciaStatus.AGENDADA]: 'Agendada',
+  [AudienciaStatus.REALIZADA]: 'Realizada',
+  [AudienciaStatus.ADIADA]: 'Adiada',
+  [AudienciaStatus.CANCELADA]: 'Cancelada',
+};
+
+// Máquina de estados soft. Regras:
+// - AGENDADA: pode ser REALIZADA, ADIADA ou CANCELADA.
+// - REALIZADA/ADIADA/CANCELADA: terminais (não transitam).
+// O adiamento é tratado à parte: cria nova Audiência e marca a
+// original como ADIADA num único fluxo transaccional.
+
+export const AUDIENCIA_ALLOWED_TRANSITIONS: Record<AudienciaStatus, AudienciaStatus[]> = {
+  [AudienciaStatus.AGENDADA]: [
+    AudienciaStatus.REALIZADA,
+    AudienciaStatus.ADIADA,
+    AudienciaStatus.CANCELADA,
+  ],
+  [AudienciaStatus.REALIZADA]: [],
+  [AudienciaStatus.ADIADA]: [],
+  [AudienciaStatus.CANCELADA]: [],
+};
+
 // ── Result Type ───────────────────────────────────────────
 
 export type Result<T, E = string> =

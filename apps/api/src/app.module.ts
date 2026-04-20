@@ -12,6 +12,7 @@ import { ClientesModule } from './modules/clientes/clientes.module';
 import { ProcessosModule } from './modules/processos/processos.module';
 import { PrazosModule } from './modules/prazos/prazos.module';
 import { TramitacoesModule } from './modules/tramitacoes/tramitacoes.module';
+import { AudienciasModule } from './modules/audiencias/audiencias.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { StatsModule } from './modules/stats/stats.module';
@@ -50,6 +51,7 @@ import { SeedModule } from './modules/seed/seed.module';
     ProcessosModule,
     PrazosModule,
     TramitacoesModule,
+    AudienciasModule,
     CalendarModule,
     DocumentsModule,
     StatsModule,
