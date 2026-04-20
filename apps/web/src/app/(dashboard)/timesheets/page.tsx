@@ -110,7 +110,9 @@ export default function TimesheetsPage() {
   const entries = entriesData?.data || []
 
   const { data: summary } = useApi<TimeEntrySummary>('/timesheets/summary')
-  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=1000')
+  // limit=500 é o tecto imposto pelo backend (listProcessosSchema.max(500)).
+  // Pedir 1000 devolvia 400 e o dropdown ficava vazio — ver fix cross-módulo.
+  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=500')
   const processos = processosData?.data || []
 
   const { mutate: createEntry, loading: creating } = useMutation<{

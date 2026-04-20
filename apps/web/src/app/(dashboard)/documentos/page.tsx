@@ -95,7 +95,8 @@ function UploadModal({
   const [error, setError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
 
-  const { data: processos } = useApi<PaginatedResponse<Processo>>('/processos?limit=1000')
+  // limit=500 é o tecto aceite pelo backend; 1000 era rejeitado com 400.
+  const { data: processos } = useApi<PaginatedResponse<Processo>>('/processos?limit=500')
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -413,7 +414,7 @@ export default function DocumentosPage() {
   )
 
   const { data: storage, refetch: refetchStorage } = useApi<StorageInfo>('/documents/storage')
-  const { data: processosData } = useApi<PaginatedResponse<Processo>>('/processos?limit=1000')
+  const { data: processosData } = useApi<PaginatedResponse<Processo>>('/processos?limit=500')
   const processos = processosData?.data ?? []
 
   const handleUploadSuccess = () => {

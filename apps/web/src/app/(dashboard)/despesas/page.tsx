@@ -64,7 +64,8 @@ export default function DespesasPage() {
 
   const { data: expensesData, loading, error, refetch } = useApi<{ data: Expense[] }>('/expenses')
   const expenses = expensesData?.data || []
-  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=1000')
+  // limit=500 é o tecto aceite pelo backend; pedir 1000 dava 400 silencioso.
+  const { data: processosData } = useApi<{ data: Processo[] }>('/processos?limit=500')
   const processos = processosData?.data || []
 
   const { mutate: createExpense, loading: creating } = useMutation<{
