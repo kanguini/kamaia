@@ -22,6 +22,9 @@ import {
   File,
   Image as ImageIcon,
   Gavel,
+  Target,
+  Lock,
+  Save,
 } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
@@ -134,6 +137,7 @@ interface Processo {
   processoNumber: string
   title: string
   description: string | null
+  strategy: string | null
   type: ProcessoType
   status: ProcessoStatus
   priority: ProcessoPriority
@@ -578,6 +582,14 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
           </div>
         </div>
       </div>
+
+      {/* Estratégia — notas estratégicas privadas, distintas da descrição
+          (contexto público) e das notas operacionais. */}
+      <StrategySection
+        processoId={id}
+        strategy={processo.strategy}
+        onSaved={() => refetch()}
+      />
 
       {/* Tramitação — actos processuais registados pelo advogado. */}
       <TramitacaoTimeline
@@ -1127,6 +1139,150 @@ function AudienciaSection({
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Strategy Section ──────────────────────────────────────
+// Espaço privado para teses, riscos, plano de ataque/defesa. Distinto
+// da descrição (contexto do processo) e das notas (operacional).
+// Edição inline: clicar em "Editar" substitui o read view por textarea.
+
+function StrategySection({
+  processoId,
+  strategy,
+  onSaved,
+}: {
+  processoId: string
+  strategy: string | null
+  onSaved: () => void
+}) {
+  const { data: session } = useSession()
+  const toast = useToast()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(strategy || '')
+  const [saving, setSaving] = useState(false)
+
+  const startEdit = () => {
+    setDraft(strategy || '')
+    setEditing(true)
+  }
+
+  const cancel = () => {
+    setDraft(strategy || '')
+    setEditing(false)
+  }
+
+  const save = async () => {
+    if (!session?.accessToken) return
+    if (draft.length > 20000) {
+      toast.error('Estratégia excede 20 000 caracteres')
+      return
+    }
+    setSaving(true)
+    try {
+      await api(`/processos/${processoId}/strategy`, {
+        method: 'PUT',
+        body: JSON.stringify({ strategy: draft }),
+        token: session.accessToken,
+      })
+      toast.success(strategy ? 'Estratégia actualizada' : 'Estratégia definida')
+      setEditing(false)
+      onSaved()
+    } catch {
+      toast.error('Erro ao guardar estratégia')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-surface-raised p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <Target className="w-5 h-5 text-ink" />
+          <h2 className="font-display text-2xl font-semibold text-ink">Estratégia</h2>
+          <span
+            title="Campo privado ao gabinete — nunca é partilhado com o cliente"
+            className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 bg-ink/5 text-ink-muted border border-border rounded-full"
+          >
+            <Lock className="w-3 h-3" />
+            Privado
+          </span>
+        </div>
+        {!editing && (
+          <button
+            onClick={startEdit}
+            className="flex items-center gap-2 px-3 py-1.5 border border-border text-sm font-medium text-ink hover:bg-surface transition-colors"
+          >
+            <Edit className="w-3.5 h-3.5" />
+            {strategy ? 'Editar' : 'Definir'}
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={10}
+            placeholder="Teses principais · riscos identificados · plano A / plano B · pontos fracos da contraparte · cenários de resolução…"
+            className="w-full px-4 py-3 bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ink focus:border-transparent resize-y text-sm leading-relaxed"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-[11px] font-mono text-ink-muted">
+              {draft.length.toLocaleString('pt-AO')} / 20 000
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cancel}
+                disabled={saving}
+                className="px-4 py-2 border border-border text-sm font-medium text-ink-muted hover:bg-surface transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 [background:var(--color-btn-primary-bg)] [color:var(--color-btn-primary-text)] text-sm font-medium',
+                  'hover:[background:var(--color-btn-primary-hover)] transition-colors',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                )}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    A guardar…
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Guardar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : strategy ? (
+        <div className="bg-surface border border-border p-4">
+          <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed">
+            {strategy}
+          </p>
+        </div>
+      ) : (
+        <div className="text-center py-8 border border-dashed border-border">
+          <Target className="w-8 h-8 text-ink-muted mx-auto mb-2" />
+          <p className="text-ink-muted text-sm mb-1">
+            Nenhuma estratégia definida para este processo.
+          </p>
+          <p className="text-xs text-ink-muted">
+            Documente a tese, os riscos e o plano — útil antes da audiência.
+          </p>
         </div>
       )}
     </div>

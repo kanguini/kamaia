@@ -15,11 +15,19 @@ export const createProcessoSchema = z.object({
   feeType: z.enum(['FIXO', 'HORA', 'PERCENTAGEM', 'PRO_BONO']).optional(),
   feeAmount: z.number().int().min(0).optional(),
   notes: z.string().optional(),
+  strategy: z.string().optional(),
 });
 
 export const updateProcessoSchema = createProcessoSchema
   .partial()
   .omit({ type: true, clienteId: true });
+
+// Edição dedicada da estratégia — endpoint separado para audit
+// trail granular (a estratégia evolui ao longo do processo).
+export const updateStrategySchema = z.object({
+  strategy: z.string().max(20000, 'Estratégia excede 20 000 caracteres'),
+});
+export type UpdateStrategyDto = z.infer<typeof updateStrategySchema>;
 
 export const changeStageSchema = z.object({
   stage: z.string().min(1),

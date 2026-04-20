@@ -189,6 +189,7 @@ model Processo {
   feeType         String?   @map("fee_type") @db.VarChar(20) // FIXO | HORA | PERCENTAGEM | PRO_BONO
   feeAmount       Int?      @map("fee_amount") // Centavos AOA
   notes           String?   @db.Text
+  strategy        String?   @db.Text // Notas estratégicas privadas: teses, riscos, cenários, plano de ataque/defesa
   openedAt        DateTime  @default(now()) @map("opened_at") @db.Timestamptz
   closedAt        DateTime? @map("closed_at") @db.Timestamptz
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz

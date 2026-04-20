@@ -29,6 +29,7 @@ import {
   createEventSchema,
   listProcessosSchema,
   listEventsSchema,
+  updateStrategySchema,
   CreateProcessoDto,
   UpdateProcessoDto,
   ChangeStageDto,
@@ -36,6 +37,7 @@ import {
   CreateEventDto,
   ListProcessosDto,
   ListEventsDto,
+  UpdateStrategyDto,
 } from './processos.dto';
 
 @Controller('processos')
@@ -203,6 +205,38 @@ export class ProcessosController {
           error: result.error,
           code: result.code || 'PROCESSO_UPDATE_FAILED',
         },
+        status,
+      );
+    }
+
+    return { data: result.data };
+  }
+
+  @Put(':id/strategy')
+  async updateStrategy(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body(new ParseZodPipe(updateStrategySchema)) dto: UpdateStrategyDto,
+  ) {
+    const result = await this.processosService.updateStrategy(
+      gabineteId,
+      user.sub,
+      user.role,
+      id,
+      dto.strategy,
+    );
+
+    if (!result.success) {
+      const status =
+        result.code === 'PROCESSO_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : result.code === 'ACCESS_DENIED'
+            ? HttpStatus.FORBIDDEN
+            : HttpStatus.BAD_REQUEST;
+
+      throw new HttpException(
+        { error: result.error, code: result.code || 'STRATEGY_UPDATE_FAILED' },
         status,
       );
     }

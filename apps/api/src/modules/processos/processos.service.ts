@@ -202,6 +202,52 @@ export class ProcessosService {
     }
   }
 
+  async updateStrategy(
+    gabineteId: string,
+    userId: string,
+    role: KamaiaRole,
+    id: string,
+    strategy: string,
+  ): Promise<Result<any>> {
+    try {
+      const existing = await this.processosRepository.findById(gabineteId, id);
+      if (!existing) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+      if (role === KamaiaRole.ADVOGADO_MEMBRO && existing.advogadoId !== userId) {
+        return err('Access denied', 'ACCESS_DENIED');
+      }
+
+      const processo = await this.processosRepository.update(gabineteId, id, {
+        strategy,
+      });
+      if (!processo) return err('Processo not found', 'PROCESSO_NOT_FOUND');
+
+      // Regista a mudança na timeline — a estratégia é viva e evolui.
+      // Guardamos snapshots no audit log; o ProcessoEvent apenas sinaliza
+      // que houve actualização (sem vazar o conteúdo ali).
+      const hadStrategy = Boolean(existing.strategy);
+      await this.processosRepository.createEvent(id, userId, {
+        type: ProcessoEventType.NOTE,
+        description: hadStrategy
+          ? 'Estratégia do processo actualizada'
+          : 'Estratégia do processo definida',
+      });
+
+      await this.auditService.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROCESSO,
+        entityId: id,
+        userId,
+        gabineteId,
+        oldValue: { strategy: existing.strategy },
+        newValue: { strategy: processo.strategy },
+      });
+
+      return ok(processo);
+    } catch (error) {
+      return err('Failed to update strategy', 'STRATEGY_UPDATE_FAILED');
+    }
+  }
+
   async changeStage(
     gabineteId: string,
     userId: string,
