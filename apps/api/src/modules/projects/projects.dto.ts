@@ -33,11 +33,21 @@ export const createProjectSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+// risksJson foi declarado em linha com o schema de reports — a definição
+// partilhada vive mais abaixo neste ficheiro (riskSchema). Para evitar
+// "forward reference" redeclaramos o shape aqui; mas ambos têm de ficar
+// alinhados — há um teste que valida isto.
+const projectRiskSchema = z.object({
+  title: z.string().min(1).max(300),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  mitigation: z.string().max(1000).optional().nullable(),
+});
+
 export const updateProjectSchema = createProjectSchema
   .partial()
   .extend({
     actualEndDate: z.string().datetime().optional().nullable(),
-    risksJson: z.record(z.unknown()).optional().nullable(),
+    risksJson: z.array(projectRiskSchema).max(100).optional().nullable(),
   });
 
 export const listProjectsSchema = z.object({
@@ -118,10 +128,16 @@ export const duplicateSystemTemplateSchema = z.object({
 
 // ── Status reports ────────────────────────────────────────
 
-const riskSchema = z.object({
+/**
+ * Forma canónica de um risco. Usada tanto em Project.risksJson (matriz
+ * actual do projecto) como em ProjectStatusReport.risks (snapshot
+ * semanal). Mantê-los em sync evita deriva de schema entre os dois
+ * pontos onde o PDF/email lêem riscos.
+ */
+export const riskSchema = z.object({
   title: z.string().min(1).max(300),
   severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
-  mitigation: z.string().optional().nullable(),
+  mitigation: z.string().max(1000).optional().nullable(),
 });
 
 export const generateReportSchema = z.object({
@@ -137,6 +153,21 @@ export const updateReportSchema = z.object({
   risks: z.array(riskSchema).optional().nullable(),
 });
 
+// ── Capacity heatmap query ────────────────────────────────
+
+export const capacityQuerySchema = z.object({
+  // Monday (UTC) da primeira semana do grid. Aceita datetime ISO ou
+  // YYYY-MM-DD; se ausente, o service usa a semana corrente.
+  weekStart: z
+    .string()
+    .refine((s) => !Number.isNaN(new Date(s).getTime()), {
+      message: 'weekStart inválido (ISO8601 ou YYYY-MM-DD)',
+    })
+    .optional(),
+  weeks: z.coerce.number().int().min(1).max(26).default(8),
+});
+
+export type CapacityQueryDto = z.infer<typeof capacityQuerySchema>;
 export type GenerateReportDto = z.infer<typeof generateReportSchema>;
 export type UpdateReportDto = z.infer<typeof updateReportSchema>;
 

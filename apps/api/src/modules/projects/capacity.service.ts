@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Result, ok, err } from '@kamaia/shared-types';
 
@@ -18,6 +18,7 @@ import { Result, ok, err } from '@kamaia/shared-types';
 @Injectable()
 export class CapacityService {
   private readonly STANDARD_WEEK_HOURS = 40;
+  private readonly logger = new Logger(CapacityService.name);
 
   constructor(private prisma: PrismaService) {}
 
@@ -131,6 +132,11 @@ export class CapacityService {
         grid,
       });
     } catch (e) {
+      const err2 = e as { code?: string; message?: string };
+      this.logger.error(
+        `getCapacity(gabinete=${gabineteId}) — ${err2.code ?? ''} ${err2.message ?? String(e)}`.trim(),
+        e instanceof Error ? e.stack : undefined,
+      );
       return err('Failed to compute capacity', 'CAPACITY_FAILED');
     }
   }

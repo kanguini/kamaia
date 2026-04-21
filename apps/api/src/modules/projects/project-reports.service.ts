@@ -77,6 +77,10 @@ export class ProjectReportsService {
       });
       return ok(reports);
     } catch (e) {
+      this.logger.error(
+        `list(project=${projectId}, gabinete=${gabineteId})`,
+        e instanceof Error ? e.stack : String(e),
+      );
       return err('Failed to list reports', 'REPORTS_LIST_FAILED');
     }
   }
@@ -178,6 +182,10 @@ export class ProjectReportsService {
 
       return ok(report);
     } catch (e) {
+      this.logger.error(
+        `generate(project=${projectId}, gabinete=${gabineteId})`,
+        e instanceof Error ? e.stack : String(e),
+      );
       return err('Failed to generate report', 'REPORT_GENERATE_FAILED');
     }
   }
@@ -203,6 +211,10 @@ export class ProjectReportsService {
       });
       return ok(updated);
     } catch (e) {
+      this.logger.error(
+        `update(report=${reportId}, gabinete=${gabineteId})`,
+        e instanceof Error ? e.stack : String(e),
+      );
       return err('Failed to update report', 'REPORT_UPDATE_FAILED');
     }
   }
@@ -354,6 +366,10 @@ export class ProjectReportsService {
       const buffer = await done;
       return ok(buffer);
     } catch (e) {
+      this.logger.error(
+        `exportPdf(report=${reportId}, gabinete=${gabineteId})`,
+        e instanceof Error ? e.stack : String(e),
+      );
       return err('Failed to export PDF', 'REPORT_PDF_FAILED');
     }
   }
@@ -370,6 +386,10 @@ export class ProjectReportsService {
       });
       return ok(undefined);
     } catch (e) {
+      this.logger.error(
+        `delete(report=${reportId}, gabinete=${gabineteId})`,
+        e instanceof Error ? e.stack : String(e),
+      );
       return err('Failed to delete report', 'REPORT_DELETE_FAILED');
     }
   }

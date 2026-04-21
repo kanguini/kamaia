@@ -38,6 +38,7 @@ import {
   createCustomTemplateSchema,
   updateCustomTemplateSchema,
   duplicateSystemTemplateSchema,
+  capacityQuerySchema,
   CreateProjectDto,
   UpdateProjectDto,
   ListProjectsDto,
@@ -50,6 +51,7 @@ import {
   CreateCustomTemplateDto,
   UpdateCustomTemplateDto,
   DuplicateSystemTemplateDto,
+  CapacityQueryDto,
 } from './projects.dto';
 
 @Controller('projects')
@@ -164,14 +166,9 @@ export class ProjectsController {
   @Get('capacity')
   async getCapacity(
     @GabineteId() gabineteId: string,
-    @Query('weekStart') weekStart?: string,
-    @Query('weeks') weeks?: string,
+    @Query(new ParseZodPipe(capacityQuerySchema)) q: CapacityQueryDto,
   ) {
-    const r = await this.capacity.getCapacity(
-      gabineteId,
-      weekStart,
-      weeks ? parseInt(weeks, 10) : undefined,
-    );
+    const r = await this.capacity.getCapacity(gabineteId, q.weekStart, q.weeks);
     return this.unwrap(r);
   }
 
@@ -271,7 +268,10 @@ export class ProjectsController {
     @Body(new ParseZodPipe(createProjectSchema)) dto: CreateProjectDto,
   ) {
     const r = await this.svc.create(gabineteId, user.sub, dto);
-    return this.unwrap(r, { badRequestDefault: true });
+    return this.unwrap(r, {
+      conflictCodes: ['PROJECT_CODE_EXISTS'],
+      badRequestDefault: true,
+    });
   }
 
   @Put(':id')
@@ -421,17 +421,25 @@ export class ProjectsController {
 
   private unwrap(
     r: { success: boolean; data?: unknown; error?: string; code?: string },
-    opts: { notFoundCodes?: string[]; badRequestDefault?: boolean } = {},
+    opts: {
+      notFoundCodes?: string[];
+      conflictCodes?: string[];
+      badRequestDefault?: boolean;
+    } = {},
   ) {
     if (r.success) return { data: r.data };
-    const notFound = opts.notFoundCodes?.includes(r.code || '') ?? false;
+    const code = r.code || '';
+    const notFound = opts.notFoundCodes?.includes(code) ?? false;
+    const conflict = opts.conflictCodes?.includes(code) ?? false;
     throw new HttpException(
       { error: r.error, code: r.code },
       notFound
         ? HttpStatus.NOT_FOUND
-        : opts.badRequestDefault
-          ? HttpStatus.BAD_REQUEST
-          : HttpStatus.INTERNAL_SERVER_ERROR,
+        : conflict
+          ? HttpStatus.CONFLICT
+          : opts.badRequestDefault
+            ? HttpStatus.BAD_REQUEST
+            : HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }
 }

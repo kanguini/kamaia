@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { WorkflowsService } from '../workflows/workflows.service';
@@ -27,11 +27,22 @@ import {
 
 @Injectable()
 export class ProjectsService {
+  private readonly logger = new Logger(ProjectsService.name);
+
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
     private workflows: WorkflowsService,
   ) {}
+
+  /** Log unexpected exceptions with context before returning a Result.err. */
+  private logError(ctx: string, e: unknown): void {
+    const err = e as { code?: string; message?: string };
+    this.logger.error(
+      `${ctx} — ${err.code ?? ''} ${err.message ?? String(e)}`.trim(),
+      e instanceof Error ? e.stack : undefined,
+    );
+  }
 
   async list(gabineteId: string, params: ListProjectsDto): Promise<Result<any>> {
     try {
@@ -66,6 +77,7 @@ export class ProjectsService {
 
       return ok({ data, total: data.length, nextCursor });
     } catch (e) {
+      this.logError(`list(gabinete=${gabineteId})`, e);
       return err('Failed to list projects', 'PROJECTS_LIST_FAILED');
     }
   }
@@ -96,6 +108,7 @@ export class ProjectsService {
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
       return ok(project);
     } catch (e) {
+      this.logError(`findById(id=${id}, gabinete=${gabineteId})`, e);
       return err('Failed to fetch project', 'PROJECT_FETCH_FAILED');
     }
   }
@@ -105,14 +118,11 @@ export class ProjectsService {
     userId: string,
     dto: CreateProjectDto,
   ): Promise<Result<any>> {
+    // Nota: não fazemos pré-check de duplicado do código. Confiamos no índice
+    // único (gabineteId, code) e apanhamos P2002 aqui — remove a race
+    // check-then-insert em que dois POST concorrentes geravam o mesmo código.
+    const code = dto.code ?? (await this.nextCode(gabineteId, dto.category));
     try {
-      const code = dto.code ?? (await this.nextCode(gabineteId, dto.category));
-
-      const duplicate = await this.prisma.project.findFirst({
-        where: { gabineteId, code },
-      });
-      if (duplicate) return err('Project code already exists', 'PROJECT_CODE_EXISTS');
-
       // Auto-attach default workflow if none specified
       let workflowId = dto.workflowId ?? null;
       if (!workflowId) {
@@ -160,7 +170,7 @@ export class ProjectsService {
 
       await this.audit.log({
         action: AuditAction.CREATE,
-        entity: EntityType.PROCESSO, // reuse existing enum; a dedicated PROJECT entity can be added later
+        entity: EntityType.PROJECT,
         entityId: project.id,
         userId,
         gabineteId,
@@ -169,6 +179,19 @@ export class ProjectsService {
 
       return ok(project);
     } catch (e) {
+      const prismaErr = e as { code?: string; meta?: { target?: unknown } };
+      if (prismaErr.code === 'P2002') {
+        const target = Array.isArray(prismaErr.meta?.target)
+          ? (prismaErr.meta!.target as string[]).join(',')
+          : String(prismaErr.meta?.target ?? '');
+        if (target.includes('code')) {
+          this.logger.warn(
+            `Project code collision (gabinete=${gabineteId}, code=${code}) — retry suggested`,
+          );
+          return err('Project code collision, retry', 'PROJECT_CODE_EXISTS');
+        }
+      }
+      this.logError(`create(gabinete=${gabineteId}, code=${code})`, e);
       return err('Failed to create project', 'PROJECT_CREATE_FAILED');
     }
   }
@@ -216,7 +239,7 @@ export class ProjectsService {
 
       await this.audit.log({
         action: AuditAction.UPDATE,
-        entity: EntityType.PROCESSO,
+        entity: EntityType.PROJECT,
         entityId: id,
         userId,
         gabineteId,
@@ -225,6 +248,7 @@ export class ProjectsService {
 
       return ok(updated);
     } catch (e) {
+      this.logError(`update(id=${id}, gabinete=${gabineteId})`, e);
       return err('Failed to update project', 'PROJECT_UPDATE_FAILED');
     }
   }
@@ -247,7 +271,7 @@ export class ProjectsService {
 
       await this.audit.log({
         action: AuditAction.DELETE,
-        entity: EntityType.PROCESSO,
+        entity: EntityType.PROJECT,
         entityId: id,
         userId,
         gabineteId,
@@ -256,6 +280,7 @@ export class ProjectsService {
 
       return ok(undefined);
     } catch (e) {
+      this.logError(`delete(id=${id}, gabinete=${gabineteId})`, e);
       return err('Failed to delete project', 'PROJECT_DELETE_FAILED');
     }
   }
@@ -290,6 +315,10 @@ export class ProjectsService {
       });
       return ok(member);
     } catch (e) {
+      this.logError(
+        `addMember(project=${projectId}, user=${dto.userId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to add member', 'MEMBER_ADD_FAILED');
     }
   }
@@ -312,6 +341,10 @@ export class ProjectsService {
       });
       return ok(undefined);
     } catch (e) {
+      this.logError(
+        `removeMember(project=${projectId}, user=${userId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to remove member', 'MEMBER_REMOVE_FAILED');
     }
   }
@@ -345,6 +378,10 @@ export class ProjectsService {
       });
       return ok(milestone);
     } catch (e) {
+      this.logError(
+        `addMilestone(project=${projectId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to add milestone', 'MILESTONE_ADD_FAILED');
     }
   }
@@ -379,6 +416,10 @@ export class ProjectsService {
       });
       return ok(updated);
     } catch (e) {
+      this.logError(
+        `updateMilestone(id=${milestoneId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to update milestone', 'MILESTONE_UPDATE_FAILED');
     }
   }
@@ -425,6 +466,10 @@ export class ProjectsService {
       });
       return ok(processos);
     } catch (e) {
+      this.logError(
+        `listLinkableProcessos(project=${projectId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to list linkable processos', 'LINK_LIST_FAILED');
     }
   }
@@ -458,6 +503,10 @@ export class ProjectsService {
       });
       return ok(updated);
     } catch (e) {
+      this.logError(
+        `linkProcesso(project=${projectId}, processo=${processoId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to link processo', 'LINK_PROCESSO_FAILED');
     }
   }
@@ -481,6 +530,10 @@ export class ProjectsService {
       });
       return ok(updated);
     } catch (e) {
+      this.logError(
+        `unlinkProcesso(project=${projectId}, processo=${processoId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to unlink processo', 'UNLINK_PROCESSO_FAILED');
     }
   }
@@ -578,6 +631,10 @@ export class ProjectsService {
         series,
       });
     } catch (e) {
+      this.logError(
+        `getBurndown(project=${projectId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to compute burndown', 'BURNDOWN_FAILED');
     }
   }
@@ -597,6 +654,10 @@ export class ProjectsService {
       });
       return ok(undefined);
     } catch (e) {
+      this.logError(
+        `deleteMilestone(id=${milestoneId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to delete milestone', 'MILESTONE_DELETE_FAILED');
     }
   }
@@ -656,6 +717,10 @@ export class ProjectsService {
         currency: project.budgetCurrency,
       });
     } catch (e) {
+      this.logError(
+        `getBudget(project=${projectId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to compute budget', 'BUDGET_COMPUTE_FAILED');
     }
   }
@@ -747,6 +812,7 @@ export class ProjectsService {
       });
       return ok(created);
     } catch (e) {
+      this.logError(`createCustomTemplate(gabinete=${gabineteId})`, e);
       return err('Failed to create custom template', 'CUSTOM_TEMPLATE_CREATE_FAILED');
     }
   }
@@ -778,6 +844,10 @@ export class ProjectsService {
       });
       return ok(updated);
     } catch (e) {
+      this.logError(
+        `updateCustomTemplate(id=${id}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to update custom template', 'CUSTOM_TEMPLATE_UPDATE_FAILED');
     }
   }
@@ -794,6 +864,10 @@ export class ProjectsService {
       await this.prisma.projectTemplateCustom.delete({ where: { id } });
       return ok(undefined);
     } catch (e) {
+      this.logError(
+        `deleteCustomTemplate(id=${id}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to delete custom template', 'CUSTOM_TEMPLATE_DELETE_FAILED');
     }
   }
@@ -825,6 +899,10 @@ export class ProjectsService {
       });
       return ok(created);
     } catch (e) {
+      this.logError(
+        `duplicateSystemTemplate(systemId=${dto.systemId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to duplicate template', 'TEMPLATE_DUPLICATE_FAILED');
     }
   }
@@ -908,7 +986,7 @@ export class ProjectsService {
 
       await this.audit.log({
         action: AuditAction.CREATE,
-        entity: EntityType.PROCESSO,
+        entity: EntityType.PROJECT,
         entityId: project.id,
         userId,
         gabineteId,
@@ -919,6 +997,10 @@ export class ProjectsService {
       const full = await this.findById(gabineteId, project.id);
       return full;
     } catch (e) {
+      this.logError(
+        `createFromTemplate(templateId=${dto.templateId}, gabinete=${gabineteId})`,
+        e,
+      );
       return err('Failed to create project from template', 'TEMPLATE_CREATE_FAILED');
     }
   }
