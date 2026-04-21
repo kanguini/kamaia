@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from './projects.service';
-import { Result, ok, err } from '@kamaia/shared-types';
+import { Result, ok, err, KamaiaRole } from '@kamaia/shared-types';
 import { GenerateReportDto, UpdateReportDto } from './projects.dto';
 
 /**
@@ -41,7 +41,12 @@ export class ProjectReportsService {
   async generateAll(): Promise<{ generated: number; skipped: number }> {
     const projects = await this.prisma.project.findMany({
       where: { deletedAt: null, status: { in: ['ACTIVO', 'PROPOSTA'] } },
-      select: { id: true, gabineteId: true, managerId: true },
+      select: {
+        id: true,
+        gabineteId: true,
+        managerId: true,
+        manager: { select: { role: true } },
+      },
     });
     let generated = 0;
     let skipped = 0;
@@ -54,16 +59,34 @@ export class ProjectReportsService {
         skipped++;
         continue;
       }
-      const r = await this.generate(p.gabineteId, p.managerId, p.id, { weekStart: weekStart.toISOString() });
+      // Gera como o manager — ele é sempre accountable e passa sempre o
+      // filtro de visibility (managerId match) independentemente do role.
+      const r = await this.generate(
+        p.gabineteId,
+        p.managerId,
+        p.manager.role as KamaiaRole,
+        p.id,
+        { weekStart: weekStart.toISOString() },
+      );
       if (r.success) generated++;
     }
     return { generated, skipped };
   }
 
-  async list(gabineteId: string, projectId: string): Promise<Result<any[]>> {
+  async list(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    projectId: string,
+  ): Promise<Result<any[]>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectsService.projectAccessWhere(userId, userRole),
+        },
         select: { id: true },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
@@ -88,12 +111,18 @@ export class ProjectReportsService {
   async generate(
     gabineteId: string,
     userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     dto: GenerateReportDto,
   ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectsService.projectAccessWhere(userId, userRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -103,7 +132,12 @@ export class ProjectReportsService {
       const weekEnd = new Date(weekStart.getTime() + 7 * 86_400_000);
 
       // Pull burndown snapshot (source of truth for spend numbers)
-      const burndown = await this.projectsService.getBurndown(gabineteId, projectId);
+      const burndown = await this.projectsService.getBurndown(
+        gabineteId,
+        userId,
+        userRole,
+        projectId,
+      );
       const b = burndown.success ? (burndown.data as any) : null;
       const todayKey = new Date().toISOString().slice(0, 10);
       const point =
@@ -192,12 +226,21 @@ export class ProjectReportsService {
 
   async update(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     reportId: string,
     dto: UpdateReportDto,
   ): Promise<Result<any>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId }, deletedAt: null },
+        where: {
+          id: reportId,
+          project: {
+            gabineteId,
+            ...this.projectsService.projectAccessWhere(userId, userRole),
+          },
+          deletedAt: null,
+        },
       });
       if (!report) return err('Report not found', 'REPORT_NOT_FOUND');
 
@@ -225,11 +268,20 @@ export class ProjectReportsService {
    */
   async exportPdf(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     reportId: string,
   ): Promise<Result<Buffer>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId }, deletedAt: null },
+        where: {
+          id: reportId,
+          project: {
+            gabineteId,
+            ...this.projectsService.projectAccessWhere(userId, userRole),
+          },
+          deletedAt: null,
+        },
         include: {
           project: {
             select: {
@@ -374,10 +426,22 @@ export class ProjectReportsService {
     }
   }
 
-  async delete(gabineteId: string, reportId: string): Promise<Result<void>> {
+  async delete(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    reportId: string,
+  ): Promise<Result<void>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId }, deletedAt: null },
+        where: {
+          id: reportId,
+          project: {
+            gabineteId,
+            ...this.projectsService.projectAccessWhere(userId, userRole),
+          },
+          deletedAt: null,
+        },
       });
       if (!report) return err('Report not found', 'REPORT_NOT_FOUND');
       await this.prisma.projectStatusReport.update({

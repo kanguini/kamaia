@@ -177,9 +177,10 @@ export class ProjectsController {
   @Get(':id/reports')
   async listReports(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ) {
-    const r = await this.reports.list(gabineteId, id);
+    const r = await this.reports.list(gabineteId, user.sub, user.role, id);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
@@ -190,7 +191,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Body(new ParseZodPipe(generateReportSchema)) dto: GenerateReportDto,
   ) {
-    const r = await this.reports.generate(gabineteId, user.sub, id, dto);
+    const r = await this.reports.generate(gabineteId, user.sub, user.role, id, dto);
     return this.unwrap(r, {
       notFoundCodes: ['PROJECT_NOT_FOUND'],
       badRequestDefault: true,
@@ -200,10 +201,11 @@ export class ProjectsController {
   @Put('reports/:reportId')
   async updateReport(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('reportId') reportId: string,
     @Body(new ParseZodPipe(updateReportSchema)) dto: UpdateReportDto,
   ) {
-    const r = await this.reports.update(gabineteId, reportId, dto);
+    const r = await this.reports.update(gabineteId, user.sub, user.role, reportId, dto);
     return this.unwrap(r, {
       notFoundCodes: ['REPORT_NOT_FOUND'],
       badRequestDefault: true,
@@ -213,10 +215,11 @@ export class ProjectsController {
   @Get('reports/:reportId/pdf')
   async exportReportPdf(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('reportId') reportId: string,
     @Res() res: Response,
   ) {
-    const r = await this.reports.exportPdf(gabineteId, reportId);
+    const r = await this.reports.exportPdf(gabineteId, user.sub, user.role, reportId);
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
@@ -234,9 +237,10 @@ export class ProjectsController {
   @Delete('reports/:reportId')
   async deleteReport(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('reportId') reportId: string,
   ) {
-    const r = await this.reports.delete(gabineteId, reportId);
+    const r = await this.reports.delete(gabineteId, user.sub, user.role, reportId);
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
@@ -286,7 +290,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Body(new ParseZodPipe(updateProjectSchema)) dto: UpdateProjectDto,
   ) {
-    const r = await this.svc.update(gabineteId, user.sub, id, dto);
+    const r = await this.svc.update(gabineteId, user.sub, user.role, id, dto);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
@@ -298,7 +302,7 @@ export class ProjectsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ) {
-    const r = await this.svc.delete(gabineteId, user.sub, id);
+    const r = await this.svc.delete(gabineteId, user.sub, user.role, id);
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
@@ -312,20 +316,22 @@ export class ProjectsController {
   @Post(':id/members')
   async addMember(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body(new ParseZodPipe(addMemberSchema)) dto: AddMemberDto,
   ) {
-    const r = await this.svc.addMember(gabineteId, id, dto);
+    const r = await this.svc.addMember(gabineteId, user.sub, user.role, id, dto);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
   @Delete(':id/members/:userId')
   async removeMember(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Param('userId') userId: string,
   ) {
-    const r = await this.svc.removeMember(gabineteId, id, userId);
+    const r = await this.svc.removeMember(gabineteId, user.sub, user.role, id, userId);
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
@@ -339,29 +345,43 @@ export class ProjectsController {
   @Post(':id/milestones')
   async addMilestone(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body(new ParseZodPipe(createMilestoneSchema)) dto: CreateMilestoneDto,
   ) {
-    const r = await this.svc.addMilestone(gabineteId, id, dto);
+    const r = await this.svc.addMilestone(gabineteId, user.sub, user.role, id, dto);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
   @Put('milestones/:milestoneId')
   async updateMilestone(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('milestoneId') milestoneId: string,
     @Body(new ParseZodPipe(updateMilestoneSchema)) dto: UpdateMilestoneDto,
   ) {
-    const r = await this.svc.updateMilestone(gabineteId, milestoneId, dto);
+    const r = await this.svc.updateMilestone(
+      gabineteId,
+      user.sub,
+      user.role,
+      milestoneId,
+      dto,
+    );
     return this.unwrap(r, { notFoundCodes: ['MILESTONE_NOT_FOUND'] });
   }
 
   @Delete('milestones/:milestoneId')
   async deleteMilestone(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('milestoneId') milestoneId: string,
   ) {
-    const r = await this.svc.deleteMilestone(gabineteId, milestoneId);
+    const r = await this.svc.deleteMilestone(
+      gabineteId,
+      user.sub,
+      user.role,
+      milestoneId,
+    );
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
@@ -373,14 +393,22 @@ export class ProjectsController {
 
   // ── Budget roll-up ───────────────────────────────────
   @Get(':id/budget')
-  async budget(@GabineteId() gabineteId: string, @Param('id') id: string) {
-    const r = await this.svc.getBudget(gabineteId, id);
+  async budget(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const r = await this.svc.getBudget(gabineteId, user.sub, user.role, id);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
   @Get(':id/burndown')
-  async burndown(@GabineteId() gabineteId: string, @Param('id') id: string) {
-    const r = await this.svc.getBurndown(gabineteId, id);
+  async burndown(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const r = await this.svc.getBurndown(gabineteId, user.sub, user.role, id);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
@@ -388,20 +416,34 @@ export class ProjectsController {
   @Get(':id/linkable-processos')
   async linkableProcessos(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Query('search') search?: string,
   ) {
-    const r = await this.svc.listLinkableProcessos(gabineteId, id, search);
+    const r = await this.svc.listLinkableProcessos(
+      gabineteId,
+      user.sub,
+      user.role,
+      id,
+      search,
+    );
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 
   @Post(':id/processos/:processoId')
   async linkProcesso(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Param('processoId') processoId: string,
   ) {
-    const r = await this.svc.linkProcesso(gabineteId, id, processoId);
+    const r = await this.svc.linkProcesso(
+      gabineteId,
+      user.sub,
+      user.role,
+      id,
+      processoId,
+    );
     return this.unwrap(r, {
       notFoundCodes: ['PROJECT_NOT_FOUND', 'PROCESSO_NOT_FOUND'],
       badRequestDefault: true,
@@ -411,14 +453,25 @@ export class ProjectsController {
   @Delete(':id/processos/:processoId')
   async unlinkProcesso(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Param('processoId') processoId: string,
   ) {
-    const r = await this.svc.unlinkProcesso(gabineteId, id, processoId);
+    const r = await this.svc.unlinkProcesso(
+      gabineteId,
+      user.sub,
+      user.role,
+      id,
+      processoId,
+    );
     if (!r.success) {
       throw new HttpException(
         { error: r.error, code: r.code },
-        r.code === 'PROCESSO_NOT_LINKED' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST,
+        r.code === 'PROJECT_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : r.code === 'PROCESSO_NOT_LINKED'
+            ? HttpStatus.NOT_FOUND
+            : HttpStatus.BAD_REQUEST,
       );
     }
     return { data: { success: true } };

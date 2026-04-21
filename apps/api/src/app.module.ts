@@ -39,10 +39,21 @@ import { SeedModule } from './modules/seed/seed.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 60000, limit: 10 },
-      { name: 'long', ttl: 3600000, limit: 200 },
-    ]),
+    // Em NODE_ENV=test relaxamos os limites — E2E corre dezenas de POSTs
+    // em segundos sob o mesmo IP/token e o "short" window (10/60s) estoura
+    // de forma não-determinística. Valores permissivos em teste não
+    // reduzem a validade do resto das assertions de negócio.
+    ThrottlerModule.forRoot(
+      process.env.NODE_ENV === 'test'
+        ? [
+            { name: 'short', ttl: 60000, limit: 10_000 },
+            { name: 'long', ttl: 3600000, limit: 100_000 },
+          ]
+        : [
+            { name: 'short', ttl: 60000, limit: 10 },
+            { name: 'long', ttl: 3600000, limit: 200 },
+          ],
+    ),
     PrismaModule,
     AuthModule,
     AuditModule,

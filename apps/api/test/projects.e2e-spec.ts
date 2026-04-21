@@ -1,4 +1,7 @@
 import request from 'supertest';
+import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+import { JwtService } from '@nestjs/jwt';
 import { createTestApp, TestApp } from './helpers/app';
 import { cleanupGabinete, seedGabineteWithUser, TestUserFixture } from './helpers/fixtures';
 
@@ -520,5 +523,114 @@ describe('Projects (e2e)', () => {
     expect(new Date(res.body.data.startDate).getUTCDate()).toBe(
       new Date(newStart).getUTCDate(),
     );
+  });
+
+  it('visibility=MEMBERS_ONLY: non-member member-role user is blocked until added', async () => {
+    // Seed a second user inside the SAME gabinete with role ADVOGADO_MEMBRO —
+    // the visibility filter só "morde" quando o utilizador não é admin e
+    // não tem relação directa com o projecto.
+    const jwt = ctx.app.get(JwtService);
+    const memberUserId = randomUUID();
+    const memberEmail = `member-${Date.now()}-${Math.floor(Math.random() * 1e6)}@test.kamaia.local`;
+    await ctx.prisma.user.create({
+      data: {
+        id: memberUserId,
+        gabineteId: user.gabineteId,
+        email: memberEmail,
+        passwordHash: await bcrypt.hash('Test@12345', 10),
+        firstName: 'Private',
+        lastName: 'Member',
+        role: 'ADVOGADO_MEMBRO',
+        isActive: true,
+        provider: 'credentials',
+      },
+    });
+    const memberToken = jwt.sign({
+      sub: memberUserId,
+      gabineteId: user.gabineteId,
+      role: 'ADVOGADO_MEMBRO',
+      email: memberEmail,
+    });
+
+    // SOCIO_GESTOR (user) cria projecto MEMBERS_ONLY
+    const create = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({ name: 'Confidencial X', category: 'MA', visibility: 'MEMBERS_ONLY' });
+    expect([200, 201]).toContain(create.status);
+    const projectId = create.body.data.id;
+
+    // Admin ainda vê
+    const adminRead = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}`)
+      .set('Authorization', auth());
+    expect(adminRead.status).toBe(200);
+
+    // Non-member member-role user recebe 404 (leak-free — não distingue
+    // "não existe" de "não podes ver")
+    const blockedRead = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}`)
+      .set('Authorization', `Bearer ${memberToken}`);
+    expect(blockedRead.status).toBe(404);
+
+    // Lista também não o inclui
+    const blockedList = await request(ctx.app.getHttpServer())
+      .get('/api/projects')
+      .set('Authorization', `Bearer ${memberToken}`);
+    expect(blockedList.status).toBe(200);
+    expect(
+      blockedList.body.data.data.some((p: any) => p.id === projectId),
+    ).toBe(false);
+
+    // Admin adiciona-o como RESPONSIBLE — passa a ver
+    const add = await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/members`)
+      .set('Authorization', auth())
+      .send({ userId: memberUserId, role: 'RESPONSIBLE' });
+    expect([200, 201]).toContain(add.status);
+
+    const nowVisible = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}`)
+      .set('Authorization', `Bearer ${memberToken}`);
+    expect(nowVisible.status).toBe(200);
+    expect(nowVisible.body.data.id).toBe(projectId);
+  });
+
+  it('GET /api/projects/:id/budget rolls up milestone budgetCents as plannedMilestones', async () => {
+    const create = await request(ctx.app.getHttpServer())
+      .post('/api/projects')
+      .set('Authorization', auth())
+      .send({
+        name: 'Budget Rollup',
+        category: 'CONSULTORIA',
+        budgetAmount: 5_000_000, // 50.000 AOA em centavos
+      });
+    expect([200, 201]).toContain(create.status);
+    const projectId = create.body.data.id;
+
+    const dueA = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    const dueB = new Date(Date.now() + 60 * 86_400_000).toISOString();
+
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({ title: 'Fase 1', dueDate: dueA, budgetCents: 2_000_000 });
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({ title: 'Fase 2', dueDate: dueB, budgetCents: 1_500_000 });
+    // Milestone sem budgetCents não conta para o roll-up
+    await request(ctx.app.getHttpServer())
+      .post(`/api/projects/${projectId}/milestones`)
+      .set('Authorization', auth())
+      .send({ title: 'Fase 3 (sem budget)', dueDate: dueB });
+
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/api/projects/${projectId}/budget`)
+      .set('Authorization', auth());
+    expect(res.status).toBe(200);
+    expect(res.body.data.plannedMilestones).toBe(3_500_000);
+    // Top-down 5M - bottom-up 3.5M = 1.5M de "buffer"/gap
+    expect(res.body.data.plannedGap).toBe(1_500_000);
   });
 });

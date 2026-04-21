@@ -51,8 +51,11 @@ export class ProjectsService {
    * ou alguém com relação directa — manager, sponsor ou member. Para
    * projectos PUBLIC qualquer utilizador do gabinete passa. Admins
    * (SOCIO_GESTOR/ADVOGADO_SOLO) são sempre transparentes — voltam `{}`.
+   *
+   * Público porque o ProjectReportsService aplica a mesma filtragem nos
+   * seus pré-fetch de projecto via `project: { ... }` relation filter.
    */
-  private projectAccessWhere(
+  projectAccessWhere(
     userId: string,
     userRole: KamaiaRole,
   ): Record<string, unknown> {
@@ -254,12 +257,18 @@ export class ProjectsService {
   async update(
     gabineteId: string,
     userId: string,
+    userRole: KamaiaRole,
     id: string,
     dto: UpdateProjectDto,
   ): Promise<Result<any>> {
     try {
       const existing = await this.prisma.project.findFirst({
-        where: { id, gabineteId, deletedAt: null },
+        where: {
+          id,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!existing) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -312,11 +321,17 @@ export class ProjectsService {
   async delete(
     gabineteId: string,
     userId: string,
+    userRole: KamaiaRole,
     id: string,
   ): Promise<Result<void>> {
     try {
       const existing = await this.prisma.project.findFirst({
-        where: { id, gabineteId, deletedAt: null },
+        where: {
+          id,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!existing) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -344,12 +359,19 @@ export class ProjectsService {
   // ── Members ──────────────────────────────────────────
   async addMember(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     dto: AddMemberDto,
   ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -381,24 +403,30 @@ export class ProjectsService {
 
   async removeMember(
     gabineteId: string,
+    actorUserId: string,
+    actorUserRole: KamaiaRole,
     projectId: string,
-    userId: string,
+    memberUserId: string,
   ): Promise<Result<void>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId },
+        where: {
+          id: projectId,
+          gabineteId,
+          ...this.projectAccessWhere(actorUserId, actorUserRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
-      if (project.managerId === userId) {
+      if (project.managerId === memberUserId) {
         return err('Cannot remove project manager', 'CANNOT_REMOVE_MANAGER');
       }
       await this.prisma.projectMember.delete({
-        where: { projectId_userId: { projectId, userId } },
+        where: { projectId_userId: { projectId, userId: memberUserId } },
       });
       return ok(undefined);
     } catch (e) {
       this.logError(
-        `removeMember(project=${projectId}, user=${userId}, gabinete=${gabineteId})`,
+        `removeMember(project=${projectId}, user=${memberUserId}, gabinete=${gabineteId})`,
         e,
       );
       return err('Failed to remove member', 'MEMBER_REMOVE_FAILED');
@@ -408,12 +436,19 @@ export class ProjectsService {
   // ── Milestones ───────────────────────────────────────
   async addMilestone(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     dto: CreateMilestoneDto,
   ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -445,12 +480,21 @@ export class ProjectsService {
 
   async updateMilestone(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     milestoneId: string,
     dto: UpdateMilestoneDto,
   ): Promise<Result<any>> {
     try {
       const milestone = await this.prisma.projectMilestone.findFirst({
-        where: { id: milestoneId, project: { gabineteId }, deletedAt: null },
+        where: {
+          id: milestoneId,
+          project: {
+            gabineteId,
+            ...this.projectAccessWhere(userId, userRole),
+          },
+          deletedAt: null,
+        },
       });
       if (!milestone) return err('Milestone not found', 'MILESTONE_NOT_FOUND');
 
@@ -489,12 +533,19 @@ export class ProjectsService {
    */
   async listLinkableProcessos(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     search?: string,
   ): Promise<Result<any[]>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -534,12 +585,19 @@ export class ProjectsService {
 
   async linkProcesso(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     processoId: string,
   ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
@@ -571,10 +629,24 @@ export class ProjectsService {
 
   async unlinkProcesso(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     projectId: string,
     processoId: string,
   ): Promise<Result<any>> {
     try {
+      // Visibility gate no projecto — evita unlink por quem não deveria ver.
+      const project = await this.prisma.project.findFirst({
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
+        select: { id: true },
+      });
+      if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
+
       const processo = await this.prisma.processo.findFirst({
         where: { id: processoId, gabineteId, projectId },
       });
@@ -604,10 +676,20 @@ export class ProjectsService {
    *
    * Returns { budget, currency, series: [{ date, actualSpent, idealSpent }] }
    */
-  async getBurndown(gabineteId: string, projectId: string): Promise<Result<any>> {
+  async getBurndown(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    projectId: string,
+  ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
         include: {
           members: true,
           processos: { select: { id: true } },
@@ -699,11 +781,20 @@ export class ProjectsService {
 
   async deleteMilestone(
     gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
     milestoneId: string,
   ): Promise<Result<void>> {
     try {
       const milestone = await this.prisma.projectMilestone.findFirst({
-        where: { id: milestoneId, project: { gabineteId }, deletedAt: null },
+        where: {
+          id: milestoneId,
+          project: {
+            gabineteId,
+            ...this.projectAccessWhere(userId, userRole),
+          },
+          deletedAt: null,
+        },
       });
       if (!milestone) return err('Milestone not found', 'MILESTONE_NOT_FOUND');
       await this.prisma.projectMilestone.update({
@@ -720,14 +811,32 @@ export class ProjectsService {
     }
   }
 
-  async getBudget(gabineteId: string, projectId: string): Promise<Result<any>> {
+  async getBudget(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    projectId: string,
+  ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id: projectId, gabineteId, deletedAt: null },
+        where: {
+          id: projectId,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
         include: {
           members: true,
           processos: {
             select: { id: true },
+          },
+          // Milestones são a referência do "planeado por fase" — a soma
+          // dá-nos o planned bottom-up para contrastar com `budgetAmount`
+          // (planned top-down). Gap sinaliza phases em falta ou budget
+          // desalinhado com breakdown.
+          milestones: {
+            where: { deletedAt: null },
+            select: { budgetCents: true },
           },
         },
       });
@@ -764,10 +873,24 @@ export class ProjectsService {
       const budget = project.budgetAmount ?? 0;
       const remaining = budget ? budget - totalSpent : null;
 
+      // Roll-up bottom-up a partir das milestones. `null` só aparece
+      // explicitamente quando nenhuma milestone tem budgetCents definido —
+      // evita dar 0 e sugerir que está "tudo planeado a zero".
+      const milestonesWithBudget = project.milestones.filter(
+        (m) => typeof m.budgetCents === 'number',
+      );
+      const plannedMilestones = milestonesWithBudget.length
+        ? milestonesWithBudget.reduce((s, m) => s + (m.budgetCents ?? 0), 0)
+        : null;
+      const plannedGap =
+        budget && plannedMilestones !== null ? budget - plannedMilestones : null;
+
       return ok({
         budget,
         spent: totalSpent,
         remaining,
+        plannedMilestones,
+        plannedGap,
         breakdown: {
           timeCost: Math.round(timeCost),
           expenseCost,

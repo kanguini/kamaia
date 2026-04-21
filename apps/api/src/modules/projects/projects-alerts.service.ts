@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProjectsService } from './projects.service';
 import { EmailProvider } from '../notifications/providers/email.provider';
 import { PushProvider } from '../notifications/providers/push.provider';
-import { NotificationType } from '@kamaia/shared-types';
+import { NotificationType, KamaiaRole } from '@kamaia/shared-types';
 
 function escapeHtml(s: string): string {
   return s
@@ -56,7 +56,16 @@ export class ProjectsAlertsService {
   }> {
     const projects = await this.prisma.project.findMany({
       where: { deletedAt: null, status: { in: ['ACTIVO', 'PROPOSTA'] } },
-      select: { id: true, gabineteId: true, managerId: true, name: true },
+      select: {
+        id: true,
+        gabineteId: true,
+        managerId: true,
+        name: true,
+        // Role é necessário para a assinatura do getBurndown — o manager
+        // passa sempre o filtro de visibility (match em managerId), mas
+        // precisamos fornecer um role válido ao contrato da service.
+        manager: { select: { role: true } },
+      },
     });
 
     let driftAlerts = 0;
@@ -75,8 +84,14 @@ export class ProjectsAlertsService {
     gabineteId: string;
     managerId: string;
     name: string;
+    manager: { role: string };
   }): Promise<number> {
-    const result = await this.projectsService.getBurndown(p.gabineteId, p.id);
+    const result = await this.projectsService.getBurndown(
+      p.gabineteId,
+      p.managerId,
+      p.manager.role as KamaiaRole,
+      p.id,
+    );
     if (!result.success) return 0;
     const burndown = result.data as {
       budget: number;
@@ -132,6 +147,7 @@ export class ProjectsAlertsService {
     gabineteId: string;
     managerId: string;
     name: string;
+    manager: { role: string };
   }): Promise<number> {
     const now = new Date();
     const overdue = await this.prisma.projectMilestone.findMany({
