@@ -20,9 +20,17 @@ import { Reveal } from '@/components/Reveal'
 import { appUrl } from '@/lib/utm'
 
 export const metadata: Metadata = {
-  title: 'Funcionalidades',
+  title: 'Capacidades',
   description:
-    'Dashboard executivo, processos, prazos, clientes, facturação, timesheets, agenda, documentos e IA assistente — tudo num só fluxo pensado para gabinetes jurídicos.',
+    'Gestão de processos, controlo de prazos, CRM jurídico, facturação, timesheets, agenda, documentação e assistente IA contextual — integrados sob metodologias ágeis aplicadas ao sector jurídico.',
+  alternates: { canonical: '/funcionalidades' },
+  openGraph: {
+    title: 'Capacidades · Kamaia',
+    description:
+      'Um fluxo coerente: do primeiro contacto à decisão estratégica. Capacidades integradas para a prática jurídica moderna.',
+    url: '/funcionalidades',
+    type: 'website',
+  },
 }
 
 interface Module {

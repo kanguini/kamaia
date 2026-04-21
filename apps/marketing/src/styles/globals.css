@@ -29,25 +29,8 @@
     --k2-radius-lg: 14px;
   }
 
-  .light {
-    --k2-bg: #ffffff;
-    --k2-bg-elev: #fafafa;
-    --k2-bg-elev-2: #f0f0f0;
-    --k2-bg-hover: #ededed;
-    --k2-border: #e4e4e4;
-    --k2-border-strong: #d0d0d0;
-    --k2-text: #000000;
-    --k2-text-dim: #5a5a5a;
-    --k2-text-mute: #a0a0a0;
-    --k2-accent: #2952d9;
-    --k2-accent-dim: #1e3fb8;
-    --k2-accent-fg: #ffffff;
-    --k2-good: #2a9e5c;
-    --k2-warn: #c8891a;
-    --k2-bad: #c2404f;
-  }
-
   html {
+    color-scheme: dark;
     background: var(--k2-bg);
     color: var(--k2-text);
     -webkit-font-smoothing: antialiased;

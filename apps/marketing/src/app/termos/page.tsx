@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: 'Termos de serviço',
   description:
     'Termos e condições de uso da plataforma Kamaia — SaaS de gestão jurídica para advogados em Angola.',
+  alternates: { canonical: '/termos' },
 }
 
 const LAST_UPDATED = '19 de Abril de 2026'

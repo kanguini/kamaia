@@ -8,7 +8,15 @@ import { Reveal } from '@/components/Reveal'
 export const metadata: Metadata = {
   title: 'Sobre',
   description:
-    'Kamaia é construído por advogados para advogados. Conhece a missão, a equipa e as decisões técnicas que tornam o Kamaia diferente.',
+    'Kamaia nasce em Angola para elevar a prática jurídica ao nível estratégico. Conheça a missão, a abordagem multidisciplinar e as decisões técnicas que diferenciam a plataforma.',
+  alternates: { canonical: '/sobre' },
+  openGraph: {
+    title: 'Sobre · Kamaia',
+    description:
+      'Do jurista-agente ao jurista-estratega. A visão, a equipa e a arquitectura por detrás do Kamaia.',
+    url: '/sobre',
+    type: 'website',
+  },
 }
 
 export default function SobrePage() {

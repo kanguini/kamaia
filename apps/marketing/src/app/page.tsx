@@ -6,9 +6,48 @@ import { HeroFloatingCards } from '@/components/HeroFloatingCards'
 import { Reveal } from '@/components/Reveal'
 import { appUrl } from '@/lib/utm'
 
+// Kept in sync with the Faq() component below so Google can build the
+// FAQ rich result without re-parsing the DOM.
+const FAQ_ITEMS = [
+  {
+    q: 'Como é garantida a segurança e confidencialidade dos dados?',
+    a: 'Isolamento multi-tenant com RLS no PostgreSQL — nenhum gabinete acede a dados de outro. Todas as escritas geram audit log append-only. Backups diários encriptados e infra-estrutura com cifra em trânsito e em repouso. Os detalhes técnicos estão disponíveis na política de privacidade.',
+  },
+  {
+    q: 'Qual é o tempo típico de adopção?',
+    a: 'Um advogado solo configura e regista o primeiro processo em 15 minutos. Escritórios maiores costumam estar em operação em 2 a 3 dias. O onboarding é acompanhado pela equipa em qualquer um dos segmentos.',
+  },
+  {
+    q: 'É possível importar dados existentes?',
+    a: 'Sim. Clientes, processos e prazos suportam importação CSV. Gabinetes com histórico noutros sistemas beneficiam de migração assistida pela equipa durante o onboarding.',
+  },
+  {
+    q: 'A plataforma funciona em mobilidade?',
+    a: 'A aplicação web é responsiva e usa-se confortavelmente em tablet. A aplicação móvel nativa está planeada para Q3 de 2026 — por agora recomendamos consulta em mobilidade e edição em desktop.',
+  },
+  {
+    q: 'Como se integra a componente de IA?',
+    a: 'O assistente IA opera sobre o contexto do próprio gabinete — processos, documentos e histórico —, com governo de acesso e rastreabilidade. Nunca envia dados sensíveis para indexação pública.',
+  },
+]
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_ITEMS.map((it) => ({
+    '@type': 'Question',
+    name: it.q,
+    acceptedAnswer: { '@type': 'Answer', text: it.a },
+  })),
+}
+
 export default function HomePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <Nav />
       <main>
         <Hero />
@@ -347,29 +386,7 @@ function SocialProof() {
 
 // ─── FAQ ──────────────────────────────────────────────────────
 function Faq() {
-  const items = [
-    {
-      q: 'Como é garantida a segurança e confidencialidade dos dados?',
-      a: 'Isolamento multi-tenant com RLS no PostgreSQL — nenhum gabinete acede a dados de outro. Todas as escritas geram audit log append-only. Backups diários encriptados e infra-estrutura com cifra em trânsito e em repouso. Os detalhes técnicos estão disponíveis na política de privacidade.',
-    },
-    {
-      q: 'Qual é o tempo típico de adopção?',
-      a: 'Um advogado solo configura e regista o primeiro processo em 15 minutos. Escritórios maiores costumam estar em operação em 2 a 3 dias. O onboarding é acompanhado pela equipa em qualquer um dos segmentos.',
-    },
-    {
-      q: 'É possível importar dados existentes?',
-      a: 'Sim. Clientes, processos e prazos suportam importação CSV. Gabinetes com histórico noutros sistemas beneficiam de migração assistida pela equipa durante o onboarding.',
-    },
-    {
-      q: 'A plataforma funciona em mobilidade?',
-      a: 'A aplicação web é responsiva e usa-se confortavelmente em tablet. A aplicação móvel nativa está planeada para Q3 de 2026 — por agora recomendamos consulta em mobilidade e edição em desktop.',
-    },
-    {
-      q: 'Como se integra a componente de IA?',
-      a: 'O assistente IA opera sobre o contexto do próprio gabinete — processos, documentos e histórico —, com governo de acesso e rastreabilidade. Nunca envia dados sensíveis para indexação pública.',
-    },
-  ]
-
+  const items = FAQ_ITEMS
   return (
     <section className="border-t border-white/5 bg-black py-24 text-white">
       <div className="shell grid gap-12 lg:grid-cols-[0.8fr_1fr]">

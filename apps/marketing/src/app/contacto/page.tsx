@@ -9,7 +9,15 @@ import { ContactForm } from './ContactForm'
 export const metadata: Metadata = {
   title: 'Contacto',
   description:
-    'Fala connosco. Agenda uma demo ou tira dúvidas sobre o Kamaia — plataforma de gestão jurídica para advogados e escritórios.',
+    'Fale connosco para candidatar o seu escritório ao programa de early access, agendar uma demonstração ou esclarecer qualquer questão técnica sobre o Kamaia.',
+  alternates: { canonical: '/contacto' },
+  openGraph: {
+    title: 'Contacto · Kamaia',
+    description:
+      'Candidate-se ao early access ou agende uma demonstração da plataforma.',
+    url: '/contacto',
+    type: 'website',
+  },
 }
 
 export default function ContactoPage({

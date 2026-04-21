@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: 'Política de privacidade',
   description:
     'Como o Kamaia recolhe, armazena e protege os dados dos gabinetes e dos seus clientes. Conforme Lei 22/11 de protecção de dados pessoais de Angola.',
+  alternates: { canonical: '/politica-privacidade' },
 }
 
 const LAST_UPDATED = '19 de Abril de 2026'

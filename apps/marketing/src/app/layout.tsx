@@ -27,23 +27,33 @@ export const metadata: Metadata = {
   },
   description:
     'Uma nova forma de ver a prática jurídica. Abordagem multidisciplinar que integra tecnologia, metodologias ágeis e assistente IA — do jurista-agente ao jurista-estratega.',
+  applicationName: 'Kamaia',
   keywords: [
     'plataforma jurídica',
     'gestão estratégica jurídica',
     'legal tech Angola',
+    'software advogados Angola',
     'gestão de escritórios de advogados',
     'gestão de processos jurídicos',
     'assistente IA jurídico',
     'metodologias ágeis direito',
+    'PALOP legal tech',
+    'advocacia estratégica',
   ],
-  authors: [{ name: 'Kamaia' }],
+  authors: [{ name: 'Kamaia', url: SITE_URL }],
+  creator: 'Kamaia',
+  publisher: 'Kamaia',
+  category: 'Legal Technology',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     title: 'Kamaia · Plataforma estratégica de prática jurídica',
     description:
       'Uma abordagem multidisciplinar que faz do jurista não apenas um agente do direito, mas um baluarte da estratégia.',
-    url: 'https://kamaia.cc',
+    url: SITE_URL,
     siteName: 'Kamaia',
-    locale: 'pt',
+    locale: 'pt_AO',
     type: 'website',
   },
   twitter: {
@@ -55,11 +65,31 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
   },
 }
 
+export const viewport = {
+  themeColor: '#0a0f1f',
+  colorScheme: 'dark' as const,
+  width: 'device-width',
+  initialScale: 1,
+}
+
 // Structured data — identifies Kamaia as an Organization + the SaaS as a
-// SoftwareApplication so Google can build a rich card.
+// SoftwareApplication + WebSite (enables the Google Sitelinks Searchbox)
+// so Google can build a rich card. FAQ JSON-LD lives on the homepage.
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -68,23 +98,59 @@ const jsonLd = {
       '@id': `${SITE_URL}#org`,
       name: 'Kamaia',
       url: SITE_URL,
-      logo: `${SITE_URL}/og/logo-square.png`,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/icon.svg`,
+        width: 64,
+        height: 64,
+      },
+      description:
+        'Plataforma estratégica de prática jurídica. Abordagem multidisciplinar que integra tecnologia, metodologias ágeis e assistente IA para advogados, escritórios e gabinetes jurídicos.',
       contactPoint: {
         '@type': 'ContactPoint',
         email: 'hello@kamaia.cc',
         contactType: 'customer service',
         availableLanguage: ['Portuguese'],
+        areaServed: ['AO', 'PT', 'MZ', 'CV', 'ST', 'GW'],
       },
+      areaServed: [
+        { '@type': 'Country', name: 'Angola' },
+        { '@type': 'Country', name: 'Portugal' },
+        { '@type': 'Country', name: 'Moçambique' },
+        { '@type': 'Country', name: 'Cabo Verde' },
+      ],
+      foundingLocation: { '@type': 'Country', name: 'Angola' },
       sameAs: [],
     },
     {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}#website`,
+      url: SITE_URL,
+      name: 'Kamaia',
+      description:
+        'Plataforma estratégica de prática jurídica para advogados, escritórios e gabinetes jurídicos em Angola e PALOP.',
+      publisher: { '@id': `${SITE_URL}#org` },
+      inLanguage: 'pt',
+    },
+    {
       '@type': 'SoftwareApplication',
+      '@id': `${SITE_URL}#software`,
       name: 'Kamaia',
       applicationCategory: 'BusinessApplication',
       applicationSubCategory: 'LegalSoftware',
       operatingSystem: 'Web',
+      url: SITE_URL,
       description:
         'Plataforma estratégica de prática jurídica — integra gestão de processos, prazos, timesheets, facturação e assistente IA sob metodologias ágeis.',
+      featureList: [
+        'Gestão de processos jurídicos',
+        'Controlo de prazos com alertas multi-canal',
+        'Timesheets e rentabilidade',
+        'Facturação em AOA',
+        'Assistente IA contextual',
+        'Audit log append-only',
+        'Isolamento multi-tenant',
+      ],
       publisher: { '@id': `${SITE_URL}#org` },
     },
   ],

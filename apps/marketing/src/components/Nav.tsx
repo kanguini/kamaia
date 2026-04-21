@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Logo } from './Logo'
-import { ThemeToggle } from './ThemeToggle'
 import { appUrl } from '@/lib/utm'
 import { cn } from '@/lib/utils'
 
@@ -55,7 +54,6 @@ export function Nav() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle />
           <Link
             href={appUrl('/login', 'nav')}
             className="rounded-md px-3 py-1.5 text-sm text-white/75 transition-colors hover:text-white"
