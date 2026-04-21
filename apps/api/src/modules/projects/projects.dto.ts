@@ -13,6 +13,7 @@ const category = z.enum([
 const status = z.enum(['PROPOSTA', 'ACTIVO', 'EM_PAUSA', 'CONCLUIDO', 'CANCELADO']);
 const health = z.enum(['GREEN', 'YELLOW', 'RED']);
 const raci = z.enum(['RESPONSIBLE', 'ACCOUNTABLE', 'CONSULTED', 'INFORMED']);
+const visibility = z.enum(['PUBLIC', 'MEMBERS_ONLY']);
 
 export const createProjectSchema = z.object({
   name: z.string().min(1).max(300),
@@ -30,6 +31,7 @@ export const createProjectSchema = z.object({
   endDate: z.string().datetime().optional().nullable(),
   budgetAmount: z.number().int().min(0).optional().nullable(),
   budgetCurrency: z.string().length(3).optional(),
+  visibility: visibility.optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -75,6 +77,10 @@ export const createMilestoneSchema = z.object({
   startDate: z.string().datetime().optional().nullable(),
   dueDate: z.string().datetime(),
   progress: z.number().int().min(0).max(500).optional(),
+  // Orçamento planeado para a fase (centavos). Validação de soma ≤
+  // budget do projecto é responsabilidade do frontend enquanto não
+  // mudamos a curva do burndown.
+  budgetCents: z.number().int().min(0).optional().nullable(),
   dependsOnId: z.string().uuid().optional().nullable(),
   position: z.number().int().min(0).optional(),
 });

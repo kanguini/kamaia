@@ -67,9 +67,10 @@ export class ProjectsController {
   @Get()
   async list(
     @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
     @Query(new ParseZodPipe(listProjectsSchema)) q: ListProjectsDto,
   ) {
-    const r = await this.svc.list(gabineteId, q);
+    const r = await this.svc.list(gabineteId, user.sub, user.role, q);
     return this.unwrap(r);
   }
 
@@ -146,7 +147,7 @@ export class ProjectsController {
     @CurrentUser() user: JwtPayload,
     @Body(new ParseZodPipe(fromTemplateSchema)) dto: FromTemplateDto,
   ) {
-    const r = await this.svc.createFromTemplate(gabineteId, user.sub, dto);
+    const r = await this.svc.createFromTemplate(gabineteId, user.sub, user.role, dto);
     return this.unwrap(r, {
       notFoundCodes: ['TEMPLATE_NOT_FOUND'],
       badRequestDefault: true,
@@ -254,8 +255,12 @@ export class ProjectsController {
   }
 
   @Get(':id')
-  async findById(@GabineteId() gabineteId: string, @Param('id') id: string) {
-    const r = await this.svc.findById(gabineteId, id);
+  async findById(
+    @GabineteId() gabineteId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const r = await this.svc.findById(gabineteId, user.sub, user.role, id);
     return this.unwrap(r, { notFoundCodes: ['PROJECT_NOT_FOUND'] });
   }
 

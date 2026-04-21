@@ -8,6 +8,7 @@ import {
   err,
   AuditAction,
   EntityType,
+  KamaiaRole,
   PROJECT_TEMPLATES,
   findProjectTemplate,
   ProjectTemplate,
@@ -44,18 +45,61 @@ export class ProjectsService {
     );
   }
 
-  async list(gabineteId: string, params: ListProjectsDto): Promise<Result<any>> {
+  /**
+   * Cláusula WHERE parcial que restringe projectos MEMBERS_ONLY a quem os
+   * pode efectivamente ver: sócio-gestor, advogado solo (ele é o gabinete),
+   * ou alguém com relação directa — manager, sponsor ou member. Para
+   * projectos PUBLIC qualquer utilizador do gabinete passa. Admins
+   * (SOCIO_GESTOR/ADVOGADO_SOLO) são sempre transparentes — voltam `{}`.
+   */
+  private projectAccessWhere(
+    userId: string,
+    userRole: KamaiaRole,
+  ): Record<string, unknown> {
+    if (
+      userRole === KamaiaRole.SOCIO_GESTOR ||
+      userRole === KamaiaRole.ADVOGADO_SOLO
+    ) {
+      return {};
+    }
+    return {
+      OR: [
+        { visibility: 'PUBLIC' },
+        { managerId: userId },
+        { sponsorId: userId },
+        { members: { some: { userId } } },
+      ],
+    };
+  }
+
+  async list(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    params: ListProjectsDto,
+  ): Promise<Result<any>> {
     try {
+      const access = this.projectAccessWhere(userId, userRole);
+      const baseOr = access.OR as unknown[] | undefined;
       const where: any = { gabineteId, deletedAt: null };
       if (params.status) where.status = params.status;
       if (params.category) where.category = params.category;
       if (params.managerId) where.managerId = params.managerId;
       if (params.clienteId) where.clienteId = params.clienteId;
+
+      // Combina dois OR (pesquisa + acesso) via AND para não se anularem.
+      const accessBlock = baseOr ? [{ OR: baseOr }] : [];
       if (params.search) {
-        where.OR = [
-          { name: { contains: params.search, mode: 'insensitive' } },
-          { code: { contains: params.search, mode: 'insensitive' } },
-        ];
+        const searchBlock = {
+          OR: [
+            { name: { contains: params.search, mode: 'insensitive' } },
+            { code: { contains: params.search, mode: 'insensitive' } },
+          ],
+        };
+        if (accessBlock.length) where.AND = [...accessBlock, searchBlock];
+        else where.OR = searchBlock.OR;
+      } else if (accessBlock.length) {
+        where.AND = accessBlock;
       }
 
       const projects = await this.prisma.project.findMany({
@@ -82,10 +126,20 @@ export class ProjectsService {
     }
   }
 
-  async findById(gabineteId: string, id: string): Promise<Result<any>> {
+  async findById(
+    gabineteId: string,
+    userId: string,
+    userRole: KamaiaRole,
+    id: string,
+  ): Promise<Result<any>> {
     try {
       const project = await this.prisma.project.findFirst({
-        where: { id, gabineteId, deletedAt: null },
+        where: {
+          id,
+          gabineteId,
+          deletedAt: null,
+          ...this.projectAccessWhere(userId, userRole),
+        },
         include: {
           cliente: { select: { id: true, name: true, type: true } },
           manager: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -152,6 +206,7 @@ export class ProjectsService {
           endDate: dto.endDate ? new Date(dto.endDate) : null,
           budgetAmount: dto.budgetAmount ?? null,
           budgetCurrency: dto.budgetCurrency ?? 'AOA',
+          visibility: dto.visibility ?? 'PUBLIC',
           tags: dto.tags ?? [],
         },
         include: {
@@ -232,6 +287,7 @@ export class ProjectsService {
           }),
           ...(dto.budgetAmount !== undefined && { budgetAmount: dto.budgetAmount }),
           ...(dto.budgetCurrency !== undefined && { budgetCurrency: dto.budgetCurrency }),
+          ...(dto.visibility !== undefined && { visibility: dto.visibility }),
           ...(dto.tags !== undefined && { tags: dto.tags }),
           ...(dto.risksJson !== undefined && { risksJson: dto.risksJson as any }),
         },
@@ -372,6 +428,7 @@ export class ProjectsService {
           startDate: dto.startDate ? new Date(dto.startDate) : null,
           dueDate: new Date(dto.dueDate),
           progress: dto.progress ?? 0,
+          budgetCents: dto.budgetCents ?? null,
           dependsOnId: dto.dependsOnId ?? null,
           position: dto.position ?? count,
         },
@@ -407,6 +464,7 @@ export class ProjectsService {
           }),
           ...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
           ...(dto.progress !== undefined && { progress: dto.progress }),
+          ...(dto.budgetCents !== undefined && { budgetCents: dto.budgetCents }),
           ...(dto.dependsOnId !== undefined && { dependsOnId: dto.dependsOnId }),
           ...(dto.position !== undefined && { position: dto.position }),
           ...(dto.completedAt !== undefined && {
@@ -915,6 +973,7 @@ export class ProjectsService {
   async createFromTemplate(
     gabineteId: string,
     userId: string,
+    userRole: KamaiaRole,
     dto: FromTemplateDto,
   ): Promise<Result<any>> {
     try {
@@ -993,8 +1052,10 @@ export class ProjectsService {
         newValue: { kind: 'project-from-template', templateId: template.id, code },
       });
 
-      // Return full detail (with milestones) so the UI can navigate in
-      const full = await this.findById(gabineteId, project.id);
+      // Return full detail (with milestones) so the UI can navigate in.
+      // Passamos o role do utilizador para a filtragem de visibility — o
+      // criador é sempre manager, logo passa sempre.
+      const full = await this.findById(gabineteId, userId, userRole, project.id);
       return full;
     } catch (e) {
       this.logError(

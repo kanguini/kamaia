@@ -446,6 +446,9 @@ model Document {
   id           String    @id @default(uuid()) @db.Uuid
   gabineteId   String    @map("gabinete_id") @db.Uuid
   processoId   String?   @map("processo_id") @db.Uuid
+  projectId    String?   @map("project_id") @db.Uuid
+  milestoneId  String?   @map("milestone_id") @db.Uuid
+  taskId       String?   @map("task_id") @db.Uuid
   uploadedById String    @map("uploaded_by_id") @db.Uuid
   title        String    @db.VarChar(300)
   category     String    @db.VarChar(30) // DocumentCategory enum
@@ -457,12 +460,18 @@ model Document {
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete   Gabinete  @relation(fields: [gabineteId], references: [id])
-  processo   Processo? @relation(fields: [processoId], references: [id])
-  uploadedBy User      @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+  gabinete   Gabinete          @relation(fields: [gabineteId], references: [id])
+  processo   Processo?         @relation(fields: [processoId], references: [id])
+  project    Project?          @relation(fields: [projectId], references: [id])
+  milestone  ProjectMilestone? @relation(fields: [milestoneId], references: [id])
+  task       Task?             @relation(fields: [taskId], references: [id])
+  uploadedBy User              @relation("UploadedDocuments", fields: [uploadedById], references: [id])
 
   @@index([gabineteId], map: "idx_document_gabinete")
   @@index([gabineteId, processoId], map: "idx_document_gabinete_processo")
+  @@index([gabineteId, projectId], map: "idx_document_gabinete_project")
+  @@index([gabineteId, milestoneId], map: "idx_document_gabinete_milestone")
+  @@index([gabineteId, taskId], map: "idx_document_gabinete_task")
   @@map("documents")
 }
 
@@ -719,6 +728,8 @@ model Task {
   assigneeId  String?   @map("assignee_id") @db.Uuid
   createdById String    @map("created_by_id") @db.Uuid
   processoId  String?   @map("processo_id") @db.Uuid
+  projectId   String?   @map("project_id") @db.Uuid
+  milestoneId String?   @map("milestone_id") @db.Uuid
   clienteId   String?   @map("cliente_id") @db.Uuid
   dueDate     DateTime? @map("due_date") @db.Timestamptz
   completedAt DateTime? @map("completed_at") @db.Timestamptz
@@ -727,18 +738,23 @@ model Task {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
-  column    TaskColumn      @relation(fields: [columnId], references: [id])
-  assignee  User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy User            @relation("TaskCreator", fields: [createdById], references: [id])
-  processo  Processo?       @relation(fields: [processoId], references: [id])
-  cliente   Cliente?        @relation(fields: [clienteId], references: [id])
+  gabinete  Gabinete          @relation(fields: [gabineteId], references: [id])
+  column    TaskColumn        @relation(fields: [columnId], references: [id])
+  assignee  User?             @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User              @relation("TaskCreator", fields: [createdById], references: [id])
+  processo  Processo?         @relation(fields: [processoId], references: [id])
+  project   Project?          @relation(fields: [projectId], references: [id])
+  milestone ProjectMilestone? @relation(fields: [milestoneId], references: [id])
+  cliente   Cliente?          @relation(fields: [clienteId], references: [id])
   checklist TaskCheckItem[]
   comments  TaskComment[]
+  documents Document[]
 
   @@index([gabineteId, columnId, position], map: "idx_task_column_pos")
   @@index([gabineteId, assigneeId], map: "idx_task_assignee")
   @@index([gabineteId, processoId], map: "idx_task_processo")
+  @@index([gabineteId, projectId], map: "idx_task_project")
+  @@index([gabineteId, milestoneId], map: "idx_task_milestone")
   @@map("tasks")
 }
 
@@ -926,6 +942,10 @@ model Project {
   actualEndDate  DateTime? @map("actual_end_date") @db.Timestamptz
   budgetAmount   Int?      @map("budget_amount") // centavos
   budgetCurrency String    @default("AOA") @map("budget_currency") @db.VarChar(3)
+  // PUBLIC = todos os membros do gabinete podem ler; MEMBERS_ONLY = apenas
+  // members do projecto + SOCIO_GESTOR do gabinete. Default PUBLIC mantém
+  // compat com o comportamento pré-Y.
+  visibility     String    @default("PUBLIC") @db.VarChar(20)
   tags           String[]  @default([])
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -939,6 +959,8 @@ model Project {
   members       ProjectMember[]
   milestones    ProjectMilestone[]
   processos     Processo[]
+  tasks         Task[]
+  documents     Document[]
   statusReports ProjectStatusReport[]
   invoices      Invoice[]
 
@@ -976,6 +998,10 @@ model ProjectMilestone {
   dueDate     DateTime  @map("due_date") @db.Timestamptz
   completedAt DateTime? @map("completed_at") @db.Timestamptz
   progress    Int       @default(0)
+  // Orçamento planeado para esta fase em centavos. Usado como captura
+  // antecipada — não altera ainda a curva ideal do burndown (que é
+  // linear). Frontend valida soma ≤ Project.budgetAmount.
+  budgetCents Int?      @map("budget_cents")
   dependsOnId String?   @map("depends_on_id") @db.Uuid
   position    Int       @default(0)
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
@@ -985,6 +1011,8 @@ model ProjectMilestone {
   project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   dependsOn  ProjectMilestone?  @relation("MilestoneDeps", fields: [dependsOnId], references: [id])
   dependents ProjectMilestone[] @relation("MilestoneDeps")
+  tasks      Task[]
+  documents  Document[]
 
   @@index([projectId, position], map: "idx_milestone_project_position")
   @@map("project_milestones")
