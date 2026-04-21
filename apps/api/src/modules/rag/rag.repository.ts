@@ -1,6 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * Serialisa um embedding para o formato literal do `pgvector`: `[n,n,n,...]`.
+ * Guard defensivo: embora o TypeScript declare `number[]`, dados externos
+ * podem conter NaN/Infinity em runtime. pgvector rejeitaria no cast `::vector`,
+ * mas falhamos cedo com uma mensagem clara em vez de explodir no SQL.
+ */
+function toVectorLiteral(embedding: number[]): string {
+  if (!embedding.every((n) => Number.isFinite(n))) {
+    throw new Error('Embedding contém valores não-finitos (NaN/Infinity)');
+  }
+  return `[${embedding.join(',')}]`;
+}
+
 export interface ChunkSearchResult {
   id: string;
   documentId: string;
@@ -42,17 +55,20 @@ export class RagRepository {
     limit: number = 5,
     threshold: number = 0.7,
   ): Promise<ChunkSearchResult[]> {
-    const vectorStr = `[${queryEmbedding.join(',')}]`;
+    const vectorStr = toVectorLiteral(queryEmbedding);
 
-    const results = await this.prisma.$queryRawUnsafe<ChunkSearchResult[]>(
-      `SELECT
+    // Nota: usamos a template tag `$queryRaw` (não `$queryRawUnsafe`) para
+    // deixar explícito que os valores dinâmicos são parametrizados. O SQL
+    // em si é estático.
+    const results = await this.prisma.$queryRaw<ChunkSearchResult[]>`
+      SELECT
         c.id,
         c.document_id AS "documentId",
         c.chunk_index AS "chunkIndex",
         c.title,
         c.content,
         c.token_count AS "tokenCount",
-        c.embedding <=> $1::vector AS distance,
+        c.embedding <=> ${vectorStr}::vector AS distance,
         d.title AS "docTitle",
         d.short_name AS "docShortName",
         d.reference AS "docReference",
@@ -60,11 +76,9 @@ export class RagRepository {
       FROM legislation_chunks c
       JOIN legislation_documents d ON d.id = c.document_id
       WHERE c.embedding IS NOT NULL
-      ORDER BY c.embedding <=> $1::vector
-      LIMIT $2`,
-      vectorStr,
-      limit,
-    );
+      ORDER BY c.embedding <=> ${vectorStr}::vector
+      LIMIT ${limit}
+    `;
 
     // Filter by threshold (cosine distance, lower = more similar)
     return results.filter((r) => r.distance <= threshold);
@@ -83,18 +97,21 @@ export class RagRepository {
   }
 
   async insertChunk(data: InsertChunkData) {
-    const vectorStr = `[${data.embedding.join(',')}]`;
+    const vectorStr = toVectorLiteral(data.embedding);
 
-    await this.prisma.$executeRawUnsafe(
-      `INSERT INTO legislation_chunks (id, document_id, chunk_index, title, content, embedding, token_count, created_at)
-       VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4, $5::vector, $6, NOW())`,
-      data.documentId,
-      data.chunkIndex,
-      data.title,
-      data.content,
-      vectorStr,
-      data.tokenCount,
-    );
+    await this.prisma.$executeRaw`
+      INSERT INTO legislation_chunks (id, document_id, chunk_index, title, content, embedding, token_count, created_at)
+      VALUES (
+        gen_random_uuid(),
+        ${data.documentId}::uuid,
+        ${data.chunkIndex},
+        ${data.title},
+        ${data.content},
+        ${vectorStr}::vector,
+        ${data.tokenCount},
+        NOW()
+      )
+    `;
   }
 
   async insertChunks(chunks: InsertChunkData[]) {
@@ -150,17 +167,15 @@ export class RagRepository {
   async findChunksWithoutEmbeddings(): Promise<
     Array<{ id: string; title: string; content: string }>
   > {
-    return this.prisma.$queryRawUnsafe(
-      `SELECT id, title, content FROM legislation_chunks WHERE embedding IS NULL ORDER BY created_at`,
-    );
+    return this.prisma.$queryRaw`
+      SELECT id, title, content FROM legislation_chunks WHERE embedding IS NULL ORDER BY created_at
+    `;
   }
 
   async updateChunkEmbedding(chunkId: string, embedding: number[]) {
-    const vectorStr = `[${embedding.join(',')}]`;
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE legislation_chunks SET embedding = $1::vector WHERE id = $2::uuid`,
-      vectorStr,
-      chunkId,
-    );
+    const vectorStr = toVectorLiteral(embedding);
+    await this.prisma.$executeRaw`
+      UPDATE legislation_chunks SET embedding = ${vectorStr}::vector WHERE id = ${chunkId}::uuid
+    `;
   }
 }

@@ -157,14 +157,6 @@ export const LIFECYCLE_LABELS: Record<string, string> = {
   FINANCEIRO: 'Financeiro',
 };
 
-export enum InteractionType {
-  CHAMADA = 'CHAMADA',
-  EMAIL = 'EMAIL',
-  REUNIAO = 'REUNIAO',
-  WHATSAPP = 'WHATSAPP',
-  VISITA = 'VISITA',
-}
-
 export enum TaskPriority {
   ALTA = 'ALTA',
   MEDIA = 'MEDIA',
