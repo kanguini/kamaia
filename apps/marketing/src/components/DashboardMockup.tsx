@@ -128,10 +128,13 @@ export function DashboardMockup({ className }: { className?: string }) {
       <style jsx>{`
         .k2-mock {
           width: 100%;
+          aspect-ratio: 16 / 9;
           border-radius: 16px;
           overflow: hidden;
           background: var(--k2-bg);
           border: 1px solid var(--k2-border);
+          display: flex;
+          flex-direction: column;
         }
         .k2-mock-chrome {
           display: flex;
@@ -166,7 +169,8 @@ export function DashboardMockup({ className }: { className?: string }) {
         .k2-mock-body {
           display: grid;
           grid-template-columns: 180px 1fr;
-          min-height: 420px;
+          flex: 1;
+          min-height: 0;
         }
 
         .k2-mock-sidebar {
@@ -174,6 +178,7 @@ export function DashboardMockup({ className }: { className?: string }) {
           border-right: 1px solid var(--k2-border);
           padding: 14px 10px;
           font-size: 11px;
+          overflow: hidden;
         }
         .k2-mock-brand {
           color: #fff;
@@ -199,6 +204,8 @@ export function DashboardMockup({ className }: { className?: string }) {
         }
         .k2-mock-main {
           padding: 16px 18px;
+          overflow: hidden;
+          min-width: 0;
         }
         .k2-mock-topbar {
           display: flex;

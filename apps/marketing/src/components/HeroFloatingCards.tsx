@@ -58,17 +58,7 @@ export function HeroFloatingCards() {
 
   return (
     <div className="relative z-10 flex justify-center px-4 pb-12 mt-4">
-      <div ref={containerRef} className="relative w-full max-w-5xl mx-auto">
-
-        {/* Glow orb behind the mockup */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-[10%] top-[3%] -z-0 h-[45%] rounded-full blur-[100px]"
-          style={{
-            background:
-              'radial-gradient(ellipse, rgba(74,125,255,0.24) 0%, rgba(41,82,217,0.09) 55%, transparent 80%)',
-          }}
-        />
+      <div ref={containerRef} className="relative w-full max-w-6xl mx-auto">
 
         {/* ── Card 1: IA Assistente — top right ── */}
         <div
@@ -202,13 +192,7 @@ export function HeroFloatingCards() {
 
         {/* ── Dashboard mockup — slight parallax (depth 5) ── */}
         <div data-depth="5">
-          <div
-            className="relative z-10"
-            style={{
-              transform: 'perspective(1800px) rotateX(4deg)',
-              transformOrigin: 'center bottom',
-            }}
-          >
+          <div className="relative z-10">
             <DashboardMockup />
           </div>
         </div>

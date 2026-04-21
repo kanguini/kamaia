@@ -22,25 +22,25 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Kamaia · Gestão jurídica inteligente',
+    default: 'Kamaia · Plataforma estratégica de prática jurídica',
     template: '%s · Kamaia',
   },
   description:
-    'Plataforma completa para advogados, escritórios e gabinetes jurídicos. Processos, prazos, timesheets e facturação num só lugar, com assistente IA.',
+    'Uma nova forma de ver a prática jurídica. Abordagem multidisciplinar que integra tecnologia, metodologias ágeis e assistente IA — do jurista-agente ao jurista-estratega.',
   keywords: [
-    'software gestão jurídica',
-    'gestão de processos jurídicos',
-    'legal tech',
-    'software advogados',
-    'gestão gabinete advogados',
     'plataforma jurídica',
-    'timesheets advocacia',
+    'gestão estratégica jurídica',
+    'legal tech Angola',
+    'gestão de escritórios de advogados',
+    'gestão de processos jurídicos',
+    'assistente IA jurídico',
+    'metodologias ágeis direito',
   ],
   authors: [{ name: 'Kamaia' }],
   openGraph: {
-    title: 'Kamaia · Gestão jurídica inteligente',
+    title: 'Kamaia · Plataforma estratégica de prática jurídica',
     description:
-      'Processos, prazos, timesheets e facturação num só lugar. Com assistente IA integrado.',
+      'Uma abordagem multidisciplinar que faz do jurista não apenas um agente do direito, mas um baluarte da estratégia.',
     url: 'https://kamaia.cc',
     siteName: 'Kamaia',
     locale: 'pt',
@@ -48,8 +48,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Kamaia · Gestão jurídica inteligente',
-    description: 'Processos, prazos e facturação num só lugar. Assistente IA integrado.',
+    title: 'Kamaia · Plataforma estratégica de prática jurídica',
+    description:
+      'Agilidade, celeridade e inteligência nas decisões — sobre metodologias ágeis e IA contextual.',
   },
   robots: {
     index: true,
@@ -83,14 +84,7 @@ const jsonLd = {
       applicationSubCategory: 'LegalSoftware',
       operatingSystem: 'Web',
       description:
-        'Plataforma de gestão jurídica para advogados, escritórios e gabinetes — processos, prazos, timesheets, facturação e assistente IA.',
-      offers: {
-        '@type': 'AggregateOffer',
-        priceCurrency: 'AOA',
-        lowPrice: '0',
-        highPrice: '45000',
-        offerCount: 4,
-      },
+        'Plataforma estratégica de prática jurídica — integra gestão de processos, prazos, timesheets, facturação e assistente IA sob metodologias ágeis.',
       publisher: { '@id': `${SITE_URL}#org` },
     },
   ],

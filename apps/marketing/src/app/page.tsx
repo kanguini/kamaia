@@ -12,10 +12,10 @@ export default function HomePage() {
       <Nav />
       <main>
         <Hero />
-        <ProblemSolution />
+        <Positioning />
+        <Pillars />
         <Features />
         <SocialProof />
-        <PricingTeaser />
         <Faq />
         <CTAFinal />
       </main>
@@ -66,23 +66,24 @@ function Hero() {
             className="h-1.5 w-1.5 rounded-full"
             style={{ background: '#6be49a' }}
           />
-          Assistente IA integrado · Early access aberto
+          Plataforma estratégica de prática jurídica · Early access
         </span>
 
         {/* Title — Playfair Display */}
-        <h1 className="mt-7 mx-auto max-w-[900px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
-          Menos administração.
+        <h1 className="mt-7 mx-auto max-w-[960px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
+          Uma nova forma de ver
           <br />
           <em className="not-italic" style={{ color: '#9cb6ff' }}>
-            Mais advocacia.
+            a prática jurídica.
           </em>
         </h1>
 
         {/* Description */}
-        <p className="mt-6 max-w-[600px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/68">
-          Plataforma completa para advogados, escritórios e gabinetes jurídicos.
-          Processos, prazos, timesheets e facturação num só lugar —
-          com assistente IA que conhece o teu contexto.
+        <p className="mt-6 max-w-[640px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
+          Kamaia é uma abordagem multidisciplinar à gestão jurídica — que
+          transforma o jurista não apenas num agente do direito, mas num
+          baluarte da estratégia. Agilidade, celeridade e inteligência nas
+          decisões, suportadas por metodologias ágeis e assistência IA.
         </p>
 
         {/* CTAs */}
@@ -91,19 +92,19 @@ function Hero() {
             href={appUrl('/register', 'hero_cta')}
             className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
           >
-            Começar grátis
+            Aceder ao early access
           </Link>
           <Link
             href="/contacto"
             className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
           >
-            Ver demonstração
+            Agendar demonstração
           </Link>
         </div>
 
         {/* Micro-copy */}
         <p className="mt-5 text-[11px] tracking-wide text-white/38">
-          14 dias grátis · Sem cartão de crédito · Cancela quando queres
+          Concebido em Angola · Para advogados, escritórios e gabinetes jurídicos
         </p>
       </div>
 
@@ -120,23 +121,58 @@ function Hero() {
   )
 }
 
-// ─── Problem → Solution ──────────────────────────────────────
-function ProblemSolution() {
+// ─── Positioning statement ───────────────────────────────────
+function Positioning() {
+  return (
+    <section className="border-t border-white/5 bg-black py-24 lg:py-32 text-white">
+      <div className="shell">
+        <Reveal>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
+            Posicionamento
+          </span>
+          <h2 className="mt-4 max-w-4xl font-playfair text-[clamp(26px,3.2vw,42px)] font-medium leading-[1.2] tracking-[-0.015em] text-white/92">
+            &ldquo;O Kamaia é uma nova forma de ver a prática jurídica. Uma
+            abordagem multidisciplinar, que faz do jurista não apenas um agente
+            do direito,{' '}
+            <em className="not-italic" style={{ color: '#9cb6ff' }}>
+              mas um baluarte da estratégia
+            </em>
+            .&rdquo;
+          </h2>
+          <p className="mt-8 max-w-2xl text-white/60 leading-relaxed">
+            A plataforma eleva a gestão jurídica ao plano estratégico:
+            integra tecnologia, metodologias ágeis de gestão de projectos e
+            inteligência artificial para gerar resultados mensuráveis — e
+            devolver ao jurista o tempo que hoje perde em tarefas operacionais.
+          </p>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
+
+// ─── Strategic pillars ───────────────────────────────────────
+function Pillars() {
   const items = [
     {
-      problem: 'Perco prazos processuais',
-      solution:
-        'Alertas automáticos 7d, 3d e 1d antes. Email + SMS + push — impossível esquecer.',
+      kicker: 'Pilar I',
+      title: 'Agilidade e celeridade',
+      body: 'Fluxos de trabalho desenhados sobre metodologias ágeis aplicadas ao sector jurídico. Reduz ciclos operacionais e acelera o tempo de resposta ao cliente.',
     },
     {
-      problem: 'Não facturo todas as horas',
-      solution:
-        'Timer integrado no processo. Aprova timesheets e agrega numa factura com um clique.',
+      kicker: 'Pilar II',
+      title: 'Inteligência nas decisões',
+      body: 'Dados consolidados, análise em tempo real e um assistente IA que conhece o contexto do gabinete — para que cada decisão seja informada, não intuitiva.',
     },
     {
-      problem: 'Cliente liga a pedir updates',
-      solution:
-        'Portal do cliente com acesso 24/7 aos seus processos, documentos e facturas.',
+      kicker: 'Pilar III',
+      title: 'Gestão de tempo optimizada',
+      body: 'Timesheets, capacidade da equipa e rentabilidade por processo numa única vista. Eleva a produtividade sem sacrificar o rigor técnico.',
+    },
+    {
+      kicker: 'Pilar IV',
+      title: 'Tecnologia integrada',
+      body: 'Processos, prazos, clientes, facturação e documentação numa só plataforma — eliminando silos e devolvendo coerência à operação jurídica.',
     },
   ]
 
@@ -145,29 +181,28 @@ function ProblemSolution() {
       <div className="shell">
         <Reveal>
           <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Porque Kamaia
+            Pilares estratégicos
           </span>
           <h2 className="mt-3 max-w-3xl text-[clamp(28px,3.5vw,44px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Três problemas recorrentes.
+            Quatro eixos que elevam
             <br />
-            <span className="text-white/60">Uma resposta simples.</span>
+            <span className="text-white/60">a prática jurídica ao nível estratégico.</span>
           </h2>
         </Reveal>
 
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
+        <div className="mt-14 grid gap-4 md:grid-cols-2">
           {items.map((it, i) => (
-            <Reveal key={it.problem} delay={i * 0.08}>
+            <Reveal key={it.title} delay={i * 0.08}>
               <article className="group h-full rounded-xl border border-white/10 bg-white/[0.02] p-7 transition-colors hover:border-white/20">
-                <p className="text-sm uppercase tracking-[0.1em] text-white/45">
-                  Dor
+                <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                  {it.kicker}
                 </p>
-                <p className="mt-2 text-xl font-medium">{it.problem}</p>
+                <h3 className="mt-3 font-playfair text-2xl font-medium tracking-[-0.01em]">
+                  {it.title}
+                </h3>
                 <div className="my-5 h-px bg-white/5" />
-                <p className="text-sm uppercase tracking-[0.1em] text-white/45">
-                  Kamaia
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-white/75">
-                  {it.solution}
+                <p className="text-sm leading-relaxed text-white/72">
+                  {it.body}
                 </p>
               </article>
             </Reveal>
@@ -182,28 +217,28 @@ function ProblemSolution() {
 function Features() {
   const features = [
     {
-      title: 'Processos',
-      body: 'Workflows adaptáveis por tipo — civil, penal, laboral, M&A, compliance. Timeline, anexos e partes.',
+      title: 'Gestão de processos',
+      body: 'Workflows adaptáveis por matéria — civil, penal, laboral, M&A, compliance. Visão integrada da timeline, partes envolvidas e documentação.',
     },
     {
-      title: 'Prazos',
-      body: 'Cálculo automático de dias úteis e feriados. Alertas multi-canal antes das datas críticas.',
+      title: 'Prazos e compliance',
+      body: 'Cálculo automático de dias úteis e feriados. Alertas multi-canal antes das datas críticas — impossível perder uma etapa relevante.',
     },
     {
-      title: 'Clientes + Portal',
-      body: 'CRM leve. O cliente vê os seus processos, documentos e facturas sem precisar de ligar.',
+      title: 'Gestão de relação com o cliente',
+      body: 'CRM jurídico com portal dedicado. O cliente acede ao ponto de situação dos seus processos, reduzindo ruído e aumentando confiança.',
     },
     {
-      title: 'Facturação',
-      body: 'Agrega timesheets facturáveis e despesas. PDF profissional gerado em poucos segundos.',
+      title: 'Facturação e rentabilidade',
+      body: 'Agregação automática de timesheets e despesas. Margem por processo e por cliente — instrumentos para decidir onde investir esforço.',
     },
     {
-      title: 'Timesheets + Despesas',
-      body: 'Timer integrado no processo. Aprovação, relatórios de utilização e margem por processo.',
+      title: 'Timesheets e capacidade',
+      body: 'Timer integrado ao processo, aprovação estruturada e relatórios de utilização. Transparência sobre onde a equipa gera valor.',
     },
     {
-      title: 'IA Assistente',
-      body: 'Redacção de peças, resumos de processos, pesquisa jurisprudencial. Com o teu contexto.',
+      title: 'Assistente IA contextual',
+      body: 'Redacção de peças, síntese de processos e pesquisa jurisprudencial — sempre alinhados com o contexto e histórico do gabinete.',
     },
   ]
 
@@ -212,13 +247,13 @@ function Features() {
       <div className="shell">
         <Reveal>
           <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Funcionalidades
+            Capacidades
           </span>
           <h2 className="mt-3 max-w-3xl text-[clamp(28px,3.5vw,44px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Tudo num só fluxo.
+            Um fluxo coerente.
             <br />
             <span className="text-white/60">
-              Do primeiro contacto ao recibo final.
+              Do primeiro contacto à decisão estratégica.
             </span>
           </h2>
         </Reveal>
@@ -244,7 +279,7 @@ function Features() {
             href="/funcionalidades"
             className="text-sm text-white/75 transition-colors hover:text-white underline underline-offset-4 decoration-white/20"
           >
-            Ver todas as funcionalidades
+            Explorar capacidades em detalhe
           </Link>
         </div>
       </div>
@@ -259,90 +294,52 @@ function SocialProof() {
       <div className="shell">
         <Reveal>
           <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Em uso em gabinetes reais
+            Programa de early adopters
           </span>
           <h2 className="mt-3 max-w-2xl text-[clamp(24px,3vw,36px)] font-medium leading-[1.15] tracking-[-0.02em]">
-            Advogados que já adoptaram o Kamaia.
+            Construído em diálogo com gabinetes jurídicos em Angola.
           </h2>
+          <p className="mt-6 max-w-2xl text-white/60 leading-relaxed">
+            O Kamaia evolui em colaboração próxima com advogados solo,
+            escritórios e departamentos jurídicos que definem as prioridades
+            da plataforma. Cada iteração nasce de casos reais da prática.
+          </p>
         </Reveal>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {[
             {
-              name: 'GMS Advogados',
-              role: 'Gabinete de 4 advogados',
-              quote:
-                'Antes perdíamos 15–20% das horas facturáveis por falta de registo. Agora cobramos tudo.',
+              title: 'Advogados solo',
+              body: 'Ganham estrutura operacional de gabinete sem aumentar custos administrativos — foco integral no trabalho substantivo.',
             },
             {
-              name: 'Early adopter',
-              role: 'Advogado solo',
-              quote:
-                'Os alertas de prazo foram o ponto de entrada. O resto aprendi em 2 dias.',
+              title: 'Pequenos gabinetes',
+              body: 'Integram processos, clientes e facturação numa só plataforma — reduzindo fricção e aumentando a rentabilidade.',
             },
             {
-              name: 'Early adopter',
-              role: 'Gabinete M&A',
-              quote:
-                'Os workflows por tipo de processo fazem toda a diferença. Não se perde uma etapa.',
+              title: 'Departamentos jurídicos',
+              body: 'Adoptam metodologias ágeis de projecto aplicadas ao direito — com governo, auditoria e isolamento por unidade.',
             },
           ].map((t, i) => (
-            <Reveal key={t.name + i} delay={i * 0.08}>
+            <Reveal key={t.title} delay={i * 0.08}>
               <figure className="flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.02] p-6">
-                <blockquote className="text-sm leading-relaxed text-white/85">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-auto pt-6">
-                  <div className="text-sm font-medium">{t.name}</div>
-                  <div className="text-xs text-white/50">{t.role}</div>
-                </figcaption>
+                <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                  Segmento
+                </div>
+                <div className="mt-2 text-base font-medium text-white">
+                  {t.title}
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-white/70">
+                  {t.body}
+                </p>
               </figure>
             </Reveal>
           ))}
         </div>
 
-        <p className="mt-8 text-center text-xs uppercase tracking-[0.14em] text-white/35">
-          Programa de early adopters — contacta-nos para fazer parte
+        <p className="mt-10 text-center text-xs uppercase tracking-[0.14em] text-white/35">
+          Candidaturas ao early access abertas — fale connosco
         </p>
-      </div>
-    </section>
-  )
-}
-
-// ─── Pricing teaser ───────────────────────────────────────────
-function PricingTeaser() {
-  return (
-    <section className="border-t border-white/5 bg-black py-24 text-white">
-      <div className="shell text-center">
-        <Reveal>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Preços
-          </span>
-          <h2 className="mt-3 mx-auto max-w-2xl text-[clamp(28px,3.5vw,44px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Simples. Por utilizador.
-            <br />
-            <span className="text-white/60">Sem surpresas.</span>
-          </h2>
-          <p className="mx-auto mt-6 max-w-xl text-white/70 leading-relaxed">
-            Planos para advogado solo, pequenos gabinetes e grandes escritórios.
-            14 dias grátis para qualquer plano.
-          </p>
-
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/precos"
-              className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
-            >
-              Ver planos e preços
-            </Link>
-            <Link
-              href={appUrl('/register', 'pricing')}
-              className="inline-flex items-center rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition-all hover:scale-[1.02]"
-            >
-              Começar grátis
-            </Link>
-          </div>
-        </Reveal>
       </div>
     </section>
   )
@@ -352,24 +349,24 @@ function PricingTeaser() {
 function Faq() {
   const items = [
     {
-      q: 'Os meus dados estão seguros?',
-      a: 'Sim. Usamos isolamento multi-tenant com RLS no PostgreSQL: nenhum gabinete vê dados de outro. Todas as escritas geram audit log append-only. Backups diários encriptados. Os detalhes técnicos estão na nossa política de privacidade.',
+      q: 'Como é garantida a segurança e confidencialidade dos dados?',
+      a: 'Isolamento multi-tenant com RLS no PostgreSQL — nenhum gabinete acede a dados de outro. Todas as escritas geram audit log append-only. Backups diários encriptados e infra-estrutura com cifra em trânsito e em repouso. Os detalhes técnicos estão disponíveis na política de privacidade.',
     },
     {
-      q: 'Quanto tempo demora a aprender?',
-      a: 'Um advogado solo configura e regista o primeiro processo em 15 minutos. Gabinetes maiores costumam estar produtivos em 2–3 dias. Fazemos onboarding dedicado nos planos Gabinete e Pro Business.',
+      q: 'Qual é o tempo típico de adopção?',
+      a: 'Um advogado solo configura e regista o primeiro processo em 15 minutos. Escritórios maiores costumam estar em operação em 2 a 3 dias. O onboarding é acompanhado pela equipa em qualquer um dos segmentos.',
     },
     {
-      q: 'Posso importar dados do Excel?',
-      a: 'Sim. Clientes, processos e prazos têm importação CSV. Para gabinetes com histórico noutros softwares, fazemos a migração sem custo durante o onboarding.',
+      q: 'É possível importar dados existentes?',
+      a: 'Sim. Clientes, processos e prazos suportam importação CSV. Gabinetes com histórico noutros sistemas beneficiam de migração assistida pela equipa durante o onboarding.',
     },
     {
-      q: 'Funciona em telemóvel?',
-      a: 'A aplicação é responsiva e usa-se confortavelmente em tablet. App móvel nativa vem no Q3 2026 — por agora recomendamos consulta em mobile e escrita em desktop.',
+      q: 'A plataforma funciona em mobilidade?',
+      a: 'A aplicação web é responsiva e usa-se confortavelmente em tablet. A aplicação móvel nativa está planeada para Q3 de 2026 — por agora recomendamos consulta em mobilidade e edição em desktop.',
     },
     {
-      q: 'O que acontece no fim do trial?',
-      a: 'Avisamos 3 dias antes. Se não escolheres um plano, a conta entra em modo só-leitura: continuas a ver os dados mas não podes editar. Nunca apagamos nada sem confirmação.',
+      q: 'Como se integra a componente de IA?',
+      a: 'O assistente IA opera sobre o contexto do próprio gabinete — processos, documentos e histórico —, com governo de acesso e rastreabilidade. Nunca envia dados sensíveis para indexação pública.',
     },
   ]
 
@@ -378,20 +375,20 @@ function Faq() {
       <div className="shell grid gap-12 lg:grid-cols-[0.8fr_1fr]">
         <div>
           <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            FAQ
+            Perguntas frequentes
           </span>
           <h2 className="mt-3 text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Perguntas
+            Respostas diretas
             <br />
-            mais frequentes.
+            para decisões informadas.
           </h2>
           <p className="mt-6 text-white/60">
-            Não encontras resposta?{' '}
+            Não encontra a resposta que procura?{' '}
             <Link
               href="/contacto"
               className="text-white underline underline-offset-4"
             >
-              Fala connosco
+              Fale connosco
             </Link>
             .
           </p>
@@ -429,26 +426,27 @@ function CTAFinal() {
       <AnimatedGradient />
       <div className="relative z-10 shell text-center text-white">
         <Reveal>
-          <h2 className="mx-auto max-w-3xl text-[clamp(32px,4.5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
-            Menos horas a administrar.
+          <h2 className="mx-auto max-w-3xl font-playfair text-[clamp(32px,4.5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
+            Do operacional
             <br />
-            <span style={{ color: '#9cb6ff' }}>Mais horas a advogar.</span>
+            <span style={{ color: '#9cb6ff' }}>ao estratégico.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-white/80">
-            14 dias grátis. Sem cartão de crédito. Suporte directo da equipa.
+            Junte-se ao programa de early access e ajude a definir o futuro
+            da gestão jurídica em Angola e nos PALOP.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Link
               href={appUrl('/register', 'cta_final')}
               className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
             >
-              Começar agora
+              Pedir acesso
             </Link>
             <Link
               href="/contacto"
               className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
             >
-              Agendar demo
+              Agendar demonstração
             </Link>
           </div>
         </Reveal>

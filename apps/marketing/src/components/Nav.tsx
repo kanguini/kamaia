@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 
 const LINKS = [
   { href: '/funcionalidades', label: 'Funcionalidades' },
-  { href: '/precos', label: 'Preços' },
   { href: '/sobre', label: 'Sobre' },
   { href: '/contacto', label: 'Contacto' },
 ]
@@ -67,7 +66,7 @@ export function Nav() {
             href={appUrl('/register', 'nav')}
             className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black transition-all hover:scale-[1.02] hover:bg-white/95"
           >
-            Começar grátis
+            Pedir acesso
           </Link>
         </div>
 
@@ -116,7 +115,7 @@ export function Nav() {
                 href={appUrl('/register', 'nav')}
                 className="rounded-md bg-white px-4 py-2 text-sm font-medium text-black"
               >
-                Começar grátis
+                Pedir acesso
               </Link>
             </div>
           </div>
