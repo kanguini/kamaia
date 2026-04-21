@@ -1,8 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { ProjectsService } from './projects.service';
-import { Result, ok, err, KamaiaRole } from '@kamaia/shared-types';
+import {
+  Result,
+  ok,
+  err,
+  KamaiaRole,
+  AuditAction,
+  EntityType,
+} from '@kamaia/shared-types';
 import { GenerateReportDto, UpdateReportDto } from './projects.dto';
 
 /**
@@ -25,6 +33,7 @@ export class ProjectReportsService {
   constructor(
     private prisma: PrismaService,
     private projectsService: ProjectsService,
+    private audit: AuditService,
   ) {}
 
   /** Monday 08:00 UTC every week. */
@@ -181,6 +190,13 @@ export class ProjectReportsService {
       // Derive health from burndown ratio unless user overrides
       const derivedHealth = this.deriveHealth(point, overdue);
 
+      // Detect create-vs-update for the audit action. Upsert ahead torna
+      // ambíguo sem pré-check — lookup leve por chave natural.
+      const existingReport = await this.prisma.projectStatusReport.findUnique({
+        where: { projectId_weekStart: { projectId, weekStart } },
+        select: { id: true },
+      });
+
       const report = await this.prisma.projectStatusReport.upsert({
         where: { projectId_weekStart: { projectId, weekStart } },
         create: {
@@ -211,6 +227,19 @@ export class ProjectReportsService {
           ...(dto.summary !== undefined && { summary: dto.summary }),
           // Resurrect if previously soft-deleted (same week regenerated).
           deletedAt: null,
+        },
+      });
+
+      await this.audit.log({
+        action: existingReport ? AuditAction.UPDATE : AuditAction.CREATE,
+        entity: EntityType.PROJECT_STATUS_REPORT,
+        entityId: report.id,
+        userId,
+        gabineteId,
+        newValue: {
+          kind: 'project-status-report',
+          projectId,
+          weekStart: weekStart.toISOString(),
         },
       });
 
@@ -252,6 +281,16 @@ export class ProjectReportsService {
           ...(dto.risks !== undefined && { risks: (dto.risks ?? []) as any }),
         },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT_STATUS_REPORT,
+        entityId: reportId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-status-report', projectId: report.projectId },
+      });
+
       return ok(updated);
     } catch (e) {
       this.logger.error(
@@ -447,6 +486,14 @@ export class ProjectReportsService {
       await this.prisma.projectStatusReport.update({
         where: { id: reportId },
         data: { deletedAt: new Date() },
+      });
+      await this.audit.log({
+        action: AuditAction.DELETE,
+        entity: EntityType.PROJECT_STATUS_REPORT,
+        entityId: reportId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-status-report', projectId: report.projectId },
       });
       return ok(undefined);
     } catch (e) {

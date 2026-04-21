@@ -391,6 +391,20 @@ export class ProjectsService {
         },
         include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT,
+        entityId: projectId,
+        userId,
+        gabineteId,
+        newValue: {
+          kind: 'project-member-added',
+          memberUserId: dto.userId,
+          role: dto.role,
+        },
+      });
+
       return ok(member);
     } catch (e) {
       this.logError(
@@ -423,6 +437,16 @@ export class ProjectsService {
       await this.prisma.projectMember.delete({
         where: { projectId_userId: { projectId, userId: memberUserId } },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT,
+        entityId: projectId,
+        userId: actorUserId,
+        gabineteId,
+        newValue: { kind: 'project-member-removed', memberUserId },
+      });
+
       return ok(undefined);
     } catch (e) {
       this.logError(
@@ -468,6 +492,16 @@ export class ProjectsService {
           position: dto.position ?? count,
         },
       });
+
+      await this.audit.log({
+        action: AuditAction.CREATE,
+        entity: EntityType.PROJECT_MILESTONE,
+        entityId: milestone.id,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-milestone', projectId, title: dto.title },
+      });
+
       return ok(milestone);
     } catch (e) {
       this.logError(
@@ -516,6 +550,16 @@ export class ProjectsService {
           }),
         },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT_MILESTONE,
+        entityId: milestoneId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-milestone', projectId: milestone.projectId },
+      });
+
       return ok(updated);
     } catch (e) {
       this.logError(
@@ -617,6 +661,16 @@ export class ProjectsService {
           projectId: true,
         },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT,
+        entityId: projectId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'processo-linked', processoId },
+      });
+
       return ok(updated);
     } catch (e) {
       this.logError(
@@ -658,6 +712,16 @@ export class ProjectsService {
         data: { projectId: null },
         select: { id: true, projectId: true },
       });
+
+      await this.audit.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.PROJECT,
+        entityId: projectId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'processo-unlinked', processoId },
+      });
+
       return ok(updated);
     } catch (e) {
       this.logError(
@@ -801,6 +865,16 @@ export class ProjectsService {
         where: { id: milestoneId },
         data: { deletedAt: new Date() },
       });
+
+      await this.audit.log({
+        action: AuditAction.DELETE,
+        entity: EntityType.PROJECT_MILESTONE,
+        entityId: milestoneId,
+        userId,
+        gabineteId,
+        newValue: { kind: 'project-milestone', projectId: milestone.projectId },
+      });
+
       return ok(undefined);
     } catch (e) {
       this.logError(
