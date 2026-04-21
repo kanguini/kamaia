@@ -137,6 +137,7 @@ export class ProjectsAlertsService {
     const overdue = await this.prisma.projectMilestone.findMany({
       where: {
         projectId: p.id,
+        deletedAt: null,
         completedAt: null,
         dueDate: { lt: now },
       },

@@ -47,7 +47,7 @@ export class TasksRepository {
             },
             _count: {
               select: {
-                checklist: true,
+                checklist: { where: { deletedAt: null } },
                 comments: true,
               },
             },
@@ -166,6 +166,7 @@ export class TasksRepository {
           },
         },
         checklist: {
+          where: { deletedAt: null },
           orderBy: { position: 'asc' },
         },
         comments: {
@@ -302,7 +303,7 @@ export class TasksRepository {
 
   async createCheckItem(taskId: string, data: { title: string }) {
     const maxPos = await this.prisma.taskCheckItem.aggregate({
-      where: { taskId },
+      where: { taskId, deletedAt: null },
       _max: { position: true },
     });
     const position = (maxPos._max.position ?? -1) + 1;
@@ -316,6 +317,12 @@ export class TasksRepository {
     });
   }
 
+  async findCheckItem(itemId: string) {
+    return this.prisma.taskCheckItem.findFirst({
+      where: { id: itemId, deletedAt: null },
+    });
+  }
+
   async updateCheckItem(itemId: string, data: { title?: string; checked?: boolean }) {
     return this.prisma.taskCheckItem.update({
       where: { id: itemId },
@@ -324,8 +331,9 @@ export class TasksRepository {
   }
 
   async deleteCheckItem(itemId: string) {
-    return this.prisma.taskCheckItem.delete({
+    return this.prisma.taskCheckItem.update({
       where: { id: itemId },
+      data: { deletedAt: new Date() },
     });
   }
 

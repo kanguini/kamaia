@@ -47,8 +47,8 @@ export class ProjectReportsService {
     let skipped = 0;
     const weekStart = this.mondayOfWeek(new Date());
     for (const p of projects) {
-      const existing = await this.prisma.projectStatusReport.findUnique({
-        where: { projectId_weekStart: { projectId: p.id, weekStart } },
+      const existing = await this.prisma.projectStatusReport.findFirst({
+        where: { projectId: p.id, weekStart, deletedAt: null },
       });
       if (existing) {
         skipped++;
@@ -69,7 +69,7 @@ export class ProjectReportsService {
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
       const reports = await this.prisma.projectStatusReport.findMany({
-        where: { projectId },
+        where: { projectId, deletedAt: null },
         orderBy: { weekStart: 'desc' },
         include: {
           createdBy: { select: { id: true, firstName: true, lastName: true } },
@@ -109,12 +109,17 @@ export class ProjectReportsService {
 
       // Milestones KPIs
       const [total, completed, overdue] = await Promise.all([
-        this.prisma.projectMilestone.count({ where: { projectId } }),
+        this.prisma.projectMilestone.count({ where: { projectId, deletedAt: null } }),
         this.prisma.projectMilestone.count({
-          where: { projectId, completedAt: { not: null } },
+          where: { projectId, deletedAt: null, completedAt: { not: null } },
         }),
         this.prisma.projectMilestone.count({
-          where: { projectId, completedAt: null, dueDate: { lt: new Date() } },
+          where: {
+            projectId,
+            deletedAt: null,
+            completedAt: null,
+            dueDate: { lt: new Date() },
+          },
         }),
       ]);
 
@@ -166,6 +171,8 @@ export class ProjectReportsService {
           milestonesOverdue: overdue,
           ...(dto.risks !== undefined && { risks: (dto.risks ?? []) as any }),
           ...(dto.summary !== undefined && { summary: dto.summary }),
+          // Resurrect if previously soft-deleted (same week regenerated).
+          deletedAt: null,
         },
       });
 
@@ -182,7 +189,7 @@ export class ProjectReportsService {
   ): Promise<Result<any>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId } },
+        where: { id: reportId, project: { gabineteId }, deletedAt: null },
       });
       if (!report) return err('Report not found', 'REPORT_NOT_FOUND');
 
@@ -210,7 +217,7 @@ export class ProjectReportsService {
   ): Promise<Result<Buffer>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId } },
+        where: { id: reportId, project: { gabineteId }, deletedAt: null },
         include: {
           project: {
             select: {
@@ -354,10 +361,13 @@ export class ProjectReportsService {
   async delete(gabineteId: string, reportId: string): Promise<Result<void>> {
     try {
       const report = await this.prisma.projectStatusReport.findFirst({
-        where: { id: reportId, project: { gabineteId } },
+        where: { id: reportId, project: { gabineteId }, deletedAt: null },
       });
       if (!report) return err('Report not found', 'REPORT_NOT_FOUND');
-      await this.prisma.projectStatusReport.delete({ where: { id: reportId } });
+      await this.prisma.projectStatusReport.update({
+        where: { id: reportId },
+        data: { deletedAt: new Date() },
+      });
       return ok(undefined);
     } catch (e) {
       return err('Failed to delete report', 'REPORT_DELETE_FAILED');

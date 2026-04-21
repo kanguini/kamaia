@@ -86,7 +86,7 @@ export class ProjectsService {
               },
             },
           },
-          milestones: { orderBy: { position: 'asc' } },
+          milestones: { where: { deletedAt: null }, orderBy: { position: 'asc' } },
           processos: {
             select: { id: true, title: true, processoNumber: true, status: true, stage: true },
             take: 50,
@@ -328,7 +328,9 @@ export class ProjectsService {
       });
       if (!project) return err('Project not found', 'PROJECT_NOT_FOUND');
 
-      const count = await this.prisma.projectMilestone.count({ where: { projectId } });
+      const count = await this.prisma.projectMilestone.count({
+        where: { projectId, deletedAt: null },
+      });
       const milestone = await this.prisma.projectMilestone.create({
         data: {
           projectId,
@@ -354,7 +356,7 @@ export class ProjectsService {
   ): Promise<Result<any>> {
     try {
       const milestone = await this.prisma.projectMilestone.findFirst({
-        where: { id: milestoneId, project: { gabineteId } },
+        where: { id: milestoneId, project: { gabineteId }, deletedAt: null },
       });
       if (!milestone) return err('Milestone not found', 'MILESTONE_NOT_FOUND');
 
@@ -586,10 +588,13 @@ export class ProjectsService {
   ): Promise<Result<void>> {
     try {
       const milestone = await this.prisma.projectMilestone.findFirst({
-        where: { id: milestoneId, project: { gabineteId } },
+        where: { id: milestoneId, project: { gabineteId }, deletedAt: null },
       });
       if (!milestone) return err('Milestone not found', 'MILESTONE_NOT_FOUND');
-      await this.prisma.projectMilestone.delete({ where: { id: milestoneId } });
+      await this.prisma.projectMilestone.update({
+        where: { id: milestoneId },
+        data: { deletedAt: new Date() },
+      });
       return ok(undefined);
     } catch (e) {
       return err('Failed to delete milestone', 'MILESTONE_DELETE_FAILED');
