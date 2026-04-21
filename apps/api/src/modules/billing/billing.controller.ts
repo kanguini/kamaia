@@ -18,7 +18,14 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { GabineteId } from '../../common/decorators/gabinete-id.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
 import { KamaiaRole, JwtPayload } from '@kamaia/shared-types';
+import {
+  createCheckoutSchema,
+  CreateCheckoutDto,
+  portalSessionSchema,
+  PortalSessionDto,
+} from './billing.dto';
 
 @Controller('billing')
 export class BillingController {
@@ -45,15 +52,8 @@ export class BillingController {
   async createCheckout(
     @GabineteId() gabineteId: string,
     @CurrentUser() user: JwtPayload,
-    @Body() body: { plan: 'PRO_INDIVIDUAL' | 'PRO_BUSINESS'; successUrl: string; cancelUrl: string },
+    @Body(new ParseZodPipe(createCheckoutSchema)) body: CreateCheckoutDto,
   ) {
-    if (!body.plan || !body.successUrl || !body.cancelUrl) {
-      throw new HttpException(
-        { error: 'plan, successUrl, cancelUrl obrigatorios', code: 'VALIDATION_ERROR' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const result = await this.billingService.createCheckoutSession(
       gabineteId,
       user.sub,
@@ -82,15 +82,8 @@ export class BillingController {
   @Roles(KamaiaRole.SOCIO_GESTOR)
   async createPortalSession(
     @GabineteId() gabineteId: string,
-    @Body() body: { returnUrl: string },
+    @Body(new ParseZodPipe(portalSessionSchema)) body: PortalSessionDto,
   ) {
-    if (!body.returnUrl) {
-      throw new HttpException(
-        { error: 'returnUrl obrigatorio', code: 'VALIDATION_ERROR' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const result = await this.billingService.createPortalSession(
       gabineteId,
       body.returnUrl,

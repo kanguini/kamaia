@@ -14,13 +14,21 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { RagService } from './rag.service';
-import { IngestService, IngestTextInput } from './ingest.service';
+import { IngestService } from './ingest.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { GabineteGuard } from '../../common/guards/gabinete.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { GabineteId } from '../../common/decorators/gabinete-id.decorator';
+import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
 import { KamaiaRole, LegislationCategory } from '@kamaia/shared-types';
+import {
+  ingestTextSchema,
+  IngestTextDto,
+  ingestPdfMetadataSchema,
+  IngestPdfMetadataDto,
+  ragSearchSchema,
+} from './rag.dto';
 
 @Controller('rag')
 @UseGuards(JwtAuthGuard, GabineteGuard)
@@ -97,18 +105,13 @@ export class RagController {
   @Get('search')
   async search(
     @GabineteId() _gabineteId: string,
-    @Query('q') query: string,
-    @Query('limit') limitStr?: string,
+    @Query(new ParseZodPipe(ragSearchSchema))
+    query: { q: string; limit?: number },
   ) {
-    if (!query || query.trim().length === 0) {
-      throw new HttpException(
-        { error: 'Query parameter "q" is required', code: 'MISSING_QUERY' },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const limit = limitStr ? parseInt(limitStr, 10) : 5;
-    const result = await this.ragService.retrieveContext(query, limit);
+    const result = await this.ragService.retrieveContext(
+      query.q,
+      query.limit ?? 5,
+    );
 
     if (!result.success) {
       throw new HttpException(
@@ -163,27 +166,12 @@ export class RagController {
   @Roles(KamaiaRole.SOCIO_GESTOR)
   async ingestText(
     @GabineteId() _gabineteId: string,
-    @Body()
-    body: {
-      title: string;
-      shortName: string;
-      reference: string;
-      category: LegislationCategory;
-      content: string;
-      sourceUrl?: string;
-    },
+    @Body(new ParseZodPipe(ingestTextSchema)) body: IngestTextDto,
   ) {
-    if (!body.title || !body.shortName || !body.reference || !body.content) {
-      throw new HttpException(
-        {
-          error: 'Missing required fields: title, shortName, reference, content',
-          code: 'VALIDATION_ERROR',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const result = await this.ingestService.ingestText(body as IngestTextInput);
+    const result = await this.ingestService.ingestText({
+      ...body,
+      category: body.category as LegislationCategory,
+    });
 
     if (!result.success) {
       throw new HttpException(
@@ -203,14 +191,7 @@ export class RagController {
   async ingestPDF(
     @GabineteId() _gabineteId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body()
-    body: {
-      title: string;
-      shortName: string;
-      reference: string;
-      category: LegislationCategory;
-      sourceUrl?: string;
-    },
+    @Body(new ParseZodPipe(ingestPdfMetadataSchema)) body: IngestPdfMetadataDto,
   ) {
     if (!file) {
       throw new HttpException(
@@ -219,21 +200,11 @@ export class RagController {
       );
     }
 
-    if (!body.title || !body.shortName || !body.reference) {
-      throw new HttpException(
-        {
-          error: 'Missing required fields: title, shortName, reference',
-          code: 'VALIDATION_ERROR',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
     const result = await this.ingestService.ingestPDF(file.buffer, {
       title: body.title,
       shortName: body.shortName,
       reference: body.reference,
-      category: body.category || LegislationCategory.OUTRO,
+      category: (body.category as LegislationCategory) ?? LegislationCategory.OUTRO,
       sourceUrl: body.sourceUrl,
     });
 

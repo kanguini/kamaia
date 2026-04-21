@@ -27,14 +27,16 @@ describe('Team (e2e)', () => {
     expect(res.body.data.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('POST /api/team/invite without email fails with VALIDATION_ERROR', async () => {
+  it('POST /api/team/invite without email fails validation', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post('/api/team/invite')
       .set('Authorization', auth())
       .send({ firstName: 'Sem', lastName: 'Email', role: 'ADVOGADO_MEMBRO' });
 
     expect(res.status).toBe(400);
-    expect(res.body.code).toBe('VALIDATION_ERROR');
+    // ParseZodPipe emite code=VALIDATION_FAILED com details[] do ZodError.
+    expect(res.body.code).toBe('VALIDATION_FAILED');
+    expect(Array.isArray(res.body.details)).toBe(true);
   });
 
   it('POST /api/team/invite creates a new member', async () => {
