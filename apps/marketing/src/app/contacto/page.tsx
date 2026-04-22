@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Script from 'next/script'
 import { Mail, Phone, MessageCircle, Calendar } from 'lucide-react'
 import { Nav } from '@/components/Nav'
 import { Footer } from '@/components/Footer'
 import { Reveal } from '@/components/Reveal'
 import { ContactForm } from './ContactForm'
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export const metadata: Metadata = {
   title: 'Contacto',
@@ -29,6 +32,14 @@ export default function ContactoPage({
 
   return (
     <>
+      {TURNSTILE_SITE_KEY && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit"
+          strategy="afterInteractive"
+          async
+          defer
+        />
+      )}
       <Nav />
       <main className="bg-black text-white">
         <section className="border-b border-white/5 py-24">

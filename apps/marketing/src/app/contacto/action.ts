@@ -1,6 +1,6 @@
 'use server'
 
-import { Resend } from 'resend'
+import { headers } from 'next/headers'
 import { z } from 'zod'
 
 const contactSchema = z.object({
@@ -10,6 +10,10 @@ const contactSchema = z.object({
   gabinete: z.string().optional(),
   message: z.string().min(10, 'Escreve pelo menos 10 caracteres'),
   plan: z.string().optional(),
+  consent: z.literal(true, {
+    errorMap: () => ({ message: 'Tens de aceitar a política de privacidade' }),
+  }),
+  turnstileToken: z.string().min(1, 'Verificação anti-bot obrigatória'),
 })
 
 export type ContactInput = z.infer<typeof contactSchema>
@@ -20,7 +24,10 @@ export interface ContactResult {
   fieldErrors?: Partial<Record<keyof ContactInput, string>>
 }
 
-const NOTIFY = process.env.CONTACT_NOTIFY_EMAIL || 'heldermaiato@outlook.com'
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.API_URL ||
+  'https://api.kamaia.cc'
 
 export async function submitContact(input: ContactInput): Promise<ContactResult> {
   const parsed = contactSchema.safeParse(input)
@@ -33,55 +40,61 @@ export async function submitContact(input: ContactInput): Promise<ContactResult>
     return { ok: false, error: 'Dados inválidos', fieldErrors }
   }
   const data = parsed.data
-  const key = process.env.RESEND_API_KEY
 
-  // In dev without the key, log to console so the flow can still be tested.
-  if (!key) {
-    // eslint-disable-next-line no-console
-    console.log('[contact] Resend key missing — would have sent:', data)
-    return { ok: true }
-  }
-
-  const resend = new Resend(key)
   try {
-    const subject = `[Kamaia] Novo contacto de ${data.name}`
-    const html = `
-      <h2>Novo contacto do site</h2>
-      <table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif">
-        <tr><td><strong>Nome</strong></td><td>${escape(data.name)}</td></tr>
-        <tr><td><strong>Email</strong></td><td>${escape(data.email)}</td></tr>
-        ${data.phone ? `<tr><td><strong>Telefone</strong></td><td>${escape(data.phone)}</td></tr>` : ''}
-        ${data.gabinete ? `<tr><td><strong>Gabinete</strong></td><td>${escape(data.gabinete)}</td></tr>` : ''}
-        ${data.plan ? `<tr><td><strong>Plano interessado</strong></td><td>${escape(data.plan)}</td></tr>` : ''}
-      </table>
-      <h3>Mensagem</h3>
-      <p style="white-space:pre-wrap">${escape(data.message)}</p>
-    `.trim()
+    const h = headers()
+    const forwarded =
+      h.get('cf-connecting-ip') ||
+      h.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      h.get('x-real-ip') ||
+      ''
+    const ua = h.get('user-agent') || ''
 
-    await resend.emails.send({
-      from: 'Kamaia <hello@kamaia.cc>',
-      to: NOTIFY,
-      replyTo: data.email,
-      subject,
-      html,
+    const res = await fetch(`${API_URL}/public-contacts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Passa o IP/UA reais ao API para audit/rate-limit.
+        ...(forwarded ? { 'x-forwarded-for': forwarded } : {}),
+        ...(ua ? { 'user-agent': ua } : {}),
+      },
+      body: JSON.stringify(data),
+      cache: 'no-store',
     })
-    return { ok: true }
+
+    if (res.ok) {
+      return { ok: true }
+    }
+
+    // Rate limit
+    if (res.status === 429) {
+      return {
+        ok: false,
+        error:
+          'Enviaste demasiadas mensagens num curto espaço de tempo. Tenta de novo dentro de uma hora ou escreve para hello@kamaia.cc.',
+      }
+    }
+
+    let message =
+      'Não foi possível enviar a mensagem. Tenta novamente ou escreve para hello@kamaia.cc.'
+    try {
+      const payload = await res.json()
+      if (payload?.message && typeof payload.message === 'string') {
+        message = payload.message
+      } else if (payload?.code === 'CAPTCHA_FAILED' || payload?.code === 'CAPTCHA_ERROR') {
+        message = 'Verificação anti-bot falhou. Recarrega a página e tenta de novo.'
+      }
+    } catch {
+      // ignore body parse errors
+    }
+    return { ok: false, error: message }
   } catch (err: unknown) {
     // eslint-disable-next-line no-console
-    console.error('[contact] Resend failed', err)
+    console.error('[contact] submit failed', err)
     return {
       ok: false,
       error:
-        'Não foi possível enviar a mensagem. Tenta novamente ou escreve para hello@kamaia.cc.',
+        'Não foi possível contactar o servidor. Tenta novamente ou escreve para hello@kamaia.cc.',
     }
   }
-}
-
-function escape(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }

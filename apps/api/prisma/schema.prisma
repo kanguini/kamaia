@@ -1193,3 +1193,40 @@ model Holiday {
   @@index([gabineteId], map: "idx_holiday_gabinete")
   @@map("holidays")
 }
+
+// ═══════════════════════════════════════════════════════════
+// PublicContactSubmission — marketing-site contact form
+//
+// Lands outside the gabinete isolation boundary: these are *prospects*,
+// not tenants. We keep them to (a) avoid data loss if email delivery
+// fails, (b) enable pipeline / CRM export, (c) provide an audit trail
+// for compliance (Lei 22/11 — protecção de dados pessoais de Angola).
+//
+// Writes are public (throttled at controller level). Reads require
+// admin auth — add a guarded endpoint when needed.
+// ═══════════════════════════════════════════════════════════
+model PublicContactSubmission {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @db.VarChar(200)
+  email       String    @db.VarChar(255)
+  phone       String?   @db.VarChar(50)
+  gabinete    String?   @db.VarChar(200)
+  plan        String?   @db.VarChar(50)
+  message     String    @db.Text
+  // Affirmative consent (RGPD / Lei 22/11 de Angola). Stored as a
+  // timestamp so we can prove WHEN consent was given, not just that
+  // it was ticked. Null means the checkbox was not submitted.
+  consentedAt DateTime? @map("consented_at") @db.Timestamptz
+  // Best-effort request metadata for fraud / rate-limit forensics.
+  ipAddress   String?   @map("ip_address") @db.VarChar(50)
+  userAgent   String?   @map("user_agent") @db.VarChar(500)
+  // Outcome of email delivery via Resend.
+  // PENDING | SENT | FAILED
+  emailStatus String    @default("PENDING") @map("email_status") @db.VarChar(20)
+  emailError  String?   @map("email_error") @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt], map: "idx_public_contact_created")
+  @@index([email], map: "idx_public_contact_email")
+  @@map("public_contact_submissions")
+}
