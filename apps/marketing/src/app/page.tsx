@@ -131,7 +131,7 @@ function Hero() {
             href={appUrl('/register', 'hero_cta')}
             className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
           >
-            Aceder ao early access
+            Criar conta
           </Link>
           <Link
             href="/contacto"
@@ -140,11 +140,6 @@ function Hero() {
             Agendar demonstração
           </Link>
         </div>
-
-        {/* Micro-copy */}
-        <p className="mt-5 text-[11px] tracking-wide text-white/38">
-          Concebido em Angola · Para advogados, escritórios e gabinetes jurídicos
-        </p>
       </div>
 
       {/* ── Floating cards + mockup (client component — mouse parallax) ── */}
@@ -457,7 +452,7 @@ function CTAFinal() {
               href={appUrl('/register', 'cta_final')}
               className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
             >
-              Pedir acesso
+              Criar conta
             </Link>
             <Link
               href="/contacto"

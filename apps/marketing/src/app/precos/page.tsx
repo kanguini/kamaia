@@ -39,7 +39,7 @@ export default function PrecosPage() {
                   href="/contacto"
                   className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
                 >
-                  Candidatar ao early access
+                  Falar connosco
                 </Link>
                 <Link
                   href="/funcionalidades"
