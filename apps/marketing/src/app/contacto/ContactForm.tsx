@@ -282,7 +282,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       {TURNSTILE_SITE_KEY ? (
         <div ref={containerRef} className="cf-turnstile" />
       ) : (
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-white/55">
           (Verificação anti-bot desactivada em desenvolvimento.)
         </p>
       )}
@@ -296,7 +296,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
         {pending ? 'A enviar…' : 'Enviar mensagem'}
       </button>
 
-      <p className="text-xs text-white/40">
+      <p className="text-xs text-white/55">
         Os dados são guardados em servidores protegidos e usados exclusivamente
         para te responder. Não partilhamos nem vendemos informação a terceiros.
       </p>

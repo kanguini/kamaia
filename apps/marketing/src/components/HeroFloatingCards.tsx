@@ -140,7 +140,7 @@ export function HeroFloatingCards() {
                 style={{ background: '#6be49a', boxShadow: '0 0 0 4px rgba(107,228,154,0.18)' }}
               />
               <div>
-                <p className="text-[9px] uppercase tracking-[0.1em] text-white/45">Este mês</p>
+                <p className="text-[9px] uppercase tracking-[0.1em] text-white/55">Este mês</p>
                 <p className="mt-0.5 text-sm font-semibold text-white">+14% receita</p>
               </div>
             </div>
@@ -164,7 +164,7 @@ export function HeroFloatingCards() {
               <p className="text-[18px] font-mono font-medium text-white tracking-[0.08em]">
                 02:34:18
               </p>
-              <p className="mt-0.5 text-[10px] text-white/45">Proc. 2024/0312 · Cível</p>
+              <p className="mt-0.5 text-[10px] text-white/55">Proc. 2024/0312 · Cível</p>
             </div>
           </div>
         </div>

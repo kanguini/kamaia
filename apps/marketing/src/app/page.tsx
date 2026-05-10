@@ -228,7 +228,7 @@ function Pillars() {
           {items.map((it, i) => (
             <Reveal key={it.title} delay={i * 0.08}>
               <article className="group h-full rounded-xl border border-white/10 bg-white/[0.02] p-7 transition-colors hover:border-white/20">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">
                   {it.kicker}
                 </p>
                 <h3 className="mt-3 font-playfair text-2xl font-medium tracking-[-0.01em]">
@@ -357,7 +357,7 @@ function SocialProof() {
           ].map((t, i) => (
             <Reveal key={t.title} delay={i * 0.08}>
               <figure className="flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.02] p-6">
-                <div className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                <div className="text-[11px] uppercase tracking-[0.12em] text-white/55">
                   Segmento
                 </div>
                 <div className="mt-2 text-base font-medium text-white">
@@ -413,7 +413,7 @@ function Faq() {
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
                   <span className="text-[15px] font-medium">{it.q}</span>
                   <span
-                    className="flex-shrink-0 text-white/40 transition-transform group-open:rotate-45"
+                    className="flex-shrink-0 text-white/55 transition-transform group-open:rotate-45"
                     aria-hidden="true"
                   >
                     +

@@ -29,7 +29,7 @@ export function Footer() {
         </div>
         {Object.entries(LINKS).map(([group, links]) => (
           <div key={group}>
-            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-white/40">
+            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-white/55">
               {group}
             </h3>
             <ul className="space-y-3">
@@ -50,7 +50,7 @@ export function Footer() {
         ))}
       </div>
       <div className="border-t border-white/5">
-        <div className="shell flex flex-col items-start justify-between gap-4 py-6 text-xs text-white/40 md:flex-row md:items-center">
+        <div className="shell flex flex-col items-start justify-between gap-4 py-6 text-xs text-white/55 md:flex-row md:items-center">
           <p>© {new Date().getFullYear()} Kamaia. Todos os direitos reservados.</p>
           <p>
             <Link href="mailto:hello@kamaia.cc" className="hover:text-white/70">

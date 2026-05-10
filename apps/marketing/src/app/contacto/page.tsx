@@ -98,7 +98,7 @@ export default function ContactoPage({
                 />
 
                 <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-white/45">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">
                     Já tens conta?
                   </p>
                   <Link

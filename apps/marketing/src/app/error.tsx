@@ -30,7 +30,7 @@ export default function GlobalError({
           escreve para <a className="underline underline-offset-4" href="mailto:hello@kamaia.cc">hello@kamaia.cc</a>.
         </p>
         {error?.digest && (
-          <p className="mt-3 text-xs text-white/40">
+          <p className="mt-3 text-xs text-white/55">
             ref: <code className="font-mono">{error.digest}</code>
           </p>
         )}
