@@ -11,6 +11,32 @@ jobs:
     name: Lint, Type Check & Test
     runs-on: ubuntu-latest
 
+    # Postgres ephemeral — sobe um Postgres 16 só para esta job
+    # para corrermos `prisma migrate deploy` real (não apenas generate).
+    # Sem isto, drift schema entre branches passa silenciosamente.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kamaia
+          POSTGRES_PASSWORD: kamaia_ci
+          POSTGRES_DB: kamaia_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kamaia"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kamaia:kamaia_ci@localhost:5432/kamaia_ci
+      # Secrets de teste — não usados em produção.
+      JWT_SECRET: ci-jwt-secret
+      JWT_REFRESH_SECRET: ci-jwt-refresh-secret
+      PORTAL_SECRET: ci-portal-secret
+      NODE_ENV: test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +55,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Apply migrations (validates migration history)
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
 
       - name: Type check
         run: npm run typecheck

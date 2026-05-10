@@ -70,12 +70,19 @@ export class AuthController {
     const result = await this.authService.login(dto, ip, userAgent);
 
     if (!result.success) {
+      // 423 Locked é semanticamente correcto para account lockout;
+      // o frontend mostra uma mensagem específica em vez do "credenciais
+      // inválidas" genérico para que o utilizador saiba esperar 15 min.
+      // 423 Locked (WebDAV / RFC 4918) — HttpStatus enum do Nest não
+      // tem a constante, usamos o número directo.
+      const status: number =
+        result.code === 'ACCOUNT_LOCKED' ? 423 : HttpStatus.UNAUTHORIZED;
       throw new HttpException(
         {
           error: result.error,
           code: result.code || 'LOGIN_FAILED',
         },
-        HttpStatus.UNAUTHORIZED,
+        status,
       );
     }
 

@@ -77,6 +77,12 @@ model User {
   providerId   String?   @map("provider_id") @db.VarChar(200)
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
+  // Account lockout — defesa contra brute-force além do throttler.
+  // failedLoginAttempts incrementa em cada bcrypt.compare === false;
+  // após N (5) o utilizador fica lockedUntil = now + LOCK_DURATION (15m).
+  // Reset a 0/null em login bem-sucedido.
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz
   deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz

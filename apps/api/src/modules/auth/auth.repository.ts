@@ -177,7 +177,23 @@ export class AuthRepository {
   async updateLastLogin(userId: string) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: { lastLoginAt: new Date() },
+      // Login com sucesso reseta o contador de falhas + lock.
+      data: {
+        lastLoginAt: new Date(),
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+  }
+
+  async incrementFailedLogins(userId: string, lockUntil: Date | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: { increment: 1 },
+        ...(lockUntil ? { lockedUntil: lockUntil } : {}),
+      },
+      select: { failedLoginAttempts: true, lockedUntil: true },
     });
   }
 

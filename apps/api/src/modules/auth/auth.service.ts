@@ -27,6 +27,13 @@ export interface TokenPair {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  // Account lockout — defesa em profundidade ao throttler (que opera
+  // ao nível do IP). O lockout opera ao nível da CONTA: 5 falhas
+  // seguidas com a mesma password incorrecta → conta bloqueada 15
+  // minutos. Reseta a 0 em qualquer login bem-sucedido.
+  private static readonly MAX_FAILED_LOGINS = 5;
+  private static readonly LOCK_DURATION_MS = 15 * 60 * 1000;
+
   constructor(
     private authRepository: AuthRepository,
     private jwtService: JwtService,
@@ -156,6 +163,33 @@ export class AuthService {
         return err('Invalid credentials', 'INVALID_CREDENTIALS');
       }
 
+      // Lockout check — se a conta está actualmente bloqueada por
+      // brute-force, recusa antes mesmo de verificar a password. O
+      // contador é resetado em updateLastLogin (login bem-sucedido).
+      if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+        await this.auditService.log({
+          action: AuditAction.LOGIN_FAILED,
+          entity: EntityType.USER,
+          entityId: user.id,
+          userId: user.id,
+          gabineteId: user.gabineteId,
+          ip,
+          userAgent,
+          newValue: {
+            email: dto.email,
+            reason: 'Account locked',
+            lockedUntil: user.lockedUntil.toISOString(),
+          },
+        });
+        const minutesLeft = Math.ceil(
+          (user.lockedUntil.getTime() - Date.now()) / 60_000,
+        );
+        return err(
+          `Conta bloqueada por demasiadas tentativas. Tenta de novo em ${minutesLeft} minuto(s).`,
+          'ACCOUNT_LOCKED',
+        );
+      }
+
       // Verify password
       if (!user.passwordHash) {
         await this.auditService.log({
@@ -173,16 +207,37 @@ export class AuthService {
 
       const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
       if (!isPasswordValid) {
+        const nextAttempts = (user.failedLoginAttempts ?? 0) + 1;
+        const shouldLock = nextAttempts >= AuthService.MAX_FAILED_LOGINS;
+        const lockUntil = shouldLock
+          ? new Date(Date.now() + AuthService.LOCK_DURATION_MS)
+          : null;
+        await this.authRepository.incrementFailedLogins(user.id, lockUntil);
         await this.auditService.log({
-          action: AuditAction.LOGIN_FAILED,
+          action: shouldLock
+            ? AuditAction.ACCOUNT_LOCKED
+            : AuditAction.LOGIN_FAILED,
           entity: EntityType.USER,
           entityId: user.id,
           userId: user.id,
           gabineteId: user.gabineteId,
           ip,
           userAgent,
-          newValue: { email: dto.email, reason: 'Invalid password' },
+          newValue: {
+            email: dto.email,
+            reason: 'Invalid password',
+            failedAttempts: nextAttempts,
+            ...(shouldLock && lockUntil
+              ? { lockedUntil: lockUntil.toISOString() }
+              : {}),
+          },
         });
+        if (shouldLock) {
+          return err(
+            'Conta bloqueada por demasiadas tentativas. Tenta de novo em 15 minutos.',
+            'ACCOUNT_LOCKED',
+          );
+        }
         return err('Invalid credentials', 'INVALID_CREDENTIALS');
       }
 
