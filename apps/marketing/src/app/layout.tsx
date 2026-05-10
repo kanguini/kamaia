@@ -162,7 +162,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="pt-AO" className={`${inter.variable} ${playfair.variable}`}>
       <head>
         <script
           type="application/ld+json"
