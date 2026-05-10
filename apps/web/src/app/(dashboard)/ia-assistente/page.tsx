@@ -45,8 +45,22 @@ const CONTEXT_LABELS = {
   GERAL: { label: 'Geral', color: 'text-info bg-info/10 border-info/20' },
 }
 
+// IMPORTANT: HTML-escape BEFORE applying any markdown replacement, otherwise
+// any `<script>` / `<img onerror=…>` in the user message (or echoed back by
+// the IA) is interpreted by the browser. The output is later passed through
+// `dangerouslySetInnerHTML`, so this escape is the only thing standing
+// between us and an XSS via chat content.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function renderContent(text: string) {
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/_(.*?)_/g, '<em>$1</em>')

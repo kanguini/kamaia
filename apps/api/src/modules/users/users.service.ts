@@ -1,7 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
 import { PrismaService } from '../prisma/prisma.service';
-import { Result, ok, err, PaginatedResponse, CursorPaginationParams } from '@kamaia/shared-types';
+import { AuditService } from '../audit/audit.service';
+import {
+  Result,
+  ok,
+  err,
+  PaginatedResponse,
+  CursorPaginationParams,
+  AuditAction,
+  EntityType,
+} from '@kamaia/shared-types';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -9,6 +18,7 @@ export class UsersService {
   constructor(
     private usersRepository: UsersRepository,
     private prisma: PrismaService,
+    private auditService: AuditService,
   ) {}
 
   async findAll(
@@ -51,6 +61,14 @@ export class UsersService {
     try {
       const user = await this.prisma.user.findFirst({
         where: { id: userId, gabineteId, deletedAt: null },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          oaaNumber: true,
+          specialty: true,
+        },
       });
 
       if (!user) {
@@ -77,6 +95,28 @@ export class UsersService {
           phone: true,
           isActive: true,
           createdAt: true,
+        },
+      });
+
+      await this.auditService.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.USER,
+        entityId: userId,
+        userId,
+        gabineteId,
+        oldValue: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phone: user.phone,
+          oaaNumber: user.oaaNumber,
+          specialty: user.specialty,
+        },
+        newValue: {
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          phone: updated.phone,
+          oaaNumber: updated.oaaNumber,
+          specialty: updated.specialty,
         },
       });
 
@@ -111,6 +151,16 @@ export class UsersService {
       await this.prisma.user.update({
         where: { id: userId },
         data: { passwordHash: newHash },
+      });
+
+      // Audit (sem registar a password em si — apenas a acção).
+      await this.auditService.log({
+        action: AuditAction.UPDATE,
+        entity: EntityType.USER,
+        entityId: userId,
+        userId,
+        gabineteId,
+        newValue: { passwordChanged: true },
       });
 
       return ok(undefined);

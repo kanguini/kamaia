@@ -83,7 +83,7 @@ export class TeamService {
 
       // Generate temp password
       const tempPassword = this.generateTempPassword();
-      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
 
       const member = await this.prisma.user.create({
         data: {
@@ -258,7 +258,7 @@ export class TeamService {
       }
 
       const tempPassword = this.generateTempPassword();
-      const passwordHash = await bcrypt.hash(tempPassword, 10);
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
 
       await this.prisma.user.update({
         where: { id: memberId },

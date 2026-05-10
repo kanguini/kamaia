@@ -12,10 +12,18 @@ export class PortalService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    this.portalSecret =
+    const secret =
       this.configService.get<string>('PORTAL_SECRET') ||
-      this.configService.get<string>('JWT_SECRET') ||
-      'kamaia-portal-secret';
+      this.configService.get<string>('JWT_SECRET');
+
+    if (!secret) {
+      // Refuse to boot rather than sign tokens with a hardcoded fallback that
+      // would let anyone with the source forge access tokens to any cliente.
+      throw new Error(
+        'PORTAL_SECRET (or JWT_SECRET) must be set — refusing to start the portal with a hardcoded secret.',
+      );
+    }
+    this.portalSecret = secret;
   }
 
   /**
