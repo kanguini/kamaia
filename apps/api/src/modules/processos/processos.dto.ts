@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { ProcessoType, ProcessoStatus, ProcessoEventType } from '@kamaia/shared-types';
+import {
+  ProcessoType,
+  ProcessoStatus,
+  ProcessoEventType,
+  ProcessoLifecycle,
+} from '@kamaia/shared-types';
 
 export const createProcessoSchema = z.object({
   title: z.string().min(1, 'Titulo obrigatorio'),
@@ -59,6 +64,18 @@ export const listEventsSchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(20),
 });
 
+export const changeLifecycleSchema = z.object({
+  lifecycle: z.nativeEnum(ProcessoLifecycle),
+});
+
+export const enterStageSchema = z.object({
+  stageId: z.string().uuid('stageId inválido'),
+});
+
+export const exitStageSchema = z.object({
+  status: z.enum(['CUMPRIDO', 'SKIPPED']).default('CUMPRIDO'),
+});
+
 export type CreateProcessoDto = z.infer<typeof createProcessoSchema>;
 export type UpdateProcessoDto = z.infer<typeof updateProcessoSchema>;
 export type ChangeStageDto = z.infer<typeof changeStageSchema>;
@@ -66,3 +83,6 @@ export type ChangeStatusDto = z.infer<typeof changeStatusSchema>;
 export type CreateEventDto = z.infer<typeof createEventSchema>;
 export type ListProcessosDto = z.infer<typeof listProcessosSchema>;
 export type ListEventsDto = z.infer<typeof listEventsSchema>;
+export type ChangeLifecycleDto = z.infer<typeof changeLifecycleSchema>;
+export type EnterStageDto = z.infer<typeof enterStageSchema>;
+export type ExitStageDto = z.infer<typeof exitStageSchema>;

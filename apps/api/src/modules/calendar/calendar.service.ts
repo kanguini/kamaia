@@ -174,7 +174,9 @@ export class CalendarService {
             processoId: dto.processoId,
             userId,
             type: ProcessoEventType.HEARING,
-            description: `Audiencia agendada: ${dto.title} — ${new Date(dto.startAt).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' })}`,
+            // Manter a descrição neutra de timezone — o frontend formata
+            // `metadata.startAt` (ISO UTC) para WAT na hora de exibir.
+            description: `Audiencia agendada: ${dto.title}`,
             metadata: {
               calendarEventId: event.id,
               location: dto.location,

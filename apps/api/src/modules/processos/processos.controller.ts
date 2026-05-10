@@ -30,6 +30,9 @@ import {
   listProcessosSchema,
   listEventsSchema,
   updateStrategySchema,
+  changeLifecycleSchema,
+  enterStageSchema,
+  exitStageSchema,
   CreateProcessoDto,
   UpdateProcessoDto,
   ChangeStageDto,
@@ -38,6 +41,9 @@ import {
   ListProcessosDto,
   ListEventsDto,
   UpdateStrategyDto,
+  ChangeLifecycleDto,
+  EnterStageDto,
+  ExitStageDto,
 } from './processos.dto';
 
 @Controller('processos')
@@ -265,7 +271,7 @@ export class ProcessosController {
     @GabineteId() gabineteId: string,
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() dto: { lifecycle: string },
+    @Body(new ParseZodPipe(changeLifecycleSchema)) dto: ChangeLifecycleDto,
   ) {
     const result = await this.processosService.changeLifecycle(
       gabineteId,
@@ -442,7 +448,7 @@ export class ProcessosController {
     @GabineteId() gabineteId: string,
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body() body: { stageId: string },
+    @Body(new ParseZodPipe(enterStageSchema)) body: EnterStageDto,
   ) {
     const r = await this.processosService.enterStage(gabineteId, user.sub, id, body.stageId);
     if (!r.success) {
@@ -462,14 +468,14 @@ export class ProcessosController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Param('instanceId') instanceId: string,
-    @Body() body: { status?: 'CUMPRIDO' | 'SKIPPED' },
+    @Body(new ParseZodPipe(exitStageSchema)) body: ExitStageDto,
   ) {
     const r = await this.processosService.exitStage(
       gabineteId,
       user.sub,
       id,
       instanceId,
-      body.status ?? 'CUMPRIDO',
+      body.status,
     );
     if (!r.success) {
       throw new HttpException(

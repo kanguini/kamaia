@@ -60,11 +60,21 @@ export class ProjectReportsService {
     let generated = 0;
     let skipped = 0;
     const weekStart = this.mondayOfWeek(new Date());
+
+    // Antes: N projects → N queries `findFirst` para descobrir relatórios
+    // já gerados desta semana. Agora: 1 query única e lookup em memória.
+    const existingReports = await this.prisma.projectStatusReport.findMany({
+      where: {
+        weekStart,
+        deletedAt: null,
+        projectId: { in: projects.map((p) => p.id) },
+      },
+      select: { projectId: true },
+    });
+    const alreadyReported = new Set(existingReports.map((r) => r.projectId));
+
     for (const p of projects) {
-      const existing = await this.prisma.projectStatusReport.findFirst({
-        where: { projectId: p.id, weekStart, deletedAt: null },
-      });
-      if (existing) {
+      if (alreadyReported.has(p.id)) {
         skipped++;
         continue;
       }

@@ -147,33 +147,40 @@ export class HolidaysService {
       now.getUTCFullYear() + 1,
       now.getUTCFullYear() + 2,
     ];
-    for (const y of years) {
-      const existing = await this.prisma.holiday.count({
-        where: {
-          gabineteId: null,
-          date: {
-            gte: new Date(Date.UTC(y, 0, 1)),
-            lt: new Date(Date.UTC(y + 1, 0, 1)),
-          },
-        },
-      });
-      if (existing > 0) continue;
-      const list = getAngolanHolidays(y);
-      for (const h of list) {
-        await this.prisma.holiday
-          .create({
-            data: {
-              gabineteId: null,
-              name: h.name,
-              date: h.date,
-              kind: h.kind,
-              recurring: h.recurring,
-            },
-          })
-          .catch(() => {
-            /* unique collision — fine */
-          });
-      }
+    // Antes: 3 × count + ~15 × create por ano = ~50 queries em init.
+    // Agora: 1 × count para todos os anos + 1 × createMany — idempotente
+    // via `skipDuplicates` na unique (gabineteId, date, name).
+    const start = new Date(Date.UTC(years[0], 0, 1));
+    const end = new Date(Date.UTC(years[years.length - 1] + 1, 0, 1));
+
+    const existingCount = await this.prisma.holiday.count({
+      where: {
+        gabineteId: null,
+        date: { gte: start, lt: end },
+      },
+    });
+    const expected = years.reduce(
+      (acc, y) => acc + getAngolanHolidays(y).length,
+      0,
+    );
+    if (existingCount >= expected) {
+      // Already seeded for the full window — nothing to do.
+      return;
     }
+
+    const allHolidays = years.flatMap((y) =>
+      getAngolanHolidays(y).map((h) => ({
+        gabineteId: null,
+        name: h.name,
+        date: h.date,
+        kind: h.kind,
+        recurring: h.recurring,
+      })),
+    );
+
+    await this.prisma.holiday.createMany({
+      data: allHolidays,
+      skipDuplicates: true,
+    });
   }
 }
