@@ -4,5 +4,5 @@
     "no-console": ["warn", { "allow": ["warn", "error"] }],
     "react-hooks/exhaustive-deps": "warn"
   },
-  "ignorePatterns": [".next/**", "out/**", "node_modules/**"]
+  "ignorePatterns": ["scripts/**", ".next/**", "out/**", "node_modules/**"]
 }

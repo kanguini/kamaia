@@ -32,7 +32,7 @@ export class ExpensesService {
   ): Promise<Result<PaginatedResponse<any>>> {
     try {
       // If ADVOGADO_MEMBRO, filter by processos they own
-      let result = await this.expensesRepository.findAll(gabineteId, params);
+      const result = await this.expensesRepository.findAll(gabineteId, params);
 
       if (role === KamaiaRole.ADVOGADO_MEMBRO) {
         // Get user's processos

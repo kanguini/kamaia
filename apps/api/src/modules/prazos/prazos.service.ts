@@ -208,7 +208,7 @@ export class PrazosService {
       }
 
       // Auto-recalculate isUrgent if dueDate changed
-      let updateData = { ...dto };
+      const updateData = { ...dto };
       if (dto.dueDate) {
         const dueDate = new Date(dto.dueDate);
         const threeDaysFromNow = new Date();
