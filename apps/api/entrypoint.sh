@@ -9,18 +9,19 @@ echo "PORT: ${PORT:-unset}"
 echo "DATABASE_URL: ${DATABASE_URL:+set}"
 echo "================================================"
 
-# Apply pending migrations (safe, versioned, never drops data).
-# prisma migrate deploy only runs forward — it NEVER deletes columns or tables.
+# Apply pending migrations. `migrate deploy` is forward-only, never destructive.
+# If it fails we ABORT — never fall back to `db push`, which can apply schema
+# drift silently and leave production in an inconsistent state.
+# Railway's restartPolicy (5 attempts) gives us natural retries for transient
+# DB connectivity issues without masking real schema problems.
 echo "[entrypoint] Running prisma migrate deploy..."
-if timeout 120 npx prisma migrate deploy; then
-  echo "[entrypoint] Migrations applied successfully"
-else
-  echo "[entrypoint] WARNING: Migration failed or timed out"
-  echo "[entrypoint] Attempting prisma db push (safe mode, no data loss)..."
-  # Fallback: db push WITHOUT --accept-data-loss
-  # This will FAIL if destructive changes are needed — which is correct.
-  timeout 60 npx prisma db push --skip-generate || echo "[entrypoint] db push failed — manual intervention needed"
+if ! timeout 120 npx prisma migrate deploy; then
+  echo "[entrypoint] FATAL: prisma migrate deploy failed."
+  echo "[entrypoint] Refusing to start API with un-migrated schema."
+  echo "[entrypoint] Inspect logs above, fix the migration, and redeploy."
+  exit 1
 fi
+echo "[entrypoint] Migrations applied successfully"
 
 echo "[entrypoint] Starting NestJS..."
 exec node dist/main
