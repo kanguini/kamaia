@@ -48,7 +48,7 @@ import {
 } from '@kamaia/shared-types'
 import { useSession } from 'next-auth/react'
 import { PipelineBar } from '@/components/ui/pipeline-bar'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import { TramitacaoFormModal } from '@/components/forms/tramitacao-form-modal'
 import {
   AudienciaFormModal,
@@ -384,9 +384,8 @@ export default function ProcessoDetailPage({ params }: { params: { id: string } 
 
   const handleDownload = async (docId: string, filename: string) => {
     if (!session?.accessToken) return
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
     try {
-      const res = await fetch(`${API_URL}/documents/${docId}/download`, {
+      const res = await fetch(apiUrl(`/documents/${docId}/download`), {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       })
       const blob = await res.blob()

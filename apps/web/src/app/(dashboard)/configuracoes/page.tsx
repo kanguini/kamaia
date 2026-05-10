@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import { Button, Switch, Input, FormField } from '@/components/ui'
 
 // ── Interfaces ──────────────────────────────────────────
@@ -475,9 +475,7 @@ function DataSection() {
     setExporting(true)
     toast.info('A preparar export...')
     try {
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-      const res = await fetch(`${apiBase}/backup/export`, {
+      const res = await fetch(apiUrl('/backup/export'), {
         headers: { Authorization: `Bearer ${session.accessToken}` },
       })
       if (!res.ok) {

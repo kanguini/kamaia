@@ -10,8 +10,7 @@ import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { DocumentCategory, PaginatedResponse } from '@kamaia/shared-types'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { API_URL } from '@/lib/api'
 
 interface Document {
   id: string

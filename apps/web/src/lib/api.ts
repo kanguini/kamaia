@@ -1,4 +1,25 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+// ────────────────────────────────────────────────────────────────────────
+// Centralised API URL + fetch wrapper.
+//
+// Single source of truth — every component, hook and server-action should
+// import `API_URL` or `apiUrl(path)` from here instead of duplicating the
+// `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'` fallback.
+// That fallback used to live in 7 different files; a typo in any of them
+// silently broke prod fetches.
+// ────────────────────────────────────────────────────────────────────────
+
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+
+/**
+ * Join the API base with a path. Accepts leading slash or not — both work.
+ * Use this for ad-hoc `fetch()` calls (the `api()` wrapper below already
+ * handles base + auth + error normalisation, prefer it when possible).
+ */
+export function apiUrl(path: string): string {
+  if (!path) return API_URL
+  return path.startsWith('/') ? `${API_URL}${path}` : `${API_URL}/${path}`
+}
 
 export async function api<T>(
   endpoint: string,

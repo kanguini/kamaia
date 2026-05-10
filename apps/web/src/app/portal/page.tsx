@@ -9,8 +9,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDate, isOverdue } from '@/lib/date-utils'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+import { API_URL } from '@/lib/api'
 
 interface PortalData {
   cliente: { id: string; name: string; type: string; email: string; phone: string }

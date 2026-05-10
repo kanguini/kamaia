@@ -14,7 +14,7 @@ import {
 } from 'recharts'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { PROJECT_CATEGORY_LABELS, ProjectCategory } from '@kamaia/shared-types'
 import { GanttChart, toGanttMilestone } from '@/components/gantt/gantt-chart'
@@ -913,8 +913,7 @@ function ReportCard({
   const exportPdf = async () => {
     setExporting(true)
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-      const res = await fetch(`${apiBase}/projects/reports/${report.id}/pdf`, {
+      const res = await fetch(apiUrl(`/projects/reports/${report.id}/pdf`), {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!res.ok) throw new Error('PDF export failed')

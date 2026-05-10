@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { useToast } from '@/hooks/use-toast'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 interface Payment {
@@ -129,8 +129,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   const exportPdf = async () => {
     if (!session?.accessToken) return
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-    const res = await fetch(`${apiBase}/invoices/${id}/pdf`, {
+    const res = await fetch(apiUrl(`/invoices/${id}/pdf`), {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
     if (!res.ok) {
