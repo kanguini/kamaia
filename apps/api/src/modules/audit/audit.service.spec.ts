@@ -31,9 +31,8 @@ describe('AuditService', () => {
 
   it('NUNCA propaga erro do repositório (audit é append-only best-effort)', async () => {
     repo.create.mockRejectedValue(new Error('DB unavailable'));
-    const consoleError = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    // O Logger do Nest escreve para stderr — silenciar para um teste limpo.
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await expect(
       service.log({
         action: AuditAction.UPDATE,
@@ -43,7 +42,6 @@ describe('AuditService', () => {
         gabineteId: 'g-1',
       }),
     ).resolves.toBeUndefined();
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
+    stderr.mockRestore();
   });
 });

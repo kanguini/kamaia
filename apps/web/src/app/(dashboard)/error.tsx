@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
+import * as Sentry from '@sentry/nextjs'
+
 export default function DashboardError({
   error,
   reset,
@@ -7,6 +10,10 @@ export default function DashboardError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  useEffect(() => {
+    Sentry.captureException(error)
+  }, [error])
+
   return (
     <div className="max-w-xl mx-auto py-20 text-center">
       <h2 className="font-display text-3xl font-semibold text-ink mb-4">

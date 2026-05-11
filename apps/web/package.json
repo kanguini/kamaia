@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.9.0",
     "@kamaia/shared-types": "*",
+    "@sentry/nextjs": "^8.55.2",
     "clsx": "^2.1.0",
     "lucide-react": "^0.400.0",
     "next": "^14.2.0",

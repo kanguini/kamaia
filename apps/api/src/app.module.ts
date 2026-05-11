@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -38,6 +39,10 @@ import { SeedModule } from './modules/seed/seed.module';
 
 @Module({
   imports: [
+    // Sentry SDK — noop quando SENTRY_DSN não está definido. Tem de ser
+    // antes dos restantes módulos para que instrumentation apanhe spans
+    // de prisma/http logo no boot.
+    SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     // Em NODE_ENV=test relaxamos os limites — E2E corre dezenas de POSTs
@@ -89,6 +94,13 @@ import { SeedModule } from './modules/seed/seed.module';
     SeedModule,
   ],
   providers: [
+    // SentryGlobalFilter capta excepções não-tratadas e envia para Sentry
+    // (noop se SENTRY_DSN não está definido). Aplica antes do ThrottlerGuard
+    // exception filter para que mesmo erros do guard sejam capturados.
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

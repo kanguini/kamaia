@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import * as Sentry from '@sentry/nextjs'
 
 export default function GlobalError({
   error,
@@ -11,9 +12,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // Logged to Vercel / Railway log streams. When Sentry is wired,
-    // replace with Sentry.captureException(error).
-    console.error('[marketing] page error:', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

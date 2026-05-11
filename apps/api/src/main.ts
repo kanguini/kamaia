@@ -1,3 +1,8 @@
+// Sentry must be imported BEFORE @nestjs/core / @prisma/client so the
+// SDK instruments their internals. `instrument` calls Sentry.init when
+// SENTRY_DSN is set (otherwise noop).
+import './instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';

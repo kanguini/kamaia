@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import * as Sentry from '@sentry/nextjs'
 
 export default function RootError({
   error,
@@ -11,8 +12,7 @@ export default function RootError({
   reset: () => void
 }) {
   useEffect(() => {
-    // Wire Sentry.captureException(error) here when observability lands.
-    console.error('[web] root error:', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

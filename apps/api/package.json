@@ -28,6 +28,8 @@
     "@nestjs/schedule": "^4.1.2",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^5.20.0",
+    "@sentry/nestjs": "^8.55.2",
+    "@sentry/node": "^8.55.2",
     "bcrypt": "^5.1.1",
     "helmet": "^8.1.0",
     "passport": "^0.7.0",
