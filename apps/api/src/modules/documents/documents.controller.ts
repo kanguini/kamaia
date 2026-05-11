@@ -170,14 +170,21 @@ export class DocumentsController {
       );
     }
 
-    const { filePath, mimeType, originalName } = result.data;
+    const { filePath, signedUrl, mimeType, originalName } = result.data;
+
+    // R2 path → redirect para signed URL (browser puxa directamente
+    // do CDN, libertando a API). Local disk → sendFile com headers.
+    if (signedUrl) {
+      response.redirect(302, signedUrl);
+      return;
+    }
 
     response.setHeader('Content-Type', mimeType);
     response.setHeader(
       'Content-Disposition',
       `attachment; filename="${originalName}"`,
     );
-    response.sendFile(filePath);
+    if (filePath) response.sendFile(filePath);
   }
 
   @Get(':id')

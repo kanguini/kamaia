@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { DocumentsRepository, ListDocumentsParams } from './documents.repository';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,11 +15,11 @@ import {
   SubscriptionPlan,
 } from '@kamaia/shared-types';
 import { UploadDocumentDto, UpdateDocumentDto } from './documents.dto';
-import * as fs from 'fs';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
+import {
+  STORAGE_PROVIDER,
+  StorageProvider,
+} from './storage/storage.provider';
 
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_MIMES = [
   'application/pdf',
@@ -37,6 +37,7 @@ export class DocumentsService {
     private documentsRepository: DocumentsRepository,
     private auditService: AuditService,
     private prisma: PrismaService,
+    @Inject(STORAGE_PROVIDER) private storage: StorageProvider,
   ) {}
 
   async findAll(
@@ -166,22 +167,15 @@ export class DocumentsService {
         }
       }
 
-      // 6. Create directory
-      const uploadDir = path.join(UPLOADS_DIR, gabineteId);
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      // 7. Generate filename
-      const ext = path.extname(file.originalname);
-      const filename = `${randomUUID()}${ext}`;
-      const filepath = path.join(uploadDir, filename);
-
-      // 8. Write file
-      fs.writeFileSync(filepath, file.buffer);
-
-      // 9. File URL
-      const fileUrl = `uploads/${gabineteId}/${filename}`;
+      // 6+7+8+9 — Storage provider trata directório, filename UUID,
+      // escrita e chave canónica. Local disk hoje, R2 amanhã (sem
+      // refactor do service).
+      const { key: fileUrl } = await this.storage.upload({
+        gabineteId,
+        filename: file.originalname,
+        contentType: file.mimetype,
+        body: file.buffer,
+      });
 
       // 10. Create document record
       const document = await this.documentsRepository.create({
@@ -357,7 +351,12 @@ export class DocumentsService {
     role: KamaiaRole,
     id: string,
   ): Promise<
-    Result<{ filePath: string; mimeType: string; originalName: string }>
+    Result<{
+      filePath?: string;
+      signedUrl?: string;
+      mimeType: string;
+      originalName: string;
+    }>
   > {
     try {
       const document = await this.documentsRepository.findById(gabineteId, id);
@@ -382,23 +381,20 @@ export class DocumentsService {
         }
       }
 
-      // Get absolute file path
-      const filePath = path.join(process.cwd(), document.fileUrl);
-
-      // Verify file exists
-      if (!fs.existsSync(filePath)) {
+      // Delega ao StorageProvider — local disk devolve filePath, R2
+      // devolve signedUrl. O controller distingue na resposta HTTP.
+      try {
+        const ext = document.fileUrl.includes('.')
+          ? document.fileUrl.substring(document.fileUrl.lastIndexOf('.'))
+          : '';
+        const handle = await this.storage.resolveDownload(document.fileUrl, {
+          mimeType: document.mimeType,
+          originalName: `${document.title}${ext}`,
+        });
+        return ok(handle);
+      } catch {
         return err('File not found on disk', 'FILE_NOT_FOUND');
       }
-
-      // Extract original filename from title + extension
-      const ext = path.extname(document.fileUrl);
-      const originalName = `${document.title}${ext}`;
-
-      return ok({
-        filePath,
-        mimeType: document.mimeType,
-        originalName,
-      });
     } catch (error) {
       return err('Failed to download document', 'DOWNLOAD_FAILED');
     }
