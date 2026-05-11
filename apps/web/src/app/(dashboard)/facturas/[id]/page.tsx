@@ -322,7 +322,8 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             </tr>
             <tr>
               <td colSpan={3} className="px-4 py-1 text-right text-xs text-ink-muted">
-                IVA ({invoice.taxRate}%)
+                {/* taxRate vem do backend em basis points (1400 = 14%). */}
+                IVA ({(invoice.taxRate / 100).toFixed(invoice.taxRate % 100 === 0 ? 0 : 2)}%)
               </td>
               <td className="px-4 py-1 text-right font-mono text-ink-muted">
                 {(invoice.taxAmount / 100).toLocaleString('pt-AO')}

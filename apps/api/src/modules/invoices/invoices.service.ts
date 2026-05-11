@@ -267,8 +267,9 @@ export class InvoicesService {
       }
 
       const subtotal = items.reduce((s, i) => s + i.total, 0);
-      const taxRate = dto.taxRate ?? 14;
-      const taxAmount = Math.round((subtotal * taxRate) / 100);
+      // taxRate em basis points (1400 = 14.00%). Default Angola IVA = 14%.
+      const taxRate = dto.taxRate ?? 1400;
+      const taxAmount = Math.round((subtotal * taxRate) / 10000);
       const total = subtotal + taxAmount;
 
       const number = await this.nextInvoiceNumber(gabineteId);
@@ -350,7 +351,8 @@ export class InvoicesService {
         ...(dto.termsText !== undefined && { termsText: dto.termsText }),
       };
       if (dto.taxRate !== undefined) {
-        const taxAmount = Math.round((existing.subtotal * dto.taxRate) / 100);
+        // dto.taxRate em basis points (1400 = 14.00%)
+        const taxAmount = Math.round((existing.subtotal * dto.taxRate) / 10000);
         data.taxRate = dto.taxRate;
         data.taxAmount = taxAmount;
         data.total = existing.subtotal + taxAmount;
@@ -610,7 +612,8 @@ export class InvoicesService {
         `${(inv.subtotal / 100).toLocaleString('pt-AO')} ${inv.currency}`,
       );
       writeTotalRow(
-        `IVA (${inv.taxRate}%)`,
+        // taxRate em basis points — converter para percent na renderização
+        `IVA (${(inv.taxRate / 100).toFixed(inv.taxRate % 100 === 0 ? 0 : 2)}%)`,
         `${(inv.taxAmount / 100).toLocaleString('pt-AO')} ${inv.currency}`,
       );
       writeTotalRow(

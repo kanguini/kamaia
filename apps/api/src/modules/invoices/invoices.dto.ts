@@ -25,7 +25,8 @@ export const createInvoiceSchema = z.object({
   processoId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
   dueDate: z.string().datetime().optional(),
-  taxRate: z.number().min(0).max(500).optional(),
+  // taxRate em basis points: 1400 = 14.00%. Range 0–50000 (até 500%).
+  taxRate: z.number().int().min(0).max(50000).optional(),
   notes: z.string().optional().nullable(),
   termsText: z.string().optional().nullable(),
   timeEntryIds: z.array(z.string().uuid()).optional(),
@@ -44,7 +45,8 @@ export const createInvoiceSchema = z.object({
 
 export const updateInvoiceSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
-  taxRate: z.number().min(0).max(500).optional(),
+  // taxRate em basis points: 1400 = 14.00%. Range 0–50000 (até 500%).
+  taxRate: z.number().int().min(0).max(50000).optional(),
   notes: z.string().optional().nullable(),
   termsText: z.string().optional().nullable(),
 });

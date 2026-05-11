@@ -167,7 +167,9 @@ export default function NewInvoicePage() {
         body: JSON.stringify({
           clienteId: form.clienteId,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
-          taxRate: form.taxRate,
+          // A UI guarda taxRate em percent (14 = 14%). O backend espera
+          // basis points (1400 = 14.00%) — convertemos no submit.
+          taxRate: Math.round(form.taxRate * 100),
           notes: form.notes || undefined,
           termsText: form.termsText || undefined,
           timeEntryIds: Array.from(selectedTimeIds),

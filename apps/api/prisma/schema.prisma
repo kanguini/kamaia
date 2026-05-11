@@ -1111,7 +1111,9 @@ model Invoice {
   status      String    @default("DRAFT") @db.VarChar(20)
   currency    String    @default("AOA") @db.VarChar(3)
   subtotal    Int       @default(0)
-  taxRate     Float     @default(14.0) @map("tax_rate") // IVA Angola geral = 14%
+  // taxRate em basis points (1400 = 14.00%) para evitar floats em
+  // cálculos monetários. taxAmount = (subtotal * taxRate) / 10000.
+  taxRate     Int       @default(1400) @map("tax_rate")
   taxAmount   Int       @default(0) @map("tax_amount")
   total       Int       @default(0)
   amountPaid  Int       @default(0) @map("amount_paid")
