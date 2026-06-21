@@ -1,532 +1,145 @@
+/**
+ * Prisma seed standalone — usado por `npx ts-node prisma/seed.ts` e `npm run seed`.
+ * Espelha o SeedService mas sem subir o NestJS app.
+ */
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { LEGISLACAO_SEED } from '../src/modules/seed/data/legislacao';
+import { TGIS_SEED } from '../src/modules/seed/data/tgis';
+import { TIPOS_CONTRATO_SEED } from '../src/modules/seed/data/tipos-contrato';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('[Kamaia Seed] Starting...');
-
-  // ── Gabinete ────────────────────────────────────────────
-  const gabinete = await prisma.gabinete.upsert({
-    where: { nif: '5417865000' },
-    update: {},
-    create: {
-      name: 'Escritorio Dr. Carlos & Associados',
-      nif: '5417865000',
-      address: 'Rua Major Kanhangulo, 45, Luanda',
-      phone: '+244 923 456 789',
-      email: 'geral@drcarlos.ao',
-      plan: 'PRO_BUSINESS',
-      isActive: true,
-    },
-  });
-
-  console.log(`[Seed] Gabinete: ${gabinete.name} (${gabinete.id})`);
-
-  // ─�� Users ──────��────────────────────────────────────────
-  const passwordHash = await bcrypt.hash('Kamaia2026!', 12);
-
-  const socio = await prisma.user.upsert({
-    where: {
-      provider_providerId: { provider: 'credentials', providerId: 'seed-socio' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      email: 'socio@kamaia.dev',
-      passwordHash,
-      firstName: 'Carlos',
-      lastName: 'Mendes',
-      role: 'SOCIO_GESTOR',
-      oaaNumber: 'OAA-2015-1234',
-      specialty: 'Direito Laboral e Civel',
-      phone: '+244 923 456 789',
-      provider: 'credentials',
-      providerId: 'seed-socio',
-    },
-  });
-
-  const advogado = await prisma.user.upsert({
-    where: {
-      provider_providerId: { provider: 'credentials', providerId: 'seed-advogado' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      email: 'advogado@kamaia.dev',
-      passwordHash,
-      firstName: 'Maria',
-      lastName: 'Santos',
-      role: 'ADVOGADO_MEMBRO',
-      oaaNumber: 'OAA-2020-5678',
-      specialty: 'Direito Comercial',
-      phone: '+244 912 345 678',
-      provider: 'credentials',
-      providerId: 'seed-advogado',
-    },
-  });
-
-  const estagiario = await prisma.user.upsert({
-    where: {
-      provider_providerId: { provider: 'credentials', providerId: 'seed-estagiario' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      email: 'estagiario@kamaia.dev',
-      passwordHash,
-      firstName: 'Tiago',
-      lastName: 'Ferreira',
-      role: 'ESTAGIARIO',
-      oaaNumber: 'OAA-2025-9012',
-      specialty: 'Direito Penal',
-      provider: 'credentials',
-      providerId: 'seed-estagiario',
-    },
-  });
-
-  console.log(`[Seed] Users: ${socio.firstName}, ${advogado.firstName}, ${estagiario.firstName}`);
-
-  // ── Clientes ────────────────────────────────────────────
-  const cliente1 = await prisma.cliente.upsert({
-    where: {
-      gabineteId_nif: { gabineteId: gabinete.id, nif: '5400123456' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      advogadoId: socio.id,
-      type: 'INDIVIDUAL',
-      name: 'Joao Silva',
-      nif: '5400123456',
-      email: 'joao.silva@email.ao',
-      phone: '+244 945 678 901',
-      address: 'Bairro Ingombotas, Luanda',
-      notes: 'Cliente desde 2024. Caso laboral em curso.',
-    },
-  });
-
-  const cliente2 = await prisma.cliente.upsert({
-    where: {
-      gabineteId_nif: { gabineteId: gabinete.id, nif: '5400789012' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      advogadoId: advogado.id,
-      type: 'EMPRESA',
-      name: 'Sonangol Distribuidora, SA',
-      nif: '5400789012',
-      email: 'juridico@sonangol.co.ao',
-      phone: '+244 222 345 678',
-      address: 'Av. 1.o Congresso do MPLA, Luanda',
-      notes: 'Contrato de assessoria juridica permanente.',
-    },
-  });
-
-  console.log(`[Seed] Clientes: ${cliente1.name}, ${cliente2.name}`);
-
-  // ── Processos ────────────��──────────────────────────────
-  const processo1 = await prisma.processo.upsert({
-    where: {
-      gabineteId_processoNumber: { gabineteId: gabinete.id, processoNumber: 'PROC-2026-0001' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      clienteId: cliente1.id,
-      advogadoId: socio.id,
-      processoNumber: 'PROC-2026-0001',
-      title: 'Joao Silva vs. TechAngola, Lda — Despedimento Ilicito',
-      description: 'Accao laboral por despedimento sem justa causa. Cliente foi despedido apos 5 anos de servico sem processo disciplinar.',
-      type: 'LABORAL',
-      status: 'ACTIVO',
-      stage: 'Audiencia de Conciliacao',
-      court: 'Tribunal Provincial do Trabalho de Luanda',
-      courtCaseNumber: 'TPT-LDA-2026-04521',
-      judge: 'Dr. Manuel Domingos',
-      opposingParty: 'TechAngola, Lda',
-      opposingLawyer: 'Dr. Pedro Neto',
-      priority: 'ALTA',
-      feeType: 'FIXO',
-      feeAmount: 50000000, // 500,000 AOA in centavos
-    },
-  });
-
-  const processo2 = await prisma.processo.upsert({
-    where: {
-      gabineteId_processoNumber: { gabineteId: gabinete.id, processoNumber: 'PROC-2026-0002' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      clienteId: cliente2.id,
-      advogadoId: advogado.id,
-      processoNumber: 'PROC-2026-0002',
-      title: 'Sonangol vs. Fornecedor Y — Incumprimento Contratual',
-      description: 'Accao comercial por incumprimento de contrato de fornecimento de equipamento.',
-      type: 'COMERCIAL',
-      status: 'ACTIVO',
-      stage: 'Peticao',
-      court: 'Tribunal Provincial de Luanda — Sala do Civel',
-      priority: 'MEDIA',
-      feeType: 'HORA',
-      feeAmount: 2500000, // 25,000 AOA/hora in centavos
-    },
-  });
-
-  const processo3 = await prisma.processo.upsert({
-    where: {
-      gabineteId_processoNumber: { gabineteId: gabinete.id, processoNumber: 'PROC-2026-0003' },
-    },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      clienteId: cliente1.id,
-      advogadoId: socio.id,
-      processoNumber: 'PROC-2026-0003',
-      title: 'Joao Silva — Divorcio Litigioso',
-      description: 'Processo de divorcio litigioso com partilha de bens.',
-      type: 'FAMILIA',
-      status: 'ACTIVO',
-      stage: 'Peticao',
-      court: 'Tribunal Provincial de Luanda — Sala da Familia',
-      priority: 'MEDIA',
-      feeType: 'FIXO',
-      feeAmount: 30000000, // 300,000 AOA
-    },
-  });
-
-  console.log(`[Seed] Processos: ${processo1.processoNumber}, ${processo2.processoNumber}, ${processo3.processoNumber}`);
-
-  // ── Prazos ───────���──────────────────────────────────────
-  const now = new Date();
-  const inDays = (d: number) => new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
-
-  await prisma.prazo.createMany({
-    data: [
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        title: 'Audiencia de Conciliacao',
-        description: 'Comparecer no Tribunal Provincial do Trabalho de Luanda as 10h.',
-        type: 'AUDIENCIA',
-        dueDate: inDays(3),
-        alertHoursBefore: 48,
-        status: 'PENDENTE',
-        isUrgent: true,
+  console.log('▶ Seeding TGIS verbas...');
+  for (const v of TGIS_SEED) {
+    await prisma.tGISVerba.upsert({
+      where: { numero: v.numero },
+      create: {
+        numero: v.numero,
+        descricao: v.descricao,
+        tipoTaxa: v.tipoTaxa,
+        taxaValor: v.taxaValor,
+        taxaUnidade: v.taxaUnidade,
+        baseRegra: v.baseRegra as object | undefined,
+        responsavelLiquidacao: v.responsavelLiquidacao,
+        referenciaLegal: v.referenciaLegal,
+        vigenteDesde: new Date(v.vigenteDesde),
+        vigenteAte: v.vigenteAte ? new Date(v.vigenteAte) : undefined,
       },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        title: 'Preparar documentacao para audiencia',
-        description: 'Reunir contrato de trabalho, recibos de vencimento, comunicacao de despedimento.',
-        type: 'OUTRO',
-        dueDate: inDays(2),
-        alertHoursBefore: 24,
-        status: 'PENDENTE',
-        isUrgent: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo2.id,
-        title: 'Prazo para entrega da peticao inicial',
-        description: 'Submeter peticao inicial no tribunal civel.',
-        type: 'CONTESTACAO',
-        dueDate: inDays(10),
-        alertHoursBefore: 72,
-        status: 'PENDENTE',
-        isUrgent: false,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo3.id,
-        title: 'Reuniao com cliente — divorcio',
-        description: 'Discutir estrategia processual e documentacao necessaria.',
-        type: 'OUTRO',
-        dueDate: inDays(5),
-        alertHoursBefore: 24,
-        status: 'PENDENTE',
-        isUrgent: false,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo2.id,
-        title: 'Prazo para recurso — decisao cautelar',
-        description: 'Recurso da decisao cautelar proferida em 15/03/2026.',
-        type: 'RECURSO',
-        dueDate: inDays(1),
-        alertHoursBefore: 24,
-        status: 'PENDENTE',
-        isUrgent: true,
-      },
-    ],
-    skipDuplicates: true,
-  });
+      update: {},
+    });
+  }
+  console.log(`  ✓ ${TGIS_SEED.length} verbas`);
 
-  console.log('[Seed] 5 Prazos created');
+  console.log('▶ Seeding TipoContrato (catálogo global)...');
+  for (const t of TIPOS_CONTRATO_SEED) {
+    await prisma.tipoContrato.upsert({
+      where: { tenantId_codigo: { tenantId: null as unknown as string, codigo: t.codigo } },
+      create: {
+        tenantId: null,
+        codigo: t.codigo,
+        nome: t.nome,
+        categoria: t.categoria,
+        descricao: t.descricao,
+        tgisVerbaNumero: t.tgisVerbaNumero,
+        requerNotario: t.requerNotario ?? false,
+        registosRequeridos: t.registosRequeridos ?? [],
+        gatilhoBNA: t.gatilhoBNA as object | undefined,
+        retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
+        clausulasObrigatorias: t.clausulasObrigatorias ?? [],
+      },
+      update: {},
+    });
+  }
+  console.log(`  ✓ ${TIPOS_CONTRATO_SEED.length} tipos`);
 
-  // ── Calendar Events ─────────────────────────────────────
-  await prisma.calendarEvent.createMany({
-    data: [
-      {
-        gabineteId: gabinete.id,
-        userId: socio.id,
-        processoId: processo1.id,
-        title: 'Audiencia de Conciliacao — Caso Silva',
-        type: 'AUDIENCIA',
-        location: 'Tribunal Provincial do Trabalho, Sala 3',
-        startAt: inDays(3),
-        endAt: new Date(inDays(3).getTime() + 2 * 60 * 60 * 1000), // +2h
-        allDay: false,
-        reminderMinutes: 120,
+  console.log('▶ Seeding LegislationDocument catalog...');
+  for (const l of LEGISLACAO_SEED) {
+    await prisma.legislationDocument.upsert({
+      where: { codigo: l.codigo },
+      create: {
+        codigo: l.codigo,
+        titulo: l.titulo,
+        diploma: l.diploma,
+        publicacao: l.publicacao ? new Date(l.publicacao) : undefined,
+        emVigorDesde: l.emVigorDesde ? new Date(l.emVigorDesde) : undefined,
+        url: l.url,
       },
-      {
-        gabineteId: gabinete.id,
-        userId: socio.id,
-        title: 'Reuniao com Equipa',
-        type: 'REUNIAO',
-        location: 'Escritorio — Sala de Reunioes',
-        startAt: inDays(1),
-        endAt: new Date(inDays(1).getTime() + 60 * 60 * 1000), // +1h
-        allDay: false,
-        reminderMinutes: 30,
-      },
-      {
-        gabineteId: gabinete.id,
-        userId: advogado.id,
-        processoId: processo2.id,
-        title: 'Diligencia — Registo Comercial',
-        type: 'DILIGENCIA',
-        location: 'Conservatoria do Registo Comercial de Luanda',
-        startAt: inDays(5),
-        endAt: new Date(inDays(5).getTime() + 3 * 60 * 60 * 1000), // +3h
-        allDay: false,
-      },
-      {
-        gabineteId: gabinete.id,
-        userId: socio.id,
-        title: 'Formacao — Novo Codigo Processo Civil',
-        type: 'OUTRO',
-        startAt: inDays(7),
-        endAt: inDays(7),
-        allDay: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        userId: advogado.id,
-        processoId: processo3.id,
-        title: 'Reuniao com cliente — divorcio',
-        type: 'REUNIAO',
-        location: 'Escritorio',
-        startAt: inDays(2),
-        endAt: new Date(inDays(2).getTime() + 90 * 60 * 1000), // +1.5h
-        allDay: false,
-        reminderMinutes: 60,
-      },
-    ],
-    skipDuplicates: true,
-  });
+      update: {},
+    });
+  }
+  console.log(`  ✓ ${LEGISLACAO_SEED.length} diplomas`);
 
-  console.log('[Seed] 5 Calendar events created');
+  console.log('▶ Seeding demo tenant...');
+  const slug = 'kamaia-demo';
+  const existing = await prisma.tenant.findUnique({ where: { slug } });
+  if (existing) {
+    console.log('  ✓ Demo tenant já existe — skip.');
+  } else {
+    const passwordHash = await bcrypt.hash('Kamaia2026!', 12);
+    const tenant = await prisma.tenant.create({
+      data: {
+        slug,
+        nome: 'Kamaia Demo',
+        nif: '5000000000',
+        plan: 'GROWTH',
+        status: 'ACTIVE',
+        email: 'demo@kamaia.dev',
+      },
+    });
+    for (const [email, firstName, lastName, role] of [
+      ['admin@kamaia.dev', 'Admin', 'Demo', 'ADMIN'],
+      ['legal@kamaia.dev', 'Legal', 'Lead', 'LEGAL_LEAD'],
+      ['manager@kamaia.dev', 'Contract', 'Manager', 'CONTRACT_MANAGER'],
+    ] as const) {
+      const user = await prisma.user.create({
+        data: { email, passwordHash, firstName, lastName },
+      });
+      await prisma.membership.create({
+        data: {
+          userId: user.id,
+          tenantId: tenant.id,
+          role,
+          isDefault: true,
+          acceptedAt: new Date(),
+        },
+      });
+    }
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        plan: 'GROWTH',
+        status: 'ACTIVE',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+    });
+    await prisma.usageQuota.create({
+      data: {
+        tenantId: tenant.id,
+        contratosLimit: 2000,
+        utilizadoresLimit: 10,
+        storageGBLimit: 50,
+        iaMessagesLimit: 1000,
+        periodoInicio: now,
+        periodoFim: periodEnd,
+      },
+    });
+    console.log(`  ✓ Tenant ${tenant.id} + 3 users criados`);
+  }
 
-  // ── AI Conversations ─────────────────────────────────────
-  const aiConversation = await prisma.aIConversation.create({
-    data: {
-      gabineteId: gabinete.id,
-      userId: socio.id,
-      title: 'Prazo para contestacao civel',
-      context: 'GERAL',
-    },
-  });
-
-  await prisma.aIMessage.createMany({
-    data: [
-      {
-        conversationId: aiConversation.id,
-        role: 'user',
-        content: 'Qual e o prazo para contestar uma accao ordinaria civel em Angola?',
-        tokenCount: 15,
-      },
-      {
-        conversationId: aiConversation.id,
-        role: 'assistant',
-        content: 'De acordo com o Codigo de Processo Civil angolano (Art. 486.o), o prazo para apresentar contestacao numa accao ordinaria civel e de 20 dias uteis a contar da data da citacao.\n\n_Nota: Esta e uma resposta simulada._',
-        tokenCount: 45,
-        model: 'mock-v1',
-      },
-      {
-        conversationId: aiConversation.id,
-        role: 'user',
-        content: 'E se o reu estiver no estrangeiro?',
-        tokenCount: 8,
-      },
-      {
-        conversationId: aiConversation.id,
-        role: 'assistant',
-        content: 'Quando o reu se encontra no estrangeiro, o prazo para contestacao pode ser alargado, dependendo do metodo de citacao utilizado. A citacao edital ou por via diplomatica pode implicar prazos adicionais.\n\n_Nota: Esta e uma resposta simulada._',
-        tokenCount: 40,
-        model: 'mock-v1',
-      },
-    ],
-  });
-
-  console.log('[Seed] AI conversation created with 4 messages');
-
-  // ── Time Entries ──────────────────────────────────────────
-  await prisma.timeEntry.createMany({
-    data: [
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        userId: socio.id,
-        category: 'AUDIENCIA',
-        description: 'Audiencia de conciliacao no tribunal',
-        date: inDays(-2),
-        durationMinutes: 120,
-        billable: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        userId: socio.id,
-        category: 'PESQUISA',
-        description: 'Pesquisa jurisprudencia laboral',
-        date: inDays(-3),
-        durationMinutes: 180,
-        billable: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo2.id,
-        userId: advogado.id,
-        category: 'REDACCAO',
-        description: 'Redaccao de peticao inicial',
-        date: inDays(-1),
-        durationMinutes: 240,
-        billable: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        userId: socio.id,
-        category: 'REUNIAO',
-        description: 'Reuniao com cliente',
-        date: inDays(-4),
-        durationMinutes: 60,
-        billable: true,
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo3.id,
-        userId: socio.id,
-        category: 'DESLOCACAO',
-        description: 'Deslocacao ao conservatoria',
-        date: inDays(-1),
-        durationMinutes: 90,
-        billable: false,
-      },
-    ],
-    skipDuplicates: true,
-  });
-  console.log('[Seed] 5 Time entries created');
-
-  // ── Expenses ──────────────────────────────────────────────
-  await prisma.expense.createMany({
-    data: [
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        userId: socio.id,
-        category: 'EMOLUMENTOS',
-        description: 'Emolumentos judiciais',
-        amount: 2500000,
-        date: inDays(-5),
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo2.id,
-        userId: advogado.id,
-        category: 'COPIAS',
-        description: 'Copias certificadas',
-        amount: 150000,
-        date: inDays(-2),
-      },
-      {
-        gabineteId: gabinete.id,
-        processoId: processo1.id,
-        userId: socio.id,
-        category: 'DESLOCACAO',
-        description: 'Transporte ao tribunal',
-        amount: 500000,
-        date: inDays(-2),
-      },
-    ],
-    skipDuplicates: true,
-  });
-  console.log('[Seed] 3 Expenses created');
-
-  // ── Usage Quota ─────────────────────────────────────────
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-  await prisma.usageQuota.upsert({
-    where: { gabineteId: gabinete.id },
-    update: {},
-    create: {
-      gabineteId: gabinete.id,
-      aiQueriesUsed: 3,
-      docAnalysesUsed: 0,
-      storageUsedBytes: BigInt(0),
-      periodStart,
-      periodEnd,
-    },
-  });
-
-  console.log('[Seed] Usage quota created');
-
-  // ── Notification Preferences ─────────────────────────────
-  await prisma.notificationPreference.createMany({
-    data: [
-      {
-        userId: socio.id,
-        emailEnabled: true,
-        pushEnabled: true,
-        smsEnabled: true,
-        smsOnlyUrgent: true,
-      },
-      {
-        userId: advogado.id,
-        emailEnabled: true,
-        pushEnabled: true,
-        smsEnabled: false,
-        smsOnlyUrgent: true,
-      },
-      {
-        userId: estagiario.id,
-        emailEnabled: true,
-        pushEnabled: false,
-        smsEnabled: false,
-        smsOnlyUrgent: true,
-      },
-    ],
-    skipDuplicates: true,
-  });
-  console.log('[Seed] 3 Notification preferences created');
-
-  console.log('[Kamaia Seed] Done!');
-  console.log('');
-  console.log('Login credentials:');
-  console.log('  socio@kamaia.dev     / Kamaia2026!  (SOCIO_GESTOR)');
-  console.log('  advogado@kamaia.dev  / Kamaia2026!  (ADVOGADO_MEMBRO)');
-  console.log('  estagiario@kamaia.dev / Kamaia2026! (ESTAGIARIO)');
+  console.log('\n✓ Seed completo.');
 }
 
 main()
   .catch((e) => {
-    console.error('[Seed Error]', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    void prisma.$disconnect();
   });
