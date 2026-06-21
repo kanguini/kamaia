@@ -6,14 +6,14 @@ import { Footer } from '@/components/Footer'
 import { Reveal } from '@/components/Reveal'
 
 export const metadata: Metadata = {
-  title: 'Sobre',
+  title: 'Sobre · Kamaia CLM',
   description:
-    'Kamaia nasce em Angola para elevar a prática jurídica ao nível estratégico. Conheça a missão, a abordagem multidisciplinar e as decisões técnicas que diferenciam a plataforma.',
+    'Kamaia é um Contract Lifecycle Management horizontal, construído em Angola para Angola e PALOP. Compliance angolano embebido. IA sobre a legislação local.',
   alternates: { canonical: '/sobre' },
   openGraph: {
-    title: 'Sobre · Kamaia',
+    title: 'Sobre · Kamaia CLM',
     description:
-      'Do jurista-agente ao jurista-estratega. A visão, a equipa e a arquitectura por detrás do Kamaia.',
+      'A visão, a arquitectura e o porquê de existir um CLM construído em Angola.',
     url: '/sobre',
     type: 'website',
   },
@@ -28,180 +28,102 @@ export default function SobrePage() {
           <div className="shell">
             <Reveal>
               <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-                Sobre
+                Sobre o Kamaia
               </span>
-              <h1 className="mt-3 max-w-3xl text-[clamp(36px,5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
-                Tecnologia jurídica
+              <h1 className="mt-4 font-playfair text-[clamp(36px,5vw,64px)] font-medium leading-[1.1]">
+                Construído em Angola para
                 <br />
-                <span style={{ color: '#9cb6ff' }}>
-                  feita por e para advogados.
-                </span>
+                <em className="not-italic" style={{ color: '#9cb6ff' }}>
+                  resolver problemas de Angola.
+                </em>
               </h1>
-              <p className="mt-6 max-w-2xl text-lg text-white/75">
-                Kamaia nasce de uma dor real: gerir um gabinete com ferramentas
-                improvisadas. Excel, emails, WhatsApps e papel não chegam para
-                uma prática moderna.
+              <p className="mt-6 max-w-[680px] text-[15px] leading-relaxed text-white/65">
+                O Kamaia é um Contract Lifecycle Management horizontal. Está
+                desenhado para qualquer organização que tenha contratos em
+                Angola — imobiliária, indústria, banca, comércio, serviços —
+                e para as sociedades de advogados que cuidam da carteira dos
+                seus clientes corporativos.
               </p>
             </Reveal>
           </div>
         </section>
 
-        {/* Missão */}
-        <section className="border-b border-white/5 py-20">
-          <div className="shell grid gap-12 md:grid-cols-[1fr_1.3fr] md:items-start">
-            <Reveal>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-                Missão
-              </span>
-              <h2 className="mt-3 text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.1] tracking-[-0.02em]">
-                Menos horas a administrar.
-              </h2>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <div className="space-y-5 text-[15px] leading-relaxed text-white/75">
-                <p>
-                  A profissão jurídica passa por uma transformação. Mais
-                  clientes, mais tipos de processos, mais exigências de
-                  compliance. Menos tempo para os casos em si.
-                </p>
-                <p>
-                  Kamaia existe para devolver esse tempo. Automatizamos o
-                  trabalho repetitivo — prazos, timesheets, facturação — para
-                  que os advogados se possam concentrar no que só eles podem
-                  fazer: pensar, negociar, argumentar.
-                </p>
-                <p>
-                  Somos ambiciosos mas específicos: não queremos ser o próximo
-                  SaaS genérico com má tradução. Queremos ser o produto certo
-                  para quem exerce advocacia — com os detalhes no sítio certo.
-                </p>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Fundador */}
-        <section className="border-b border-white/5 py-20">
-          <div className="shell grid gap-12 md:grid-cols-[1fr_1.3fr]">
-            <Reveal>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-                Fundador
-              </span>
-              <h2 className="mt-3 text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.1] tracking-[-0.02em]">
-                Helder Maiato
-              </h2>
-              <p className="mt-2 text-sm text-white/55">
-                Sócio-gestor GMS Advogados · fundador Kamaia
-              </p>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <div className="space-y-5 text-[15px] leading-relaxed text-white/75">
-                <p>
-                  Depois de anos a construir um gabinete com ferramentas
-                  improvisadas, percebi que a solução não existia. Construi uma
-                  para uso interno — e os outros advogados que experimentaram
-                  pediram acesso.
-                </p>
-                <p>
-                  Kamaia é o resultado: software construído por quem o usa
-                  todos os dias. Cada decisão — dos workflows às cores dos
-                  sinalizadores de estado — nasceu de um problema que vivi.
-                </p>
-                <p>
-                  A equipa está a crescer. Se és advogado, developer ou
-                  designer e queres trabalhar num produto que muda a forma como
-                  os gabinetes operam,{' '}
-                  <Link
-                    href="/contacto"
-                    className="text-white underline underline-offset-4"
-                  >
-                    fala connosco
-                  </Link>
-                  .
-                </p>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Valores / tech */}
-        <section className="border-b border-white/5 py-20">
+        <section className="border-b border-white/5 py-24">
           <div className="shell">
             <Reveal>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-                Como trabalhamos
-              </span>
-              <h2 className="mt-3 max-w-2xl text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.1] tracking-[-0.02em]">
-                Privacidade, conformidade e rigor.
+              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+                Porquê construir aqui.
               </h2>
+              <div className="mt-8 grid grid-cols-1 gap-10 md:grid-cols-2">
+                <div>
+                  <p className="text-[15px] leading-relaxed text-white/70">
+                    Os grandes CLMs internacionais — Ironclad, ContractWorks,
+                    LinkSquares, SpotDraft — não conhecem o Código do Imposto
+                    de Selo. Não sabem o que é a verba TGIS aplicável a um
+                    arrendamento. Não falam com a BNA. Não interpretam o RJOC.
+                    Não lêem PT-AO.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[15px] leading-relaxed text-white/70">
+                    Os sistemas locais não fazem CLM. O Kamaia preenche este
+                    espaço — software global em ambição, angolano em substância.
+                    O compliance angolano não é um plugin: é a coluna vertebral.
+                  </p>
+                </div>
+              </div>
             </Reveal>
-
-            <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {[
-                {
-                  icon: Shield,
-                  title: 'Isolamento multi-tenant',
-                  body:
-                    'Row-Level Security no PostgreSQL: nenhum gabinete vê dados de outro. Dupla camada em app + BD.',
-                },
-                {
-                  icon: FileLock,
-                  title: 'Audit log append-only',
-                  body:
-                    'Todas as escritas geram registo imutável. Rastreabilidade total para auditorias e disputas.',
-                },
-                {
-                  icon: Server,
-                  title: 'Infraestrutura segura',
-                  body:
-                    'Dados e backups encriptados em repouso (AES-256) e em trânsito (TLS 1.3). Conformidade com as exigências legais aplicáveis.',
-                },
-                {
-                  icon: Globe2,
-                  title: 'Português jurídico, primeiro',
-                  body:
-                    'Interface, emails e templates em português jurídico. Workflows, prazos e formatos calibrados para a prática real.',
-                },
-              ].map((v, i) => (
-                <Reveal key={v.title} delay={i * 0.05}>
-                  <article className="h-full rounded-xl border border-white/10 bg-white/[0.02] p-6">
-                    <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/10 bg-white/5">
-                      <v.icon size={16} className="text-white/80" />
-                    </div>
-                    <h3 className="text-base font-medium">{v.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-white/65">
-                      {v.body}
-                    </p>
-                  </article>
-                </Reveal>
-              ))}
-            </div>
           </div>
         </section>
 
-        {/* CTA */}
+        <section className="border-b border-white/5 py-24">
+          <div className="shell">
+            <Reveal>
+              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+                Arquitectura defensável.
+              </h2>
+              <div className="mt-10 grid grid-cols-1 gap-px bg-white/10 md:grid-cols-2">
+                <Pillar
+                  icon={Shield}
+                  title="Multi-tenancy hierárquico"
+                  body="Tenants podem ter sub-tenants. Sociedades de advogados gerem N clientes isolados num só interface. Cada cliente é um tenant — auditável, separável, exportável."
+                />
+                <Pillar
+                  icon={FileLock}
+                  title="Audit log append-only"
+                  body="Toda a escrita é registada com actor, antes/depois e contexto. Defesa legal e compliance interno fora da caixa. Audit cruzado para Modo AGENCY."
+                />
+                <Pillar
+                  icon={Server}
+                  title="Engine declarativo"
+                  body="As regras de compliance são código versionado, não lógica espalhada por services. A regra vigente à data do facto tributário é a que se aplica — não a data presente."
+                />
+                <Pillar
+                  icon={Globe2}
+                  title="Localização profunda"
+                  body="pt-AO em todas as labels. Datas UTC → WAT. Catálogo de tipos cobre o vocabulário forense angolano. Multi-moeda com taxa de referência convertível."
+                />
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
         <section className="py-24">
           <div className="shell text-center">
             <Reveal>
-              <h2 className="mx-auto max-w-2xl text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.15] tracking-[-0.02em]">
-                Queres fazer parte?
+              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+                Estamos a falar com early adopters.
               </h2>
-              <p className="mx-auto mt-4 max-w-lg text-white/70">
-                Programa de early adopters aberto. 6 meses de Plano Gabinete
-                gratuito para os primeiros 20 gabinetes que aderirem.
+              <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-white/60">
+                Se tens uma carteira de contratos para ordenar, conta-nos. O
+                roadmap segue conversas reais — não decisões de gabinete.
               </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <div className="mt-8">
                 <Link
-                  href="/contacto?plan=EARLY_ADOPTER"
-                  className="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3 text-sm font-medium text-black transition-all hover:scale-[1.02]"
+                  href="/contacto"
+                  className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
                 >
-                  Candidatar-me
-                </Link>
-                <Link
-                  href="/funcionalidades"
-                  className="inline-flex items-center gap-2 rounded-md border border-white/25 bg-white/5 px-6 py-3 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
-                >
-                  Ver funcionalidades
+                  Falar com a equipa
                 </Link>
               </div>
             </Reveal>
@@ -210,5 +132,25 @@ export default function SobrePage() {
       </main>
       <Footer />
     </>
+  )
+}
+
+function Pillar({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: React.ElementType
+  title: string
+  body: string
+}) {
+  return (
+    <article className="bg-black p-7">
+      <Icon className="h-6 w-6 text-white/70" aria-hidden="true" />
+      <h3 className="mt-4 font-playfair text-xl font-medium text-white">
+        {title}
+      </h3>
+      <p className="mt-2 text-[14px] leading-relaxed text-white/60">{body}</p>
+    </article>
   )
 }

@@ -6,28 +6,35 @@ import { HeroFloatingCards } from '@/components/HeroFloatingCards'
 import { Reveal } from '@/components/Reveal'
 import { appUrl } from '@/lib/utm'
 
-// Kept in sync with the Faq() component below so Google can build the
-// FAQ rich result without re-parsing the DOM.
+// FAQ mantido sincronizado com o componente Faq() para o rich result do Google.
 const FAQ_ITEMS = [
   {
-    q: 'Como é garantida a segurança e confidencialidade dos dados?',
-    a: 'Isolamento multi-tenant com RLS no PostgreSQL — nenhum gabinete acede a dados de outro. Todas as escritas geram audit log append-only. Backups diários encriptados e infra-estrutura com cifra em trânsito e em repouso. Os detalhes técnicos estão disponíveis na política de privacidade.',
+    q: 'O que é o Kamaia exactamente?',
+    a: 'O Kamaia é um Contract Lifecycle Management (CLM) horizontal — um sistema para gerir o ciclo de vida completo dos contratos da tua organização, desde a solicitação inicial até ao arquivo após a terminação. Pensado para empresas com carteiras de centenas a dezenas de milhares de contratos, e para sociedades de advogados que oferecem gestão de contratos como serviço aos seus clientes.',
   },
   {
-    q: 'Qual é o tempo típico de adopção?',
-    a: 'Um advogado solo configura e regista o primeiro processo em 15 minutos. Escritórios maiores costumam estar em operação em 2 a 3 dias. O onboarding é acompanhado pela equipa em qualquer um dos segmentos.',
+    q: 'Em que sectores faz sentido usar?',
+    a: 'O Kamaia é horizontal — funciona em qualquer sector que tenha contratos. O catálogo de fábrica cobre Imobiliário, Indústria, Serviços, Comércio, Banca, Seguros, Petróleo & Gás, Mineração, Telecomunicações, Agricultura, Construção, Transportes, Saúde, Educação, Tecnologia, Energia, Turismo e Retail. Cada organização pode estender o catálogo com tipos próprios.',
   },
   {
-    q: 'É possível importar dados existentes?',
-    a: 'Sim. Clientes, processos e prazos suportam importação CSV. Gabinetes com histórico noutros sistemas beneficiam de migração assistida pela equipa durante o onboarding.',
+    q: 'Como ajuda com o compliance angolano?',
+    a: 'Compliance Engine embebido com regras versionadas para Imposto de Selo (TGIS), Registos (Predial, Comercial, Automóvel, IAPI), BNA/Lei Cambial/RJOC, retenção AGT sobre serviços de não-residentes, e reconhecimento notarial. O motor sugere os actos requeridos e os prazos legais a partir das características de cada contrato — confirma sempre com o responsável jurídico antes de submeter.',
   },
   {
-    q: 'A plataforma funciona em mobilidade?',
-    a: 'A aplicação web é responsiva e usa-se confortavelmente em tablet. A aplicação móvel nativa está planeada para Q3 de 2026 — por agora recomendamos consulta em mobilidade e edição em desktop.',
+    q: 'Qual o tempo típico de adopção?',
+    a: 'Em modo Repositório, uma carteira de algumas centenas de contratos já existentes é importada e indexada em horas, com extracção assistida de partes, datas-chave e valor. Equipas a estrear o produto de raiz costumam ter uma carteira-piloto em produção em 2 a 4 semanas.',
   },
   {
-    q: 'Como se integra a componente de IA?',
-    a: 'O assistente IA opera sobre o contexto do próprio gabinete — processos, documentos e histórico —, com governo de acesso e rastreabilidade. Nunca envia dados sensíveis para indexação pública.',
+    q: 'Posso usar como sociedade de advogados a gerir contratos dos meus clientes?',
+    a: 'Sim. O plano AGENCY permite criar tenants-filho, um por cliente. Cada cliente fica totalmente isolado do outro — pesquisa, dados, IA, audit log. A tua equipa navega entre eles via workspace switcher. Os teus clientes não pagam — facturamos só ao gabinete.',
+  },
+  {
+    q: 'Como é garantida a segurança e confidencialidade?',
+    a: 'Isolamento por tenant com guards em todas as camadas. Audit log append-only em todas as escritas. Hash + selo temporal nas versões assinadas. Storage em R2 ou S3 com cifra em repouso e em trânsito. Backups encriptados. Os detalhes estão na política de privacidade.',
+  },
+  {
+    q: 'Como funciona a IA?',
+    a: 'A IA do Kamaia foca-se em Q&A sobre legislação angolana, com citação ao artigo aplicável. O catálogo seed inclui Constituição, Código Civil, Código Comercial, Lei das Sociedades Comerciais, Código do Imposto de Selo, Lei Cambial, Lei do Trabalho, Lei do Investimento Privado, Lei de Protecção de Dados (22/11), Lei 3/14 sobre branqueamento, entre outros. O assistente nunca substitui aconselhamento jurídico profissional.',
   },
 ]
 
@@ -54,7 +61,7 @@ export default function HomePage() {
         <Positioning />
         <Pillars />
         <Features />
-        <SocialProof />
+        <ComplianceCallout />
         <Faq />
         <CTAFinal />
       </main>
@@ -66,12 +73,6 @@ export default function HomePage() {
 // ─── Hero ────────────────────────────────────────────────────
 function Hero() {
   return (
-    /*
-     * marginTop: -68px pulls the section up behind the sticky nav (68px tall).
-     * paddingTop: 68px compensates so content doesn't overlap the nav.
-     * overflow-x: clip prevents side-overflow from floating cards without
-     * creating a new scroll container (unlike overflow-x: hidden).
-     */
     <section
       className="relative flex flex-col"
       style={{
@@ -83,7 +84,6 @@ function Hero() {
     >
       <AnimatedGradient />
 
-      {/* Dot-grid overlay */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-[1]"
@@ -96,36 +96,26 @@ function Hero() {
         }}
       />
 
-      {/* ── Text block ── */}
       <div className="relative z-10 flex flex-col items-center text-center px-4 pt-[clamp(80px,12vh,130px)] pb-10">
-        {/* Badge */}
         <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/65 backdrop-blur-sm">
-          <span
-            aria-hidden="true"
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: '#6be49a' }}
-          />
-          Plataforma estratégica de prática jurídica · Early access
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#6be49a' }} />
+          Contract Lifecycle Management para Angola · Early access
         </span>
 
-        {/* Title — Playfair Display */}
         <h1 className="mt-7 mx-auto max-w-[960px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
-          Uma nova forma de ver
+          O sistema operativo dos teus
           <br />
           <em className="not-italic" style={{ color: '#9cb6ff' }}>
-            a prática jurídica.
+            contratos.
           </em>
         </h1>
 
-        {/* Description */}
-        <p className="mt-6 max-w-[640px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
-          Kamaia é uma abordagem multidisciplinar à gestão jurídica — que
-          transforma o jurista não apenas num agente do direito, mas num
-          baluarte da estratégia. Agilidade, celeridade e inteligência nas
-          decisões, suportadas por metodologias ágeis e assistência IA.
+        <p className="mt-6 max-w-[680px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
+          Gere o ciclo de vida completo de cada contrato — da solicitação ao arquivo —
+          com Imposto de Selo, registos públicos, BNA e AGT calculados automaticamente.
+          Multi-sector, alto volume, localizado para Angola.
         </p>
 
-        {/* CTAs */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             href={appUrl('/register', 'hero_cta')}
@@ -137,15 +127,13 @@ function Hero() {
             href="/contacto"
             className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
           >
-            Agendar demonstração
+            Falar com a equipa
           </Link>
         </div>
       </div>
 
-      {/* ── Floating cards + mockup (client component — mouse parallax) ── */}
       <HeroFloatingCards />
 
-      {/* Subtle fade into the next section */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-20"
@@ -155,88 +143,75 @@ function Hero() {
   )
 }
 
-// ─── Positioning statement ───────────────────────────────────
+// ─── Positioning ─────────────────────────────────────────────
 function Positioning() {
   return (
-    <section className="border-t border-white/5 bg-black py-24 lg:py-32 text-white">
-      <div className="shell">
-        <Reveal>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Posicionamento
-          </span>
-          <h2 className="mt-4 max-w-4xl font-playfair text-[clamp(26px,3.2vw,42px)] font-medium leading-[1.2] tracking-[-0.015em] text-white/92">
-            &ldquo;O Kamaia é uma nova forma de ver a prática jurídica. Uma
-            abordagem multidisciplinar, que faz do jurista não apenas um agente
-            do direito,{' '}
-            <em className="not-italic" style={{ color: '#9cb6ff' }}>
-              mas um baluarte da estratégia
-            </em>
-            .&rdquo;
-          </h2>
-          <p className="mt-8 max-w-2xl text-white/60 leading-relaxed">
-            A plataforma eleva a gestão jurídica ao plano estratégico:
-            integra tecnologia, metodologias ágeis de gestão de projectos e
-            inteligência artificial para gerar resultados mensuráveis — e
-            devolver ao jurista o tempo que hoje perde em tarefas operacionais.
+    <section className="relative bg-black px-6 py-24 md:py-32">
+      <Reveal>
+        <div className="mx-auto max-w-[860px] text-center">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+            Para quem
           </p>
-        </Reveal>
-      </div>
+          <h2 className="mt-4 font-playfair text-[clamp(28px,3.8vw,48px)] font-medium leading-[1.15] text-white">
+            Empresas com carteira de contratos.
+            <br />
+            Sociedades de advogados que cuidam dela.
+          </h2>
+          <p className="mt-6 text-[clamp(15px,1.4vw,17px)] leading-relaxed text-white/65">
+            Imobiliária com 800 arrendamentos a renovar. Industrial com 200 contratos
+            de fornecimento. Banca com SLAs a vencer. Direcção jurídica que perdeu
+            a janela de denúncia. Gabinete que cuida da carteira de cinco clientes
+            corporativos. O Kamaia fala a linguagem destes problemas — e responde
+            em português angolano, com a lei aplicável.
+          </p>
+        </div>
+      </Reveal>
     </section>
   )
 }
 
-// ─── Strategic pillars ───────────────────────────────────────
+// ─── Pillars ─────────────────────────────────────────────────
 function Pillars() {
-  const items = [
+  const PILLARS = [
     {
-      kicker: 'Pilar I',
-      title: 'Agilidade e celeridade',
-      body: 'Fluxos de trabalho desenhados sobre metodologias ágeis aplicadas ao sector jurídico. Reduz ciclos operacionais e acelera o tempo de resposta ao cliente.',
+      title: 'Ciclo de vida completo',
+      body: 'Solicitação → Drafting → Revisão → Negociação → Aprovação → Assinatura → Vida activa → Adendas → Terminação. 17 estados, transições validadas, timeline imutável por contrato.',
     },
     {
-      kicker: 'Pilar II',
-      title: 'Inteligência nas decisões',
-      body: 'Dados consolidados, análise em tempo real e um assistente IA que conhece o contexto do gabinete — para que cada decisão seja informada, não intuitiva.',
+      title: 'Compliance angolano embebido',
+      body: 'Imposto de Selo automático, registos públicos, BNA/Lei Cambial, retenção AGT, reconhecimento notarial. Regras versionadas com referência ao diploma vigente à data do facto.',
     },
     {
-      kicker: 'Pilar III',
-      title: 'Gestão de tempo optimizada',
-      body: 'Timesheets, capacidade da equipa e rentabilidade por processo numa única vista. Eleva a produtividade sem sacrificar o rigor técnico.',
+      title: 'IA sobre a legislação angolana',
+      body: 'Q&A com citação ao artigo. 13 diplomas-âncora curados — Constituição, Códigos, Lei Cambial, Lei 22/11, Lei 3/14. A IA sugere; tu validas.',
     },
     {
-      kicker: 'Pilar IV',
-      title: 'Tecnologia integrada',
-      body: 'Processos, prazos, clientes, facturação e documentação numa só plataforma — eliminando silos e devolvendo coerência à operação jurídica.',
+      title: 'Hierarquia multi-tenant',
+      body: 'Modo AGENCY: sociedades de advogados gerem N clientes isolados num só interface. Workspace switcher tipo Linear. Audit cruzado para defesa legal.',
     },
   ]
-
   return (
-    <section className="border-t border-white/5 bg-black py-24 lg:py-32 text-white">
-      <div className="shell">
+    <section className="relative bg-black px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-[1180px]">
         <Reveal>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Pilares estratégicos
-          </span>
-          <h2 className="mt-3 max-w-3xl text-[clamp(28px,3.5vw,44px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Quatro eixos que elevam
-            <br />
-            <span className="text-white/60">a prática jurídica ao nível estratégico.</span>
-          </h2>
+          <div className="text-center mb-16">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+              Pilares
+            </p>
+            <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
+              Quatro coisas que ninguém faz por ti em Angola.
+            </h2>
+          </div>
         </Reveal>
-
-        <div className="mt-14 grid gap-4 md:grid-cols-2">
-          {items.map((it, i) => (
-            <Reveal key={it.title} delay={i * 0.08}>
-              <article className="group h-full rounded-xl border border-white/10 bg-white/[0.02] p-7 transition-colors hover:border-white/20">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">
-                  {it.kicker}
-                </p>
-                <h3 className="mt-3 font-playfair text-2xl font-medium tracking-[-0.01em]">
-                  {it.title}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          {PILLARS.map((p) => (
+            <Reveal key={p.title}>
+              <article className="h-full rounded-2xl border border-white/10 bg-white/[0.02] p-8 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.04]">
+                <h3 className="font-playfair text-2xl font-medium text-white">
+                  {p.title}
                 </h3>
-                <div className="my-5 h-px bg-white/5" />
-                <p className="text-sm leading-relaxed text-white/72">
-                  {it.body}
+                <p className="mt-3 text-[15px] leading-relaxed text-white/65">
+                  {p.body}
                 </p>
               </article>
             </Reveal>
@@ -249,205 +224,166 @@ function Pillars() {
 
 // ─── Features ────────────────────────────────────────────────
 function Features() {
-  const features = [
+  const FEATURES = [
     {
-      title: 'Gestão de processos',
-      body: 'Workflows adaptáveis por matéria — civil, penal, laboral, M&A, compliance. Visão integrada da timeline, partes envolvidas e documentação.',
+      group: 'Repositório',
+      title: 'Importação em massa',
+      body:
+        'Carrega PDFs e ZIPs da tua carteira legada. OCR + extracção IA preenchem partes, datas-chave, valor. Revisão humana antes de publicar.',
     },
     {
-      title: 'Prazos e compliance',
-      body: 'Cálculo automático de dias úteis e feriados. Alertas multi-canal antes das datas críticas — impossível perder uma etapa relevante.',
+      group: 'Negociação',
+      title: 'Diff inteligente entre versões',
+      body:
+        'V3 contra V2 numa tabela: que cláusulas mudaram e como. Resumo em linguagem do negócio. Foco no que importa.',
     },
     {
-      title: 'Gestão de relação com o cliente',
-      body: 'CRM jurídico com portal dedicado. O cliente acede ao ponto de situação dos seus processos, reduzindo ruído e aumentando confiança.',
+      group: 'Vida activa',
+      title: 'Alertas que não falham',
+      body:
+        'Renovação automática em 30 dias, janela de denúncia a fechar, IS por liquidar. Email, push e in-app — múltiplos canais para garantir.',
     },
     {
-      title: 'Facturação e rentabilidade',
-      body: 'Agregação automática de timesheets e despesas. Margem por processo e por cliente — instrumentos para decidir onde investir esforço.',
+      group: 'Biblioteca',
+      title: 'Cláusulas reutilizáveis',
+      body:
+        'A cláusula que negociaste há 6 meses está pesquisável e linkada ao contrato de origem. A biblioteca do gabinete cresce sozinha.',
     },
     {
-      title: 'Timesheets e capacidade',
-      body: 'Timer integrado ao processo, aprovação estruturada e relatórios de utilização. Transparência sobre onde a equipa gera valor.',
+      group: 'Compliance',
+      title: 'TGIS automático',
+      body:
+        '11 verbas seed cobrindo prestação de serviços, arrendamento, mútuo, compra e venda. Calcula a base, sugere o prazo. Tu confirmas.',
     },
     {
-      title: 'Assistente IA contextual',
-      body: 'Redacção de peças, síntese de processos e pesquisa jurisprudencial — sempre alinhados com o contexto e histórico do gabinete.',
+      group: 'Integração',
+      title: 'API + Webhooks',
+      body:
+        'Dispara fluxos quando um contrato é assinado, expira, ou muda de estado. Integra com o teu ERP, ferramenta de assinatura, ou data lake.',
     },
   ]
-
   return (
-    <section className="border-t border-white/5 bg-black py-24 lg:py-32 text-white">
-      <div className="shell">
+    <section className="relative bg-black px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-[1180px]">
         <Reveal>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Capacidades
-          </span>
-          <h2 className="mt-3 max-w-3xl text-[clamp(28px,3.5vw,44px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Um fluxo coerente.
-            <br />
-            <span className="text-white/60">
-              Do primeiro contacto à decisão estratégica.
-            </span>
-          </h2>
+          <div className="mb-16">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+              Funcionalidades
+            </p>
+            <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
+              Construído para o trabalho real.
+            </h2>
+          </div>
         </Reveal>
-
-        <div className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 0.05}>
-              <article className="h-full rounded-xl border border-white/10 bg-white/[0.02] p-6 transition-colors hover:border-white/20 hover:bg-white/[0.04]">
-                <p className="mb-4 text-[11px] font-medium tabular-nums text-white/30 tracking-widest">
-                  {String(i + 1).padStart(2, '0')}
+        <div className="grid grid-cols-1 gap-px bg-white/10 md:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map((f) => (
+            <Reveal key={f.title}>
+              <article className="h-full bg-black p-7">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">
+                  {f.group}
                 </p>
-                <h3 className="text-lg font-medium">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/65">
+                <h3 className="mt-3 font-playfair text-xl font-medium text-white">
+                  {f.title}
+                </h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-white/60">
                   {f.body}
                 </p>
               </article>
             </Reveal>
           ))}
         </div>
-
-        <div className="mt-10 text-center">
-          <Link
-            href="/funcionalidades"
-            className="text-sm text-white/75 transition-colors hover:text-white underline underline-offset-4 decoration-white/20"
-          >
-            Explorar capacidades em detalhe
-          </Link>
-        </div>
       </div>
     </section>
   )
 }
 
-// ─── Social proof ─────────────────────────────────────────────
-function SocialProof() {
+// ─── Compliance Callout ──────────────────────────────────────
+function ComplianceCallout() {
   return (
-    <section className="border-t border-white/5 bg-black py-24 text-white">
-      <div className="shell">
+    <section className="relative bg-black px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-[1080px]">
         <Reveal>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Programa de early adopters
-          </span>
-          <h2 className="mt-3 max-w-2xl text-[clamp(24px,3vw,36px)] font-medium leading-[1.15] tracking-[-0.02em]">
-            Construído em diálogo com gabinetes jurídicos em Angola.
-          </h2>
-          <p className="mt-6 max-w-2xl text-white/60 leading-relaxed">
-            O Kamaia evolui em colaboração próxima com advogados solo,
-            escritórios e departamentos jurídicos que definem as prioridades
-            da plataforma. Cada iteração nasce de casos reais da prática.
-          </p>
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-10 md:p-14">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
+              Compliance Engine
+            </p>
+            <h2 className="mt-4 font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15] text-white">
+              Imposto de Selo, registos, BNA e AGT —
+              <br />
+              sugeridos automaticamente, validados por ti.
+            </h2>
+            <p className="mt-6 max-w-[760px] text-[15px] leading-relaxed text-white/65">
+              O motor lê o tipo de contrato, o valor, as partes e o objecto e
+              produz a lista de actos regulatórios aplicáveis com prazo legal,
+              referência ao diploma vigente e disclaimer obrigatório. Tu confirmas
+              cada acto manualmente. Cada regra é versionada — a lei vigente à
+              data do facto tributário é a que se aplica, não a data presente.
+            </p>
+            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
+              {['TGIS', 'Registo Comercial', 'Registo Predial', 'BNA / RJOC', 'AGT IRT'].map((label) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-center text-[13px] text-white/70"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
         </Reveal>
+      </div>
+    </section>
+  )
+}
 
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              title: 'Advogados solo',
-              body: 'Ganham estrutura operacional de gabinete sem aumentar custos administrativos — foco integral no trabalho substantivo.',
-            },
-            {
-              title: 'Pequenos gabinetes',
-              body: 'Integram processos, clientes e facturação numa só plataforma — reduzindo fricção e aumentando a rentabilidade.',
-            },
-            {
-              title: 'Departamentos jurídicos',
-              body: 'Adoptam metodologias ágeis de projecto aplicadas ao direito — com governo, auditoria e isolamento por unidade.',
-            },
-          ].map((t, i) => (
-            <Reveal key={t.title} delay={i * 0.08}>
-              <figure className="flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.02] p-6">
-                <div className="text-[11px] uppercase tracking-[0.12em] text-white/55">
-                  Segmento
-                </div>
-                <div className="mt-2 text-base font-medium text-white">
-                  {t.title}
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-white/70">
-                  {t.body}
+// ─── FAQ ─────────────────────────────────────────────────────
+function Faq() {
+  return (
+    <section className="relative bg-black px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-[820px]">
+        <Reveal>
+          <div className="mb-12 text-center">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+              Perguntas frequentes
+            </p>
+            <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
+              O essencial, sem dar voltas.
+            </h2>
+          </div>
+        </Reveal>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map((item) => (
+            <Reveal key={item.q}>
+              <details className="group rounded-xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20">
+                <summary className="cursor-pointer list-none text-[15px] font-medium text-white">
+                  {item.q}
+                </summary>
+                <p className="mt-3 text-[14px] leading-relaxed text-white/60">
+                  {item.a}
                 </p>
-              </figure>
+              </details>
             </Reveal>
           ))}
         </div>
-
-        <p className="mt-10 text-center text-xs uppercase tracking-[0.14em] text-white/35">
-          Candidaturas ao early access abertas — fale connosco
-        </p>
       </div>
     </section>
   )
 }
 
-// ─── FAQ ──────────────────────────────────────────────────────
-function Faq() {
-  const items = FAQ_ITEMS
-  return (
-    <section className="border-t border-white/5 bg-black py-24 text-white">
-      <div className="shell grid gap-12 lg:grid-cols-[0.8fr_1fr]">
-        <div>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Perguntas frequentes
-          </span>
-          <h2 className="mt-3 text-[clamp(28px,3.5vw,40px)] font-medium leading-[1.1] tracking-[-0.02em]">
-            Respostas diretas
-            <br />
-            para decisões informadas.
-          </h2>
-          <p className="mt-6 text-white/60">
-            Não encontra a resposta que procura?{' '}
-            <Link
-              href="/contacto"
-              className="text-white underline underline-offset-4"
-            >
-              Fale connosco
-            </Link>
-            .
-          </p>
-        </div>
-
-        <ul className="divide-y divide-white/10 border-y border-white/10">
-          {items.map((it, i) => (
-            <li key={i} className="py-5">
-              <details className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
-                  <span className="text-[15px] font-medium">{it.q}</span>
-                  <span
-                    className="flex-shrink-0 text-white/55 transition-transform group-open:rotate-45"
-                    aria-hidden="true"
-                  >
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-white/65">
-                  {it.a}
-                </p>
-              </details>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  )
-}
-
-// ─── CTA Final ────────────────────────────────────────────────
+// ─── CTA Final ───────────────────────────────────────────────
 function CTAFinal() {
   return (
-    <section className="relative overflow-hidden border-t border-white/5 py-28">
-      <AnimatedGradient />
-      <div className="relative z-10 shell text-center text-white">
-        <Reveal>
-          <h2 className="mx-auto max-w-3xl font-playfair text-[clamp(32px,4.5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
-            Do operacional
-            <br />
-            <span style={{ color: '#9cb6ff' }}>ao estratégico.</span>
+    <section className="relative bg-black px-6 py-28">
+      <Reveal>
+        <div className="mx-auto max-w-[720px] text-center">
+          <h2 className="font-playfair text-[clamp(32px,4vw,52px)] font-medium leading-[1.1] text-white">
+            Começa pela tua carteira de hoje.
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-white/80">
-            Junte-se ao programa de early access e ajude a definir o futuro
-            da gestão jurídica em Angola e nos PALOP.
+          <p className="mt-5 text-[15px] leading-relaxed text-white/60">
+            Importa os contratos que já tens. Vê alertas de renovação em 24 horas.
+            Decide depois se queres redigir os próximos aqui.
           </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link
               href={appUrl('/register', 'cta_final')}
               className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-all hover:scale-[1.02]"
@@ -461,8 +397,8 @@ function CTAFinal() {
               Agendar demonstração
             </Link>
           </div>
-        </Reveal>
-      </div>
+        </div>
+      </Reveal>
     </section>
   )
 }
