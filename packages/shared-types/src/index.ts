@@ -650,6 +650,45 @@ export interface ComplianceActoDetectado {
 export const MOEDAS_SUPORTADAS = ['AKZ', 'USD', 'EUR', 'BRL', 'CNY', 'GBP', 'ZAR'] as const;
 export type MoedaSuportada = typeof MOEDAS_SUPORTADAS[number];
 
+// ─── Feriados públicos angolanos (fixos) ──────────────────
+//
+// Lei 11/18, de 13 de Agosto (Regime Jurídico dos Feriados Nacionais),
+// com actualizações posteriores. Feriados móveis (Carnaval, Sexta-Feira
+// Santa) ficam de fora desta lista — o cálculo dinâmico é feito quando
+// o módulo `holidays` os incluir.
+
+export interface PublicHoliday {
+  /** ISO month-day "MM-DD" — combinado com o ano alvo. */
+  monthDay: string;
+  /** Nome oficial. */
+  name: string;
+}
+
+export const ANGOLA_PUBLIC_HOLIDAYS_FIXOS: ReadonlyArray<PublicHoliday> = [
+  { monthDay: '01-01', name: 'Ano Novo' },
+  { monthDay: '02-04', name: 'Dia do Início da Luta Armada' },
+  { monthDay: '03-08', name: 'Dia Internacional da Mulher' },
+  { monthDay: '04-04', name: 'Dia da Paz e Reconciliação Nacional' },
+  { monthDay: '05-01', name: 'Dia Internacional do Trabalhador' },
+  { monthDay: '09-17', name: 'Dia do Fundador da Nação e do Herói Nacional' },
+  { monthDay: '11-02', name: 'Dia dos Finados' },
+  { monthDay: '11-11', name: 'Dia da Independência Nacional' },
+  { monthDay: '12-25', name: 'Dia de Natal' },
+] as const;
+
+export interface ResolvedHoliday {
+  /** YYYY-MM-DD */
+  date: string;
+  name: string;
+}
+
+export function resolveAngolaHolidays(year: number): ResolvedHoliday[] {
+  return ANGOLA_PUBLIC_HOLIDAYS_FIXOS.map((h) => ({
+    date: `${year}-${h.monthDay}`,
+    name: h.name,
+  }));
+}
+
 export const SECTORES_ACTIVIDADE = [
   'IMOBILIARIO',
   'INDUSTRIA',
