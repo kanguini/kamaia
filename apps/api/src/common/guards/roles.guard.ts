@@ -1,13 +1,18 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { KamaiaRole } from '@kamaia/shared-types';
+import { Role } from '@kamaia/shared-types';
 
+/**
+ * RolesGuard — valida que o user tem o role exigido pelo handler.
+ * ADMIN bypasses todos os checks dentro do tenant.
+ * Deve correr depois do TenantGuard, que popula `request.tenant.role`.
+ */
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<KamaiaRole[]>('roles', [
+    const requiredRoles = this.reflector.getAllAndOverride<Role[]>('roles', [
       context.getHandler(),
       context.getClass(),
     ]);
@@ -17,17 +22,16 @@ export class RolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const tenant = request.tenant;
 
-    if (!user) {
+    if (!tenant?.role) {
       return false;
     }
 
-    // SOCIO_GESTOR bypasses all role checks (superadmin)
-    if (user.role === KamaiaRole.SOCIO_GESTOR) {
+    if (tenant.role === Role.ADMIN) {
       return true;
     }
 
-    return requiredRoles.includes(user.role);
+    return requiredRoles.includes(tenant.role);
   }
 }

@@ -8,47 +8,31 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { UsersModule } from './modules/users/users.module';
-import { GabinetesModule } from './modules/gabinetes/gabinetes.module';
-import { ClientesModule } from './modules/clientes/clientes.module';
-import { ProcessosModule } from './modules/processos/processos.module';
-import { AtendimentosModule } from './modules/atendimentos/atendimentos.module';
-import { PrazosModule } from './modules/prazos/prazos.module';
-import { TramitacoesModule } from './modules/tramitacoes/tramitacoes.module';
-import { AudienciasModule } from './modules/audiencias/audiencias.module';
-import { CalendarModule } from './modules/calendar/calendar.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { MembershipsModule } from './modules/memberships/memberships.module';
+import { EntidadesModule } from './modules/entidades/entidades.module';
+import { CarteirasModule } from './modules/carteiras/carteiras.module';
+import { TiposContratoModule } from './modules/tipos-contrato/tipos-contrato.module';
+import { TemplatesModule } from './modules/templates/templates.module';
+import { ClausulasModule } from './modules/clausulas/clausulas.module';
+import { ContratosModule } from './modules/contratos/contratos.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
+import { ImportacaoModule } from './modules/importacao/importacao.module';
 import { DocumentsModule } from './modules/documents/documents.module';
-import { StatsModule } from './modules/stats/stats.module';
 import { IaModule } from './modules/ia/ia.module';
-import { TimesheetsModule } from './modules/timesheets/timesheets.module';
-import { ExpensesModule } from './modules/expenses/expenses.module';
+import { RagModule } from './modules/rag/rag.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthModule } from './modules/health/health.module';
-import { RagModule } from './modules/rag/rag.module';
-import { ReportsModule } from './modules/reports/reports.module';
-import { TeamModule } from './modules/team/team.module';
-import { PortalModule } from './modules/portal/portal.module';
-import { BillingModule } from './modules/billing/billing.module';
-import { BackupModule } from './modules/backup/backup.module';
-import { TasksModule } from './modules/tasks/tasks.module';
-import { WorkflowsModule } from './modules/workflows/workflows.module';
-import { ProjectsModule } from './modules/projects/projects.module';
-import { InvoicesModule } from './modules/invoices/invoices.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
-import { PublicContactsModule } from './modules/public-contacts/public-contacts.module';
+import { BackupModule } from './modules/backup/backup.module';
 import { SeedModule } from './modules/seed/seed.module';
 
 @Module({
   imports: [
-    // Sentry SDK — noop quando SENTRY_DSN não está definido. Tem de ser
-    // antes dos restantes módulos para que instrumentation apanhe spans
-    // de prisma/http logo no boot.
+    // Sentry SDK — noop quando SENTRY_DSN não está definido.
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
-    // Em NODE_ENV=test relaxamos os limites — E2E corre dezenas de POSTs
-    // em segundos sob o mesmo IP/token e o "short" window (10/60s) estoura
-    // de forma não-determinística. Valores permissivos em teste não
-    // reduzem a validade do resto das assertions de negócio.
     ThrottlerModule.forRoot(
       process.env.NODE_ENV === 'test'
         ? [
@@ -60,43 +44,35 @@ import { SeedModule } from './modules/seed/seed.module';
             { name: 'long', ttl: 3600000, limit: 200 },
           ],
     ),
+    // Infra
     PrismaModule,
-    AuthModule,
-    AuditModule,
-    UsersModule,
-    GabinetesModule,
-    ClientesModule,
-    AtendimentosModule,
-    ProcessosModule,
-    PrazosModule,
-    TramitacoesModule,
-    AudienciasModule,
-    CalendarModule,
-    DocumentsModule,
-    StatsModule,
-    IaModule,
-    TimesheetsModule,
-    ExpensesModule,
-    NotificationsModule,
     HealthModule,
-    RagModule,
-    ReportsModule,
-    TeamModule,
-    PortalModule,
-    BillingModule,
-    BackupModule,
-    TasksModule,
-    WorkflowsModule,
-    ProjectsModule,
-    InvoicesModule,
+    AuditModule,
     HolidaysModule,
-    PublicContactsModule,
+    BackupModule,
+    // Auth + tenancy
+    AuthModule,
+    UsersModule,
+    TenantsModule,
+    MembershipsModule,
+    // Domínio CLM
+    EntidadesModule,
+    CarteirasModule,
+    TiposContratoModule,
+    TemplatesModule,
+    ClausulasModule,
+    ContratosModule,
+    ComplianceModule,
+    ImportacaoModule,
+    DocumentsModule,
+    // IA
+    IaModule,
+    RagModule,
+    // Cross-cutting
+    NotificationsModule,
     SeedModule,
   ],
   providers: [
-    // SentryGlobalFilter capta excepções não-tratadas e envia para Sentry
-    // (noop se SENTRY_DSN não está definido). Aplica antes do ThrottlerGuard
-    // exception filter para que mesmo erros do guard sejam capturados.
     {
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,

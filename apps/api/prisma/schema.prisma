@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════════
-// KAMAIA — Database Schema
+// KAMAIA CLM — Database Schema
+// Contract Lifecycle Management for Angola & PALOP
 // Platform: PostgreSQL 16 + pgvector
 // ═══════════════════════════════════════════════════════════
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  previewFeatures = ["postgresqlExtensions", "fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -14,1227 +15,1207 @@ datasource db {
   extensions = [uuidOssp(map: "uuid-ossp"), pgvector(map: "vector", schema: "public")]
 }
 
-// ── Gabinete (Law Firm / Office) ──────────────────────────
-// Equivalent to "Tenant" in HEXA Prime.
-// A solo lawyer IS a gabinete of 1.
+// ═══════════════════════════════════════════════════════════
+// TENANT & USERS
+// ═══════════════════════════════════════════════════════════
 
-model Gabinete {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(200)
-  nif       String?  @unique @db.VarChar(20)
-  address   String?  @db.Text
-  phone     String?  @db.VarChar(30)
-  email     String?  @db.VarChar(200)
-  logoUrl   String?  @map("logo_url") @db.VarChar(500)
-  plan      String   @default("PRO_BUSINESS") @db.VarChar(20)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  users               User[]
-  clientes            Cliente[]
-  processos           Processo[]
-  prazos              Prazo[]
-  calendarEvents      CalendarEvent[]
-  documents           Document[]
-  auditLogs           AuditLog[]
-  aiConversations     AIConversation[]
-  subscription        Subscription?
-  usageQuota          UsageQuota?
-  timeEntries         TimeEntry[]
-  expenses            Expense[]
-  clienteInteractions ClienteInteraction[]
-  taskColumns         TaskColumn[]
-  tasks               Task[]
-  notifications       Notification[]
-  workflows           Workflow[]
-  projects            Project[]
-  projectTemplates    ProjectTemplateCustom[]
-  invoices            Invoice[]
-  holidays            Holiday[]
-  tramitacoes         Tramitacao[]
-  audiencias          Audiencia[]
-  atendimentos        Atendimento[]
-
-  @@map("gabinetes")
+enum TenantPlan {
+  STARTER
+  GROWTH
+  SCALE
+  ENTERPRISE
+  AGENCY  // sociedade de advogados — pode ter sub-tenants
 }
 
-// ── User ──────────────────────────────────────────────────
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+model Tenant {
+  id              String       @id @default(uuid()) @db.Uuid
+  slug            String       @unique @db.VarChar(80)
+  nome            String       @db.VarChar(200)
+  nif             String?      @db.VarChar(20)
+  email           String?      @db.VarChar(200)
+  telefone        String?      @db.VarChar(30)
+  morada          Json?
+  logoUrl         String?      @map("logo_url") @db.VarChar(500)
+
+  plan            TenantPlan   @default(STARTER)
+  status          TenantStatus @default(TRIAL)
+
+  // Hierarchy: AGENCY plan can have sub-tenants
+  parentTenantId  String?      @map("parent_tenant_id") @db.Uuid
+  parentTenant    Tenant?      @relation("TenantHierarchy", fields: [parentTenantId], references: [id])
+  subTenants      Tenant[]     @relation("TenantHierarchy")
+
+  // Country / locale
+  country         String       @default("AO") @db.VarChar(2)
+  locale          String       @default("pt-AO") @db.VarChar(10)
+  timezone        String       @default("Africa/Luanda") @db.VarChar(50)
+
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?    @map("deleted_at") @db.Timestamptz
+
+  memberships     Membership[]
+  entidades       Entidade[]
+  carteiras       Carteira[]
+  tiposContrato   TipoContrato[]
+  templates       Template[]
+  clausulas       Clausula[]
+  contratos       Contrato[]
+  documents       Document[]
+  importacaoLotes ImportacaoLote[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  aiConversations AIConversation[]
+  subscription    Subscription?
+  usageQuota      UsageQuota?
+  apiKeys         ApiKey[]
+  webhooks        Webhook[]
+
+  @@index([parentTenantId])
+  @@index([slug])
+  @@map("tenants")
+}
+
+enum Role {
+  ADMIN
+  LEGAL_LEAD
+  CONTRACT_MANAGER
+  BUSINESS_USER
+  VIEWER
+  EXTERNAL
+}
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  gabineteId   String    @map("gabinete_id") @db.Uuid
-  email        String    @db.VarChar(200)
-  passwordHash String?   @map("password_hash") @db.VarChar(200)
-  firstName    String    @map("first_name") @db.VarChar(100)
-  lastName     String    @map("last_name") @db.VarChar(100)
-  role         String    @db.VarChar(30)
-  oaaNumber    String?   @map("oaa_number") @db.VarChar(30)
-  specialty    String?   @db.VarChar(100)
-  phone        String?   @db.VarChar(30)
-  avatarUrl    String?   @map("avatar_url") @db.VarChar(500)
-  provider     String    @default("credentials") @db.VarChar(20)
-  providerId   String?   @map("provider_id") @db.VarChar(200)
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
-  // Account lockout — defesa contra brute-force além do throttler.
-  // failedLoginAttempts incrementa em cada bcrypt.compare === false;
-  // após N (5) o utilizador fica lockedUntil = now + LOCK_DURATION (15m).
-  // Reset a 0/null em login bem-sucedido.
-  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
-  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  id              String        @id @default(uuid()) @db.Uuid
+  email           String        @unique @db.VarChar(200)
+  passwordHash    String?       @map("password_hash") @db.VarChar(200)
+  firstName       String        @map("first_name") @db.VarChar(100)
+  lastName        String        @map("last_name") @db.VarChar(100)
+  phone           String?       @db.VarChar(30)
+  avatarUrl       String?       @map("avatar_url") @db.VarChar(500)
+  provider        String        @default("credentials") @db.VarChar(20)
+  providerId      String?       @map("provider_id") @db.VarChar(200)
+  isActive        Boolean       @default(true) @map("is_active")
+  emailVerifiedAt DateTime?     @map("email_verified_at") @db.Timestamptz
+  lastLoginAt     DateTime?     @map("last_login_at") @db.Timestamptz
+  failedLoginCount Int          @default(0) @map("failed_login_count")
+  lockedUntil     DateTime?     @map("locked_until") @db.Timestamptz
 
-  gabinete               Gabinete                @relation(fields: [gabineteId], references: [id])
-  sessions               UserSession[]
-  clientesManaged        Cliente[]               @relation("AdvogadoClientes")
-  processos              Processo[]              @relation("AdvogadoProcessos")
-  processoEvents         ProcessoEvent[]
-  calendarEvents         CalendarEvent[]
-  documents              Document[]              @relation("UploadedDocuments")
-  auditLogs              AuditLog[]
-  aiConversations        AIConversation[]
-  timeEntries            TimeEntry[]
-  expenses               Expense[]
-  clienteInteractions    ClienteInteraction[]
-  tasksAssigned          Task[]                  @relation("TaskAssignee")
-  tasksCreated           Task[]                  @relation("TaskCreator")
-  taskComments           TaskComment[]           @relation("TaskComments")
-  notifications          Notification[]
-  pushSubscriptions      PushSubscription[]
-  notificationPreference NotificationPreference?
-  projectsManaged        Project[]               @relation("ProjectManager")
-  projectsSponsored      Project[]               @relation("ProjectSponsor")
-  projectMemberships     ProjectMember[]
-  projectReportsCreated  ProjectStatusReport[]
-  invoicesCreated        Invoice[]               @relation("InvoiceCreator")
-  paymentsRecorded       InvoicePayment[]        @relation("PaymentRecorder")
-  tramitacoes            Tramitacao[]
-  audiencias             Audiencia[]
-  atendimentosCreated    Atendimento[]           @relation("AtendimentoCreator")
-  atendimentosAssigned   Atendimento[]           @relation("AtendimentoAssignee")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
 
-  @@unique([gabineteId, email], map: "uq_user_gabinete_email")
-  @@unique([provider, providerId], map: "uq_user_provider")
-  @@index([gabineteId], map: "idx_user_gabinete")
-  @@index([gabineteId, role], map: "idx_user_gabinete_role")
-  @@index([email], map: "idx_user_email")
+  memberships     Membership[]
+  sessions        UserSession[]
+  notifications   Notification[]
+  pushSubscriptions PushSubscription[]
+  aiConversations AIConversation[]
+
+  @@index([email])
   @@map("users")
 }
 
-// ── User Session ──────────────────────────────────────────
+model Membership {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  role        Role
+  isDefault   Boolean  @default(false) @map("is_default")
+  invitedBy   String?  @map("invited_by") @db.Uuid
+  invitedAt   DateTime? @map("invited_at") @db.Timestamptz
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("memberships")
+}
 
 model UserSession {
   id           String   @id @default(uuid()) @db.Uuid
   userId       String   @map("user_id") @db.Uuid
-  refreshToken String   @map("refresh_token") @db.VarChar(500)
-  userAgent    String?  @map("user_agent") @db.VarChar(500)
-  ipAddress    String?  @map("ip_address") @db.VarChar(50)
+  tokenHash    String   @unique @map("token_hash") @db.VarChar(200)
+  userAgent    String?  @map("user_agent") @db.Text
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
   expiresAt    DateTime @map("expires_at") @db.Timestamptz
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId], map: "idx_session_user")
-  @@index([refreshToken], map: "idx_session_token")
+  @@index([userId])
+  @@index([expiresAt])
   @@map("user_sessions")
 }
 
-// ── Cliente (Client CRM) ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// ENTIDADES (Counterparties / Parties)
+// ═══════════════════════════════════════════════════════════
 
-model Cliente {
-  id         String    @id @default(uuid()) @db.Uuid
-  gabineteId String    @map("gabinete_id") @db.Uuid
-  advogadoId String?   @map("advogado_id") @db.Uuid
-  type       String    @db.VarChar(20) // INDIVIDUAL | EMPRESA
-  name       String    @db.VarChar(300)
-  nif        String?   @db.VarChar(20)
-  email      String?   @db.VarChar(200)
-  phone      String?   @db.VarChar(30)
-  address    String?   @db.Text
-  notes      String?   @db.Text
-  isActive   Boolean   @default(true) @map("is_active")
-  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete     Gabinete             @relation(fields: [gabineteId], references: [id])
-  advogado     User?                @relation("AdvogadoClientes", fields: [advogadoId], references: [id], onDelete: SetNull)
-  processos    Processo[]
-  interactions ClienteInteraction[]
-  tasks        Task[]
-  Project      Project[]
-  invoices     Invoice[]
-  atendimentos Atendimento[]
-
-  @@unique([gabineteId, nif], map: "uq_cliente_gabinete_nif")
-  @@index([gabineteId], map: "idx_cliente_gabinete")
-  @@index([gabineteId, advogadoId], map: "idx_cliente_gabinete_advogado")
-  @@map("clientes")
+enum EntidadeTipo {
+  PESSOA_SINGULAR
+  PESSOA_COLECTIVA
 }
 
-// ── Atendimento (Lead / Prospecto) ────────────────────────
-// Entry point of the pipeline: a prospecto/lead who made contact but
-// has not yet been qualified into a Cliente + Processo. When converted,
-// we keep references to the created Cliente/Processo for audit + reporting.
-
-model Atendimento {
-  id           String  @id @default(uuid()) @db.Uuid
-  gabineteId   String  @map("gabinete_id") @db.Uuid
-  createdById  String  @map("created_by_id") @db.Uuid
-  assignedToId String? @map("assigned_to_id") @db.Uuid
-
-  // Contact data (pre-cliente)
-  name  String  @db.VarChar(300)
-  type  String  @db.VarChar(20) // INDIVIDUAL | EMPRESA
-  nif   String? @db.VarChar(20)
-  email String? @db.VarChar(200)
-  phone String? @db.VarChar(30)
-
-  // Lead/case brief
-  subject     String  @db.VarChar(500) // Short title / assunto
-  description String? @db.Text
-  source      String  @db.VarChar(20) // AtendimentoSource enum
-  status      String  @default("NOVO") @db.VarChar(20) // AtendimentoStatus enum
-  priority    String  @default("MEDIA") @db.VarChar(10) // ALTA | MEDIA | BAIXA
-  notes       String? @db.Text
-
-  // Conversion trail
-  convertedClienteId  String?   @map("converted_cliente_id") @db.Uuid
-  convertedProcessoId String?   @map("converted_processo_id") @db.Uuid
-  convertedAt         DateTime? @map("converted_at") @db.Timestamptz
-  lostReason          String?   @map("lost_reason") @db.VarChar(300)
-
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete          Gabinete  @relation(fields: [gabineteId], references: [id])
-  createdBy         User      @relation("AtendimentoCreator", fields: [createdById], references: [id])
-  assignedTo        User?     @relation("AtendimentoAssignee", fields: [assignedToId], references: [id])
-  convertedCliente  Cliente?  @relation(fields: [convertedClienteId], references: [id])
-  convertedProcesso Processo? @relation(fields: [convertedProcessoId], references: [id])
-
-  @@index([gabineteId], map: "idx_atendimento_gabinete")
-  @@index([gabineteId, status], map: "idx_atendimento_gabinete_status")
-  @@index([gabineteId, assignedToId], map: "idx_atendimento_gabinete_assigned")
-  @@map("atendimentos")
+enum EntidadeNacionalidadeCambial {
+  RESIDENTE      // residente cambial em Angola
+  NAO_RESIDENTE
 }
 
-// ── Processo (Legal Case) ─────────────────────────────────
+model Entidade {
+  id                       String                       @id @default(uuid()) @db.Uuid
+  tenantId                 String                       @map("tenant_id") @db.Uuid
+  tipo                     EntidadeTipo
+  nome                     String                       @db.VarChar(300)
+  nomeComercial            String?                      @map("nome_comercial") @db.VarChar(300)
+  nif                      String?                      @db.VarChar(20)
+  numeroBI                 String?                      @map("numero_bi") @db.VarChar(30)
+  matriculaRC              String?                      @map("matricula_rc") @db.VarChar(50)
+  nacionalidadeCambial     EntidadeNacionalidadeCambial @default(RESIDENTE) @map("nacionalidade_cambial")
+  sectorActividade         String?                      @map("sector_actividade") @db.VarChar(100)
+  morada                   Json?
+  paisResidencia           String                       @default("AO") @map("pais_residencia") @db.VarChar(2)
+  observacoes              String?                      @db.Text
 
-model Processo {
-  id              String    @id @default(uuid()) @db.Uuid
-  gabineteId      String    @map("gabinete_id") @db.Uuid
-  clienteId       String    @map("cliente_id") @db.Uuid
-  advogadoId      String    @map("advogado_id") @db.Uuid
-  processoNumber  String    @map("processo_number") @db.VarChar(30)
-  title           String    @db.VarChar(500)
-  description     String?   @db.Text
-  type            String    @db.VarChar(30) // ProcessoType enum
-  status          String    @default("ACTIVO") @db.VarChar(20) // ProcessoStatus enum
-  stage           String?   @db.VarChar(100) // Current stage within type
-  court           String?   @db.VarChar(200)
-  courtCaseNumber String?   @map("court_case_number") @db.VarChar(50)
-  judge           String?   @db.VarChar(200)
-  opposingParty   String?   @map("opposing_party") @db.VarChar(300)
-  opposingLawyer  String?   @map("opposing_lawyer") @db.VarChar(200)
-  priority        String    @default("MEDIA") @db.VarChar(10) // ALTA | MEDIA | BAIXA
-  lifecycle       String    @default("ATENDIMENTO") @db.VarChar(30) // ProcessoLifecycle enum
-  tags            String[]  @default([])
-  feeType         String?   @map("fee_type") @db.VarChar(20) // FIXO | HORA | PERCENTAGEM | PRO_BONO
-  feeAmount       Int?      @map("fee_amount") // Centavos AOA
-  notes           String?   @db.Text
-  strategy        String?   @db.Text // Notas estratégicas privadas: teses, riscos, cenários, plano de ataque/defesa
-  openedAt        DateTime  @default(now()) @map("opened_at") @db.Timestamptz
-  closedAt        DateTime? @map("closed_at") @db.Timestamptz
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  // FTS
+  searchVector             Unsupported("tsvector")?     @map("search_vector")
 
-  // Dynamic workflow support (Sprint 1+)
-  workflowId     String?                 @map("workflow_id") @db.Uuid
-  workflow       Workflow?               @relation(fields: [workflowId], references: [id])
-  stageInstances ProcessoStageInstance[]
-  projectId      String?                 @map("project_id") @db.Uuid
-  project        Project?                @relation(fields: [projectId], references: [id])
+  createdAt                DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                DateTime?                    @map("deleted_at") @db.Timestamptz
 
-  gabinete     Gabinete        @relation(fields: [gabineteId], references: [id])
-  cliente      Cliente         @relation(fields: [clienteId], references: [id])
-  advogado     User            @relation("AdvogadoProcessos", fields: [advogadoId], references: [id])
-  events       ProcessoEvent[]
-  prazos       Prazo[]
-  calendar     CalendarEvent[]
-  documents    Document[]
-  timeEntries  TimeEntry[]
-  expenses     Expense[]
-  tasks        Task[]
-  invoices     Invoice[]
-  tramitacoes  Tramitacao[]
-  audiencias   Audiencia[]
-  atendimentos Atendimento[]
+  tenant                   Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactos                EntidadeContacto[]
+  documentosKYC            EntidadeDocumentoKYC[]
+  partesEmContratos        ContratoParte[]
 
-  @@unique([gabineteId, processoNumber], map: "uq_processo_gabinete_number")
-  @@index([gabineteId], map: "idx_processo_gabinete")
-  @@index([gabineteId, status], map: "idx_processo_gabinete_status")
-  @@index([gabineteId, lifecycle], map: "idx_processo_gabinete_lifecycle")
-  @@index([gabineteId, advogadoId], map: "idx_processo_gabinete_advogado")
-  @@index([gabineteId, clienteId], map: "idx_processo_gabinete_cliente")
-  @@index([gabineteId, workflowId], map: "idx_processo_gabinete_workflow")
-  @@index([gabineteId, projectId], map: "idx_processo_gabinete_project")
-  @@map("processos")
+  @@index([tenantId])
+  @@index([tenantId, nome])
+  @@index([tenantId, nif])
+  @@index([searchVector], type: Gin)
+  @@map("entidades")
 }
 
-// ── Processo Event (Timeline) ─────────────────────────────
+model EntidadeContacto {
+  id          String   @id @default(uuid()) @db.Uuid
+  entidadeId  String   @map("entidade_id") @db.Uuid
+  nome        String   @db.VarChar(200)
+  cargo       String?  @db.VarChar(100)
+  email       String?  @db.VarChar(200)
+  telefone    String?  @db.VarChar(30)
+  isPrincipal Boolean  @default(false) @map("is_principal")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-model ProcessoEvent {
-  id          String    @id @default(uuid()) @db.Uuid
-  processoId  String    @map("processo_id") @db.Uuid
-  userId      String    @map("user_id") @db.Uuid
-  type        String    @db.VarChar(30) // ProcessoEventType enum
-  description String    @db.Text
-  metadata    Json?     @db.JsonB
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  entidade    Entidade @relation(fields: [entidadeId], references: [id], onDelete: Cascade)
 
-  processo Processo @relation(fields: [processoId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-
-  @@index([processoId], map: "idx_evento_processo")
-  @@map("processo_events")
+  @@index([entidadeId])
+  @@map("entidade_contactos")
 }
 
-// ── Tramitação (Acto Processual) ──────────────────────────
-// Acto registado explicitamente pelo advogado — entrada rica com autor
-// controlado (NOS / TRIBUNAL / CONTRAPARTE / MINISTERIO_PUBLICO / OUTRO),
-// tipo de acto normalizado (citação, contestação, despacho, sentença,
-// acórdão, etc.) e automações opcionais: pode gerar um Prazo vinculado
-// e/ou disparar avanço de fase processual. Distinto de ProcessoEvent,
-// que é o audit trail automático do sistema.
+model EntidadeDocumentoKYC {
+  id           String   @id @default(uuid()) @db.Uuid
+  entidadeId   String   @map("entidade_id") @db.Uuid
+  tipo         String   @db.VarChar(60)  // CERTIDAO_COMERCIAL, BI, PROCURACAO, AML, ...
+  numero       String?  @db.VarChar(100)
+  emitidoEm    DateTime? @map("emitido_em") @db.Date
+  validoAte    DateTime? @map("valido_ate") @db.Date
+  documentId   String?  @map("document_id") @db.Uuid
+  observacoes  String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-model Tramitacao {
-  id         String @id @default(uuid()) @db.Uuid
-  gabineteId String @map("gabinete_id") @db.Uuid
-  processoId String @map("processo_id") @db.Uuid
-  userId     String @map("user_id") @db.Uuid // quem registou
+  entidade     Entidade @relation(fields: [entidadeId], references: [id], onDelete: Cascade)
 
-  autor       String   @db.VarChar(30) // TramitacaoAutor enum
-  actoType    String   @map("acto_type") @db.VarChar(60) // slug controlado
-  title       String   @db.VarChar(300)
-  description String?  @db.Text
-  actoDate    DateTime @map("acto_date") @db.Date // data do acto (pode ser anterior a createdAt)
-
-  // Automações
-  generatedPrazoId String? @map("generated_prazo_id") @db.Uuid
-  advancedToStage  String? @map("advanced_to_stage") @db.VarChar(100) // WorkflowStage key ou label
-
-  metadata  Json?     @db.JsonB
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete       Gabinete @relation(fields: [gabineteId], references: [id])
-  processo       Processo @relation(fields: [processoId], references: [id])
-  user           User     @relation(fields: [userId], references: [id])
-  generatedPrazo Prazo?   @relation("TramitacaoGeneratedPrazo", fields: [generatedPrazoId], references: [id])
-
-  @@index([gabineteId, processoId, actoDate], map: "idx_tramitacao_processo_date")
-  @@index([processoId, autor], map: "idx_tramitacao_processo_autor")
-  @@index([processoId, actoType], map: "idx_tramitacao_processo_type")
-  @@map("tramitacoes")
+  @@index([entidadeId])
+  @@map("entidade_documentos_kyc")
 }
 
-// ── Audiência ─────────────────────────────────────────────
-// Acto judicial presencial com ciclo de vida próprio: agendamento,
-// realização ou adiamento. Distinto de Tramitacao (que regista o acto
-// de "audiencia-agendada") — a Audiencia é a entidade que sobrevive a
-// múltiplos adiamentos, mantém histórico e gere preparação (testemunhas,
-// peças). Cada adiamento cria uma nova Audiencia ligada à anterior.
+// ═══════════════════════════════════════════════════════════
+// CARTEIRA (optional grouping)
+// ═══════════════════════════════════════════════════════════
 
-model Audiencia {
-  id         String @id @default(uuid()) @db.Uuid
-  gabineteId String @map("gabinete_id") @db.Uuid
-  processoId String @map("processo_id") @db.Uuid
-  userId     String @map("user_id") @db.Uuid // quem agendou
+model Carteira {
+  id          String     @id @default(uuid()) @db.Uuid
+  tenantId    String     @map("tenant_id") @db.Uuid
+  nome        String     @db.VarChar(200)
+  descricao   String?    @db.Text
+  metadata    Json?
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz
 
-  type   String @db.VarChar(40) // AudienciaType enum
-  status String @default("AGENDADA") @db.VarChar(20) // AudienciaStatus enum
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contratos   Contrato[]
 
-  scheduledAt     DateTime  @map("scheduled_at") @db.Timestamptz
-  heldAt          DateTime? @map("held_at") @db.Timestamptz
-  durationMinutes Int?      @map("duration_minutes")
-
-  location String? @db.VarChar(200) // sala / tribunal
-  judge    String? @db.VarChar(200)
-  notes    String? @db.Text // preparação / observações
-  outcome  String? @db.Text // narrativa pós-audiência
-
-  // Relação histórica: nova audiência após adiamento liga-se à anterior
-  previousId String?     @map("previous_id") @db.Uuid
-  previous   Audiencia?  @relation("AudienciaHistorico", fields: [previousId], references: [id])
-  next       Audiencia[] @relation("AudienciaHistorico")
-
-  metadata  Json?     @db.JsonB // testemunhas, peças, lista de presenças
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  processo Processo @relation(fields: [processoId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-
-  @@index([gabineteId, processoId, scheduledAt], map: "idx_audiencia_processo_scheduled")
-  @@index([gabineteId, status], map: "idx_audiencia_gabinete_status")
-  @@index([gabineteId, scheduledAt], map: "idx_audiencia_gabinete_scheduled")
-  @@map("audiencias")
+  @@index([tenantId])
+  @@map("carteiras")
 }
 
-// ── Prazo (Deadline) ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// CATÁLOGO: TIPO DE CONTRATO + TGIS
+// ═══════════════════════════════════════════════════════════
 
-model Prazo {
-  id               String    @id @default(uuid()) @db.Uuid
-  gabineteId       String    @map("gabinete_id") @db.Uuid
-  processoId       String    @map("processo_id") @db.Uuid
-  title            String    @db.VarChar(300)
-  description      String?   @db.Text
-  type             String    @db.VarChar(30) // PrazoType enum
-  dueDate          DateTime  @map("due_date") @db.Timestamptz
-  alertHoursBefore Int       @default(48) @map("alert_hours_before")
-  status           String    @default("PENDENTE") @db.VarChar(20) // PrazoStatus enum
-  isUrgent         Boolean   @default(false) @map("is_urgent")
-  completedAt      DateTime? @map("completed_at") @db.Timestamptz
-  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+model TipoContrato {
+  id                  String         @id @default(uuid()) @db.Uuid
+  tenantId            String?        @map("tenant_id") @db.Uuid  // null = catálogo global
+  codigo              String         @db.VarChar(80)
+  nome                String         @db.VarChar(200)
+  categoria           String         @db.VarChar(60)  // PRE_CONTRATO, SERVICOS, BENS, IMOBILIARIO, FINANCEIRO, TRABALHO, IP
+  descricao           String?        @db.Text
 
-  gabinete          Gabinete     @relation(fields: [gabineteId], references: [id])
-  processo          Processo     @relation(fields: [processoId], references: [id])
-  tramitacoesOrigem Tramitacao[] @relation("TramitacaoGeneratedPrazo")
+  // Default regulatory triggers (overridable per contract)
+  tgisVerbaNumero     String?        @map("tgis_verba_numero") @db.VarChar(20)
+  requerNotario       Boolean        @default(false) @map("requer_notario")
+  registosRequeridos  String[]       @map("registos_requeridos")  // ex: ["REGISTO_PREDIAL"]
+  gatilhoBNA          Json?          @map("gatilho_bna")
+  retencaoIRTpadrao   Boolean        @default(false) @map("retencao_irt_padrao")
+  clausulasObrigatorias String[]     @map("clausulas_obrigatorias")  // ex: ["FORO", "LEI_APLICAVEL"]
 
-  @@index([gabineteId, dueDate], map: "idx_prazo_gabinete_due")
-  @@index([gabineteId, status], map: "idx_prazo_gabinete_status")
-  @@map("prazos")
+  templatePadraoId    String?        @map("template_padrao_id") @db.Uuid
+  isActive            Boolean        @default(true) @map("is_active")
+
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant              Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contratos           Contrato[]
+  templates           Template[]
+
+  @@unique([tenantId, codigo])
+  @@index([categoria])
+  @@map("tipos_contrato")
 }
 
-// ── Calendar Event ────────────────────────────────────────
+model TGISVerba {
+  numero          String    @id @db.VarChar(20)
+  descricao       String    @db.Text
+  tipoTaxa        String    @map("tipo_taxa") @db.VarChar(20)  // PERCENTAGEM | VALOR_FIXO
+  taxaValor       String    @map("taxa_valor") @db.VarChar(100)  // ex "0.5", "1000"
+  taxaUnidade     String?   @map("taxa_unidade") @db.VarChar(20)  // AKZ, %, ‰
+  baseRegra       Json?     @map("base_regra")
+  responsavelLiquidacao String? @map("responsavel_liquidacao") @db.VarChar(60)
+  referenciaLegal String    @map("referencia_legal") @db.Text
+  vigenteDesde    DateTime  @map("vigente_desde") @db.Date
+  vigenteAte      DateTime? @map("vigente_ate") @db.Date
 
-model CalendarEvent {
-  id              String    @id @default(uuid()) @db.Uuid
-  gabineteId      String    @map("gabinete_id") @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  processoId      String?   @map("processo_id") @db.Uuid
-  title           String    @db.VarChar(300)
-  description     String?   @db.Text
-  type            String    @db.VarChar(20) // CalendarEventType enum
-  location        String?   @db.VarChar(300)
-  startAt         DateTime  @map("start_at") @db.Timestamptz
-  endAt           DateTime  @map("end_at") @db.Timestamptz
-  allDay          Boolean   @default(false) @map("all_day")
-  reminderMinutes Int?      @map("reminder_minutes")
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete  @relation(fields: [gabineteId], references: [id])
-  user     User      @relation(fields: [userId], references: [id])
-  processo Processo? @relation(fields: [processoId], references: [id])
-
-  @@index([gabineteId, startAt], map: "idx_calendar_gabinete_start")
-  @@index([userId, startAt], map: "idx_calendar_user_start")
-  @@map("calendar_events")
+  @@map("tgis_verbas")
 }
 
-// ── Document ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// BIBLIOTECA: TEMPLATES + CLÁUSULAS
+// ═══════════════════════════════════════════════════════════
 
-model Document {
-  id           String    @id @default(uuid()) @db.Uuid
-  gabineteId   String    @map("gabinete_id") @db.Uuid
-  processoId   String?   @map("processo_id") @db.Uuid
-  projectId    String?   @map("project_id") @db.Uuid
-  milestoneId  String?   @map("milestone_id") @db.Uuid
-  taskId       String?   @map("task_id") @db.Uuid
-  uploadedById String    @map("uploaded_by_id") @db.Uuid
-  title        String    @db.VarChar(300)
-  category     String    @db.VarChar(30) // DocumentCategory enum
-  fileUrl      String    @map("file_url") @db.VarChar(500)
-  fileSize     Int       @map("file_size") // Bytes
-  mimeType     String    @map("mime_type") @db.VarChar(100)
-  version      Int       @default(1)
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+model Template {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  tipoId          String      @map("tipo_id") @db.Uuid
+  nome            String      @db.VarChar(200)
+  descricao       String?     @db.Text
+  versao          Int         @default(1)
+  conteudo        String      @db.Text   // markdown
+  metadata        Json?
+  idiomas         String[]    @default(["pt-AO"])
+  isActive        Boolean     @default(true) @map("is_active")
 
-  gabinete   Gabinete          @relation(fields: [gabineteId], references: [id])
-  processo   Processo?         @relation(fields: [processoId], references: [id])
-  project    Project?          @relation(fields: [projectId], references: [id])
-  milestone  ProjectMilestone? @relation(fields: [milestoneId], references: [id])
-  task       Task?             @relation(fields: [taskId], references: [id])
-  uploadedBy User              @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy       String?     @map("created_by") @db.Uuid
 
-  @@index([gabineteId], map: "idx_document_gabinete")
-  @@index([gabineteId, processoId], map: "idx_document_gabinete_processo")
-  @@index([gabineteId, projectId], map: "idx_document_gabinete_project")
-  @@index([gabineteId, milestoneId], map: "idx_document_gabinete_milestone")
-  @@index([gabineteId, taskId], map: "idx_document_gabinete_task")
-  @@map("documents")
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tipo            TipoContrato @relation(fields: [tipoId], references: [id])
+
+  @@index([tenantId, tipoId])
+  @@map("templates")
 }
 
-// ── Audit Log (Append-Only) ──────────────────────────────
-
-model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  gabineteId String   @map("gabinete_id") @db.Uuid
-  userId     String?  @map("user_id") @db.Uuid
-  action     String   @db.VarChar(30) // AuditAction enum
-  entity     String   @db.VarChar(30) // EntityType enum
-  entityId   String?  @map("entity_id") @db.VarChar(50)
-  oldValue   Json?    @map("old_value") @db.JsonB
-  newValue   Json?    @map("new_value") @db.JsonB
-  ipAddress  String?  @map("ip_address") @db.VarChar(50)
-  userAgent  String?  @map("user_agent") @db.VarChar(500)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  user     User?    @relation(fields: [userId], references: [id])
-
-  // NO updatedAt, NO deletedAt — append-only
-  @@index([gabineteId], map: "idx_audit_gabinete")
-  @@index([gabineteId, entity], map: "idx_audit_gabinete_entity")
-  @@index([gabineteId, userId], map: "idx_audit_gabinete_user")
-  @@index([createdAt], map: "idx_audit_created")
-  @@map("audit_logs")
-}
-
-// ── AI Conversation ───────────────────────────────────────
-
-model AIConversation {
-  id         String    @id @default(uuid()) @db.Uuid
-  gabineteId String    @map("gabinete_id") @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  title      String?   @db.VarChar(300)
-  context    String    @default("GERAL") @db.VarChar(20) // PROCESSO | PRAZO | GERAL | DOCUMENTO
-  contextId  String?   @map("context_id") @db.Uuid
-  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete    @relation(fields: [gabineteId], references: [id])
-  user     User        @relation(fields: [userId], references: [id])
-  messages AIMessage[]
-
-  @@index([gabineteId, userId], map: "idx_ai_conv_gabinete_user")
-  @@map("ai_conversations")
-}
-
-// ── AI Message ────────────────────────────────────────────
-
-model AIMessage {
-  id             String   @id @default(uuid()) @db.Uuid
-  conversationId String   @map("conversation_id") @db.Uuid
-  role           String   @db.VarChar(20) // user | assistant | system
-  content        String   @db.Text
-  tokenCount     Int?     @map("token_count")
-  model          String?  @db.VarChar(50)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  conversation AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId], map: "idx_ai_msg_conversation")
-  @@map("ai_messages")
-}
-
-// ── Subscription ──────────────────────────────────────────
-
-model Subscription {
-  id                   String    @id @default(uuid()) @db.Uuid
-  gabineteId           String    @unique @map("gabinete_id") @db.Uuid
-  plan                 String    @db.VarChar(20) // SubscriptionPlan enum
-  status               String    @default("ACTIVE") @db.VarChar(20) // SubscriptionStatus enum
-  currentPeriodStart   DateTime  @map("current_period_start") @db.Timestamptz
-  currentPeriodEnd     DateTime  @map("current_period_end") @db.Timestamptz
-  cancelledAt          DateTime? @map("cancelled_at") @db.Timestamptz
-  stripeCustomerId     String?   @map("stripe_customer_id") @db.VarChar(100)
-  stripeSubscriptionId String?   @map("stripe_subscription_id") @db.VarChar(100)
-  multicaixaRef        String?   @map("multicaixa_ref") @db.VarChar(100)
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-
-  @@map("subscriptions")
-}
-
-// ── Usage Quota ───────────────────────────────────────────
-
-model UsageQuota {
+model Clausula {
   id               String   @id @default(uuid()) @db.Uuid
-  gabineteId       String   @unique @map("gabinete_id") @db.Uuid
-  aiQueriesUsed    Int      @default(0) @map("ai_queries_used")
-  docAnalysesUsed  Int      @default(0) @map("doc_analyses_used")
-  storageUsedBytes BigInt   @default(0) @map("storage_used_bytes")
-  periodStart      DateTime @map("period_start") @db.Timestamptz
-  periodEnd        DateTime @map("period_end") @db.Timestamptz
+  tenantId         String   @map("tenant_id") @db.Uuid
+  categoria        String   @db.VarChar(60)  // FORO, LEI_APLICAVEL, LIMITACAO_RESPONSABILIDADE, ...
+  titulo           String   @db.VarChar(200)
+  conteudo         String   @db.Text
+  leiAplicavelArt  String?  @map("lei_aplicavel_art") @db.VarChar(300)
+  tags             String[] @default([])
+  idioma           String   @default("pt-AO") @db.VarChar(10)
+  usoCount         Int      @default(0) @map("uso_count")
+  origemContratoId String?  @map("origem_contrato_id") @db.Uuid
+  isApproved       Boolean  @default(false) @map("is_approved")
+
+  searchVector     Unsupported("tsvector")? @map("search_vector")
+
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@map("usage_quotas")
+  @@index([tenantId, categoria])
+  @@index([searchVector], type: Gin)
+  @@map("clausulas")
 }
 
-// ── Time Entry (Timesheets) ───────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// CONTRATO — núcleo
+// ═══════════════════════════════════════════════════════════
 
-model TimeEntry {
-  id              String    @id @default(uuid()) @db.Uuid
-  gabineteId      String    @map("gabinete_id") @db.Uuid
-  processoId      String    @map("processo_id") @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  category        String    @db.VarChar(30) // TimeEntryCategory enum
-  description     String?   @db.Text
-  date            DateTime  @db.Date
-  durationMinutes Int       @map("duration_minutes")
-  billable        Boolean   @default(true)
-  hourlyRate      Int?      @map("hourly_rate") // Centavos AOA, if null inherits from Processo.feeAmount
-  invoiceId       String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
-  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  processo Processo @relation(fields: [processoId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
-
-  @@index([gabineteId, date], map: "idx_timeentry_gabinete_date")
-  @@index([gabineteId, processoId], map: "idx_timeentry_gabinete_processo")
-  @@index([gabineteId, userId], map: "idx_timeentry_gabinete_user")
-  @@index([invoiceId], map: "idx_timeentry_invoice")
-  @@map("time_entries")
+enum ContratoEstado {
+  INTAKE
+  DRAFTING
+  REV_INTERNA
+  REV_CLIENTE
+  EM_NEGOCIACAO
+  APROVACAO
+  PRONTO_ASSINATURA
+  ASSINADO
+  POS_ASSINATURA
+  ACTIVO
+  EM_DISPUTA
+  EM_ADENDA
+  EM_TERMINACAO
+  TERMINADO
+  ARQUIVADO
+  REPOSITORIO  // importado já assinado
+  CANCELADO
 }
 
-// ── Expense (Despesas) ────────────────────────────────────
-
-model Expense {
-  id          String    @id @default(uuid()) @db.Uuid
-  gabineteId  String    @map("gabinete_id") @db.Uuid
-  processoId  String    @map("processo_id") @db.Uuid
-  userId      String    @map("user_id") @db.Uuid
-  category    String    @db.VarChar(30) // ExpenseCategory enum
-  description String    @db.Text
-  amount      Int // Centavos AOA
-  date        DateTime  @db.Date
-  invoiceId   String?   @map("invoice_id") @db.Uuid // locked when included in an invoice
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  processo Processo @relation(fields: [processoId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
-
-  @@index([gabineteId, date], map: "idx_expense_gabinete_date")
-  @@index([gabineteId, processoId], map: "idx_expense_gabinete_processo")
-  @@index([invoiceId], map: "idx_expense_invoice")
-  @@map("expenses")
+enum ContratoOrigem {
+  CRIADO_INTERNAMENTE
+  IMPORTADO_REPOSITORIO
+  RECEBIDO_CONTRAPARTE
+  ADENDA
 }
 
-// ── Notification (Sprint 7) ──────────────────────────────
+model Contrato {
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  numeroInterno       String           @map("numero_interno") @db.VarChar(50)
+  titulo              String           @db.VarChar(300)
+  descricao           String?          @db.Text
 
-model Notification {
-  id           String    @id @default(uuid()) @db.Uuid
-  gabineteId   String    @map("gabinete_id") @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  prazoId      String?   @map("prazo_id") @db.Uuid
-  type         String    @db.VarChar(30)
-  channel      String    @db.VarChar(20)
-  status       String    @default("PENDING") @db.VarChar(20)
-  subject      String?   @db.VarChar(300)
-  body         String?   @db.Text
-  metadata     Json?     @db.JsonB
-  sentAt       DateTime? @map("sent_at") @db.Timestamptz
-  errorMessage String?   @map("error_message") @db.Text
-  readAt       DateTime? @map("read_at") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  tipoId              String           @map("tipo_id") @db.Uuid
+  carteiraId          String?          @map("carteira_id") @db.Uuid
+  parentContratoId    String?          @map("parent_contrato_id") @db.Uuid
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  estado              ContratoEstado   @default(INTAKE)
+  origem              ContratoOrigem
+  modoEngajamento     String?          @map("modo_engajamento") @db.VarChar(20)  // A, B, C, D
 
-  @@index([gabineteId, userId], map: "idx_notification_user")
-  @@index([prazoId], map: "idx_notification_prazo")
-  @@index([createdAt], map: "idx_notification_created")
-  @@map("notifications")
+  // Valores
+  valor               BigInt?
+  moeda               String?          @db.VarChar(3)
+  valorEmAKZ          BigInt?          @map("valor_em_akz")  // conversão para análise
+  taxaCambio          Decimal?         @map("taxa_cambio") @db.Decimal(18, 6)
+
+  // Lei + foro
+  leiAplicavel        String?          @map("lei_aplicavel") @db.VarChar(100)
+  foro                String?          @db.VarChar(200)
+
+  // Datas-chave principais (denormalizadas para indexação rápida)
+  dataAssinatura      DateTime?        @map("data_assinatura") @db.Date
+  dataInicioVigencia  DateTime?        @map("data_inicio_vigencia") @db.Date
+  dataTermo           DateTime?        @map("data_termo") @db.Date
+  renovacaoAutomatica Boolean          @default(false) @map("renovacao_automatica")
+  janelaDenunciaDias  Int?             @map("janela_denuncia_dias")
+  prazoIndeterminado  Boolean          @default(false) @map("prazo_indeterminado")
+
+  // Override de gatilhos regulatórios (caso o tipo não cubra)
+  overrideNotario     Boolean?         @map("override_notario")
+  overrideRegistos    String[]         @map("override_registos")
+
+  responsavelId       String?          @map("responsavel_id") @db.Uuid
+
+  searchVector        Unsupported("tsvector")? @map("search_vector")
+
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy           String?          @map("created_by") @db.Uuid
+  deletedAt           DateTime?        @map("deleted_at") @db.Timestamptz
+
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tipo                TipoContrato     @relation(fields: [tipoId], references: [id])
+  carteira            Carteira?        @relation(fields: [carteiraId], references: [id])
+  parent              Contrato?        @relation("Adendas", fields: [parentContratoId], references: [id])
+  adendas             Contrato[]       @relation("Adendas")
+
+  versoes             ContratoVersao[]
+  partes              ContratoParte[]
+  datasChave          ContratoDataChave[]
+  obrigacoes          ContratoObrigacao[]
+  actosRegulatorios   ContratoActoRegulatorio[]
+  negociacaoPontos    ContratoNegociacaoPonto[]
+  eventos             ContratoEvento[]
+  terminacao          ContratoTerminacao?
+  documentos          Document[]
+
+  @@unique([tenantId, numeroInterno])
+  @@index([tenantId, estado])
+  @@index([tenantId, dataTermo])
+  @@index([tenantId, tipoId])
+  @@index([tenantId, responsavelId])
+  @@index([tenantId, carteiraId])
+  @@index([parentContratoId])
+  @@index([searchVector], type: Gin)
+  @@map("contratos")
 }
 
-// ── Push Subscription (Web Push VAPID) ──────────────────
+// ═══════════════════════════════════════════════════════════
+// VERSÕES
+// ═══════════════════════════════════════════════════════════
 
-model PushSubscription {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  endpoint  String   @db.VarChar(2000)
-  p256dh    String   @db.VarChar(500)
-  auth      String   @db.VarChar(500)
-  userAgent String?  @map("user_agent") @db.VarChar(500)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId], map: "idx_push_user")
-  @@map("push_subscriptions")
+enum VersaoDireccao {
+  INTERNA
+  ENVIADO_CLIENTE
+  RECEBIDO_CLIENTE
+  ENVIADO_CONTRAPARTE
+  RECEBIDO_CONTRAPARTE
+  ASSINADO_FINAL
 }
 
-// ── Notification Preferences ─────────────────────────────
-
-model NotificationPreference {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @unique @map("user_id") @db.Uuid
-  emailEnabled  Boolean  @default(true) @map("email_enabled")
-  pushEnabled   Boolean  @default(true) @map("push_enabled")
-  smsEnabled    Boolean  @default(false) @map("sms_enabled")
-  smsOnlyUrgent Boolean  @default(true) @map("sms_only_urgent")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notification_preferences")
+enum ExtracaoStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+  SKIPPED
 }
 
-// ── Task Column (Kanban Board) ───────────────────────────
+model ContratoVersao {
+  id              String         @id @default(uuid()) @db.Uuid
+  contratoId      String         @map("contrato_id") @db.Uuid
+  versao          String         @db.VarChar(20)  // "V0.1", "V1.0", "ASSINADO"
+  ordem           Int            // sequencial para ordenação
+  direccao        VersaoDireccao
+  documentId      String?        @map("document_id") @db.Uuid
+  hashSHA256      String?        @map("hash_sha256") @db.VarChar(64)
+  seloTemporal    DateTime?      @map("selo_temporal") @db.Timestamptz
+  comentario      String?        @db.Text
+  criadoPor       String         @map("criado_por") @db.Uuid
 
-model TaskColumn {
-  id         String   @id @default(uuid()) @db.Uuid
-  gabineteId String   @map("gabinete_id") @db.Uuid
-  title      String   @db.VarChar(100)
-  position   Int      @default(0)
-  color      String?  @db.VarChar(7)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  // IA extraction
+  extracao        Json?
+  extracaoStatus  ExtracaoStatus? @map("extracao_status")
+  extracaoConfianca Decimal?     @map("extracao_confianca") @db.Decimal(5, 4)
+  extracaoEm      DateTime?      @map("extracao_em") @db.Timestamptz
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  tasks    Task[]
+  // Diff cache
+  diffVsAnteriorId String?       @map("diff_vs_anterior_id") @db.Uuid
+  diffResumo      Json?          @map("diff_resumo")
 
-  @@index([gabineteId, position], map: "idx_taskcolumn_gabinete_pos")
-  @@map("task_columns")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  contrato        Contrato       @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@unique([contratoId, ordem])
+  @@index([contratoId])
+  @@map("contrato_versoes")
 }
 
-// ── Task (Kanban Card) ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// PARTES
+// ═══════════════════════════════════════════════════════════
 
-model Task {
-  id          String    @id @default(uuid()) @db.Uuid
-  gabineteId  String    @map("gabinete_id") @db.Uuid
-  columnId    String    @map("column_id") @db.Uuid
-  title       String    @db.VarChar(500)
-  description String?   @db.Text
-  priority    String    @default("MEDIA") @db.VarChar(10)
-  position    Int       @default(0)
-  assigneeId  String?   @map("assignee_id") @db.Uuid
-  createdById String    @map("created_by_id") @db.Uuid
-  processoId  String?   @map("processo_id") @db.Uuid
-  projectId   String?   @map("project_id") @db.Uuid
-  milestoneId String?   @map("milestone_id") @db.Uuid
-  clienteId   String?   @map("cliente_id") @db.Uuid
-  dueDate     DateTime? @map("due_date") @db.Timestamptz
-  completedAt DateTime? @map("completed_at") @db.Timestamptz
-  labels      String[]  @default([])
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete  Gabinete          @relation(fields: [gabineteId], references: [id])
-  column    TaskColumn        @relation(fields: [columnId], references: [id])
-  assignee  User?             @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy User              @relation("TaskCreator", fields: [createdById], references: [id])
-  processo  Processo?         @relation(fields: [processoId], references: [id])
-  project   Project?          @relation(fields: [projectId], references: [id])
-  milestone ProjectMilestone? @relation(fields: [milestoneId], references: [id])
-  cliente   Cliente?          @relation(fields: [clienteId], references: [id])
-  checklist TaskCheckItem[]
-  comments  TaskComment[]
-  documents Document[]
-
-  @@index([gabineteId, columnId, position], map: "idx_task_column_pos")
-  @@index([gabineteId, assigneeId], map: "idx_task_assignee")
-  @@index([gabineteId, processoId], map: "idx_task_processo")
-  @@index([gabineteId, projectId], map: "idx_task_project")
-  @@index([gabineteId, milestoneId], map: "idx_task_milestone")
-  @@map("tasks")
+enum PartePapel {
+  PARTE_PRINCIPAL  // o "lado" do tenant
+  CONTRAPARTE
+  GARANTE
+  TESTEMUNHA
+  NOTARIO
+  INTERVENIENTE_ACESSORIO
 }
 
-// ── Task Check Item (Checklist) ─────────────────────────
+model ContratoParte {
+  id                   String      @id @default(uuid()) @db.Uuid
+  contratoId           String      @map("contrato_id") @db.Uuid
+  entidadeId           String      @map("entidade_id") @db.Uuid
+  papel                PartePapel
+  representanteNome    String?     @map("representante_nome") @db.VarChar(200)
+  representanteCargo   String?     @map("representante_cargo") @db.VarChar(100)
+  representanteBI      String?     @map("representante_bi") @db.VarChar(30)
+  procuracaoDocumentId String?     @map("procuracao_document_id") @db.Uuid
+  ordem                Int         @default(0)
 
-model TaskCheckItem {
-  id        String    @id @default(uuid()) @db.Uuid
-  taskId    String    @map("task_id") @db.Uuid
-  title     String    @db.VarChar(300)
-  checked   Boolean   @default(false)
-  position  Int       @default(0)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  contrato             Contrato    @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  entidade             Entidade    @relation(fields: [entidadeId], references: [id])
 
-  @@index([taskId], map: "idx_checkitem_task")
-  @@map("task_check_items")
+  @@index([contratoId])
+  @@index([entidadeId])
+  @@map("contrato_partes")
 }
 
-// ── Task Comment ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// DATAS-CHAVE
+// ═══════════════════════════════════════════════════════════
 
-model TaskComment {
-  id        String   @id @default(uuid()) @db.Uuid
-  taskId    String   @map("task_id") @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation("TaskComments", fields: [userId], references: [id])
-
-  @@index([taskId], map: "idx_taskcomment_task")
-  @@map("task_comments")
+enum DataChaveTipo {
+  ASSINATURA
+  INICIO_VIGENCIA
+  TERMO
+  RENOVACAO_AUTOMATICA
+  JANELA_DENUNCIA_INICIO
+  JANELA_DENUNCIA_FIM
+  PAGAMENTO
+  ENTREGA
+  REVISAO_PRECO
+  MILESTONE
+  GARANTIA_VALIDADE
+  SEGURO_VALIDADE
+  OUTRO
 }
 
-// ── Cliente Interaction (CRM Flow) ───────────────────────
+model ContratoDataChave {
+  id          String        @id @default(uuid()) @db.Uuid
+  contratoId  String        @map("contrato_id") @db.Uuid
+  tipo        DataChaveTipo
+  data        DateTime      @db.Date
+  descricao   String?       @db.Text
+  alertaDias  Int[]         @default([90, 30, 7]) @map("alerta_dias")
+  cumprida    Boolean       @default(false)
+  cumpridaEm  DateTime?     @map("cumprida_em") @db.Timestamptz
+  cumpridaPor String?       @map("cumprida_por") @db.Uuid
+  metadata    Json?
 
-model ClienteInteraction {
-  id         String    @id @default(uuid()) @db.Uuid
-  gabineteId String    @map("gabinete_id") @db.Uuid
-  clienteId  String    @map("cliente_id") @db.Uuid
-  userId     String    @map("user_id") @db.Uuid
-  type       String    @db.VarChar(20) // CHAMADA, EMAIL, REUNIAO, WHATSAPP, VISITA
-  notes      String?   @db.Text
-  date       DateTime  @db.Timestamptz
-  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
-  cliente  Cliente  @relation(fields: [clienteId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  contrato    Contrato      @relation(fields: [contratoId], references: [id], onDelete: Cascade)
 
-  @@index([gabineteId, clienteId], map: "idx_interaction_gabinete_cliente")
-  @@map("cliente_interactions")
+  @@index([contratoId, data])
+  @@index([data, cumprida])  // scanner global de prazos
+  @@map("contrato_datas_chave")
 }
 
-// ── Legislation Document (RAG) ───────────────────────────
+// ═══════════════════════════════════════════════════════════
+// OBRIGAÇÕES PERIÓDICAS / CONTÍNUAS
+// ═══════════════════════════════════════════════════════════
+
+enum ObrigacaoTipo {
+  PAGAMENTO_PERIODICO
+  REPORTE
+  GARANTIA_VALIDADE
+  SEGURO_VALIDADE
+  SLA
+  ENTREGA_PERIODICA
+  OUTRO
+}
+
+enum ObrigacaoPeriodicidade {
+  UNICA
+  MENSAL
+  BIMESTRAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum ObrigacaoInstanciaEstado {
+  PENDENTE
+  CUMPRIDA
+  ATRASADA
+  DISPENSADA
+}
+
+model ContratoObrigacao {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  contratoId          String                 @map("contrato_id") @db.Uuid
+  parteResponsavelId  String                 @map("parte_responsavel_id") @db.Uuid
+  tipo                ObrigacaoTipo
+  descricao           String                 @db.Text
+  periodicidade       ObrigacaoPeriodicidade
+  proximaData         DateTime?              @map("proxima_data") @db.Date
+  ultimaData          DateTime?              @map("ultima_data") @db.Date
+  valorEsperado       BigInt?                @map("valor_esperado")
+  moeda               String?                @db.VarChar(3)
+  alertaDias          Int[]                  @default([15, 5]) @map("alerta_dias")
+  isActive            Boolean                @default(true) @map("is_active")
+
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  contrato            Contrato               @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  parteResponsavel    ContratoParte          @relation(fields: [parteResponsavelId], references: [id])
+  instancias          ContratoObrigacaoInstancia[]
+
+  @@index([contratoId])
+  @@index([proximaData])
+  @@map("contrato_obrigacoes")
+}
+
+model ContratoObrigacaoInstancia {
+  id              String                   @id @default(uuid()) @db.Uuid
+  obrigacaoId     String                   @map("obrigacao_id") @db.Uuid
+  dataPrevista    DateTime                 @map("data_prevista") @db.Date
+  dataReal        DateTime?                @map("data_real") @db.Date
+  estado          ObrigacaoInstanciaEstado @default(PENDENTE)
+  valorReal       BigInt?                  @map("valor_real")
+  comprovativoId  String?                  @map("comprovativo_id") @db.Uuid
+  observacoes     String?                  @db.Text
+
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+
+  obrigacao       ContratoObrigacao        @relation(fields: [obrigacaoId], references: [id], onDelete: Cascade)
+
+  @@index([obrigacaoId, dataPrevista])
+  @@index([dataPrevista, estado])
+  @@map("contrato_obrigacao_instancias")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTOS REGULATÓRIOS (compliance angolano embebido)
+// ═══════════════════════════════════════════════════════════
+
+enum ActoRegulatorioTipo {
+  IMPOSTO_SELO
+  REGISTO_COMERCIAL
+  REGISTO_PREDIAL
+  REGISTO_AUTOMOVEL
+  REGISTO_IP_IAPI
+  BNA_AUTORIZACAO
+  BNA_REGISTO
+  AGT_RETENCAO_IRT
+  AGT_OUTRO
+  RECONHECIMENTO_NOTARIAL
+  TRADUCAO_JURAMENTADA
+  SECTORIAL_OUTRO
+}
+
+enum ActoEstado {
+  NAO_APLICAVEL
+  PENDENTE
+  EM_CURSO
+  CONCLUIDO
+  DISPENSADO
+  FALHOU
+  EXPIRADO
+}
+
+model ContratoActoRegulatorio {
+  id                       String              @id @default(uuid()) @db.Uuid
+  contratoId               String              @map("contrato_id") @db.Uuid
+  tipo                     ActoRegulatorioTipo
+
+  // Específicos para Imposto de Selo
+  tgisVerbaNumero          String?             @map("tgis_verba_numero") @db.VarChar(20)
+  baseTributavel           BigInt?             @map("base_tributavel")
+  baseMoeda                String?             @map("base_moeda") @db.VarChar(3)
+  valorLiquidar            BigInt?             @map("valor_liquidar")
+
+  // Específicos para registos
+  registoEntidade          String?             @map("registo_entidade") @db.VarChar(100)
+  registoReferencia        String?             @map("registo_referencia") @db.VarChar(200)
+
+  // Comuns
+  prazoLimite              DateTime?           @map("prazo_limite") @db.Date
+  estado                   ActoEstado          @default(PENDENTE)
+  concluidoEm              DateTime?           @map("concluido_em") @db.Timestamptz
+  comprovativoId           String?             @map("comprovativo_id") @db.Uuid
+  responsavelId            String?             @map("responsavel_id") @db.Uuid
+  observacoes              String?             @db.Text
+  custoEmAKZ               BigInt?             @map("custo_em_akz")
+
+  // Metadata do engine
+  detectadoAutomaticamente Boolean             @default(false) @map("detectado_automaticamente")
+  regraId                  String?             @map("regra_id") @db.VarChar(80)
+  regraVersao              String?             @map("regra_versao") @db.VarChar(20)
+  referenciaLegal          String?             @map("referencia_legal") @db.Text
+  disclaimer               String?             @db.Text
+
+  createdAt                DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  contrato                 Contrato            @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId, estado])
+  @@index([prazoLimite, estado])
+  @@index([tipo])
+  @@map("contrato_actos_regulatorios")
+}
+
+// ═══════════════════════════════════════════════════════════
+// NEGOCIAÇÃO
+// ═══════════════════════════════════════════════════════════
+
+enum NegociacaoPontoEstado {
+  ABERTO
+  PROPOSTO
+  CONTRA_PROPOSTO
+  ACEITE
+  REJEITADO
+  RETIRADO
+}
+
+enum NegociacaoPontoCriticidade {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+model ContratoNegociacaoPonto {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  contratoId          String                     @map("contrato_id") @db.Uuid
+  clausulaRef         String                     @map("clausula_ref") @db.VarChar(200)
+  titulo              String                     @db.VarChar(200)
+  resumo              String                     @db.Text
+  posicaoNos          String?                    @map("posicao_nos") @db.Text
+  posicaoContraparte  String?                    @map("posicao_contraparte") @db.Text
+  acordoFinal         String?                    @map("acordo_final") @db.Text
+  estado              NegociacaoPontoEstado      @default(ABERTO)
+  criticidade         NegociacaoPontoCriticidade @default(MEDIA)
+  versaoIntroduzidaId String?                    @map("versao_introduzida_id") @db.Uuid
+  versaoResolvidaId   String?                    @map("versao_resolvida_id") @db.Uuid
+
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy           String?                    @map("created_by") @db.Uuid
+
+  contrato            Contrato                   @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId, estado])
+  @@map("contrato_negociacao_pontos")
+}
+
+// ═══════════════════════════════════════════════════════════
+// EVENTOS (timeline append-only)
+// ═══════════════════════════════════════════════════════════
+
+model ContratoEvento {
+  id          String   @id @default(uuid()) @db.Uuid
+  contratoId  String   @map("contrato_id") @db.Uuid
+  tipo        String   @db.VarChar(60)  // taxonomia controlada
+  resumo      String?  @db.Text
+  payload     Json?
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  actorTipo   String?  @map("actor_tipo") @db.VarChar(40)  // USER, SYSTEM, COMPLIANCE_ENGINE, IA
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  contrato    Contrato @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@index([contratoId, createdAt])
+  @@index([tipo])
+  @@map("contrato_eventos")
+}
+
+// ═══════════════════════════════════════════════════════════
+// TERMINAÇÃO
+// ═══════════════════════════════════════════════════════════
+
+enum TerminacaoTipo {
+  NATURAL
+  DENUNCIA_TEMPESTIVA
+  RESOLUCAO_INCUMPRIMENTO
+  REVOGACAO_MUTUA
+  FORCA_MAIOR
+  CADUCIDADE
+  OUTRO
+}
+
+model ContratoTerminacao {
+  id                 String         @id @default(uuid()) @db.Uuid
+  contratoId         String         @unique @map("contrato_id") @db.Uuid
+  tipo               TerminacaoTipo
+  dataEfectiva       DateTime       @map("data_efectiva") @db.Date
+  motivacao          String?        @db.Text
+  documentoId        String?        @map("documento_id") @db.Uuid
+  obrigacoesPosTermo Json?          @map("obrigacoes_pos_termo")  // confidencialidade, não-concorrência, etc.
+
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  createdBy          String?        @map("created_by") @db.Uuid
+
+  contrato           Contrato       @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+
+  @@map("contrato_terminacoes")
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPORTAÇÃO EM LOTE (Modo C — Repositório)
+// ═══════════════════════════════════════════════════════════
+
+enum LoteEstado {
+  EM_FILA
+  PROCESSANDO
+  CONCLUIDO
+  CONCLUIDO_COM_ERROS
+  FALHOU
+  CANCELADO
+}
+
+enum LinhaEstado {
+  PENDENTE
+  OCR_EM_CURSO
+  OCR_CONCLUIDO
+  EXTRACAO_EM_CURSO
+  EXTRACAO_CONCLUIDA
+  REVISAO_HUMANA
+  CRIADO
+  FALHOU
+  IGNORADO
+}
+
+model ImportacaoLote {
+  id            String           @id @default(uuid()) @db.Uuid
+  tenantId      String           @map("tenant_id") @db.Uuid
+  nome          String           @db.VarChar(200)
+  iniciadoPor   String           @map("iniciado_por") @db.Uuid
+  estado        LoteEstado       @default(EM_FILA)
+  totalLinhas   Int              @default(0) @map("total_linhas")
+  processadas   Int              @default(0)
+  falhas        Int              @default(0)
+  iniciadoEm    DateTime         @default(now()) @map("iniciado_em") @db.Timestamptz
+  concluidoEm   DateTime?        @map("concluido_em") @db.Timestamptz
+  resumoErros   Json?            @map("resumo_erros")
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  linhas        ImportacaoLinha[]
+
+  @@index([tenantId, estado])
+  @@map("importacao_lotes")
+}
+
+model ImportacaoLinha {
+  id            String         @id @default(uuid()) @db.Uuid
+  loteId        String         @map("lote_id") @db.Uuid
+  documentId    String?        @map("document_id") @db.Uuid
+  metadataInput Json?          @map("metadata_input")
+  estado        LinhaEstado    @default(PENDENTE)
+  textoOCR      String?        @map("texto_ocr") @db.Text
+  extracao      Json?
+  contratoId    String?        @map("contrato_id") @db.Uuid
+  erros         Json?
+
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  lote          ImportacaoLote @relation(fields: [loteId], references: [id], onDelete: Cascade)
+
+  @@index([loteId, estado])
+  @@map("importacao_linhas")
+}
+
+// ═══════════════════════════════════════════════════════════
+// DOCUMENTOS (storage transversal)
+// ═══════════════════════════════════════════════════════════
+
+enum DocumentStorageType {
+  LOCAL
+  R2
+  S3
+}
+
+model Document {
+  id              String              @id @default(uuid()) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  contratoId      String?             @map("contrato_id") @db.Uuid
+  nome            String              @db.VarChar(300)
+  mimeType        String              @map("mime_type") @db.VarChar(120)
+  tamanhoBytes    BigInt              @map("tamanho_bytes")
+  hashSHA256      String?             @map("hash_sha256") @db.VarChar(64)
+  storageType     DocumentStorageType @map("storage_type")
+  storageKey      String              @map("storage_key") @db.VarChar(500)
+  uploadedBy      String              @map("uploaded_by") @db.Uuid
+  metadata        Json?
+
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato        Contrato?           @relation(fields: [contratoId], references: [id])
+
+  @@index([tenantId])
+  @@index([contratoId])
+  @@map("documents")
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUDIT LOG (append-only)
+// ═══════════════════════════════════════════════════════════
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String?  @map("tenant_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  action      String   @db.VarChar(100)
+  entityType  String   @map("entity_type") @db.VarChar(60)
+  entityId    String?  @map("entity_id") @db.Uuid
+  beforeData  Json?    @map("before_data")
+  afterData   Json?    @map("after_data")
+  ipAddress   String?  @map("ip_address") @db.VarChar(45)
+  userAgent   String?  @map("user_agent") @db.Text
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════
+// IA — Q&A Legislação + Extracção + Diff
+// ═══════════════════════════════════════════════════════════
+
+model AIConversation {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @map("tenant_id") @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  titulo      String      @db.VarChar(200)
+  contexto    Json?       // {contratoId?, legislacaoId?, ...}
+
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  messages    AIMessage[]
+
+  @@index([tenantId, userId])
+  @@map("ai_conversations")
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model AIMessage {
+  id              String         @id @default(uuid()) @db.Uuid
+  conversationId  String         @map("conversation_id") @db.Uuid
+  role            AIMessageRole
+  conteudo        String         @db.Text
+  citacoes        Json?          // [{legislacaoId, artigo, trecho}]
+  tokensInput     Int?           @map("tokens_input")
+  tokensOutput    Int?           @map("tokens_output")
+  modelo          String?        @db.VarChar(60)
+
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  conversation    AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("ai_messages")
+}
 
 model LegislationDocument {
-  id        String   @id @default(uuid()) @db.Uuid
-  title     String   @db.VarChar(500)
-  shortName String   @map("short_name") @db.VarChar(50)
-  reference String   @db.VarChar(200)
-  category  String   @db.VarChar(30)
-  sourceUrl String?  @map("source_url") @db.VarChar(500)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id              String              @id @default(uuid()) @db.Uuid
+  codigo          String              @unique @db.VarChar(80)  // ex "CC", "CCom", "CIS", "LSC"
+  titulo          String              @db.VarChar(300)
+  diploma         String              @db.VarChar(200)  // ex "Lei n.º 20/88, de 30 de Julho"
+  publicacao      DateTime?           @db.Date
+  emVigorDesde    DateTime?           @map("em_vigor_desde") @db.Date
+  emVigorAte      DateTime?           @map("em_vigor_ate") @db.Date
+  url             String?             @db.VarChar(500)
+  conteudo        String?             @db.Text
 
-  chunks LegislationChunk[]
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@index([category], map: "idx_legislation_category")
-  @@index([shortName], map: "idx_legislation_short_name")
+  chunks          LegislationChunk[]
+
   @@map("legislation_documents")
 }
 
-// ── Legislation Chunk (RAG embeddings) ───────────────────
-
 model LegislationChunk {
-  id         String                      @id @default(uuid()) @db.Uuid
-  documentId String                      @map("document_id") @db.Uuid
-  chunkIndex Int                         @map("chunk_index")
-  title      String                      @db.VarChar(500)
-  content    String                      @db.Text
-  embedding  Unsupported("vector(768)")?
-  tokenCount Int                         @map("token_count")
-  createdAt  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  id            String                @id @default(uuid()) @db.Uuid
+  documentId    String                @map("document_id") @db.Uuid
+  artigo        String?               @db.VarChar(40)
+  trecho        String                @db.Text
+  embedding     Unsupported("vector(1536)")?
+  ordem         Int
 
-  document LegislationDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([documentId], map: "idx_chunk_document")
+  document      LegislationDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
   @@map("legislation_chunks")
 }
 
 // ═══════════════════════════════════════════════════════════
-// Workflow Engine — dynamic stages for processos & projects
+// BILLING (SaaS — Tenant pays Kamaia)
 // ═══════════════════════════════════════════════════════════
 
-// A reusable pipeline of stages configured per gabinete.
-// Replaces the hardcoded PROCESSO_STAGES constant, letting firms
-// add/remove stages (ex: Tréplica, Articulados Supervenientes) at will.
-model Workflow {
-  id          String   @id @default(uuid()) @db.Uuid
-  gabineteId  String   @map("gabinete_id") @db.Uuid
-  name        String   @db.VarChar(200)
-  description String?  @db.Text
-  scope       String   @db.VarChar(20) // 'PROCESSO' | 'PROJECT'
-  appliesTo   String[] @default([]) @map("applies_to") // e.g. ['CIVEL','COMERCIAL'] or ['MA','COMPLIANCE']
-  isDefault   Boolean  @default(false) @map("is_default")
-  isArchived  Boolean  @default(false) @map("is_archived")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete  Gabinete        @relation(fields: [gabineteId], references: [id])
-  stages    WorkflowStage[]
-  processos Processo[]
-  projects  Project[]
-
-  @@index([gabineteId, scope], map: "idx_workflow_gabinete_scope")
-  @@map("workflows")
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  SUSPENDED
 }
 
-model WorkflowStage {
-  id             String   @id @default(uuid()) @db.Uuid
-  workflowId     String   @map("workflow_id") @db.Uuid
-  key            String   @db.VarChar(60) // slug estável: "replica", "treplica"
-  label          String   @db.VarChar(100) // "Tréplica"
-  position       Int      @default(0)
-  color          String?  @db.VarChar(7)
-  category       String?  @db.VarChar(60) // agrupamento visual: "ARTICULADOS"
-  slaHours       Int?     @map("sla_hours")
-  allowsParallel Boolean  @default(false) @map("allows_parallel")
-  isTerminal     Boolean  @default(false) @map("is_terminal") // fase final (arquivo)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+model Subscription {
+  id              String             @id @default(uuid()) @db.Uuid
+  tenantId        String             @unique @map("tenant_id") @db.Uuid
+  plan            TenantPlan
+  status          SubscriptionStatus
+  trialEndsAt     DateTime?          @map("trial_ends_at") @db.Timestamptz
+  currentPeriodStart DateTime        @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd   DateTime        @map("current_period_end") @db.Timestamptz
+  cancelledAt     DateTime?          @map("cancelled_at") @db.Timestamptz
 
-  workflow  Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  instances ProcessoStageInstance[]
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@unique([workflowId, key], map: "uq_stage_workflow_key")
-  @@index([workflowId, position], map: "idx_stage_workflow_position")
-  @@map("workflow_stages")
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
 }
 
-// A processo can be in N stages in parallel (e.g. "Réplica" + "Incidente").
-// Replaces Processo.stage (kept as legacy for back-compat during migration).
-model ProcessoStageInstance {
-  id         String    @id @default(uuid()) @db.Uuid
-  processoId String    @map("processo_id") @db.Uuid
-  stageId    String    @map("stage_id") @db.Uuid
-  status     String    @default("EM_CURSO") @db.VarChar(20) // PENDENTE|EM_CURSO|CUMPRIDO|SKIPPED
-  enteredAt  DateTime  @default(now()) @map("entered_at") @db.Timestamptz
-  exitedAt   DateTime? @map("exited_at") @db.Timestamptz
-  notes      String?   @db.Text
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
-
-  processo Processo      @relation(fields: [processoId], references: [id], onDelete: Cascade)
-  stage    WorkflowStage @relation(fields: [stageId], references: [id])
-
-  @@index([processoId, status], map: "idx_stageinst_processo_status")
-  @@index([stageId], map: "idx_stageinst_stage")
-  @@map("processo_stage_instances")
-}
-
-// ═══════════════════════════════════════════════════════════
-// Legal Project — container for M&A, Compliance, DD, etc.
-// A Project aggregates processos + tasks + milestones + budget.
-// ═══════════════════════════════════════════════════════════
-model Project {
-  id             String    @id @default(uuid()) @db.Uuid
-  gabineteId     String    @map("gabinete_id") @db.Uuid
-  clienteId      String?   @map("cliente_id") @db.Uuid
-  workflowId     String?   @map("workflow_id") @db.Uuid
-  managerId      String    @map("manager_id") @db.Uuid
-  sponsorId      String?   @map("sponsor_id") @db.Uuid
-  code           String    @db.VarChar(30)
-  name           String    @db.VarChar(300)
-  category       String    @db.VarChar(30) // 'LITIGIO'|'MA'|'COMPLIANCE'|'DUE_DILIGENCE'|'CONTRATO'|'CONSULTORIA'|'OUTRO'
-  status         String    @default("ACTIVO") @db.VarChar(20) // PROPOSTA|ACTIVO|EM_PAUSA|CONCLUIDO|CANCELADO
-  healthStatus   String    @default("GREEN") @map("health_status") @db.VarChar(10) // GREEN|YELLOW|RED
-  scope          String?   @db.Text
-  objectives     String?   @db.Text
-  risksJson      Json?     @map("risks_json")
-  startDate      DateTime? @map("start_date") @db.Timestamptz
-  endDate        DateTime? @map("end_date") @db.Timestamptz
-  actualEndDate  DateTime? @map("actual_end_date") @db.Timestamptz
-  budgetAmount   Int?      @map("budget_amount") // centavos
-  budgetCurrency String    @default("AOA") @map("budget_currency") @db.VarChar(3)
-  // PUBLIC = todos os membros do gabinete podem ler; MEMBERS_ONLY = apenas
-  // members do projecto + SOCIO_GESTOR do gabinete. Default PUBLIC mantém
-  // compat com o comportamento pré-Y.
-  visibility     String    @default("PUBLIC") @db.VarChar(20)
-  tags           String[]  @default([])
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  gabinete      Gabinete              @relation(fields: [gabineteId], references: [id])
-  cliente       Cliente?              @relation(fields: [clienteId], references: [id])
-  workflow      Workflow?             @relation(fields: [workflowId], references: [id])
-  manager       User                  @relation("ProjectManager", fields: [managerId], references: [id])
-  sponsor       User?                 @relation("ProjectSponsor", fields: [sponsorId], references: [id])
-  members       ProjectMember[]
-  milestones    ProjectMilestone[]
-  processos     Processo[]
-  tasks         Task[]
-  documents     Document[]
-  statusReports ProjectStatusReport[]
-  invoices      Invoice[]
-
-  @@unique([gabineteId, code], map: "uq_project_gabinete_code")
-  @@index([gabineteId, status], map: "idx_project_gabinete_status")
-  @@index([gabineteId, category], map: "idx_project_gabinete_category")
-  @@index([gabineteId, managerId], map: "idx_project_gabinete_manager")
-  @@index([gabineteId, clienteId], map: "idx_project_gabinete_cliente")
-  @@map("projects")
-}
-
-model ProjectMember {
-  id            String   @id @default(uuid()) @db.Uuid
-  projectId     String   @map("project_id") @db.Uuid
-  userId        String   @map("user_id") @db.Uuid
-  role          String   @db.VarChar(20) // RACI: RESPONSIBLE|ACCOUNTABLE|CONSULTED|INFORMED
-  allocationPct Int?     @map("allocation_pct")
-  hourlyRate    Int?     @map("hourly_rate") // centavos/h override
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id])
-
-  @@unique([projectId, userId], map: "uq_member_project_user")
-  @@index([projectId], map: "idx_member_project")
-  @@map("project_members")
-}
-
-model ProjectMilestone {
-  id          String    @id @default(uuid()) @db.Uuid
-  projectId   String    @map("project_id") @db.Uuid
-  title       String    @db.VarChar(300)
-  description String?   @db.Text
-  startDate   DateTime? @map("start_date") @db.Timestamptz
-  dueDate     DateTime  @map("due_date") @db.Timestamptz
-  completedAt DateTime? @map("completed_at") @db.Timestamptz
-  progress    Int       @default(0)
-  // Orçamento planeado para esta fase em centavos. Usado como captura
-  // antecipada — não altera ainda a curva ideal do burndown (que é
-  // linear). Frontend valida soma ≤ Project.budgetAmount.
-  budgetCents Int?      @map("budget_cents")
-  dependsOnId String?   @map("depends_on_id") @db.Uuid
-  position    Int       @default(0)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  project    Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  dependsOn  ProjectMilestone?  @relation("MilestoneDeps", fields: [dependsOnId], references: [id])
-  dependents ProjectMilestone[] @relation("MilestoneDeps")
-  tasks      Task[]
-  documents  Document[]
-
-  @@index([projectId, position], map: "idx_milestone_project_position")
-  @@map("project_milestones")
-}
-
-// ═══════════════════════════════════════════════════════════
-// Custom Project Templates — editable per gabinete
-//
-// Shipped playbooks (M&A, Compliance, DD, Contrato, Consultoria) live in
-// code (shared-types) as read-only system templates. When a gabinete wants
-// to tweak one — add a milestone, change durations — it "duplicates" the
-// system template into this table, editable at will. Milestones are kept
-// as JSON for simplicity (they're small, structured, and always read as a
-// whole).
-// ═══════════════════════════════════════════════════════════
-model ProjectTemplateCustom {
+model UsageQuota {
   id                  String   @id @default(uuid()) @db.Uuid
-  gabineteId          String   @map("gabinete_id") @db.Uuid
-  category            String   @db.VarChar(30)
-  name                String   @db.VarChar(200)
-  description         String?  @db.Text
-  scopeBlurb          String?  @map("scope_blurb") @db.Text
-  objectivesBlurb     String?  @map("objectives_blurb") @db.Text
-  defaultDurationDays Int      @default(30) @map("default_duration_days")
-  // Milestones as JSON: [{title, description?, startDayOffset, dueDayOffset}]
-  milestones          Json
-  basedOnSystemId     String?  @map("based_on_system_id") @db.VarChar(60)
-  isArchived          Boolean  @default(false) @map("is_archived")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenantId            String   @unique @map("tenant_id") @db.Uuid
+  contratosLimit      Int      @map("contratos_limit")
+  contratosUsado      Int      @default(0) @map("contratos_usado")
+  utilizadoresLimit   Int      @map("utilizadores_limit")
+  utilizadoresUsado   Int      @default(0) @map("utilizadores_usado")
+  storageGBLimit      Int      @map("storage_gb_limit")
+  storageBytesUsado   BigInt   @default(0) @map("storage_bytes_usado")
+  iaMessagesLimit     Int      @map("ia_messages_limit")
+  iaMessagesUsado     Int      @default(0) @map("ia_messages_usado")
+  periodoInicio       DateTime @map("periodo_inicio") @db.Date
+  periodoFim          DateTime @map("periodo_fim") @db.Date
+
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  gabinete Gabinete @relation(fields: [gabineteId], references: [id])
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@index([gabineteId, category], map: "idx_tplcustom_gabinete_category")
-  @@map("project_templates_custom")
+  @@map("usage_quotas")
 }
 
 // ═══════════════════════════════════════════════════════════
-// Weekly Project Status Reports
-//
-// One snapshot per project per week. Rows are auto-generated by a Monday
-// cron job but users can also create ad-hoc reports and edit the narrative
-// fields (risks, summary, health override).
+// NOTIFICATIONS
 // ═══════════════════════════════════════════════════════════
-model ProjectStatusReport {
-  id                  String    @id @default(uuid()) @db.Uuid
-  projectId           String    @map("project_id") @db.Uuid
-  weekStart           DateTime  @map("week_start") @db.Timestamptz
-  healthStatus        String    @default("GREEN") @map("health_status") @db.VarChar(10)
-  budgetSnapshot      Int?      @map("budget_snapshot")
-  actualSpentSnapshot Int?      @map("actual_spent_snapshot")
-  idealSpentSnapshot  Int?      @map("ideal_spent_snapshot")
-  hoursLoggedMinutes  Int       @default(0) @map("hours_logged_minutes")
-  milestonesTotal     Int       @default(0) @map("milestones_total")
-  milestonesCompleted Int       @default(0) @map("milestones_completed")
-  milestonesOverdue   Int       @default(0) @map("milestones_overdue")
-  risks               Json? // [{ title, severity: 'LOW'|'MEDIUM'|'HIGH'|'CRITICAL', mitigation? }]
-  summary             String?   @db.Text
-  createdById         String    @map("created_by_id") @db.Uuid
-  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy User    @relation(fields: [createdById], references: [id])
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
 
-  @@unique([projectId, weekStart], map: "uq_report_project_week")
-  @@index([projectId, weekStart(sort: Desc)], map: "idx_report_project_week")
-  @@map("project_status_reports")
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+model Notification {
+  id          String              @id @default(uuid()) @db.Uuid
+  tenantId    String              @map("tenant_id") @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  channel     NotificationChannel
+  tipo        String              @db.VarChar(80)  // ex CONTRATO_VENCIMENTO_PROXIMO, IS_PENDENTE
+  titulo      String              @db.VarChar(200)
+  conteudo    String              @db.Text
+  payload     Json?
+  status      NotificationStatus  @default(PENDING)
+  enviadoEm   DateTime?           @map("enviado_em") @db.Timestamptz
+  lidoEm      DateTime?           @map("lido_em") @db.Timestamptz
+
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, status])
+  @@index([status, createdAt])
+  @@map("notifications")
+}
+
+model PushSubscription {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  endpoint    String   @unique @db.Text
+  p256dh      String   @db.Text
+  auth        String   @db.Text
+  userAgent   String?  @map("user_agent") @db.Text
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // ═══════════════════════════════════════════════════════════
-// Invoicing — core business model for solo / small gabinetes.
-//
-// An Invoice aggregates billable TimeEntries and Expenses into a
-// client-facing document. Entries are locked (invoiceId foreign key)
-// the moment they are committed to an invoice so they can't be
-// double-billed. The invoice flows through a lightweight lifecycle:
-//   DRAFT → SENT → PAID | PARTIALLY_PAID | OVERDUE | VOID
+// API KEYS + WEBHOOKS (integração externa)
 // ═══════════════════════════════════════════════════════════
-model Invoice {
+
+model ApiKey {
   id          String    @id @default(uuid()) @db.Uuid
-  gabineteId  String    @map("gabinete_id") @db.Uuid
-  clienteId   String    @map("cliente_id") @db.Uuid
-  processoId  String?   @map("processo_id") @db.Uuid
-  projectId   String?   @map("project_id") @db.Uuid
-  number      String    @db.VarChar(30) // "2026/0001"
-  issueDate   DateTime  @default(now()) @map("issue_date") @db.Timestamptz
-  dueDate     DateTime? @map("due_date") @db.Timestamptz
-  status      String    @default("DRAFT") @db.VarChar(20)
-  currency    String    @default("AOA") @db.VarChar(3)
-  subtotal    Int       @default(0)
-  // taxRate em basis points (1400 = 14.00%) para evitar floats em
-  // cálculos monetários. taxAmount = (subtotal * taxRate) / 10000.
-  taxRate     Int       @default(1400) @map("tax_rate")
-  taxAmount   Int       @default(0) @map("tax_amount")
-  total       Int       @default(0)
-  amountPaid  Int       @default(0) @map("amount_paid")
-  notes       String?   @db.Text
-  termsText   String?   @map("terms_text") @db.Text
-  sentAt      DateTime? @map("sent_at") @db.Timestamptz
-  paidAt      DateTime? @map("paid_at") @db.Timestamptz
-  voidedAt    DateTime? @map("voided_at") @db.Timestamptz
-  createdById String    @map("created_by_id") @db.Uuid
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+  tenantId    String    @map("tenant_id") @db.Uuid
+  nome        String    @db.VarChar(100)
+  prefixo     String    @db.VarChar(12)
+  keyHash     String    @unique @map("key_hash") @db.VarChar(200)
+  scopes      String[]
+  isActive    Boolean   @default(true) @map("is_active")
+  lastUsedAt  DateTime? @map("last_used_at") @db.Timestamptz
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz
+
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  createdBy   String    @map("created_by") @db.Uuid
 
-  gabinete    Gabinete         @relation(fields: [gabineteId], references: [id])
-  cliente     Cliente          @relation(fields: [clienteId], references: [id])
-  processo    Processo?        @relation(fields: [processoId], references: [id])
-  project     Project?         @relation(fields: [projectId], references: [id])
-  createdBy   User             @relation("InvoiceCreator", fields: [createdById], references: [id])
-  items       InvoiceItem[]
-  timeEntries TimeEntry[]
-  expenses    Expense[]
-  payments    InvoicePayment[]
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([gabineteId, number], map: "uq_invoice_gabinete_number")
-  @@index([gabineteId, status], map: "idx_invoice_gabinete_status")
-  @@index([gabineteId, clienteId], map: "idx_invoice_gabinete_cliente")
-  @@map("invoices")
+  @@index([tenantId])
+  @@map("api_keys")
 }
 
-model InvoiceItem {
-  id          String  @id @default(uuid()) @db.Uuid
-  invoiceId   String  @map("invoice_id") @db.Uuid
-  kind        String  @db.VarChar(20) // TIME | EXPENSE | CUSTOM
-  description String  @db.VarChar(500)
-  quantity    Float   @default(1) // hours for TIME, 1 for EXPENSE/CUSTOM
-  unitPrice   Int     @map("unit_price") // centavos
-  total       Int // centavos (quantity × unitPrice, rounded)
-  sourceId    String? @map("source_id") @db.Uuid // original TimeEntry or Expense id
-  position    Int     @default(0)
+model Webhook {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @map("tenant_id") @db.Uuid
+  nome        String           @db.VarChar(100)
+  url         String           @db.VarChar(500)
+  events      String[]
+  secret      String           @db.VarChar(200)
+  isActive    Boolean          @default(true) @map("is_active")
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([invoiceId, position], map: "idx_item_invoice_position")
-  @@map("invoice_items")
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([tenantId])
+  @@map("webhooks")
 }
 
-model InvoicePayment {
-  id           String   @id @default(uuid()) @db.Uuid
-  invoiceId    String   @map("invoice_id") @db.Uuid
-  amount       Int // centavos
-  paidAt       DateTime @map("paid_at") @db.Timestamptz
-  method       String?  @db.VarChar(30) // 'TRANSFERENCIA' | 'DINHEIRO' | 'CHEQUE' | 'OUTRO'
-  reference    String?  @db.VarChar(120)
-  notes        String?  @db.Text
-  recordedById String   @map("recorded_by_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  recordedBy User    @relation("PaymentRecorder", fields: [recordedById], references: [id])
-
-  @@index([invoiceId], map: "idx_payment_invoice")
-  @@map("invoice_payments")
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
 }
 
-// ═══════════════════════════════════════════════════════════
-// Feriados / Holidays — business-day calculations for prazos
-//
-// System-wide Angolan public holidays are auto-seeded (gabineteId null).
-// A gabinete can add local/municipal overrides with its own gabineteId.
-// ═══════════════════════════════════════════════════════════
-model Holiday {
-  id         String   @id @default(uuid()) @db.Uuid
-  gabineteId String?  @map("gabinete_id") @db.Uuid // null = system holiday (applies to all)
-  name       String   @db.VarChar(200)
-  date       DateTime @db.Date
-  kind       String   @default("NATIONAL") @db.VarChar(20) // NATIONAL | MUNICIPAL | RELIGIOUS | OTHER
-  recurring  Boolean  @default(false) // if true: date month/day repeats every year
-  notes      String?  @db.Text
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+model WebhookDelivery {
+  id              String                @id @default(uuid()) @db.Uuid
+  webhookId       String                @map("webhook_id") @db.Uuid
+  event           String                @db.VarChar(80)
+  payload         Json
+  status          WebhookDeliveryStatus @default(PENDING)
+  responseStatus  Int?                  @map("response_status")
+  responseBody    String?               @map("response_body") @db.Text
+  tentativas      Int                   @default(0)
+  proximaTentativa DateTime?            @map("proxima_tentativa") @db.Timestamptz
+  entregueEm      DateTime?             @map("entregue_em") @db.Timestamptz
 
-  gabinete Gabinete? @relation(fields: [gabineteId], references: [id])
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz
 
-  @@unique([gabineteId, date, name], map: "uq_holiday_gabinete_date_name")
-  @@index([date], map: "idx_holiday_date")
-  @@index([gabineteId], map: "idx_holiday_gabinete")
-  @@map("holidays")
-}
+  webhook         Webhook               @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
-// ═══════════════════════════════════════════════════════════
-// PublicContactSubmission — marketing-site contact form
-//
-// Lands outside the gabinete isolation boundary: these are *prospects*,
-// not tenants. We keep them to (a) avoid data loss if email delivery
-// fails, (b) enable pipeline / CRM export, (c) provide an audit trail
-// for compliance (Lei 22/11 — protecção de dados pessoais de Angola).
-//
-// Writes are public (throttled at controller level). Reads require
-// admin auth — add a guarded endpoint when needed.
-// ═══════════════════════════════════════════════════════════
-model PublicContactSubmission {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.VarChar(200)
-  email       String    @db.VarChar(255)
-  phone       String?   @db.VarChar(50)
-  gabinete    String?   @db.VarChar(200)
-  plan        String?   @db.VarChar(50)
-  message     String    @db.Text
-  // Affirmative consent (RGPD / Lei 22/11 de Angola). Stored as a
-  // timestamp so we can prove WHEN consent was given, not just that
-  // it was ticked. Null means the checkbox was not submitted.
-  consentedAt DateTime? @map("consented_at") @db.Timestamptz
-  // Best-effort request metadata for fraud / rate-limit forensics.
-  ipAddress   String?   @map("ip_address") @db.VarChar(50)
-  userAgent   String?   @map("user_agent") @db.VarChar(500)
-  // Outcome of email delivery via Resend.
-  // PENDING | SENT | FAILED
-  emailStatus String    @default("PENDING") @map("email_status") @db.VarChar(20)
-  emailError  String?   @map("email_error") @db.Text
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-
-  @@index([createdAt], map: "idx_public_contact_created")
-  @@index([email], map: "idx_public_contact_email")
-  @@map("public_contact_submissions")
+  @@index([webhookId, status])
+  @@map("webhook_deliveries")
 }
