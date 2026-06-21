@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { Prisma, DocumentStorageType } from '@prisma/client';
@@ -62,7 +62,7 @@ export class DocumentsService {
     const hash = dto.hashSHA256 ?? createHash('sha256').update(buffer).digest('hex');
 
     // ID gerado antes para compor a storageKey.
-    const id = crypto.randomUUID();
+    const id = randomUUID();
     const safeName = dto.nome.replace(/[^\w.\-]+/g, '_');
     const storageKey = `${tenantId}/${id}-${safeName}`;
 
