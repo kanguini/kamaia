@@ -76,16 +76,29 @@ export class ClaudeProvider {
   async complete(
     messages: ClaudeMessage[],
     legislacaoContext?: string,
+    /**
+     * Substitui o SYSTEM_PROMPT por completo. Usar quando o caller tem
+     * um prompt especializado (e.g. drafting de contratos onde o output
+     * deve ser puro markdown sem disclaimers ou citações inline).
+     * Se omitido, usa o SYSTEM_PROMPT genérico Q&A.
+     */
+    systemOverride?: string,
+    /**
+     * Override de max_tokens. Drafting de contratos pode precisar
+     * 4k-8k para uma minuta completa, enquanto Q&A normal usa 2k.
+     */
+    maxTokensOverride?: number,
   ): Promise<ClaudeResponse | null> {
     if (!this.apiKey) return null;
 
+    const baseSystem = systemOverride ?? SYSTEM_PROMPT;
     const systemPrompt = legislacaoContext
-      ? `${SYSTEM_PROMPT}\n\n=== Contexto da legislação angolana ===\n${legislacaoContext}`
-      : SYSTEM_PROMPT;
+      ? `${baseSystem}\n\n=== Contexto da legislação angolana ===\n${legislacaoContext}`
+      : baseSystem;
 
     const body = {
       model: this.model,
-      max_tokens: this.maxTokens,
+      max_tokens: maxTokensOverride ?? this.maxTokens,
       system: systemPrompt,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
     };

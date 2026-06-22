@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { z } from 'zod';
 import { JwtPayload, Role, TenantContext } from '@kamaia/shared-types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -25,11 +26,40 @@ import {
   SendMessageSchema,
 } from './ia.dto';
 import { IaService } from './ia.service';
+import { IaDraftingService } from './ia-drafting.service';
+
+const DraftContratoSchema = z.object({
+  contratoId: z.string().uuid(),
+  versaoId: z.string().uuid().optional(),
+  prompt: z.string().max(4000).optional(),
+  novaVersao: z.boolean().optional(),
+});
 
 @Controller('ia')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class IaController {
-  constructor(private readonly ia: IaService) {}
+  constructor(
+    private readonly ia: IaService,
+    private readonly drafting: IaDraftingService,
+  ) {}
+
+  /**
+   * Drafting do corpo de um contrato com Claude. Persiste como nova
+   * versão DRAFT_INTERNO marcada `geradoPorIA=true`, ou actualiza a
+   * versão fornecida (se não estiver assinada). Apenas LEGAL_LEAD e
+   * CONTRACT_MANAGER (e ADMIN) — exclui BUSINESS_USER porque o draft
+   * pode contaminar uma versão activa.
+   */
+  @Post('draft-contrato')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async draftContrato(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(DraftContratoSchema))
+    dto: z.infer<typeof DraftContratoSchema>,
+  ) {
+    return this.drafting.draftContrato(tenant.tenantId, user.sub, dto);
+  }
 
   @Get('conversations')
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER)
