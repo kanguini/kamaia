@@ -26,7 +26,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ColaboradorTipoAcesso } from '@kamaia/shared-types'
 import { fmtDate } from '@/lib/clm-format'
-import { MessageSquare, Lock, FileSignature, Send, AlertCircle } from 'lucide-react'
+import { MessageSquare, Lock, FileSignature, Send, AlertCircle, CheckCircle2, Download } from 'lucide-react'
+import { AssinarDrawer } from '@/components/contratos/assinar-drawer'
+import { apiUrl } from '@/lib/api'
 
 interface ContextResponse {
   colaborador: {
@@ -138,18 +140,41 @@ function ContractView({ ctx, token }: { ctx: ContextResponse; token: string }) {
     ctx.colaborador.tipoAcesso === ColaboradorTipoAcesso.COMENTARIO ||
     ctx.colaborador.tipoAcesso === ColaboradorTipoAcesso.ASSINATURA
   const podeAssinar = ctx.colaborador.tipoAcesso === ColaboradorTipoAcesso.ASSINATURA
+  const [signOpen, setSignOpen] = useState(false)
+  const [signedOk, setSignedOk] = useState(false)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 24, alignItems: 'flex-start' }}>
       <main style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <header>
-          <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Contrato {ctx.contrato.numeroInterno}
+        <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Contrato {ctx.contrato.numeroInterno}
+            </div>
+            <h1 style={{ fontSize: 24, fontWeight: 600, margin: '6px 0 0' }}>{ctx.contrato.titulo}</h1>
+            {ctx.contrato.descricao && (
+              <p style={{ fontSize: 14, color: 'var(--k2-text-dim)', marginTop: 8 }}>{ctx.contrato.descricao}</p>
+            )}
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: '6px 0 0' }}>{ctx.contrato.titulo}</h1>
-          {ctx.contrato.descricao && (
-            <p style={{ fontSize: 14, color: 'var(--k2-text-dim)', marginTop: 8 }}>{ctx.contrato.descricao}</p>
-          )}
+          <a
+            href={apiUrl(`/c/${token}/pdf`)}
+            target="_blank"
+            rel="noopener"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: 'var(--k2-text-dim)',
+              border: '1px solid var(--k2-border)',
+              padding: '6px 12px',
+              borderRadius: 'var(--k2-radius-sm)',
+              textDecoration: 'none',
+              background: 'var(--k2-bg-elev)',
+            }}
+          >
+            <Download size={12} /> PDF
+          </a>
         </header>
 
         <MetaGrid ctx={ctx} />
@@ -188,25 +213,48 @@ function ContractView({ ctx, token }: { ctx: ContextResponse; token: string }) {
           )}
         </section>
 
-        {podeAssinar && (
+        {podeAssinar && ctx.contrato.versaoActual?.id && (
           <section style={{
-            background: 'var(--k2-bg-elev)',
-            border: '1px solid var(--k2-border)',
+            background: signedOk ? 'rgba(16,185,129,0.08)' : 'var(--k2-bg-elev)',
+            border: `1px solid ${signedOk ? 'rgba(16,185,129,0.4)' : 'var(--k2-border)'}`,
             borderRadius: 'var(--k2-radius)',
             padding: 18,
             display: 'flex',
             alignItems: 'center',
             gap: 14,
           }}>
-            <FileSignature size={22} color="var(--k2-accent)" />
+            {signedOk ? (
+              <CheckCircle2 size={22} color="#16a34a" />
+            ) : (
+              <FileSignature size={22} color="var(--k2-accent)" />
+            )}
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Pronto para assinar?</div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>
+                {signedOk ? 'Assinatura registada' : 'Pronto para assinar?'}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--k2-text-dim)' }}>
-                Funcionalidade de canvas + certificado digital chega em breve.
+                {signedOk
+                  ? 'O proprietário do contrato foi notificado.'
+                  : 'Desenha a tua assinatura no canvas — fica associada à versão actual com hash do conteúdo.'}
               </div>
             </div>
-            <Button disabled title="Disponível brevemente">Assinar</Button>
+            {!signedOk && (
+              <Button onClick={() => setSignOpen(true)}>Assinar</Button>
+            )}
           </section>
+        )}
+
+        {podeAssinar && ctx.contrato.versaoActual?.id && (
+          <AssinarDrawer
+            open={signOpen}
+            onClose={() => setSignOpen(false)}
+            token={token}
+            versaoId={ctx.contrato.versaoActual.id}
+            contratoTitulo={ctx.contrato.titulo}
+            signatarioEmailHint={ctx.colaborador.email}
+            signatarioNomeHint={ctx.colaborador.nome}
+            onSigned={() => setSignedOk(true)}
+          />
         )}
       </main>
 

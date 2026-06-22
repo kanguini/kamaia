@@ -30,6 +30,7 @@ import { estadoBadgeVariant, estadoLabel, fmtDate, fmtDateTime, fmtMoney } from 
 import { ChevronLeft } from 'lucide-react'
 import { EditorTab } from '@/components/contratos/editor-tab'
 import { PartilhaTab } from '@/components/contratos/partilha-tab'
+import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
 
 interface Contrato {
   id: string
@@ -51,12 +52,13 @@ interface Contrato {
   responsavel: { id: string; firstName: string; lastName: string } | null
 }
 
-type TabKey = 'resumo' | 'editor' | 'partilha' | 'versoes' | 'partes' | 'datas-chave' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
+type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'partes' | 'datas-chave' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'resumo', label: 'Resumo' },
   { key: 'editor', label: 'Editor' },
   { key: 'partilha', label: 'Partilha' },
+  { key: 'assinaturas', label: 'Assinaturas' },
   { key: 'versoes', label: 'Versões' },
   { key: 'partes', label: 'Partes' },
   { key: 'datas-chave', label: 'Datas-chave' },
@@ -128,6 +130,7 @@ export default function ContratoDetailPage() {
         {tab === 'resumo' && contrato && <ResumoTab contrato={contrato} />}
         {tab === 'editor' && <EditorTab contratoId={String(id)} />}
         {tab === 'partilha' && <PartilhaTab contratoId={String(id)} />}
+        {tab === 'assinaturas' && <AssinaturasTab contratoId={String(id)} />}
         {tab === 'versoes' && <VersoesTab contratoId={String(id)} />}
         {tab === 'partes' && <PartesTab contratoId={String(id)} />}
         {tab === 'datas-chave' && <DatasChaveTab contratoId={String(id)} />}
