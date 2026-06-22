@@ -73,10 +73,16 @@ export class ContratosService {
       }
     }
 
-    const numeroInterno = await this.gerarNumero(tenantId);
     const estadoFinal = estadoInicial ?? ContratoEstado.INTAKE;
 
     const contrato = await this.prisma.$transaction(async (tx) => {
+      // Race-safe: lock per-tenant + count + INSERT acontecem todos
+      // dentro do mesmo xact. Lock liberta-se no commit.
+      const numeroInterno = await ContratosService.gerarNumeroNaTransaction(
+        tx,
+        tenantId,
+      );
+
       const c = await tx.contrato.create({
         data: {
           tenantId,
@@ -579,18 +585,35 @@ export class ContratosService {
 
   /**
    * Gera `CT-{ano}-{seq:5}` único por tenant. Robusto contra:
-   *  - Race condition (dois inserts simultâneos): retries com COUNT
-   *    + offset incremental até encontrar slot livre.
+   *  - Race condition (dois inserts simultâneos): TEM de ser chamado
+   *    DENTRO da mesma transaction que faz o INSERT, e a transaction
+   *    tem de adquirir um advisory lock per-tenant via
+   *    `pg_advisory_xact_lock(hashtext(tenant_id))`. O lock é libertado
+   *    automaticamente no commit/rollback.
    *  - Seed pré-existente com numeração custom (ex: `CT-2026-D0001`)
    *    — apenas conta entradas que casem com o formato canónico.
+   *
+   * NOTA: o método antigo (sem lock, com findUnique pre-flight) era
+   * racy — entre o findUnique e o INSERT do caller, outra request
+   * podia inserir o mesmo candidato e disparar UNIQUE constraint
+   * violation. Este método usa `tx` para garantir que count + INSERT
+   * são atómicos sob lock por tenant.
    */
-  private async gerarNumero(tenantId: string): Promise<string> {
+  static async gerarNumeroNaTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+  ): Promise<string> {
     const ano = new Date().getFullYear();
     const prefixo = `CT-${ano}-`;
 
-    // Contagem de contratos com numeração canónica neste ano.
-    // Padrão `^CT-YYYY-\d{5}$` exclui números seed tipo `D0001`.
-    const matched = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+    // Advisory lock — serializa gerarNumero+INSERT por tenant.
+    // hashtext() devolve int4; ok para volumes esperados (não há
+    // colisão fora de cenários cosmicamente improváveis em mesmo ano).
+    // Lock é xact-scoped: liberta no fim da transaction.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+
+    // Contagem dentro do lock — leitura consistente.
+    const matched = await tx.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count
       FROM contratos
       WHERE tenant_id = ${tenantId}::uuid
@@ -598,17 +621,19 @@ export class ContratosService {
     `;
     let seq = Number(matched[0]?.count ?? 0n) + 1;
 
-    // Verifica unicidade até 10 tentativas (race-safe).
+    // Verifica unicidade até 10 tentativas. Em condições normais a
+    // primeira tentativa é sempre OK pelo lock; este loop só protege
+    // contra inconsistências históricas no padrão.
     for (let i = 0; i < 10; i++) {
       const candidato = `${prefixo}${seq.toString().padStart(5, '0')}`;
-      const existe = await this.prisma.contrato.findUnique({
+      const existe = await tx.contrato.findUnique({
         where: { tenantId_numeroInterno: { tenantId, numeroInterno: candidato } },
         select: { id: true },
       });
       if (!existe) return candidato;
       seq += 1;
     }
-    // Fallback: timestamp para evitar deadlock em condições anómalas.
+    // Fallback teórico — não deve acontecer com lock activo.
     return `${prefixo}${Date.now().toString(36).toUpperCase().slice(-5)}`;
   }
 }

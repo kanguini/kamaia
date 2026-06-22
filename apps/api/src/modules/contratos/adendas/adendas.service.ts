@@ -10,6 +10,7 @@ import {
   ContratoOrigem,
   EntityType,
 } from '@kamaia/shared-types';
+import { Prisma } from '@prisma/client';
 import { AuditService } from '../../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../../webhooks/webhooks.service';
@@ -78,9 +79,15 @@ export class ContratoAdendasService {
       );
     }
 
-    const numeroInterno = await this.gerarNumeroAdenda(tenantId, parent.numeroInterno);
-
     const adenda = await this.prisma.$transaction(async (tx) => {
+      // Race-safe: lock por (tenant + parent) já que adendas só
+      // colidem dentro do conjunto do mesmo parent.
+      const numeroInterno = await this.gerarNumeroAdendaNaTransaction(
+        tx,
+        tenantId,
+        parent.numeroInterno,
+      );
+
       const a = await tx.contrato.create({
         data: {
           tenantId,
@@ -152,12 +159,12 @@ export class ContratoAdendasService {
       action: AuditAction.CREATE,
       entityType: EntityType.CONTRATO,
       entityId: adenda.id,
-      afterData: { parentContratoId: parent.id, numeroInterno },
+      afterData: { parentContratoId: parent.id, numeroInterno: adenda.numeroInterno },
     });
 
     await this.webhooks.enqueueEvent(tenantId, 'contrato.criado', {
       contratoId: adenda.id,
-      numeroInterno,
+      numeroInterno: adenda.numeroInterno,
       titulo: adenda.titulo,
       isAdenda: true,
       parentContratoId: parent.id,
@@ -177,13 +184,22 @@ export class ContratoAdendasService {
   /**
    * Numeração de adenda: `{numeroPai}-A{seq:2}`.
    * Ex: CT-2026-00042 → CT-2026-00042-A01
+   *
+   * Race-safe: usa advisory lock cuja key é o hash do numeroPai —
+   * adendas de parents diferentes não bloqueiam entre si.
    */
-  private async gerarNumeroAdenda(
+  private async gerarNumeroAdendaNaTransaction(
+    tx: Prisma.TransactionClient,
     tenantId: string,
     numeroPai: string,
   ): Promise<string> {
     const prefixo = `${numeroPai}-A`;
-    const existentes = await this.prisma.contrato.findMany({
+    // Lock por (tenant, parent) — chave composta para evitar
+    // contenção global no tenant. hashtext aceita só uma string,
+    // concatenamos com separador improvável de aparecer em IDs.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}::${numeroPai}`}))`;
+
+    const existentes = await tx.contrato.findMany({
       where: { tenantId, numeroInterno: { startsWith: prefixo } },
       select: { numeroInterno: true },
     });
