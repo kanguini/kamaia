@@ -111,24 +111,51 @@ export class IaDraftingService {
       );
     }
 
-    // Pull cláusulas-base aprovadas do tenant para enriquecer contexto.
-    // Sem relação directa tipo↔cláusula no schema actual, filtramos por
-    // tags+categoria (matching best-effort). O modelo da IA decide quais
-    // adaptar; o utilizador revê depois.
-    const clausulas = await this.prisma.clausula.findMany({
-      where: {
-        tenantId,
-        isApproved: true,
-        OR: [
-          { tags: { has: contrato.tipo.codigo } },
-          { tags: { has: contrato.tipo.categoria } },
-          { categoria: { in: ['FORO', 'LEI_APLICAVEL', 'RESOLUCAO', 'CONFIDENCIALIDADE'] } },
-        ],
-      },
-      take: 8,
-      orderBy: { usoCount: 'desc' },
-      select: { titulo: true, conteudo: true, categoria: true },
-    });
+    // Pull cláusulas-base aprovadas. Estratégia em duas camadas:
+    //  1) Cláusulas com `tipoContratoCodigos` que inclui o código do
+    //     tipo do contrato (match preciso explícito)
+    //  2) Cláusulas transversais (`tipoContratoCodigos = []`) das
+    //     categorias estruturais sempre relevantes
+    //
+    // A categoria estrutural (LEI_APLICAVEL, FORO, COMUNICACOES, etc.)
+    // entra sempre porque aplica a qualquer contrato comercial.
+    const [especificas, transversais] = await Promise.all([
+      this.prisma.clausula.findMany({
+        where: {
+          tenantId,
+          isApproved: true,
+          tipoContratoCodigos: { has: contrato.tipo.codigo },
+        },
+        take: 6,
+        orderBy: { usoCount: 'desc' },
+        select: { titulo: true, conteudo: true, categoria: true },
+      }),
+      this.prisma.clausula.findMany({
+        where: {
+          tenantId,
+          isApproved: true,
+          tipoContratoCodigos: { isEmpty: true },
+          categoria: {
+            in: [
+              'LEI_APLICAVEL',
+              'FORO',
+              'COMUNICACOES',
+              'RESOLUCAO',
+              'FORCA_MAIOR',
+              'ALTERACOES',
+              'INVALIDADE',
+              'INTEGRALIDADE',
+              'LIMITACAO_RESPONSABILIDADE',
+              'DADOS_PESSOAIS',
+            ],
+          },
+        },
+        take: 8,
+        orderBy: { usoCount: 'desc' },
+        select: { titulo: true, conteudo: true, categoria: true },
+      }),
+    ]);
+    const clausulas = [...especificas, ...transversais];
 
     const userMessage = this.buildUserMessage(contrato, clausulas, dto.prompt);
 

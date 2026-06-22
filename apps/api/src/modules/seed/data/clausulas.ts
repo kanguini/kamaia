@@ -21,6 +21,12 @@ export interface ClausulaSeed {
   titulo: string;
   conteudo: string;
   tags: string[];
+  /**
+   * Códigos de TipoContrato a que a cláusula se aplica explicitamente.
+   * Vazio = aplicável a todos os tipos (cláusulas transversais como
+   * COMUNICACOES, INVALIDADE, INTEGRALIDADE).
+   */
+  tipoContratoCodigos?: string[];
   leiAplicavelArt?: string;
 }
 
@@ -32,6 +38,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'O presente contrato tem por objecto a prestação, pelo Prestador à Cliente, dos serviços descritos no Anexo I, executados nas condições, prazos e termos estabelecidos no presente contrato.',
     tags: ['SERVICOS', 'PRESTACAO_SERVICOS', 'CONSULTORIA'],
+    tipoContratoCodigos: ['PRESTACAO_SERVICOS', 'SLA', 'AVENCA', 'MANDATO', 'CONSULTORIA'],
   },
   {
     categoria: 'OBJECTO',
@@ -39,6 +46,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'Pelo presente contrato, o Vendedor vende e a Compradora compra os bens identificados no Anexo I, livres de quaisquer ónus, encargos ou direitos de terceiros, nas condições estabelecidas no presente clausulado.',
     tags: ['BENS', 'COMPRA_VENDA'],
+    tipoContratoCodigos: ['COMPRAVENDA_MOVEIS', 'COMPRAVENDA_AUTOMOVEL', 'FORNECIMENTO'],
   },
   {
     categoria: 'OBJECTO',
@@ -46,6 +54,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'O Senhorio dá de arrendamento à Inquilina, que aceita, o imóvel identificado no preâmbulo, destinado exclusivamente ao fim contratual aí indicado, com início de vigência na data e nas condições do presente contrato.',
     tags: ['IMOBILIARIO', 'ARRENDAMENTO'],
+    tipoContratoCodigos: ['ARRENDAMENTO', 'ARRENDAMENTO_HABITACIONAL'],
   },
 
   // ─── Preço / Contrapartida ──────────────────────────
@@ -55,6 +64,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'Como contrapartida pela prestação dos serviços, a Cliente pagará ao Prestador o valor mensal de [A COMPLETAR — montante e moeda], a liquidar até ao dia 10 do mês subsequente ao da prestação, mediante factura legal emitida nos termos do Código Geral Tributário e regulamentação AGT aplicável. O pagamento será efectuado por transferência bancária para a conta indicada pelo Prestador, sendo da responsabilidade da Cliente os encargos da operação cambial, quando aplicáveis.',
     tags: ['SERVICOS', 'CONSULTORIA', 'PAGAMENTO'],
+    tipoContratoCodigos: ['PRESTACAO_SERVICOS', 'SLA', 'AVENCA', 'MANDATO', 'CONSULTORIA'],
   },
   {
     categoria: 'PRECO',
@@ -62,6 +72,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'O preço global da compra e venda é de [A COMPLETAR — valor], a ser pago pela Compradora ao Vendedor da seguinte forma: [A COMPLETAR — calendário]. Salvo indicação em contrário, todos os valores indicam-se em Kwanzas (AOA) e excluem o Imposto sobre o Valor Acrescentado (IVA) que, sendo devido, será adicionado e suportado pela Compradora.',
     tags: ['BENS', 'COMPRA_VENDA', 'PAGAMENTO'],
+    tipoContratoCodigos: ['COMPRAVENDA_MOVEIS', 'COMPRAVENDA_AUTOMOVEL', 'FORNECIMENTO', 'COMPRAVENDA_IMOVEL', 'CPCV_IMOVEL'],
   },
   {
     categoria: 'PRECO',
@@ -69,6 +80,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'A renda mensal inicial é de [A COMPLETAR — valor], a pagar até ao dia 8 de cada mês a que respeita, na conta do Senhorio. A renda será actualizada anualmente em função da variação do índice de preços no consumidor publicado pelo INE de Angola, salvo acordo em contrário.',
     tags: ['IMOBILIARIO', 'ARRENDAMENTO', 'PAGAMENTO'],
+    tipoContratoCodigos: ['ARRENDAMENTO', 'ARRENDAMENTO_HABITACIONAL'],
   },
 
   // ─── Prazo / Vigência ───────────────────────────────
@@ -94,6 +106,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'O Prestador obriga-se a: (i) executar os serviços com zelo, diligência e nos níveis de qualidade exigíveis a um profissional do sector; (ii) cumprir prazos e entregáveis acordados; (iii) afectar pessoal qualificado e em número adequado; (iv) cumprir a legislação angolana aplicável, incluindo a regulamentação sectorial; (v) reportar mensalmente à Cliente o estado de execução; (vi) manter sigilo sobre toda a informação a que aceda no âmbito do contrato.',
     tags: ['SERVICOS', 'CONSULTORIA', 'OBRIGACOES'],
+    tipoContratoCodigos: ['PRESTACAO_SERVICOS', 'SLA', 'AVENCA', 'MANDATO', 'CONSULTORIA', 'EMPREITADA'],
   },
   {
     categoria: 'OBRIGACOES',
@@ -101,6 +114,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'A Cliente obriga-se a: (i) facultar atempadamente ao Prestador a informação e os meios necessários à execução dos serviços; (ii) liquidar pontualmente os valores devidos nos termos do presente contrato; (iii) designar um interlocutor único com poderes para tomada de decisões correntes; (iv) comunicar com a antecedência razoável quaisquer alterações de âmbito que possam afectar a execução.',
     tags: ['SERVICOS', 'CONSULTORIA', 'OBRIGACOES'],
+    tipoContratoCodigos: ['PRESTACAO_SERVICOS', 'SLA', 'AVENCA', 'MANDATO', 'CONSULTORIA', 'EMPREITADA'],
   },
 
   // ─── Confidencialidade ─────────────────────────────
@@ -110,6 +124,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'As Partes obrigam-se reciprocamente a manter sob estrita confidencialidade toda a informação técnica, comercial, financeira ou pessoal de que tomem conhecimento por força do presente contrato, abstendo-se de a divulgar, reproduzir ou utilizar para fins distintos dos contratuais, durante a vigência do contrato e pelo período de 5 (cinco) anos após a sua cessação, salvo: (i) obrigação legal de divulgação; (ii) ordem de autoridade judicial ou administrativa competente; ou (iii) informação que seja ou se torne pública por causa não imputável à Parte receptora.',
     tags: ['CONFIDENCIALIDADE', 'NDA'],
+    tipoContratoCodigos: ['NDA', 'MOU', 'LOI', 'PRESTACAO_SERVICOS', 'CONSULTORIA', 'LICENCA_SOFTWARE', 'CESSAO_IP', 'LICENCA_MARCA'],
     leiAplicavelArt: 'Lei n.º 22/11, art. 6.º (princípio da finalidade)',
   },
 
@@ -139,6 +154,7 @@ export const CLAUSULAS_BASE_SEED: ClausulaSeed[] = [
     conteudo:
       'Todos os direitos de propriedade intelectual sobre os entregáveis especificamente desenvolvidos pelo Prestador para a Cliente no âmbito do presente contrato pertencem à Cliente a partir do momento da sua aceitação formal e do pagamento integral dos valores correspondentes. O Prestador retém a propriedade dos elementos de fundo, ferramentas, metodologias e know-how preexistentes ou de carácter genérico, concedendo à Cliente uma licença não-exclusiva, irrevogável e isenta de royalties para a utilização dos mesmos enquanto incorporados nos entregáveis.',
     tags: ['PROPRIEDADE_INTELECTUAL', 'IP', 'CONSULTORIA'],
+    tipoContratoCodigos: ['CONSULTORIA', 'PRESTACAO_SERVICOS', 'LICENCA_SOFTWARE', 'CESSAO_IP', 'LICENCA_MARCA', 'EMPREITADA'],
   },
 
   // ─── Resolução ──────────────────────────────────────

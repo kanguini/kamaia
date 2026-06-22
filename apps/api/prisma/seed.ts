@@ -169,6 +169,7 @@ async function main() {
             conteudo: c.conteudo,
             leiAplicavelArt: c.leiAplicavelArt,
             tags: c.tags,
+            tipoContratoCodigos: c.tipoContratoCodigos ?? [],
             isApproved: true,
             idioma: 'pt-AO',
           },

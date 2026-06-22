@@ -346,6 +346,10 @@ model Clausula {
   conteudo         String   @db.Text
   leiAplicavelArt  String?  @map("lei_aplicavel_art") @db.VarChar(300)
   tags             String[] @default([])
+  /// Códigos de TipoContrato a que a cláusula se aplica explicitamente.
+  /// Lista vazia = aplicável a qualquer tipo. Usado pelo IaDraftingService
+  /// para seleccionar contexto preciso ao invés do filter best-effort por tags.
+  tipoContratoCodigos String[] @default([]) @map("tipo_contrato_codigos")
   idioma           String   @default("pt-AO") @db.VarChar(10)
   usoCount         Int      @default(0) @map("uso_count")
   origemContratoId String?  @map("origem_contrato_id") @db.Uuid
@@ -359,6 +363,7 @@ model Clausula {
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, categoria])
+  @@index([tipoContratoCodigos], type: Gin)
   @@index([searchVector], type: Gin)
   @@map("clausulas")
 }
