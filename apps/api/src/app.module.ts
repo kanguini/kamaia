@@ -26,6 +26,7 @@ import { HealthModule } from './modules/health/health.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { SeedModule } from './modules/seed/seed.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { SeedModule } from './modules/seed/seed.module';
     RagModule,
     // Cross-cutting
     NotificationsModule,
+    WebhooksModule,
     SeedModule,
   ],
   providers: [

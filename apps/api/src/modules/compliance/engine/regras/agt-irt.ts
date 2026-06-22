@@ -6,17 +6,25 @@ import {
 import { DISCLAIMER_PADRAO, RegraCompliance } from '../types';
 
 /**
- * Retenção na fonte de IRT sobre serviços prestados por não-residentes
- * (regime corrente). A retenção é devida pelo pagador residente em
- * Angola sobre rendimentos pagos a não-residentes.
+ * Retenção na fonte de IRT sobre serviços prestados por não-residentes.
+ *
+ * **Taxa actual: 15%** (aumentada de 6,5% no quadro da Reforma Tributária).
+ * Aplicável a serviços acidentais prestados por entidades não-residentes
+ * a pagadores residentes em Angola.
+ *
+ * A retenção é obrigação do pagador residente. Entrega à AGT
+ * mensalmente até ao último dia útil do mês seguinte.
  */
 export const REGRA_AGT_RETENCAO_IRT_NAO_RESIDENTE: RegraCompliance = {
   id: 'AGT_RETENCAO_IRT_NAO_RESIDENTE',
   versao: '2026.1',
   tipo: ActoRegulatorioTipo.AGT_RETENCAO_IRT,
   referenciaLegal:
-    'Código do IRT — regime aplicável a rendimentos pagos a não-residentes. ' +
-    'Taxa e regras vigentes devem ser confirmadas com a AGT.',
+    'Código do IRT — taxa de retenção na fonte de 15% sobre serviços ' +
+    'prestados por entidades não-residentes (anteriormente 6,5%; ' +
+    'alterada no quadro da Reforma Tributária). Obrigação do pagador ' +
+    'residente. Verificar convenção para evitar dupla tributação ' +
+    'aplicável ao país de residência do prestador.',
   disclaimer:
     DISCLAIMER_PADRAO +
     ' A retenção na fonte é obrigação do pagador residente. ' +
@@ -24,14 +32,19 @@ export const REGRA_AGT_RETENCAO_IRT_NAO_RESIDENTE: RegraCompliance = {
     'e de eventual convenção para evitar dupla tributação.',
   vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => {
-    if (ctx.categoria !== TipoContratoCategoria.SERVICOS) return false;
+    if (
+      ctx.categoria !== TipoContratoCategoria.SERVICOS &&
+      ctx.categoria !== TipoContratoCategoria.IP
+    ) return false;
     return ctx.partesResidentes.some((r) => !r);
   },
-  build: () => ({
+  build: (ctx) => ({
+    baseTributavel: ctx.valor ?? undefined,
+    valorLiquidar: ctx.valor ? (ctx.valor * 15n) / 100n : undefined,
     observacoes:
-      'Calcule e retenha o IRT devido no momento de cada pagamento. ' +
-      'Entrega à AGT mensalmente até ao dia legal do mês seguinte. ' +
-      'Verifique convenção para evitar dupla tributação aplicável ao país de residência.',
+      'Reter 15% do valor pago ao não-residente. Entrega à AGT até ao ' +
+      'último dia útil do mês seguinte ao do pagamento. Verificar CDT ' +
+      'aplicável (e.g. Portugal, Cabo Verde) que pode reduzir a taxa.',
   }),
 };
 

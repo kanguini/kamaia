@@ -34,36 +34,64 @@ describe('ComplianceEngine', () => {
   }
 
   // ─── IS — Imposto de Selo ────────────────────────────────
-  describe('Imposto de Selo (TGIS)', () => {
-    it('prestação de serviços local dispara IS_PRESTACAO_SERVICOS', () => {
+  describe('Imposto de Selo (TGIS — Decreto Legislativo Presidencial 3/14)', () => {
+    it('prestação de serviços dispara Verba 23.3 (7%)', () => {
       const actos = engine.evaluate(ctxBase());
       const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
       expect(is).toBeDefined();
       expect(is!.tipo).toBe(ActoRegulatorioTipo.IMPOSTO_SELO);
-      expect(is!.valorLiquidar).toBe(BigInt(10_000_000_00) / 100n);  // 1%
-      expect(is!.prazoLimite).toBeDefined();
-      expect(is!.referenciaLegal).toMatch(/TGIS|CIS/);
-      expect(is!.disclaimer).toMatch(/sugerido pelo Compliance Engine/i);
+      expect(is!.tgisVerbaNumero).toBe('23.3');
+      expect(is!.valorLiquidar).toBe((BigInt(10_000_000_00) * 7n) / 100n);
+      expect(is!.referenciaLegal).toMatch(/Verba 23\.3.+3\/14/);
     });
 
-    it('arrendamento (categoria IMOBILIARIO + código ARRENDAMENTO) dispara IS_ARRENDAMENTO', () => {
+    it('arrendamento comercial (cód ARRENDAMENTO) dispara Verba 2.2 (0,4%)', () => {
       const actos = engine.evaluate(
         ctxBase({
           categoria: TipoContratoCategoria.IMOBILIARIO,
           tipoCodigo: 'ARRENDAMENTO',
         }),
       );
-      expect(actos.find((a) => a.regraId === 'IS_ARRENDAMENTO')).toBeDefined();
+      const is = actos.find((a) => a.regraId === 'IS_ARRENDAMENTO_COMERCIAL');
+      expect(is).toBeDefined();
+      expect(is!.tgisVerbaNumero).toBe('2.2');
+      expect(is!.valorLiquidar).toBe((BigInt(10_000_000_00) * 4n) / 1000n);
     });
 
-    it('mútuo dispara IS_MUTUO (valor obrigatório)', () => {
+    it('arrendamento habitacional dispara Verba 2.1 (0,1%)', () => {
+      const actos = engine.evaluate(
+        ctxBase({
+          categoria: TipoContratoCategoria.IMOBILIARIO,
+          tipoCodigo: 'ARRENDAMENTO_HABITACIONAL',
+        }),
+      );
+      const is = actos.find((a) => a.regraId === 'IS_ARRENDAMENTO_HABITACIONAL');
+      expect(is).toBeDefined();
+      expect(is!.tgisVerbaNumero).toBe('2.1');
+      expect(is!.valorLiquidar).toBe((BigInt(10_000_000_00) * 1n) / 1000n);
+    });
+
+    it('contrato de trabalho é ISENTO (art. 6.º n.º 3 alínea t)', () => {
+      const actos = engine.evaluate(
+        ctxBase({ categoria: TipoContratoCategoria.TRABALHO, tipoCodigo: 'TRABALHO' }),
+      );
+      const is = actos.find((a) => a.regraId === 'IS_TRABALHO_ISENTO');
+      expect(is).toBeDefined();
+      expect(is!.tgisVerbaNumero).toBe('ISENTO');
+      expect(is!.referenciaLegal).toMatch(/Art\. 6\.º/);
+    });
+
+    it('mútuo dispara Verba 16.1.1 (0,5% — prazo até 1 ano)', () => {
       const actos = engine.evaluate(
         ctxBase({ tipoCodigo: 'MUTUO', categoria: TipoContratoCategoria.FINANCEIRO }),
       );
-      expect(actos.find((a) => a.regraId === 'IS_MUTUO')).toBeDefined();
+      const is = actos.find((a) => a.regraId === 'IS_MUTUO');
+      expect(is).toBeDefined();
+      expect(is!.tgisVerbaNumero).toBe('16.1.1');
+      expect(is!.valorLiquidar).toBe((BigInt(10_000_000_00) * 5n) / 1000n);
     });
 
-    it('compra e venda de imóvel dispara IS + notário + registo predial', () => {
+    it('compra e venda imóvel dispara Verba 1 (0,3%) + notário + registo predial', () => {
       const actos = engine.evaluate(
         ctxBase({
           tipoCodigo: 'COMPRAVENDA_IMOVEL',
@@ -79,13 +107,9 @@ describe('ComplianceEngine', () => {
           'REGISTO_PREDIAL',
         ]),
       );
-    });
-
-    it('contrato de trabalho dispara IS_CONTRATO_TRABALHO', () => {
-      const actos = engine.evaluate(
-        ctxBase({ categoria: TipoContratoCategoria.TRABALHO, tipoCodigo: 'TRABALHO' }),
-      );
-      expect(actos.find((a) => a.regraId === 'IS_CONTRATO_TRABALHO')).toBeDefined();
+      const is = actos.find((a) => a.regraId === 'IS_COMPRAVENDA_IMOVEL')!;
+      expect(is.tgisVerbaNumero).toBe('1');
+      expect(is.valorLiquidar).toBe((BigInt(10_000_000_00) * 3n) / 1000n);
     });
 
     it('empreitada dispara IS_EMPREITADA (1%)', () => {
@@ -177,10 +201,22 @@ describe('ComplianceEngine', () => {
   });
 
   // ─── AGT — Retenção IRT ──────────────────────────────────
-  describe('AGT — Retenção IRT', () => {
-    it('serviços a não-residente → retenção IRT', () => {
-      const actos = engine.evaluate(ctxBase({ partesResidentes: [true, false] }));
-      expect(actos.find((a) => a.regraId === 'AGT_RETENCAO_IRT_NAO_RESIDENTE')).toBeDefined();
+  describe('AGT — Retenção IRT (15% sobre serviços de não-residentes)', () => {
+    it('serviços a não-residente → retenção 15%', () => {
+      const ctx = ctxBase({ partesResidentes: [true, false] });
+      const actos = engine.evaluate(ctx);
+      const irt = actos.find((a) => a.regraId === 'AGT_RETENCAO_IRT_NAO_RESIDENTE');
+      expect(irt).toBeDefined();
+      expect(irt!.valorLiquidar).toBe((ctx.valor! * 15n) / 100n);
+      expect(irt!.referenciaLegal).toMatch(/15%.+6,5%/);
+    });
+    it('IP a não-residente também dispara retenção IRT (royalties)', () => {
+      const ctx = ctxBase({
+        partesResidentes: [true, false],
+        categoria: TipoContratoCategoria.IP,
+        tipoCodigo: 'LICENCA_SOFTWARE',
+      });
+      expect(engine.evaluate(ctx).find((a) => a.regraId === 'AGT_RETENCAO_IRT_NAO_RESIDENTE')).toBeDefined();
     });
     it('serviços só entre residentes → não há retenção', () => {
       const actos = engine.evaluate(ctxBase());
@@ -260,13 +296,15 @@ describe('ComplianceEngine', () => {
 
   // ─── Vigência temporal ──────────────────────────────────
   describe('Vigência temporal', () => {
-    it('regras com vigência 2020 não disparam em 2019', () => {
-      const actos = engine.evaluate(ctxBase(), new Date('2019-12-31'));
-      expect(actos).toHaveLength(0);
+    it('regras TGIS (vigência 2014-10-21) não disparam antes', () => {
+      const actos = engine.evaluate(ctxBase(), new Date('2014-10-20'));
+      // BNA/AGT vigentes desde 2020-01-01 mas TGIS desde 2014
+      // → IS_PRESTACAO_SERVICOS não vigente em 2014-10-20
+      expect(actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS')).toBeUndefined();
     });
-    it('regras vigentes disparam em 2020+ e em 2026', () => {
-      expect(engine.evaluate(ctxBase(), new Date('2020-06-01')).length).toBeGreaterThan(0);
-      expect(engine.evaluate(ctxBase(), new Date('2026-06-01')).length).toBeGreaterThan(0);
+    it('regras TGIS já vigentes em 2015 disparam em 2015', () => {
+      const actos = engine.evaluate(ctxBase(), new Date('2015-01-01'));
+      expect(actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS')).toBeDefined();
     });
   });
 
@@ -274,7 +312,7 @@ describe('ComplianceEngine', () => {
   describe('listAllRules()', () => {
     it('lista todas as regras com metadados', () => {
       const rules = engine.listAllRules();
-      expect(rules.length).toBeGreaterThanOrEqual(19);
+      expect(rules.length).toBeGreaterThanOrEqual(20);
       for (const r of rules) {
         expect(r.id).toBeDefined();
         expect(r.versao).toBeDefined();

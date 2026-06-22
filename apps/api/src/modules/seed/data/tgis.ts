@@ -1,11 +1,20 @@
 /**
- * TGIS — Tabela Geral do Imposto de Selo (seed inicial).
+ * TGIS — Tabela Geral do Imposto de Selo (Decreto Legislativo
+ * Presidencial n.º 3/14, de 21 de Outubro). Verbas e taxas conforme
+ * o diploma vigente.
  *
- * IMPORTANTE: valores e verbas são INDICATIVOS para arranque do MVP.
- * Devem ser validados por curador jurídico antes de produção.
- * Cada vez que a TGIS for revista por Decreto Executivo/OGE, novas
- * entradas devem ser adicionadas com `vigenteDesde` actualizado e a
- * entrada anterior recebe `vigenteAte`.
+ * Fontes:
+ *   - Decreto Legislativo Presidencial n.º 3/14, de 21 de Outubro
+ *   - Código do Imposto de Selo (CIS) — Art. 6.º (isenções), Art. 8.º
+ *     (valor tributável), Art. 12.º (taxas).
+ *
+ * Notas:
+ *   - Os valores aqui semeados refletem a TGIS vigente. Devem ser
+ *     revistos quando o OGE ou decreto posterior alterem a Tabela.
+ *   - As taxas variam por subverba (e.g. arrendamento 2.1 habitacional
+ *     vs 2.2 comercial). Aqui inserimos a entrada principal de cada
+ *     família — as regras do Compliance Engine sabem escolher a
+ *     subverba correcta com base no tipo concreto do contrato.
  */
 export interface TGISVerbaSeed {
   numero: string;
@@ -16,123 +25,125 @@ export interface TGISVerbaSeed {
   baseRegra?: Record<string, unknown>;
   responsavelLiquidacao?: string;
   referenciaLegal: string;
-  vigenteDesde: string;  // ISO
+  vigenteDesde: string;
   vigenteAte?: string;
 }
 
+const VIGENTE_DESDE = '2014-10-21';
+const FONTE = 'Decreto Legislativo Presidencial n.º 3/14, de 21 de Outubro';
+
 export const TGIS_SEED: TGISVerbaSeed[] = [
   {
-    numero: 'TBD-SERVICOS',
+    numero: '1',
     descricao:
-      'Contratos de prestação de serviços (verba TGIS aplicável — confirmar).',
+      'Aquisição onerosa ou gratuita do direito de propriedade ou figuras parcelares sobre imóveis.',
     tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '1',
+    taxaValor: '0.3',
     taxaUnidade: '%',
-    responsavelLiquidacao: 'Prestador / Adquirente conforme regime',
-    referenciaLegal: 'CIS + TGIS — verba aplicável a prestação de serviços (TBC)',
-    vigenteDesde: '2026-01-01',
+    responsavelLiquidacao: 'Adquirente',
+    referenciaLegal: `Verba 1, ${FONTE}. Cumulativo com SISA.`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-ARRENDAMENTO',
-    descricao:
-      'Contratos de arrendamento — liquidação mensal sobre cada renda.',
+    numero: '2.1',
+    descricao: 'Arrendamento e subarrendamento — fins habitacionais.',
+    tipoTaxa: 'PERCENTAGEM',
+    taxaValor: '0.1',
+    taxaUnidade: '%',
+    responsavelLiquidacao: 'Senhorio',
+    referenciaLegal: `Verba 2.1, ${FONTE}. Liquidação mensal sobre cada renda.`,
+    vigenteDesde: VIGENTE_DESDE,
+  },
+  {
+    numero: '2.2',
+    descricao: 'Arrendamento e subarrendamento — fins comerciais ou industriais.',
     tipoTaxa: 'PERCENTAGEM',
     taxaValor: '0.4',
     taxaUnidade: '%',
     responsavelLiquidacao: 'Senhorio',
-    referenciaLegal: 'CIS + TGIS — verba aplicável ao arrendamento (TBC)',
-    vigenteDesde: '2026-01-01',
+    referenciaLegal: `Verba 2.2, ${FONTE}. Liquidação mensal sobre cada renda.`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-MUTUO',
-    descricao:
-      'Contratos de mútuo — incidência por mês ou fracção do prazo.',
-    tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '0.1',
-    taxaUnidade: '%',
-    responsavelLiquidacao: 'Mutuante',
-    referenciaLegal: 'CIS + TGIS — verba aplicável a mútuos (TBC)',
-    vigenteDesde: '2026-01-01',
-  },
-  {
-    numero: 'TBD-CV-IMOVEL',
-    descricao:
-      'Contratos de compra e venda de imóveis. Verificar SISA cumulativa.',
-    tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '0.3',
-    taxaUnidade: '%',
-    responsavelLiquidacao: 'Adquirente',
-    referenciaLegal:
-      'CIS + TGIS — verba aplicável à compra e venda de imóveis (TBC). ' +
-      'Pode existir SISA cumulativa.',
-    vigenteDesde: '2026-01-01',
-  },
-  {
-    numero: 'TBD-CV-MOVEIS',
-    descricao: 'Contratos de compra e venda de bens móveis.',
-    tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '0.5',
-    taxaUnidade: '%',
-    responsavelLiquidacao: 'Adquirente',
-    referenciaLegal: 'CIS + TGIS — verba a confirmar (TBC).',
-    vigenteDesde: '2026-01-01',
-  },
-  {
-    numero: 'TBD-TRABALHO',
-    descricao: 'Contratos de trabalho (regime e isenções a confirmar).',
-    tipoTaxa: 'VALOR_FIXO',
-    taxaValor: '0',
-    taxaUnidade: 'AKZ',
-    responsavelLiquidacao: 'Empregador',
-    referenciaLegal: 'CIS + TGIS — confirmar regime e isenções (TBC).',
-    vigenteDesde: '2026-01-01',
-  },
-  {
-    numero: 'TBD-GARANTIA',
-    descricao: 'Garantias autónomas, cauções, fianças.',
+    numero: '10.1',
+    descricao: 'Garantias autónomas, cauções e fianças — prazo até 1 ano.',
     tipoTaxa: 'PERCENTAGEM',
     taxaValor: '0.3',
     taxaUnidade: '%',
     responsavelLiquidacao: 'Beneficiário',
-    referenciaLegal: 'CIS + TGIS — verba aplicável a garantias (TBC).',
-    vigenteDesde: '2026-01-01',
+    referenciaLegal: `Verba 10.1, ${FONTE}.`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-EMPREITADA',
-    descricao: 'Contratos de empreitada de obras.',
+    numero: '10.2',
+    descricao: 'Garantias autónomas, cauções e fianças — prazo de 1 a 5 anos.',
     tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '1',
+    taxaValor: '0.2',
     taxaUnidade: '%',
-    responsavelLiquidacao: 'Dono da obra',
-    referenciaLegal: 'CIS + TGIS — verba aplicável a empreitada (TBC).',
-    vigenteDesde: '2026-01-01',
+    responsavelLiquidacao: 'Beneficiário',
+    referenciaLegal: `Verba 10.2, ${FONTE}.`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-LICENCA-IP',
-    descricao: 'Licenças e cessões de direitos de propriedade industrial.',
+    numero: '10.3',
+    descricao: 'Garantias autónomas, cauções e fianças — 5+ anos ou indefinido.',
     tipoTaxa: 'PERCENTAGEM',
-    taxaValor: '1',
+    taxaValor: '0.1',
     taxaUnidade: '%',
-    responsavelLiquidacao: 'Licenciado',
-    referenciaLegal: 'CIS + TGIS — verba a confirmar (TBC).',
-    vigenteDesde: '2026-01-01',
+    responsavelLiquidacao: 'Beneficiário',
+    referenciaLegal: `Verba 10.3, ${FONTE}.`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-NDA',
-    descricao: 'NDA / Acordo de confidencialidade. Normalmente sem valor.',
+    numero: '12',
+    descricao: 'Licenças (estabelecimentos, espectáculos, restauração, hotelaria).',
     tipoTaxa: 'VALOR_FIXO',
-    taxaValor: '0',
+    taxaValor: '1500',
     taxaUnidade: 'AKZ',
-    referenciaLegal: 'Não incidência genérica; confirmar caso a caso.',
-    vigenteDesde: '2026-01-01',
+    responsavelLiquidacao: 'Titular',
+    referenciaLegal: `Verba 12, ${FONTE}. Valores variam por tipo de licença (AKZ 1.500 — 100.000).`,
+    vigenteDesde: VIGENTE_DESDE,
   },
   {
-    numero: 'TBD-MOU',
-    descricao: 'Memorando de entendimento / LOI sem efeitos vinculativos.',
-    tipoTaxa: 'VALOR_FIXO',
-    taxaValor: '0',
-    taxaUnidade: 'AKZ',
-    referenciaLegal: 'Não incidência genérica; confirmar caso a caso.',
-    vigenteDesde: '2026-01-01',
+    numero: '16.1.1',
+    descricao: 'Concessão de crédito — prazo até 1 ano.',
+    tipoTaxa: 'PERCENTAGEM',
+    taxaValor: '0.5',
+    taxaUnidade: '%',
+    responsavelLiquidacao: 'Mutuante',
+    referenciaLegal: `Verba 16.1.1, ${FONTE}. Mútuos.`,
+    vigenteDesde: VIGENTE_DESDE,
+  },
+  {
+    numero: '16.1.2',
+    descricao: 'Concessão de crédito — prazo de 1 a 5 anos.',
+    tipoTaxa: 'PERCENTAGEM',
+    taxaValor: '0.4',
+    taxaUnidade: '%',
+    responsavelLiquidacao: 'Mutuante',
+    referenciaLegal: `Verba 16.1.2, ${FONTE}.`,
+    vigenteDesde: VIGENTE_DESDE,
+  },
+  {
+    numero: '16.1.5',
+    descricao: 'Concessão de crédito à habitação.',
+    tipoTaxa: 'PERCENTAGEM',
+    taxaValor: '0.1',
+    taxaUnidade: '%',
+    responsavelLiquidacao: 'Mutuante',
+    referenciaLegal: `Verba 16.1.5, ${FONTE}.`,
+    vigenteDesde: VIGENTE_DESDE,
+  },
+  {
+    numero: '23.3',
+    descricao:
+      'Recibo de quitação para operações isentas de IVA — incidência sobre o valor recebido.',
+    tipoTaxa: 'PERCENTAGEM',
+    taxaValor: '7',
+    taxaUnidade: '%',
+    responsavelLiquidacao: 'Prestador',
+    referenciaLegal: `Verba 23.3, ${FONTE}. Aplica-se a operações isentas de IVA. ` +
+      'Verifique enquadramento concreto — operação tributada em IVA está fora desta verba.',
+    vigenteDesde: VIGENTE_DESDE,
   },
 ];

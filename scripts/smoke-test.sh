@@ -165,10 +165,18 @@ echo "$TYPES" | grep -q "BNA_AUTORIZACAO" || fail "Falta BNA_AUTORIZACAO"
 echo "$TYPES" | grep -q "AGT_RETENCAO_IRT" || fail "Falta AGT_RETENCAO_IRT"
 pass "Os 3 actos esperados estão presentes"
 
-# Verifica que IS é 1% (10000000000 / 100 = 100000000)
+# Verifica IS Verba 23.3 (7% sobre valor recebido — Decreto 3/14, art. 12.º + TGIS)
+# USD 100M em centavos (10_000_000_00) × 7% = 700_000_000 centavos = AKZ 7M
 IS_VALOR=$(echo "$DETAIL" | jget "next((a['valorLiquidar'] for a in d['actosRegulatorios'] if a['tipo']=='IMPOSTO_SELO'), None)")
-[[ "$IS_VALOR" == "100000000" ]] || fail "IS valor errado: $IS_VALOR (esperado 100000000)"
-pass "IS valor correcto: AKZ 1.000.000 (1% sobre USD 100M)"
+IS_VERBA=$(echo "$DETAIL" | jget "next((a['tgisVerbaNumero'] for a in d['actosRegulatorios'] if a['tipo']=='IMPOSTO_SELO'), None)")
+[[ "$IS_VALOR" == "700000000" ]] || fail "IS valor errado: $IS_VALOR (esperado 700000000 — Verba 23.3, 7%)"
+[[ "$IS_VERBA" == "23.3" ]] || fail "Verba TGIS errada: $IS_VERBA (esperado 23.3)"
+pass "IS Verba $IS_VERBA: AKZ 7.000.000 (7% sobre USD 100M — Decreto 3/14)"
+
+# Verifica que retenção IRT é 15% (regime actual após Reforma Tributária)
+IRT_VALOR=$(echo "$DETAIL" | jget "next((a['valorLiquidar'] for a in d['actosRegulatorios'] if a['tipo']=='AGT_RETENCAO_IRT'), None)")
+[[ "$IRT_VALOR" == "1500000000" ]] || fail "IRT valor errado: $IRT_VALOR (esperado 1500000000 — 15% sobre USD 100M)"
+pass "Retenção IRT 15%: USD 15.000.000 (sobre USD 100M)"
 
 # ─── 10. State machine: transição válida ───
 info "10. Transição INTAKE → DRAFTING"
@@ -196,8 +204,21 @@ pass "Dashboard: $TOTAL contratos · $ACTOS_PEND actos pendentes"
 info "13. Engine introspection"
 RULES=$(req GET /compliance/regras)
 RULES_N=$(echo "$RULES" | jget 'len(d)')
-[[ "$RULES_N" -ge 15 ]] || fail "Esperado ≥15 regras, obtido $RULES_N"
+[[ "$RULES_N" -ge 20 ]] || fail "Esperado ≥20 regras, obtido $RULES_N"
 pass "$RULES_N regras de compliance vigentes"
+
+# ─── 14. Webhooks ───
+info "14. Webhooks subscription"
+WH_RES=$(req POST /webhooks '{"nome":"smoke-test-hook","url":"https://httpbin.org/post","events":["contrato.criado","contrato.assinado"]}')
+WH_ID=$(echo "$WH_RES" | jget 'd["id"]') || fail "Falhou criar webhook: $WH_RES"
+WH_SECRET_LEN=$(echo "$WH_RES" | jget 'len(d["secret"])')
+[[ "$WH_SECRET_LEN" -ge 32 ]] || fail "Secret HMAC muito curto: $WH_SECRET_LEN chars"
+pass "Webhook criado com secret HMAC ($WH_SECRET_LEN chars)"
+
+WH_LIST=$(req GET /webhooks)
+WH_LIST_N=$(echo "$WH_LIST" | jget 'len(d)')
+[[ "$WH_LIST_N" -ge 1 ]] || fail "Webhook não aparece na lista"
+pass "$WH_LIST_N webhook(s) listados"
 
 printf "\n${G}═══ SMOKE TEST PASSED ═══${N}\n"
 printf "  Contrato criado: %s\n" "$CONT_ID"

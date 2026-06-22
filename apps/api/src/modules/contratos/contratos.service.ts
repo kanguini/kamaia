@@ -312,22 +312,38 @@ export class ContratosService {
 
   // ─── Helpers ─────────────────────────────────────────────────────
 
+  /**
+   * Gera `CT-{ano}-{seq:5}` único por tenant. Robusto contra:
+   *  - Race condition (dois inserts simultâneos): retries com COUNT
+   *    + offset incremental até encontrar slot livre.
+   *  - Seed pré-existente com numeração custom (ex: `CT-2026-D0001`)
+   *    — apenas conta entradas que casem com o formato canónico.
+   */
   private async gerarNumero(tenantId: string): Promise<string> {
     const ano = new Date().getFullYear();
     const prefixo = `CT-${ano}-`;
-    const ultimo = await this.prisma.contrato.findFirst({
-      where: {
-        tenantId,
-        numeroInterno: { startsWith: prefixo },
-      },
-      orderBy: { numeroInterno: 'desc' },
-      select: { numeroInterno: true },
-    });
-    let seq = 1;
-    if (ultimo) {
-      const m = /(\d+)$/.exec(ultimo.numeroInterno);
-      if (m) seq = parseInt(m[1], 10) + 1;
+
+    // Contagem de contratos com numeração canónica neste ano.
+    // Padrão `^CT-YYYY-\d{5}$` exclui números seed tipo `D0001`.
+    const matched = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM contratos
+      WHERE tenant_id = ${tenantId}::uuid
+        AND numero_interno ~ ${`^${prefixo.replace(/-/g, '\\-')}\\d{5}$`}
+    `;
+    let seq = Number(matched[0]?.count ?? 0n) + 1;
+
+    // Verifica unicidade até 10 tentativas (race-safe).
+    for (let i = 0; i < 10; i++) {
+      const candidato = `${prefixo}${seq.toString().padStart(5, '0')}`;
+      const existe = await this.prisma.contrato.findUnique({
+        where: { tenantId_numeroInterno: { tenantId, numeroInterno: candidato } },
+        select: { id: true },
+      });
+      if (!existe) return candidato;
+      seq += 1;
     }
-    return `${prefixo}${seq.toString().padStart(5, '0')}`;
+    // Fallback: timestamp para evitar deadlock em condições anómalas.
+    return `${prefixo}${Date.now().toString(36).toUpperCase().slice(-5)}`;
   }
 }
