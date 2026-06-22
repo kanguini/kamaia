@@ -28,8 +28,9 @@ import { Badge } from '@/components/ui/badge'
 import { renderMarkdownPreview } from '@/lib/markdown'
 import { fmtDateTime } from '@/lib/clm-format'
 import { VersaoDireccao } from '@kamaia/shared-types'
-import { Save, FileText, Eye, Code2 } from 'lucide-react'
+import { Save, FileText, Eye, Code2, Sparkles } from 'lucide-react'
 import { ComentariosPanel } from './comentarios-panel'
+import { DraftIaDrawer, type DraftResult } from './draft-ia-drawer'
 
 interface VersaoFull {
   id: string
@@ -55,6 +56,7 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [creating, setCreating] = useState(false)
+  const [iaOpen, setIaOpen] = useState(false)
 
   const { mutate: createVersao, loading: creatingLoading, error: createErr } = useMutation<
     unknown,
@@ -344,6 +346,14 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
           />
         </div>
 
+        <Button
+          variant="secondary"
+          onClick={() => setIaOpen(true)}
+          leftIcon={<Sparkles size={13} />}
+          title="Pede ao Claude para redigir o corpo a partir dos dados do contrato"
+        >
+          Redigir com IA
+        </Button>
         <Button variant="secondary" onClick={onNovaVersao} loading={creating || creatingLoading}>
           Nova versão
         </Button>
@@ -400,6 +410,36 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
       </div>
 
       <ComentariosPanel contratoId={contratoId} versaoId={selected?.id ?? null} />
+
+      <DraftIaDrawer
+        open={iaOpen}
+        onClose={() => setIaOpen(false)}
+        contratoId={contratoId}
+        versaoIdActiva={selected?.id ?? null}
+        podeEditarVersao={!readOnly}
+        onDrafted={(result: DraftResult) => {
+          // Server já persistiu — sincronizamos estado local
+          const novaVersao: VersaoFull = {
+            id: result.versao.id,
+            ordem: result.versao.ordem,
+            versao: result.versao.versao,
+            direccao: 'INTERNA' as VersaoDireccao,
+            corpoMarkdown: result.versao.corpoMarkdown,
+            corpoHtml: null,
+            geradoPorIA: result.versao.geradoPorIA,
+            criadoEm: new Date().toISOString(),
+            assinaturas: [],
+          }
+          setVersoes((prev) => {
+            if (result.criada) return [novaVersao, ...prev]
+            return prev.map((v) => (v.id === novaVersao.id ? { ...v, ...novaVersao } : v))
+          })
+          setSelectedId(novaVersao.id)
+          setDraft(result.versao.corpoMarkdown ?? '')
+          setDirty(false)
+          setSavedAt(new Date())
+        }}
+      />
     </div>
   )
 }
