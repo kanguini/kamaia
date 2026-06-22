@@ -29,6 +29,7 @@ import { renderMarkdownPreview } from '@/lib/markdown'
 import { fmtDateTime } from '@/lib/clm-format'
 import { VersaoDireccao } from '@kamaia/shared-types'
 import { Save, FileText, Eye, Code2 } from 'lucide-react'
+import { ComentariosPanel } from './comentarios-panel'
 
 interface VersaoFull {
   id: string
@@ -397,6 +398,8 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
           />
         )}
       </div>
+
+      <ComentariosPanel contratoId={contratoId} versaoId={selected?.id ?? null} />
     </div>
   )
 }
