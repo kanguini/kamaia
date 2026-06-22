@@ -18,7 +18,6 @@ import {
   DataChaveTipo,
   DATA_CHAVE_TIPO_LABELS,
   ContratoEventoTipo,
-  VersaoDireccao,
   NegociacaoPontoEstado,
   NegociacaoPontoCriticidade,
   TerminacaoTipo,
@@ -29,6 +28,8 @@ import { EditorTab } from '@/components/contratos/editor-tab'
 import { PartilhaTab } from '@/components/contratos/partilha-tab'
 import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
 import { ComplianceTab as ComplianceTabNew } from '@/components/contratos/compliance-tab'
+import { VersoesTab as VersoesTabNew } from '@/components/contratos/versoes-tab'
+import { DocumentosTab } from '@/components/contratos/documentos-tab'
 
 interface Contrato {
   id: string
@@ -50,7 +51,7 @@ interface Contrato {
   responsavel: { id: string; firstName: string; lastName: string } | null
 }
 
-type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'partes' | 'datas-chave' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
+type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'documentos' | 'partes' | 'datas-chave' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'resumo', label: 'Resumo' },
@@ -58,6 +59,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'partilha', label: 'Partilha' },
   { key: 'assinaturas', label: 'Assinaturas' },
   { key: 'versoes', label: 'Versões' },
+  { key: 'documentos', label: 'Documentos' },
   { key: 'partes', label: 'Partes' },
   { key: 'datas-chave', label: 'Datas-chave' },
   { key: 'negociacao', label: 'Negociação' },
@@ -129,7 +131,8 @@ export default function ContratoDetailPage() {
         {tab === 'editor' && <EditorTab contratoId={String(id)} />}
         {tab === 'partilha' && <PartilhaTab contratoId={String(id)} />}
         {tab === 'assinaturas' && <AssinaturasTab contratoId={String(id)} />}
-        {tab === 'versoes' && <VersoesTab contratoId={String(id)} />}
+        {tab === 'versoes' && <VersoesTabNew contratoId={String(id)} />}
+        {tab === 'documentos' && <DocumentosTab contratoId={String(id)} />}
         {tab === 'partes' && <PartesTab contratoId={String(id)} />}
         {tab === 'datas-chave' && <DatasChaveTab contratoId={String(id)} />}
         {tab === 'negociacao' && <NegociacaoTab contratoId={String(id)} />}
@@ -176,34 +179,8 @@ function Info({ label, value, multiline }: { label: string; value: string | null
 }
 
 // ─── Versões ─────────────────────────────────────────────
-interface Versao {
-  id: string
-  numero: number
-  direccao: VersaoDireccao
-  criadoEm: string
-  criadoPor: { firstName: string; lastName: string } | null
-  documento: { id: string; nome: string } | null
-}
-
-function VersoesTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<Versao[]>(`/contratos/${contratoId}/versoes`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem versões registadas." />
-  return (
-    <List>
-      {data.map((v) => (
-        <ListRow key={v.id}>
-          <div style={{ fontWeight: 500 }}>v{v.numero}</div>
-          <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>{v.direccao.replaceAll('_', ' ')}</div>
-          <div style={{ color: 'var(--k2-text-mute)', fontSize: 12 }}>{fmtDateTime(v.criadoEm)}</div>
-          <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>
-            {v.criadoPor ? `${v.criadoPor.firstName} ${v.criadoPor.lastName}` : '—'}
-          </div>
-        </ListRow>
-      ))}
-    </List>
-  )
-}
+// VersoesTab agora vive em components/contratos/versoes-tab.tsx
+// (lista + drawer de importar minuta com DocumentDropzone).
 
 // ─── Partes ─────────────────────────────────────────────
 interface Parte {

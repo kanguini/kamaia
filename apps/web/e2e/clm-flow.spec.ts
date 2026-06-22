@@ -79,7 +79,7 @@ test.describe('CLM — UI integrity smoke', () => {
     await page.waitForURL(/\/contratos\/[0-9a-f-]{36}/, { timeout: 10_000 })
 
     // Tabs visíveis
-    for (const label of ['Editor', 'Partilha', 'Assinaturas']) {
+    for (const label of ['Editor', 'Partilha', 'Assinaturas', 'Documentos']) {
       await expect(page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') })).toBeVisible({
         timeout: 5_000,
       })
