@@ -392,12 +392,24 @@ E por estarem assim justas e contratadas, as Partes assinam o presente contrato.
     if (versaoId && !novaVersao) {
       const v = await this.prisma.contratoVersao.findFirst({
         where: { id: versaoId, contratoId },
-        include: { assinaturas: { where: { estado: 'ASSINADA' }, take: 1 } },
+        include: {
+          assinaturas: {
+            where: { estado: { in: ['ASSINADA', 'PENDENTE'] } },
+            select: { id: true, estado: true, signatarioNome: true },
+          },
+        },
       });
       if (!v) throw new NotFoundException('Versão not found');
-      if (v.assinaturas.length > 0) {
+      const assinadas = v.assinaturas.filter((a) => a.estado === 'ASSINADA');
+      const pendentes = v.assinaturas.filter((a) => a.estado === 'PENDENTE');
+      if (assinadas.length > 0) {
         throw new ForbiddenException(
-          'Versão já assinada — gera uma nova versão (parâmetro novaVersao=true).',
+          `Versão já assinada por ${assinadas.map((a) => a.signatarioNome).join(', ')} — gera nova versão (novaVersao=true).`,
+        );
+      }
+      if (pendentes.length > 0) {
+        throw new ForbiddenException(
+          `Versão tem ${pendentes.length} assinatura(s) pendente(s) — reescrever agora invalidaria o pedido. Gera nova versão.`,
         );
       }
       const updated = await this.prisma.contratoVersao.update({

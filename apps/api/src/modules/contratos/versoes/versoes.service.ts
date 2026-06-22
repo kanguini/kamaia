@@ -85,9 +85,18 @@ export class ContratoVersoesService {
 
   /**
    * Edita o corpo (markdown) de uma versão existente.
-   * NÃO permitido se a versão já foi assinada por qualquer parte.
-   * Caso contrário (drafting normal), o markdown e o HTML render
-   * actualizam-se atómicamente.
+   *
+   * Bloqueado quando há assinaturas:
+   *  - ASSINADA: edit dispararia hash divergente para o que foi
+   *    assinado (eleva a fraude jurídica) → bloqueado sempre, exige
+   *    nova versão
+   *  - PENDENTE (signature request enviado mas não assinado): edit
+   *    pode mudar conteúdo entre o utilizador receber o link e
+   *    assinar — também bloqueado por defeito
+   *
+   * Caso contrário (drafting normal), o markdown + HTML actualizam
+   * atomicamente. `corpoHtml` é re-renderizado server-side via o
+   * renderer canónico para garantir consistência com PDF/diff.
    */
   async editarCorpo(
     tenantId: string,
@@ -98,14 +107,31 @@ export class ContratoVersoesService {
     await this.assertContrato(tenantId, contratoId);
     const v = await this.prisma.contratoVersao.findFirst({
       where: { id: versaoId, contratoId },
-      include: { assinaturas: { where: { estado: 'ASSINADA' }, take: 1 } },
+      include: {
+        assinaturas: {
+          where: { estado: { in: ['ASSINADA', 'PENDENTE'] } },
+          select: { id: true, estado: true, signatarioNome: true },
+        },
+      },
     });
     if (!v) throw new NotFoundException('Versão not found');
-    if (v.assinaturas.length > 0) {
+
+    const assinadas = v.assinaturas.filter((a) => a.estado === 'ASSINADA');
+    const pendentes = v.assinaturas.filter((a) => a.estado === 'PENDENTE');
+
+    if (assinadas.length > 0) {
+      const nomes = assinadas.map((a) => a.signatarioNome).join(', ');
       throw new BadRequestException(
-        'Versão já assinada — não pode ser editada. Cria nova versão.',
+        `Versão já assinada por ${nomes} — editar agora invalidaria a integridade da assinatura. Cria nova versão para alterações.`,
       );
     }
+    if (pendentes.length > 0) {
+      const nomes = pendentes.map((a) => a.signatarioNome).join(', ');
+      throw new BadRequestException(
+        `Versão tem ${pendentes.length} pedido(s) de assinatura pendente(s) (${nomes}). Revoga-os primeiro ou cria nova versão para evitar discrepância entre o que viram e o que assinariam.`,
+      );
+    }
+
     return this.prisma.contratoVersao.update({
       where: { id: versaoId },
       data: {
