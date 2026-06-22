@@ -27,6 +27,7 @@ import { HolidaysModule } from './modules/holidays/holidays.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { SeedModule } from './modules/seed/seed.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     // Cross-cutting
     NotificationsModule,
     WebhooksModule,
+    MailModule,
     SeedModule,
   ],
   providers: [

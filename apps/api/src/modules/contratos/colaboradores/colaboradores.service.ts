@@ -8,6 +8,7 @@ import { ColaboradorTipoAcesso } from '@kamaia/shared-types';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../../webhooks/webhooks.service';
+import { MailService } from '../../mail/mail.service';
 
 /**
  * Colaboradores externos por contrato — scoped EXTERNAL access.
@@ -27,6 +28,7 @@ export class ContratoColaboradoresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly webhooks: WebhooksService,
+    private readonly mail: MailService,
   ) {}
 
   async list(tenantId: string, contratoId: string) {
@@ -64,7 +66,7 @@ export class ContratoColaboradoresService {
       ttlDias?: number;
     },
   ) {
-    await this.assertContrato(tenantId, contratoId);
+    const contrato = await this.assertContrato(tenantId, contratoId);
 
     // Gera token: prefix-secret
     const prefix = randomBytes(4).toString('hex');          // 8 chars
@@ -106,8 +108,28 @@ export class ContratoColaboradoresService {
       tipoAcesso: col.tipoAcesso,
     });
 
+    // Envia email com link mágico — best-effort, não bloqueia.
+    // (Owner também recebe o URL no payload do response para copiar.)
+    const inviter = await this.prisma.user.findUnique({
+      where: { id: actorUserId },
+      select: { firstName: true, lastName: true },
+    });
+    const mailResult = await this.mail.sendColaboradorInvite({
+      to: col.email,
+      nome: col.nome ?? undefined,
+      contratoTitulo: contrato.titulo,
+      contratoNumero: contrato.numeroInterno,
+      tipoAcesso: col.tipoAcesso,
+      inviterNome: inviter
+        ? `${inviter.firstName} ${inviter.lastName}`.trim()
+        : undefined,
+      token,
+      expiresAt: col.expiresAt,
+    });
+
     // Token devolvido UMA ÚNICA VEZ — owner mostra/copia.
-    return { ...col, token };
+    // URL também devolvido para a UI render directo (sem montar client-side).
+    return { ...col, token, url: mailResult.url, emailStubbed: mailResult.stubbed };
   }
 
   async revogar(
@@ -190,7 +212,7 @@ export class ContratoColaboradoresService {
   private async assertContrato(tenantId: string, contratoId: string) {
     const c = await this.prisma.contrato.findFirst({
       where: { id: contratoId, tenantId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, titulo: true, numeroInterno: true },
     });
     if (!c) throw new NotFoundException('Contrato not found');
     return c;
