@@ -8,6 +8,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
 import { Plus, Search } from 'lucide-react'
@@ -20,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { estadoBadgeVariant, estadoLabel, fmtDate } from '@/lib/clm-format'
+import { NovoContratoModal } from '@/components/contratos/novo-contrato-modal'
 
 interface ContratoListItem {
   id: string
@@ -38,6 +40,8 @@ interface TipoContrato {
 
 export default function ContratosListPage() {
   const { data: session, status } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState<string>('')
   const [tipoId, setTipoId] = useState<string>('')
@@ -51,6 +55,16 @@ export default function ContratosListPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [tipos, setTipos] = useState<TipoContrato[]>([])
+  const [novoOpen, setNovoOpen] = useState(false)
+
+  // Auto-abre modal quando vier de /contratos/novo (que faz redirect)
+  // ou de qualquer link com `?novo=1`. Limpa query string a seguir.
+  useEffect(() => {
+    if (searchParams.get('novo') === '1') {
+      setNovoOpen(true)
+      router.replace('/contratos')
+    }
+  }, [searchParams, router])
 
   // Load filter options (tipos)
   useEffect(() => {
@@ -113,10 +127,12 @@ export default function ContratosListPage() {
             {total.toLocaleString('pt-AO')} resultado(s)
           </p>
         </div>
-        <Link href="/contratos/novo">
-          <Button leftIcon={<Plus size={14} />}>Novo contrato</Button>
-        </Link>
+        <Button leftIcon={<Plus size={14} />} onClick={() => setNovoOpen(true)}>
+          Novo contrato
+        </Button>
       </header>
+
+      <NovoContratoModal open={novoOpen} onClose={() => setNovoOpen(false)} />
 
       <div
         style={{

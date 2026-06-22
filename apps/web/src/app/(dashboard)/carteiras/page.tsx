@@ -6,11 +6,12 @@
  */
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useApi, useMutation } from '@/hooks/use-api'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
 import type { PaginatedResponse } from '@kamaia/shared-types'
 
 interface Carteira {
@@ -69,67 +70,83 @@ export default function CarteirasPage() {
         </div>
       )}
 
-      {showCreate && (
-        <CreateModal
-          onClose={() => setShowCreate(false)}
-          onCreated={() => {
-            setShowCreate(false)
-            refetch()
-          }}
-        />
-      )}
+      <CreateDrawer
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={() => {
+          setShowCreate(false)
+          refetch()
+        }}
+      />
     </div>
   )
 }
 
-function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+/**
+ * Slide-over para criar carteira.
+ * Padrão consistente com o resto da app (decisão UX: formulários slide-over).
+ */
+function CreateDrawer({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreated: () => void
+}) {
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
   const { mutate, loading, error } = useMutation('/carteiras', 'POST')
 
+  useEffect(() => {
+    if (!open) {
+      setNome('')
+      setDescricao('')
+    }
+  }, [open])
+
+  const submit = async () => {
+    const r = await mutate({ nome, descricao: descricao || undefined })
+    if (r) onCreated()
+  }
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'grid', placeItems: 'center', zIndex: 100 }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--k2-bg-elev)',
-          border: '1px solid var(--k2-border-strong)',
-          borderRadius: 'var(--k2-radius)',
-          padding: 20,
-          width: 'min(500px, 92vw)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Nova carteira</h2>
-        {error && <div style={{ color: 'var(--k2-bad)', fontSize: 12 }}>{error}</div>}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          Nome
-          <Input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus />
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          Descrição
-          <Textarea rows={3} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-        </label>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button
-            loading={loading}
-            onClick={async () => {
-              const r = await mutate({ nome, descricao: descricao || undefined })
-              if (r) onCreated()
-            }}
-          >
-            Criar
-          </Button>
-        </div>
-      </div>
-    </div>
+    <Drawer open={open} onClose={onClose} width={520}>
+      <DrawerHeader
+        title="Nova carteira"
+        subtitle="Container para agrupar contratos por deal, projecto ou imóvel."
+        onClose={onClose}
+      />
+      <DrawerBody>
+        {error && (
+          <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', padding: '10px 14px', borderRadius: 'var(--k2-radius-sm)', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+        <form
+          id="nova-carteira-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void submit()
+          }}
+          style={{ display: 'grid', gap: 14 }}
+        >
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            Nome
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} autoFocus placeholder="Ex.: Projecto Talatona" />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            Descrição
+            <Textarea rows={4} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Resumo do âmbito da carteira (opcional)." />
+          </label>
+        </form>
+      </DrawerBody>
+      <DrawerFooter>
+        <div style={{ flex: 1 }} />
+        <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
+        <Button type="submit" form="nova-carteira-form" loading={loading}>Criar</Button>
+      </DrawerFooter>
+    </Drawer>
   )
 }

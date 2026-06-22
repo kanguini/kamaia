@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
 import { useMutation } from '@/hooks/use-api'
 
 interface Entidade {
@@ -147,23 +148,30 @@ export default function EntidadesPage() {
         </div>
       )}
 
-      {showQuickCreate && (
-        <QuickCreateModal
-          onClose={() => setShowQuickCreate(false)}
-          onCreated={(novo) => {
-            setShowQuickCreate(false)
-            setItems((prev) => [novo, ...prev])
-          }}
-        />
-      )}
+      <QuickCreateDrawer
+        open={showQuickCreate}
+        onClose={() => setShowQuickCreate(false)}
+        onCreated={(novo) => {
+          setShowQuickCreate(false)
+          setItems((prev) => [novo, ...prev])
+        }}
+      />
     </div>
   )
 }
 
-function QuickCreateModal({
+/**
+ * Slide-over para criar entidade rápida.
+ *
+ * Substitui o modal-centro antigo por Drawer para uniformizar com o
+ * resto da app (decisão UX: todos os formulários slide-over).
+ */
+function QuickCreateDrawer({
+  open,
   onClose,
   onCreated,
 }: {
+  open: boolean
   onClose: () => void
   onCreated: (e: Entidade) => void
 }) {
@@ -173,75 +181,76 @@ function QuickCreateModal({
   const [residente, setResidente] = useState<EntidadeNacionalidadeCambial>(EntidadeNacionalidadeCambial.RESIDENTE)
   const { mutate, loading, error } = useMutation<unknown, Entidade>('/entidades', 'POST')
 
+  // Reset ao fechar para evitar arrastar dados entre aberturas.
+  useEffect(() => {
+    if (!open) {
+      setNome('')
+      setTipo(EntidadeTipo.PESSOA_COLECTIVA)
+      setNif('')
+      setResidente(EntidadeNacionalidadeCambial.RESIDENTE)
+    }
+  }, [open])
+
+  const submit = async () => {
+    const result = await mutate({
+      nome,
+      tipo,
+      nacionalidadeCambial: residente,
+      nif: nif || undefined,
+    })
+    if (result) onCreated(result)
+  }
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'grid',
-        placeItems: 'center',
-        zIndex: 100,
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--k2-bg-elev)',
-          border: '1px solid var(--k2-border-strong)',
-          borderRadius: 'var(--k2-radius)',
-          padding: 20,
-          width: 'min(500px, 92vw)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Nova entidade</h2>
-        {error && <div style={{ color: 'var(--k2-bad)', fontSize: 12 }}>{error}</div>}
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          Nome
-          <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome / Razão social" autoFocus />
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          Tipo
-          <Select value={tipo} onChange={(e) => setTipo(e.target.value as EntidadeTipo)}>
-            <option value={EntidadeTipo.PESSOA_COLECTIVA}>Pessoa colectiva</option>
-            <option value={EntidadeTipo.PESSOA_SINGULAR}>Pessoa singular</option>
-          </Select>
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          Residência cambial
-          <Select value={residente} onChange={(e) => setResidente(e.target.value as EntidadeNacionalidadeCambial)}>
-            <option value={EntidadeNacionalidadeCambial.RESIDENTE}>Residente</option>
-            <option value={EntidadeNacionalidadeCambial.NAO_RESIDENTE}>Não-residente</option>
-          </Select>
-        </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-          NIF (opcional)
-          <Input value={nif} onChange={(e) => setNif(e.target.value)} />
-        </label>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-          <Button
-            loading={loading}
-            onClick={async () => {
-              const result = await mutate({
-                nome,
-                tipo,
-                nacionalidadeCambial: residente,
-                nif: nif || undefined,
-              })
-              if (result) onCreated(result)
-            }}
-          >
-            Criar
-          </Button>
-        </div>
-      </div>
-    </div>
+    <Drawer open={open} onClose={onClose} width={520}>
+      <DrawerHeader
+        title="Nova entidade"
+        subtitle="Pessoa singular ou colectiva que entra nos teus contratos."
+        onClose={onClose}
+      />
+      <DrawerBody>
+        {error && (
+          <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', padding: '10px 14px', borderRadius: 'var(--k2-radius-sm)', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+        <form
+          id="nova-entidade-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void submit()
+          }}
+          style={{ display: 'grid', gap: 14 }}
+        >
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            Nome
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome / Razão social" autoFocus />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            Tipo
+            <Select value={tipo} onChange={(e) => setTipo(e.target.value as EntidadeTipo)}>
+              <option value={EntidadeTipo.PESSOA_COLECTIVA}>Pessoa colectiva</option>
+              <option value={EntidadeTipo.PESSOA_SINGULAR}>Pessoa singular</option>
+            </Select>
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            Residência cambial
+            <Select value={residente} onChange={(e) => setResidente(e.target.value as EntidadeNacionalidadeCambial)}>
+              <option value={EntidadeNacionalidadeCambial.RESIDENTE}>Residente</option>
+              <option value={EntidadeNacionalidadeCambial.NAO_RESIDENTE}>Não-residente</option>
+            </Select>
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
+            NIF (opcional)
+            <Input value={nif} onChange={(e) => setNif(e.target.value)} />
+          </label>
+        </form>
+      </DrawerBody>
+      <DrawerFooter>
+        <div style={{ flex: 1 }} />
+        <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
+        <Button type="submit" form="nova-entidade-form" loading={loading}>Criar</Button>
+      </DrawerFooter>
+    </Drawer>
   )
 }
