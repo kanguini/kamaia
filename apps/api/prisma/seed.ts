@@ -9,6 +9,7 @@ import { DEMO_CONTRATOS, DEMO_ENTIDADES } from '../src/modules/seed/data/demo-co
 import { LEGISLACAO_SEED } from '../src/modules/seed/data/legislacao';
 import { TGIS_SEED } from '../src/modules/seed/data/tgis';
 import { TIPOS_CONTRATO_SEED } from '../src/modules/seed/data/tipos-contrato';
+import { CLAUSULAS_BASE_SEED } from '../src/modules/seed/data/clausulas';
 
 const prisma = new PrismaClient();
 
@@ -151,6 +152,31 @@ async function main() {
       await seedDemoCarteira(demoTenant.id);
     } else {
       console.log(`  ✓ Carteira demo já existe (${existingContratos} contratos)`);
+    }
+
+    // ─── Biblioteca de cláusulas-base ────────────────────────
+    const existingClausulas = await prisma.clausula.count({
+      where: { tenantId: demoTenant.id },
+    });
+    if (existingClausulas === 0) {
+      console.log('▶ Seeding biblioteca de cláusulas-base pt-AO...');
+      for (const c of CLAUSULAS_BASE_SEED) {
+        await prisma.clausula.create({
+          data: {
+            tenantId: demoTenant.id,
+            categoria: c.categoria,
+            titulo: c.titulo,
+            conteudo: c.conteudo,
+            leiAplicavelArt: c.leiAplicavelArt,
+            tags: c.tags,
+            isApproved: true,
+            idioma: 'pt-AO',
+          },
+        });
+      }
+      console.log(`  ✓ ${CLAUSULAS_BASE_SEED.length} cláusulas-base criadas`);
+    } else {
+      console.log(`  ✓ Biblioteca de cláusulas já existe (${existingClausulas})`);
     }
   }
 
