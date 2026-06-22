@@ -43,12 +43,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
+import {
+  DocumentDropzone,
+  type UploadedDocument,
+} from '@/components/ui/document-dropzone'
 import { fmtDate, fmtMoney } from '@/lib/clm-format'
 
 interface Acto {
   id: string
   tipo: ActoRegulatorioTipo
   estado: ActoEstado
+  contratoId: string
   referenciaLegal: string | null
   prazoLimite: string | null
   valorLiquidar: string | null
@@ -471,7 +476,7 @@ function ActionDrawer({
   const [observacoes, setObservacoes] = useState('')
   const [motivo, setMotivo] = useState('')
   const [custo, setCusto] = useState('')
-  const [comprovativoId, setComprovativoId] = useState('')
+  const [comprovativo, setComprovativo] = useState<UploadedDocument | null>(null)
   const [data, setData] = useState('')
   const [descricao, setDescricao] = useState('')
 
@@ -480,7 +485,7 @@ function ActionDrawer({
       setObservacoes('')
       setMotivo('')
       setCusto('')
-      setComprovativoId('')
+      setComprovativo(null)
       setData('')
       setDescricao('')
       setErr(null)
@@ -510,7 +515,7 @@ function ActionDrawer({
         body = {
           observacoes: observacoes.trim() || undefined,
           custoEmAKZ: centavos,
-          comprovativoId: comprovativoId.trim() || undefined,
+          comprovativoId: comprovativo?.id,
         }
       } else if (kind === 'em-curso') {
         endpoint = `/compliance/actos/${acto.id}/em-curso`
@@ -581,12 +586,12 @@ function ActionDrawer({
                   Em kwanzas com ponto decimal. Será guardado em centavos (BigInt).
                 </small>
               </FieldLabel>
-              <FieldLabel label="ID comprovativo (opcional)">
-                <Input
-                  type="text"
-                  value={comprovativoId}
-                  onChange={(e) => setComprovativoId(e.target.value)}
-                  placeholder="UUID do documento já anexado ao contrato"
+              <FieldLabel label="Comprovativo (opcional)">
+                <DocumentDropzone
+                  contratoId={ctx.acto.contratoId}
+                  attached={comprovativo}
+                  onUploaded={(doc) => setComprovativo(doc)}
+                  onCleared={() => setComprovativo(null)}
                 />
               </FieldLabel>
               <FieldLabel label="Observações">
