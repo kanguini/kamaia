@@ -22,7 +22,7 @@ export const REGRA_AGT_RETENCAO_IRT_NAO_RESIDENTE: RegraCompliance = {
     ' A retenção na fonte é obrigação do pagador residente. ' +
     'A taxa aplicável e regime concreto dependem da natureza do rendimento ' +
     'e de eventual convenção para evitar dupla tributação.',
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => {
     if (ctx.categoria !== TipoContratoCategoria.SERVICOS) return false;
     return ctx.partesResidentes.some((r) => !r);

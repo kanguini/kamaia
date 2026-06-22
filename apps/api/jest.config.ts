@@ -12,6 +12,7 @@ const config: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^@kamaia/shared-types$': '<rootDir>/../../../packages/shared-types/src/index.ts',
   },
 };
 

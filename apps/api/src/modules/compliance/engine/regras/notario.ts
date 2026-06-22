@@ -19,7 +19,7 @@ export const REGRA_NOTARIO_COMPRAVENDA_IMOVEL: RegraCompliance = {
     'Código do Notariado. Compra e venda de imóveis carece de escritura ' +
     'pública ou documento autenticado (consoante o regime aplicável).',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.categoria === TipoContratoCategoria.IMOBILIARIO &&
     ctx.tipoCodigo === 'COMPRAVENDA_IMOVEL',
@@ -39,7 +39,7 @@ export const REGRA_NOTARIO_PACTO_SOCIAL: RegraCompliance = {
     'Código do Notariado + Lei das Sociedades Comerciais. Alterações ao ' +
     'pacto social carecem de forma legal específica.',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => ctx.hasObjectoSocietario,
   build: () => ({
     observacoes:

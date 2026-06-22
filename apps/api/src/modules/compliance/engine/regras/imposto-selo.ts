@@ -41,7 +41,7 @@ export const REGRA_IS_PRESTACAO_SERVICOS: RegraCompliance = {
     'TGIS — Verba aplicável aos contratos de prestação de serviços (a confirmar versão vigente). ' +
     'CIS arts. 1.º e 2.º quanto à incidência.',
   disclaimer: DISCLAIMER_IS,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.categoria === TipoContratoCategoria.SERVICOS && ctx.valor !== null,
   build: (ctx) => ({
@@ -63,7 +63,7 @@ export const REGRA_IS_ARRENDAMENTO: RegraCompliance = {
     'TGIS — Verba aplicável aos contratos de arrendamento (a confirmar versão vigente). ' +
     'A liquidação é mensal sobre cada renda devida.',
   disclaimer: DISCLAIMER_IS,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.categoria === TipoContratoCategoria.IMOBILIARIO &&
     (ctx.tipoCodigo === 'ARRENDAMENTO' || ctx.tipoCodigo === 'ARRENDAMENTO_HABITACIONAL'),
@@ -85,7 +85,7 @@ export const REGRA_IS_MUTUO: RegraCompliance = {
   referenciaLegal:
     'TGIS — Verba aplicável aos contratos de mútuo. CIS art. 1.º e segs.',
   disclaimer: DISCLAIMER_IS,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.tipoCodigo === 'MUTUO' && ctx.valor !== null,
   build: (ctx) => ({
@@ -105,7 +105,7 @@ export const REGRA_IS_COMPRAVENDA_IMOVEL: RegraCompliance = {
     'TGIS — Verba aplicável aos contratos de compra e venda de imóveis. ' +
     'Pode existir cumulativamente com SISA — verifique o regime aplicável.',
   disclaimer: DISCLAIMER_IS,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.categoria === TipoContratoCategoria.IMOBILIARIO &&
     (ctx.tipoCodigo === 'COMPRAVENDA_IMOVEL' ||
@@ -129,7 +129,7 @@ export const REGRA_IS_TRABALHO: RegraCompliance = {
     'TGIS — Verba aplicável aos contratos de trabalho. ' +
     'Lei Geral do Trabalho (Lei n.º 7/15, com alterações).',
   disclaimer: DISCLAIMER_IS,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.categoria === TipoContratoCategoria.TRABALHO,
   build: (_ctx) => ({
@@ -141,10 +141,91 @@ export const REGRA_IS_TRABALHO: RegraCompliance = {
   }),
 };
 
+export const REGRA_IS_EMPREITADA: RegraCompliance = {
+  id: 'IS_EMPREITADA',
+  versao: '2026.1',
+  tipo: ActoRegulatorioTipo.IMPOSTO_SELO,
+  referenciaLegal: 'TGIS — Verba aplicável aos contratos de empreitada.',
+  disclaimer: DISCLAIMER_IS,
+  vigenteDesde: new Date('2020-01-01'),
+  aplicaSe: (ctx: ComplianceContext) =>
+    ctx.tipoCodigo === 'EMPREITADA' && ctx.valor !== null,
+  build: (ctx) => ({
+    tgisVerbaNumero: 'TBD-EMPREITADA',
+    baseTributavel: ctx.valor ?? undefined,
+    valorLiquidar: ctx.valor ? calcular(ctx.valor, 1) : undefined,
+    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    observacoes: 'Taxa indicativa 1%. Confirme regime aplicável a empreitadas.',
+  }),
+};
+
+export const REGRA_IS_GARANTIA: RegraCompliance = {
+  id: 'IS_GARANTIA',
+  versao: '2026.1',
+  tipo: ActoRegulatorioTipo.IMPOSTO_SELO,
+  referenciaLegal:
+    'TGIS — Verba aplicável a garantias autónomas, cauções e fianças.',
+  disclaimer: DISCLAIMER_IS,
+  vigenteDesde: new Date('2020-01-01'),
+  aplicaSe: (ctx: ComplianceContext) =>
+    ['GARANTIA', 'PENHOR'].includes(ctx.tipoCodigo) && ctx.valor !== null,
+  build: (ctx) => ({
+    tgisVerbaNumero: 'TBD-GARANTIA',
+    baseTributavel: ctx.valor ?? undefined,
+    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.3) : undefined,
+    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    observacoes: 'Taxa indicativa 0.3%. Confirme verba TGIS específica.',
+  }),
+};
+
+export const REGRA_IS_LICENCA_IP: RegraCompliance = {
+  id: 'IS_LICENCA_IP',
+  versao: '2026.1',
+  tipo: ActoRegulatorioTipo.IMPOSTO_SELO,
+  referenciaLegal: 'TGIS — Verba aplicável a licenças e cessões de IP.',
+  disclaimer: DISCLAIMER_IS,
+  vigenteDesde: new Date('2020-01-01'),
+  aplicaSe: (ctx: ComplianceContext) =>
+    ctx.categoria === TipoContratoCategoria.IP && ctx.valor !== null,
+  build: (ctx) => ({
+    tgisVerbaNumero: 'TBD-LICENCA-IP',
+    baseTributavel: ctx.valor ?? undefined,
+    valorLiquidar: ctx.valor ? calcular(ctx.valor, 1) : undefined,
+    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    observacoes:
+      'Taxa indicativa 1%. Para licenças com royalties periódicos, ' +
+      'considere liquidação por cada pagamento.',
+  }),
+};
+
+export const REGRA_IS_FORNECIMENTO: RegraCompliance = {
+  id: 'IS_FORNECIMENTO',
+  versao: '2026.1',
+  tipo: ActoRegulatorioTipo.IMPOSTO_SELO,
+  referenciaLegal:
+    'TGIS — Verba aplicável a contratos de fornecimento de bens.',
+  disclaimer: DISCLAIMER_IS,
+  vigenteDesde: new Date('2020-01-01'),
+  aplicaSe: (ctx: ComplianceContext) =>
+    ['FORNECIMENTO', 'DISTRIBUICAO'].includes(ctx.tipoCodigo) &&
+    ctx.valor !== null,
+  build: (ctx) => ({
+    tgisVerbaNumero: 'TBD-CV-MOVEIS',
+    baseTributavel: ctx.valor ?? undefined,
+    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.5) : undefined,
+    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    observacoes: 'Taxa indicativa 0.5%. Confirme verba TGIS aplicável.',
+  }),
+};
+
 export const REGRAS_IS: RegraCompliance[] = [
   REGRA_IS_PRESTACAO_SERVICOS,
   REGRA_IS_ARRENDAMENTO,
   REGRA_IS_MUTUO,
   REGRA_IS_COMPRAVENDA_IMOVEL,
   REGRA_IS_TRABALHO,
+  REGRA_IS_EMPREITADA,
+  REGRA_IS_GARANTIA,
+  REGRA_IS_LICENCA_IP,
+  REGRA_IS_FORNECIMENTO,
 ];

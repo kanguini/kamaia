@@ -44,7 +44,7 @@ export const REGRA_BNA_SERVICOS_NAO_RESIDENTE: RegraCompliance = {
     DISCLAIMER_PADRAO +
     ' Operações cambiais com não-residentes acima de certos limites ' +
     'requerem autorização prévia do BNA via banco comercial autorizado.',
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => {
     if (!temNaoResidente(ctx)) return false;
     if (ctx.categoria !== TipoContratoCategoria.SERVICOS) return false;
@@ -71,7 +71,7 @@ export const REGRA_BNA_MUTUO_INTERNACIONAL: RegraCompliance = {
     DISCLAIMER_PADRAO +
     ' Mútuos com não-residentes requerem normalmente autorização BNA e ' +
     'estruturação cambial específica.',
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) =>
     ctx.tipoCodigo === 'MUTUO' && temNaoResidente(ctx),
   build: () => ({
@@ -90,7 +90,7 @@ export const REGRA_BNA_REGISTO_SERVICOS_PEQUENO: RegraCompliance = {
     'RJOC — operações correntes. Pagamentos a não-residentes abaixo do ' +
     'limiar de autorização ficam sujeitos a registo via banco autorizado.',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => {
     if (!temNaoResidente(ctx)) return false;
     if (ctx.categoria !== TipoContratoCategoria.SERVICOS) return false;

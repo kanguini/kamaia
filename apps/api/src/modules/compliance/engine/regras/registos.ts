@@ -16,7 +16,7 @@ export const REGRA_REGISTO_PREDIAL: RegraCompliance = {
     DISCLAIMER_PADRAO +
     ' O registo é normalmente requisito de oponibilidade a terceiros ' +
     'e, em alguns casos, requisito de validade.',
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => ctx.hasObjectoImovel,
   build: () => ({
     observacoes:
@@ -33,7 +33,7 @@ export const REGRA_REGISTO_COMERCIAL: RegraCompliance = {
     'Código do Registo Comercial. Actos societários (alterações ao ' +
     'pacto social, fusões, cisões, transformações) carecem de registo.',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => ctx.hasObjectoSocietario,
   build: () => ({
     observacoes:
@@ -49,7 +49,7 @@ export const REGRA_REGISTO_AUTOMOVEL: RegraCompliance = {
     'Regime jurídico do registo automóvel. Transmissão de propriedade ' +
     'de veículos automóveis carece de registo.',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => ctx.hasObjectoAutomovel,
   build: () => ({
     observacoes:
@@ -67,7 +67,7 @@ export const REGRA_REGISTO_IP: RegraCompliance = {
     'propriedade industrial podem requerer averbamento no IAPI ' +
     '(Instituto Angolano da Propriedade Industrial).',
   disclaimer: DISCLAIMER_PADRAO,
-  vigenteDesde: new Date('2026-01-01'),
+  vigenteDesde: new Date('2020-01-01'),
   aplicaSe: (ctx: ComplianceContext) => ctx.hasObjectoIP,
   build: () => ({
     observacoes:
