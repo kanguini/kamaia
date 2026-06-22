@@ -38,14 +38,15 @@ describe('Performance — 1000 contratos', () => {
   let tenantId: string;
   let token: string;
 
-  const N = 1000;
-  // Limiares (ms). Generosos para CI sem warm cache; ajustar quando
-  // implementarmos infra de produção com read replicas + cache.
+  // N pode ser controlado via env PERF_N para CI rápido (default 10k).
+  const N = parseInt(process.env.PERF_N ?? '10000', 10);
+  // Limiares conservadores para CI. Em prod com read replicas + cache os
+  // números são substancialmente melhores.
   const LIMITES_MS = {
-    dashboard: 1500,
-    list: 1000,
-    search: 1500,
-    filterByDate: 1200,
+    dashboard: 3000,    // agregações sobre 10k
+    list: 1500,         // top-50 com filtros
+    search: 2000,       // FTS-like
+    filterByDate: 2000, // filtro temporal
   };
 
   beforeAll(async () => {
@@ -233,11 +234,12 @@ describe('Performance — 1000 contratos', () => {
     console.log(`  expiraEm=30: ${elapsed.toFixed(0)}ms / limite ${LIMITES_MS.filterByDate}ms`);
   });
 
-  it('Paginação completa de 20 páginas × 50 = 1000 contratos', async () => {
+  it(`Paginação completa de ${Math.ceil(N / 50)} páginas × 50 = ${N} contratos`, async () => {
     const t0 = process.hrtime.bigint();
     let cursor: string | null = null;
     let total = 0;
     let pages = 0;
+    const maxPages = Math.ceil(N / 50) + 5;  // tolerância
     do {
       const url = cursor
         ? `/api/contratos?limit=50&cursor=${cursor}`
@@ -250,12 +252,29 @@ describe('Performance — 1000 contratos', () => {
       total += res.body.data.length;
       cursor = res.body.nextCursor;
       pages += 1;
-      if (pages > 25) break;  // safety
+      if (pages > maxPages) break;
     } while (cursor);
     const elapsed = Number(process.hrtime.bigint() - t0) / 1_000_000;
     expect(total).toBe(N);
-    expect(pages).toBeGreaterThanOrEqual(20);
+    expect(pages).toBeGreaterThanOrEqual(Math.ceil(N / 50));
     // eslint-disable-next-line no-console
-    console.log(`  full scan (${pages} páginas): ${elapsed.toFixed(0)}ms (${(elapsed / pages).toFixed(0)}ms/página)`);
+    console.log(
+      `  full scan ${N} contratos (${pages} páginas): ${elapsed.toFixed(0)}ms ` +
+      `(${(elapsed / pages).toFixed(0)}ms/página)`,
+    );
+  });
+
+  it('Search por tipo + estado + ordenação combinada permanece rápido', async () => {
+    const elapsed = await timed(async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/contratos?estado=ACTIVO&orderBy=dataTermo&orderDir=asc&limit=50')
+        .set('Authorization', `Bearer ${token}`)
+        .set('X-Tenant-Id', tenantId);
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBe(50);
+    });
+    expect(elapsed).toBeLessThan(LIMITES_MS.list);
+    // eslint-disable-next-line no-console
+    console.log(`  combined filter+sort: ${elapsed.toFixed(0)}ms / limite ${LIMITES_MS.list}ms`);
   });
 });

@@ -23,6 +23,7 @@ import {
   Upload,
   Bot,
   BookOpen,
+  Bell,
   Settings,
   Sun,
   Moon,
@@ -51,6 +52,7 @@ const WORK_NAV: NavItem[] = [
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
   { label: 'Carteiras', href: '/carteiras', icon: Briefcase },
+  { label: 'Alertas', href: '/alertas', icon: Bell },
   { label: 'Compliance', href: '/compliance', icon: ShieldCheck },
   { label: 'Importação', href: '/importacao', icon: Upload },
 ]
