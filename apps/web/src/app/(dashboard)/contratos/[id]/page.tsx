@@ -17,9 +17,6 @@ import {
   PartePapel,
   DataChaveTipo,
   DATA_CHAVE_TIPO_LABELS,
-  ACTO_REGULATORIO_LABELS,
-  ActoRegulatorioTipo,
-  ActoEstado,
   ContratoEventoTipo,
   VersaoDireccao,
   NegociacaoPontoEstado,
@@ -31,6 +28,7 @@ import { ChevronLeft } from 'lucide-react'
 import { EditorTab } from '@/components/contratos/editor-tab'
 import { PartilhaTab } from '@/components/contratos/partilha-tab'
 import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
+import { ComplianceTab as ComplianceTabNew } from '@/components/contratos/compliance-tab'
 
 interface Contrato {
   id: string
@@ -135,7 +133,7 @@ export default function ContratoDetailPage() {
         {tab === 'partes' && <PartesTab contratoId={String(id)} />}
         {tab === 'datas-chave' && <DatasChaveTab contratoId={String(id)} />}
         {tab === 'negociacao' && <NegociacaoTab contratoId={String(id)} />}
-        {tab === 'compliance' && <ComplianceTab contratoId={String(id)} />}
+        {tab === 'compliance' && <ComplianceTabNew contratoId={String(id)} />}
         {tab === 'timeline' && <TimelineTab contratoId={String(id)} />}
         {tab === 'terminacao' && <TerminacaoTab contratoId={String(id)} />}
       </div>
@@ -290,43 +288,9 @@ function NegociacaoTab({ contratoId }: { contratoId: string }) {
 }
 
 // ─── Compliance ─────────────────────────────────────────
-interface Acto {
-  id: string
-  tipo: ActoRegulatorioTipo
-  estado: ActoEstado
-  referenciaLegal: string | null
-  prazoLimite: string | null
-  valorLiquidar: string | null
-  observacoes: string | null
-  detectadoAutomaticamente: boolean
-}
-
-function ComplianceTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<Acto[]>(`/contratos/${contratoId}/compliance`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem actos regulatórios identificados." />
-  return (
-    <>
-      <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginBottom: 10 }}>
-        O motor de compliance <strong>sugere</strong> — todos os actos requerem confirmação humana. A lei vigente à data do facto tributário é a aplicável.
-      </div>
-      <List>
-        {data.map((a) => (
-          <ListRow key={a.id}>
-            <div style={{ fontWeight: 500 }}>{ACTO_REGULATORIO_LABELS[a.tipo]}</div>
-            <Badge variant={a.estado === ActoEstado.CONCLUIDO ? 'success' : a.estado === ActoEstado.PENDENTE ? 'warning' : 'default'}>
-              {a.estado.replaceAll('_', ' ')}
-            </Badge>
-            {a.referenciaLegal && <div style={{ color: 'var(--k2-text-dim)', fontSize: 11 }}>{a.referenciaLegal}</div>}
-            {a.prazoLimite && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>Prazo: {fmtDate(a.prazoLimite)}</div>}
-            {a.valorLiquidar && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>Valor: {fmtMoney(a.valorLiquidar)}</div>}
-            {a.observacoes && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12, gridColumn: '1 / -1' }}>{a.observacoes}</div>}
-          </ListRow>
-        ))}
-      </List>
-    </>
-  )
-}
+// Compliance tab agora vive em components/contratos/compliance-tab.tsx
+// (versão accionável: re-avaliar + acções por acto). Tipos e UI
+// vivem todos nesse ficheiro.
 
 // ─── Timeline ─────────────────────────────────────────
 interface Evento {
