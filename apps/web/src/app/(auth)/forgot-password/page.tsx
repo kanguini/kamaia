@@ -19,6 +19,7 @@ export default function ForgotPasswordPage() {
     try {
       await api('/auth/forgot-password', {
         method: 'POST',
+        noTenant: true,
         body: JSON.stringify({ email: email.trim() }),
       })
       setSent(true)
@@ -93,7 +94,7 @@ export default function ForgotPasswordPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@gabinete.ao"
+            placeholder="tu@empresa.ao"
             autoComplete="email"
           />
         </div>

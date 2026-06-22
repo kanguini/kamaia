@@ -8,12 +8,9 @@ declare module 'next-auth' {
       email: string
       firstName: string
       lastName: string
-      role: string
-      gabineteId: string
     }
     accessToken: string
-    gabineteId: string
-    role: string
+    refreshToken?: string
   }
 
   interface User {
@@ -22,8 +19,6 @@ declare module 'next-auth' {
     name: string
     firstName: string
     lastName: string
-    role: string
-    gabineteId: string
     accessToken: string
     refreshToken: string
   }
@@ -38,8 +33,6 @@ declare module 'next-auth/jwt' {
       email: string
       firstName: string
       lastName: string
-      role: string
-      gabineteId: string
     }
   }
 }

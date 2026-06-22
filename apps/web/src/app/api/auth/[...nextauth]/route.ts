@@ -13,8 +13,6 @@ interface AuthResponse {
       email: string
       firstName: string
       lastName: string
-      role: string
-      gabineteId: string
     }
   }
 }
@@ -34,8 +32,6 @@ interface MeResponse {
     email: string
     firstName: string
     lastName: string
-    role: string
-    gabineteId: string
   }
 }
 
@@ -55,6 +51,7 @@ const authOptions: NextAuthOptions = {
         try {
           const response = await api<AuthResponse>('/auth/login', {
             method: 'POST',
+            noTenant: true,
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
@@ -69,8 +66,6 @@ const authOptions: NextAuthOptions = {
             name: `${user.firstName} ${user.lastName}`,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role,
-            gabineteId: user.gabineteId,
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
           } as User
@@ -84,15 +79,13 @@ const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account }) {
       if (account && user && account.provider === 'credentials') {
-        token.accessToken = (user as any).accessToken
-        token.refreshToken = (user as any).refreshToken
+        token.accessToken = (user as User).accessToken
+        token.refreshToken = (user as User).refreshToken
         token.user = {
-          id: user.id,
-          email: user.email!,
-          firstName: (user as any).firstName,
-          lastName: (user as any).lastName,
-          role: (user as any).role,
-          gabineteId: (user as any).gabineteId,
+          id: user.id as string,
+          email: user.email as string,
+          firstName: (user as User).firstName,
+          lastName: (user as User).lastName,
         }
       }
 
@@ -103,10 +96,11 @@ const authOptions: NextAuthOptions = {
           )
           const exp = payload.exp * 1000
 
-          if (Date.now() >= exp - 60000) {
+          if (Date.now() >= exp - 60_000) {
             try {
               const response = await api<RefreshResponse>('/auth/refresh', {
                 method: 'POST',
+                noTenant: true,
                 body: JSON.stringify({
                   refreshToken: token.refreshToken,
                 }),
@@ -123,21 +117,17 @@ const authOptions: NextAuthOptions = {
         }
       }
 
-      // Self-heal: tokens minted before the session callback wrote `token.user`
-      // still carry a valid accessToken, but the UI would render firstName/lastName
-      // as undefined. Hydrate once from /users/me so the chrome stops showing "—".
       if (!token.user && token.accessToken) {
         try {
           const me = await api<MeResponse>('/users/me', {
             token: token.accessToken as string,
+            noTenant: true,
           })
           token.user = {
             id: me.data.id,
             email: me.data.email,
             firstName: me.data.firstName,
             lastName: me.data.lastName,
-            role: me.data.role,
-            gabineteId: me.data.gabineteId,
           }
         } catch (error) {
           console.error('JWT hydrate /users/me error:', error)
@@ -148,11 +138,10 @@ const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token.user) {
-        session.user = token.user as any
+        session.user = token.user
       }
       session.accessToken = token.accessToken as string
-      session.gabineteId = (token.user as any)?.gabineteId
-      session.role = (token.user as any)?.role
+      session.refreshToken = token.refreshToken as string | undefined
 
       return session
     },

@@ -1,48 +1,70 @@
 // ────────────────────────────────────────────────────────────────────────
-// Centralised API URL + fetch wrapper.
+// Kamaia CLM — Centralised API URL + fetch wrapper.
 //
-// Single source of truth — every component, hook and server-action should
-// import `API_URL` or `apiUrl(path)` from here instead of duplicating the
-// `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'` fallback.
-// That fallback used to live in 7 different files; a typo in any of them
-// silently broke prod fetches.
+// All authenticated requests carry:
+//   - Authorization: Bearer <jwt>   (from NextAuth session, passed in)
+//   - X-Tenant-Id:  <tenantId>      (from localStorage `kamaia.activeTenantId`)
+//
+// `tenantId` is intentionally read from localStorage rather than the session
+// because a user can have memberships in multiple tenants and we want the
+// tenant switcher to take effect without a server round-trip.
 // ────────────────────────────────────────────────────────────────────────
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-/**
- * Join the API base with a path. Accepts leading slash or not — both work.
- * Use this for ad-hoc `fetch()` calls (the `api()` wrapper below already
- * handles base + auth + error normalisation, prefer it when possible).
- */
+export const ACTIVE_TENANT_KEY = 'kamaia.activeTenantId'
+
+export function getActiveTenantId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage.getItem(ACTIVE_TENANT_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setActiveTenantId(tenantId: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(ACTIVE_TENANT_KEY, tenantId)
+  } catch {
+    /* ignore */
+  }
+}
+
 export function apiUrl(path: string): string {
   if (!path) return API_URL
   return path.startsWith('/') ? `${API_URL}${path}` : `${API_URL}/${path}`
 }
 
+export interface ApiOptions extends RequestInit {
+  token?: string
+  tenantId?: string | null
+  /** Omit the X-Tenant-Id header (used for endpoints like /auth/* and /tenants). */
+  noTenant?: boolean
+}
+
 export async function api<T>(
   endpoint: string,
-  options: RequestInit & { token?: string } = {},
+  options: ApiOptions = {},
 ): Promise<T> {
-  const { token, headers, ...rest } = options
+  const { token, headers, tenantId, noTenant, ...rest } = options
+
+  const resolvedTenant = noTenant ? null : tenantId ?? getActiveTenantId()
+
   const res = await fetch(`${API_URL}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(resolvedTenant ? { 'X-Tenant-Id': resolvedTenant } : {}),
       ...headers,
     },
     ...rest,
   })
   if (res.status === 204) return undefined as T
 
-  // Handle 401: token expired / invalid — signal NextAuth to reauth.
-  // We don't force a hard redirect here (lets component handle gracefully),
-  // but we attach a flag so the UI can trigger signOut if needed.
   if (res.status === 401 && typeof window !== 'undefined') {
-    // Fire-and-forget: trigger a silent session refresh by reloading the session
-    // The next /api/auth/session call in NextAuth will re-run the jwt callback
-    // and attempt refresh automatically. If that fails, the user stays logged out.
     try {
       await fetch('/api/auth/session?update', { credentials: 'include' })
     } catch {
@@ -57,10 +79,14 @@ export async function api<T>(
     json = { error: `HTTP ${res.status}`, code: 'HTTP_ERROR' }
   }
   if (!res.ok) {
-    // Normalize auth errors with a stable code so callers can react
     if (res.status === 401) {
       const e = (json && typeof json === 'object' ? json : {}) as Record<string, unknown>
-      throw { ...e, code: e.code || 'UNAUTHORIZED', status: 401, error: e.error || 'Sessão expirada. Por favor reinicie sessão.' }
+      throw {
+        ...e,
+        code: e.code || 'UNAUTHORIZED',
+        status: 401,
+        error: e.error || 'Sessão expirada. Por favor reinicie sessão.',
+      }
     }
     throw json
   }

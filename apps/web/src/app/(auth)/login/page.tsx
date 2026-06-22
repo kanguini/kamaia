@@ -52,7 +52,7 @@ export default function LoginPage() {
     <>
       <AccentGlyph />
       <h1>Entrar</h1>
-      <p className="lede">Acede ao teu gabinete para continuar.</p>
+      <p className="lede">Acede à tua organização para continuar.</p>
 
       {error && <div className="error">{error}</div>}
 

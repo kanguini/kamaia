@@ -30,6 +30,7 @@ function ResetPasswordForm() {
     try {
       await api('/auth/reset-password', {
         method: 'POST',
+        noTenant: true,
         body: JSON.stringify({ token, newPassword }),
       })
       setDone(true)

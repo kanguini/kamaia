@@ -1,5 +1,11 @@
 'use client'
 
+/**
+ * Kamaia CLM — Registo / onboarding.
+ *
+ * Cria User + Tenant + Membership (ADMIN do novo tenant) num único request.
+ */
+
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -17,9 +23,8 @@ const registerSchema = z
     email: z.string().email('Email inválido'),
     password: z.string().min(8, 'Mínimo 8 caracteres'),
     confirmPassword: z.string(),
-    oaaNumber: z.string().optional(),
-    specialty: z.string().optional(),
-    gabineteName: z.string().min(3, 'Nome do gabinete muito curto'),
+    tenantName: z.string().min(2, 'Nome da organização muito curto'),
+    tenantNif: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As palavras-passe não coincidem',
@@ -32,13 +37,11 @@ function translateAuthError(code: string | undefined, fallback: string | undefin
   switch (code) {
     case 'USER_EXISTS':
       return 'Já existe uma conta com este email.'
+    case 'TENANT_NIF_EXISTS':
+      return 'Este NIF de organização já está registado.'
     case 'VALIDATION_FAILED':
     case 'VALIDATION_ERROR':
       return fallback || 'Dados inválidos.'
-    case 'DB_SCHEMA_OUT_OF_SYNC':
-      return 'Servidor em actualização. Tenta em alguns minutos.'
-    case 'GABINETE_NIF_EXISTS':
-      return 'Este NIF de gabinete já está registado.'
     default:
       return fallback || 'Erro ao criar conta.'
   }
@@ -63,14 +66,14 @@ export default function RegisterPage() {
     try {
       await api('/auth/register', {
         method: 'POST',
+        noTenant: true,
         body: JSON.stringify({
           firstName: data.firstName,
           lastName: data.lastName,
           email: data.email,
           password: data.password,
-          oaaNumber: data.oaaNumber || undefined,
-          specialty: data.specialty || undefined,
-          gabineteName: data.gabineteName,
+          tenantName: data.tenantName,
+          tenantNif: data.tenantNif || undefined,
         }),
       })
       const result = await signIn('credentials', {
@@ -84,7 +87,6 @@ export default function RegisterPage() {
         router.refresh()
       }
     } catch (err: unknown) {
-      // eslint-disable-next-line no-console
       console.error('[register] failed', err)
       const e = (err && typeof err === 'object' ? err : {}) as {
         error?: string
@@ -112,7 +114,7 @@ export default function RegisterPage() {
 
       <h1>Criar conta</h1>
       <p className="lede">
-        Regista o teu gabinete e começa a gerir processos, prazos e facturação em minutos.
+        Cria a tua organização e começa a gerir contratos com compliance angolano embebido.
       </p>
 
       {error && <div className="error">{error}</div>}
@@ -136,7 +138,7 @@ export default function RegisterPage() {
           <input
             type="email"
             {...register('email')}
-            placeholder="tu@gabinete.ao"
+            placeholder="tu@empresa.ao"
             autoComplete="email"
           />
           {errors.email && <div className="field-error">{errors.email.message}</div>}
@@ -189,26 +191,20 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="field">Nome do gabinete</label>
+          <label className="field">Nome da organização</label>
           <input
             type="text"
-            {...register('gabineteName')}
-            placeholder="Ex: Maiato &amp; Associados"
+            {...register('tenantName')}
+            placeholder="Ex.: Acme Imobiliária, SA"
           />
-          {errors.gabineteName && (
-            <div className="field-error">{errors.gabineteName.message}</div>
+          {errors.tenantName && (
+            <div className="field-error">{errors.tenantName.message}</div>
           )}
         </div>
 
-        <div className="field-row">
-          <div>
-            <label className="field">Nº OAA</label>
-            <input type="text" {...register('oaaNumber')} placeholder="12345" />
-          </div>
-          <div>
-            <label className="field">Especialidade</label>
-            <input type="text" {...register('specialty')} placeholder="Civil, Penal…" />
-          </div>
+        <div>
+          <label className="field">NIF da organização (opcional)</label>
+          <input type="text" {...register('tenantNif')} placeholder="5417000000" />
         </div>
 
         <button className="primary" type="submit" disabled={isLoading}>
