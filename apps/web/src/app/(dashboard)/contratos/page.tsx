@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { estadoBadgeVariant, estadoLabel, fmtDate } from '@/lib/clm-format'
-import { NovoContratoModal } from '@/components/contratos/novo-contrato-modal'
+import { NovoContratoFlow } from '@/components/contratos/novo-contrato-flow'
 
 interface ContratoListItem {
   id: string
@@ -132,7 +132,7 @@ export default function ContratosListPage() {
         </Button>
       </header>
 
-      <NovoContratoModal open={novoOpen} onClose={() => setNovoOpen(false)} />
+      <NovoContratoFlow open={novoOpen} onClose={() => setNovoOpen(false)} />
 
       <div
         style={{
