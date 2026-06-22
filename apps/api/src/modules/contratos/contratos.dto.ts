@@ -2,8 +2,28 @@ import {
   ContratoEstado,
   ContratoOrigem,
   MOEDAS_SUPORTADAS,
+  PartePapel,
 } from '@kamaia/shared-types';
 import { z } from 'zod';
+
+/**
+ * Parte inline no payload de criação — evita o round-trip
+ * "criar contrato → ir ao tab Partes → adicionar uma a uma" que
+ * destrói o ponto da padronização automática prometida ao utilizador.
+ *
+ * O contrato fica utilizável imediatamente (compliance engine
+ * recebe partes na primeira avaliação, drafting IA usa-as no prompt,
+ * placeholders de template resolvem em `{{partes.contraparte.nome}}`).
+ */
+export const ContratoParteInlineSchema = z.object({
+  entidadeId: z.string().uuid(),
+  papel: z.nativeEnum(PartePapel),
+  representanteNome: z.string().max(200).optional(),
+  representanteCargo: z.string().max(100).optional(),
+  representanteBI: z.string().max(30).optional(),
+  ordem: z.coerce.number().int().min(0).default(0),
+});
+export type ContratoParteInline = z.infer<typeof ContratoParteInlineSchema>;
 
 export const CreateContratoSchema = z.object({
   titulo: z.string().min(2).max(300),
@@ -30,8 +50,50 @@ export const CreateContratoSchema = z.object({
   prazoIndeterminado: z.boolean().default(false),
 
   responsavelId: z.string().uuid().optional(),
+
+  /** Partes em-linha — opcional; alternativa ao fluxo /partes posterior. */
+  partes: z.array(ContratoParteInlineSchema).max(20).optional(),
+
+  /**
+   * Permite arrancar o contrato num estado != INTAKE — usado pelo
+   * caminho ① (registo de existente: REPOSITORIO ou ACTIVO) e ③
+   * (template: DRAFTING). Valores permitidos limitados aos estados
+   * válidos como entrada do ciclo de vida.
+   */
+  estadoInicial: z.enum([
+    ContratoEstado.INTAKE,
+    ContratoEstado.DRAFTING,
+    ContratoEstado.REPOSITORIO,
+    ContratoEstado.ACTIVO,
+    ContratoEstado.ASSINADO,
+  ]).optional(),
+
+  /**
+   * ID de Document já uploaded (e.g. PDF do contrato assinado em
+   * papel) — quando presente, o service cria automaticamente uma
+   * primeira ContratoVersao linkada com direccao=ASSINADO_FINAL.
+   * Caminho ① do fluxo "Novo contrato".
+   */
+  documentoInicialId: z.string().uuid().optional(),
 });
 export type CreateContratoDto = z.infer<typeof CreateContratoSchema>;
+
+/**
+ * Cria contrato a partir de um Template — clona `template.conteudo`,
+ * resolve placeholders `{{partes.contraparte.nome}}`, `{{valor}}`,
+ * etc. com os dados do form, persiste como primeira `ContratoVersao`.
+ *
+ * Aceita TODOS os campos de CreateContratoSchema + obrigatório
+ * `templateId`.
+ */
+export const CreateFromTemplateSchema = CreateContratoSchema.extend({
+  templateId: z.string().uuid(),
+  /** Se false, persiste o template literal sem substituição (debug). */
+  preencherPlaceholders: z.boolean().default(true),
+  /** Instruções extras ao utilizador no draft inicial. */
+  notaDrafting: z.string().max(2000).optional(),
+});
+export type CreateFromTemplateDto = z.infer<typeof CreateFromTemplateSchema>;
 
 export const UpdateContratoSchema = CreateContratoSchema.partial();
 export type UpdateContratoDto = z.infer<typeof UpdateContratoSchema>;

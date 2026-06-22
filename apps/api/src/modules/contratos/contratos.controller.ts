@@ -21,6 +21,8 @@ import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
 import {
   CreateContratoDto,
   CreateContratoSchema,
+  CreateFromTemplateDto,
+  CreateFromTemplateSchema,
   ListContratosQuery,
   ListContratosQuerySchema,
   TransicaoEstadoDto,
@@ -67,6 +69,20 @@ export class ContratosController {
     @Body(new ParseZodPipe(CreateContratoSchema)) dto: CreateContratoDto,
   ) {
     return this.contratos.create(tenant.tenantId, user.sub, dto);
+  }
+
+  /**
+   * Caminho ③ do fluxo "Novo contrato" — instancia a partir de um
+   * Template, resolvendo placeholders com os dados do form.
+   */
+  @Post('from-template')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async createFromTemplate(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(CreateFromTemplateSchema)) dto: CreateFromTemplateDto,
+  ) {
+    return this.contratos.createFromTemplate(tenant.tenantId, user.sub, dto);
   }
 
   @Patch(':id')

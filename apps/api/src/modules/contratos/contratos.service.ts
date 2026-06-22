@@ -9,14 +9,21 @@ import {
   ContratoEstado,
   ContratoEventoTipo,
   EntityType,
+  VersaoDireccao,
 } from '@kamaia/shared-types';
 import { Prisma } from '@prisma/client';
+import { renderMarkdownToHtml } from '../../common/markdown';
+import {
+  buildContratoPlaceholderContext,
+  renderPlaceholders,
+} from '../../common/placeholders';
 import { AuditService } from '../audit/audit.service';
 import { ComplianceService } from '../compliance/compliance.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import {
   CreateContratoDto,
+  CreateFromTemplateDto,
   ListContratosQuery,
   UpdateContratoDto,
 } from './contratos.dto';
@@ -33,28 +40,107 @@ export class ContratosService {
   /**
    * Cria contrato. Gera `numeroInterno` sequencial por tenant no formato
    * `CT-{ano}-{seq:5}`. Avalia compliance se já tiver tipo + valor.
+   *
+   * Suporta os 3 caminhos do fluxo "Novo contrato" (ver dto):
+   *  - `partes[]` em-linha (qualquer caminho)
+   *  - `estadoInicial` (caminho ① REPOSITORIO/ACTIVO/ASSINADO, ③ DRAFTING)
+   *  - `documentoInicialId` (caminho ①: cria ContratoVersao
+   *    direccao=ASSINADO_FINAL a apontar para o PDF do contrato
+   *    existente)
+   *
+   * Persiste tudo numa única transaction — se qualquer passo falha,
+   * o contrato inteiro fica rolled back. Evita estados pela metade
+   * que ficariam visíveis na lista mas inválidos para drafting/IA.
    */
   async create(tenantId: string, actorUserId: string, dto: CreateContratoDto) {
+    const {
+      partes,
+      documentoInicialId,
+      estadoInicial,
+      ...contratoFields
+    } = dto;
+
+    // Se o utilizador anexou um documento inicial, valida que
+    // pertence ao tenant antes de abrir a transaction — falhar
+    // cedo em vez de no meio da escrita.
+    if (documentoInicialId) {
+      const doc = await this.prisma.document.findFirst({
+        where: { id: documentoInicialId, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!doc) {
+        throw new NotFoundException('Documento inicial não encontrado neste tenant');
+      }
+    }
+
     const numeroInterno = await this.gerarNumero(tenantId);
+    const estadoFinal = estadoInicial ?? ContratoEstado.INTAKE;
 
-    const contrato = await this.prisma.contrato.create({
-      data: {
-        tenantId,
-        numeroInterno,
-        createdBy: actorUserId,
-        ...dto,
-        estado: ContratoEstado.INTAKE,
-      },
-    });
+    const contrato = await this.prisma.$transaction(async (tx) => {
+      const c = await tx.contrato.create({
+        data: {
+          tenantId,
+          numeroInterno,
+          createdBy: actorUserId,
+          ...contratoFields,
+          estado: estadoFinal,
+        },
+      });
 
-    await this.prisma.contratoEvento.create({
-      data: {
-        contratoId: contrato.id,
-        tipo: ContratoEventoTipo.CRIADO,
-        resumo: `Contrato ${numeroInterno} criado`,
-        actorUserId,
-        actorTipo: 'USER',
-      },
+      // Partes em-linha
+      if (partes && partes.length > 0) {
+        for (const [i, p] of partes.entries()) {
+          await tx.contratoParte.create({
+            data: {
+              contratoId: c.id,
+              entidadeId: p.entidadeId,
+              papel: p.papel,
+              representanteNome: p.representanteNome,
+              representanteCargo: p.representanteCargo,
+              representanteBI: p.representanteBI,
+              ordem: p.ordem ?? i,
+            },
+          });
+        }
+      }
+
+      // Versão inicial com documento existente (caminho ①)
+      if (documentoInicialId) {
+        await tx.contratoVersao.create({
+          data: {
+            contratoId: c.id,
+            ordem: 1,
+            criadoPor: actorUserId,
+            versao: 'v1.0-importado',
+            direccao: VersaoDireccao.ASSINADO_FINAL,
+            documentId: documentoInicialId,
+            comentario:
+              'Contrato registado a partir de documento existente (carteira legada).',
+            seloTemporal: new Date(),
+          },
+        });
+      }
+
+      // Evento CRIADO na timeline
+      await tx.contratoEvento.create({
+        data: {
+          contratoId: c.id,
+          tipo: ContratoEventoTipo.CRIADO,
+          resumo:
+            `Contrato ${numeroInterno} criado` +
+            (estadoInicial && estadoInicial !== ContratoEstado.INTAKE
+              ? ` em estado ${estadoInicial}`
+              : '') +
+            (documentoInicialId ? ' (com documento anexado)' : '') +
+            (partes && partes.length > 0
+              ? ` com ${partes.length} parte(s)`
+              : ''),
+          actorUserId,
+          actorTipo: 'USER',
+        },
+      });
+
+      return c;
     });
 
     await this.audit.log({
@@ -73,6 +159,136 @@ export class ContratosService {
       titulo: contrato.titulo,
       tipoId: contrato.tipoId,
       estado: contrato.estado,
+      partesCount: partes?.length ?? 0,
+      hasDocumentoInicial: !!documentoInicialId,
+    });
+
+    return contrato;
+  }
+
+  /**
+   * Cria contrato a partir de um Template — caminho ③ do fluxo
+   * "Novo contrato".
+   *
+   * Fluxo:
+   *  1. Cria o contrato via `create()` (incluindo partes inline,
+   *     estado inicial DRAFTING)
+   *  2. Re-carrega contrato com tipo + partes + entidades resolvidos
+   *     para o contexto dos placeholders
+   *  3. Resolve placeholders no `template.conteudo`
+   *  4. Cria primeira `ContratoVersao` com `corpoMarkdown` renderizado
+   *     + `corpoHtml` (via renderer canónico)
+   *  5. Tudo audit-logged + evento na timeline
+   *
+   * Não usamos transaction única (create() já tem a sua + chamadas
+   * cross-module a webhooks/audit). Se o passo 3-4 falha, contrato
+   * fica criado mas sem primeira versão — o utilizador vai para o
+   * Editor vazio. Aceitável porque o fluxo é "criar+pré-popular";
+   * compensar a perfeição com complexidade transactional não vale.
+   */
+  async createFromTemplate(
+    tenantId: string,
+    actorUserId: string,
+    dto: CreateFromTemplateDto,
+  ) {
+    const { templateId, preencherPlaceholders, notaDrafting, ...contratoFields } = dto;
+
+    // Valida template + tipo coerente (template é por tipoContrato)
+    const template = await this.prisma.template.findFirst({
+      where: { id: templateId, tenantId, isActive: true },
+      select: {
+        id: true,
+        nome: true,
+        versao: true,
+        tipoId: true,
+        conteudo: true,
+      },
+    });
+    if (!template) {
+      throw new NotFoundException('Template não encontrado neste tenant');
+    }
+    if (template.tipoId !== contratoFields.tipoId) {
+      throw new BadRequestException(
+        'Template e tipo de contrato escolhido não correspondem — escolhe um template para este tipo.',
+      );
+    }
+
+    // Default razoável: contratos a partir de template começam em
+    // DRAFTING (estão prontos a editar) salvo override do caller.
+    const contrato = await this.create(tenantId, actorUserId, {
+      ...contratoFields,
+      estadoInicial: contratoFields.estadoInicial ?? ContratoEstado.DRAFTING,
+    });
+
+    // Resolve template → markdown final
+    let markdown: string;
+    if (preencherPlaceholders === false) {
+      markdown = template.conteudo;
+    } else {
+      const full = await this.prisma.contrato.findUnique({
+        where: { id: contrato.id },
+        include: {
+          tipo: { select: { codigo: true, nome: true, categoria: true } },
+          partes: {
+            orderBy: { ordem: 'asc' },
+            include: {
+              entidade: { select: { nome: true, nif: true, tipo: true } },
+            },
+          },
+        },
+      });
+      if (!full || !full.tipo) {
+        // Defensive: já criamos com tipoId obrigatório
+        markdown = template.conteudo;
+      } else {
+        const ctx = buildContratoPlaceholderContext({
+          titulo: full.titulo,
+          descricao: full.descricao,
+          valor: full.valor,
+          moeda: full.moeda,
+          leiAplicavel: full.leiAplicavel,
+          foro: full.foro,
+          dataAssinatura: full.dataAssinatura,
+          dataInicioVigencia: full.dataInicioVigencia,
+          dataTermo: full.dataTermo,
+          renovacaoAutomatica: full.renovacaoAutomatica,
+          janelaDenunciaDias: full.janelaDenunciaDias,
+          tipo: full.tipo,
+          partes: full.partes,
+        });
+        markdown = renderPlaceholders(template.conteudo, ctx);
+      }
+    }
+
+    if (notaDrafting && notaDrafting.trim()) {
+      markdown =
+        markdown +
+        `\n\n<!-- Nota de drafting (não imprime no PDF):\n${notaDrafting.trim()}\n-->`;
+    }
+
+    await this.prisma.contratoVersao.create({
+      data: {
+        contratoId: contrato.id,
+        ordem: 1,
+        criadoPor: actorUserId,
+        versao: 'v1.0-template',
+        direccao: 'INTERNA',
+        comentario: `Gerado a partir do template "${template.nome}" v${template.versao}`,
+        corpoMarkdown: markdown,
+        corpoHtml: renderMarkdownToHtml(markdown),
+        geradoPorIA: false,
+      },
+    });
+
+    await this.prisma.contratoEvento.create({
+      data: {
+        contratoId: contrato.id,
+        tipo: ContratoEventoTipo.VERSAO_CRIADA,
+        resumo: `Versão inicial gerada a partir do template "${template.nome}"`,
+        payload: { templateId: template.id, templateVersao: template.versao } as object,
+        actorUserId,
+        actorTipo: 'USER',
+      },
     });
 
     return contrato;
@@ -166,9 +382,21 @@ export class ContratosService {
     });
     if (!before) throw new NotFoundException('Contrato not found');
 
+    // `UpdateContratoDto = CreateContratoDto.partial()` — strip os
+    // campos que só fazem sentido na criação (partes inline, doc
+    // inicial, estado inicial). Mutações destes recursos têm
+    // endpoints próprios (/partes, /versoes, /transicao).
+    const {
+      partes: _partes,
+      documentoInicialId: _docId,
+      estadoInicial: _estado,
+      ...updatableFields
+    } = dto;
+    void _partes; void _docId; void _estado;
+
     const after = await this.prisma.contrato.update({
       where: { id },
-      data: dto,
+      data: updatableFields,
     });
 
     await this.audit.log({
