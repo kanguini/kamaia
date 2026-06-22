@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import {
   AssinaturaEstado,
   AssinaturaMetodo,
+  canTransition,
   ContratoEstado,
   ContratoEventoTipo,
 } from '@kamaia/shared-types';
@@ -16,9 +17,15 @@ export class ContratoAssinaturasService {
     private readonly webhooks: WebhooksService,
   ) {}
 
-  async list(contratoId: string) {
+  async list(contratoId: string, tenantId?: string) {
     return this.prisma.contratoAssinatura.findMany({
-      where: { contratoId },
+      // Defense in depth: mesmo que o caller controlador já valide
+      // tenant, filtramos via relação para evitar regressões futuras
+      // se alguém chamar este service de outro sítio sem o check.
+      where: {
+        contratoId,
+        ...(tenantId && { contrato: { tenantId, deletedAt: null } }),
+      },
       orderBy: { solicitadaEm: 'desc' },
       // Não devolver a imagemBase64 na lista (pesado); só ao GET singular
       select: {
@@ -45,9 +52,17 @@ export class ContratoAssinaturasService {
     });
   }
 
-  async get(id: string) {
-    const a = await this.prisma.contratoAssinatura.findUnique({
-      where: { id },
+  async get(id: string, contratoId?: string, tenantId?: string) {
+    // BUG fix (auditoria #2): chamadas antigas com `get(id)` apenas
+    // permitiam um caller com posse de C1 ler uma assinatura de C2
+    // (tenant diferente) se conseguisse o UUID. Aceita params extra
+    // e valida que assinatura.contratoId + tenant batem.
+    const a = await this.prisma.contratoAssinatura.findFirst({
+      where: {
+        id,
+        ...(contratoId && { contratoId }),
+        ...(tenantId && { contrato: { tenantId, deletedAt: null } }),
+      },
     });
     if (!a) throw new NotFoundException('Assinatura not found');
     return a;
@@ -155,6 +170,15 @@ export class ContratoAssinaturasService {
 
     const allSigned = partesPrincipais.every((p) => partesAssinadas.has(p.id));
     if (!allSigned) return;
+
+    // BUG fix (auditoria #6): validar canTransition antes do update.
+    // O early-return acima já cobre o caso normal (só PRONTO_ASSINATURA
+    // → ASSINADO), mas defendemos contra mudanças futuras à state
+    // machine que tornem essa transição ilegal.
+    if (!canTransition(contrato.estado as ContratoEstado, ContratoEstado.ASSINADO)) {
+      // Log warn-level — não falhar silenciosamente
+      return;
+    }
 
     await this.prisma.contrato.update({
       where: { id: contratoId },

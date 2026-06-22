@@ -57,6 +57,7 @@ export class ContratoComentariosController {
     });
     if (!c) return [];
     return this.comentarios.list(contratoId, {
+      tenantId: tenant.tenantId,
       versaoId,
       clausulaRef,
       includeResolved: includeResolved === 'true',

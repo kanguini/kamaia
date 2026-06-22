@@ -57,7 +57,16 @@ export class ContratoPartesService {
     parteId: string,
   ) {
     await this.assertContrato(tenantId, contratoId);
-    await this.prisma.contratoParte.delete({ where: { id: parteId } });
+    // BUG fix (auditoria #3): delete por ID-só permitia que um caller
+    // com posse de C1 apagasse parteId que pertencesse a C2 (no mesmo
+    // tenant). deleteMany com filtro {id, contratoId} é seguro: se
+    // não bate, count=0 e levantamos 404.
+    const r = await this.prisma.contratoParte.deleteMany({
+      where: { id: parteId, contratoId },
+    });
+    if (r.count === 0) {
+      throw new NotFoundException('Parte não pertence a este contrato');
+    }
     await this.prisma.contratoEvento.create({
       data: {
         contratoId,

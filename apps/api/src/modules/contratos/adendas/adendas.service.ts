@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   AuditAction,
+  canTransition,
   ContratoEstado,
   ContratoEventoTipo,
   ContratoOrigem,
@@ -145,10 +146,30 @@ export class ContratoAdendasService {
           actorTipo: 'USER',
         },
       });
-      await tx.contrato.update({
-        where: { id: parent.id },
-        data: { estado: ContratoEstado.EM_ADENDA },
-      });
+      // BUG fix (auditoria #5): transição do parent passava sem
+      // validação do canTransition — podia mover de qualquer estado
+      // para EM_ADENDA. Cláusula do criar() já garante que parent
+      // está ACTIVO, mas validamos defensivamente para audit trail.
+      if (canTransition(parent.estado as ContratoEstado, ContratoEstado.EM_ADENDA)) {
+        await tx.contrato.update({
+          where: { id: parent.id },
+          data: { estado: ContratoEstado.EM_ADENDA },
+        });
+        await tx.contratoEvento.create({
+          data: {
+            contratoId: parent.id,
+            tipo: ContratoEventoTipo.ESTADO_ALTERADO,
+            resumo: `${parent.estado} → EM_ADENDA (adenda ${numeroInterno} criada)`,
+            payload: {
+              de: parent.estado,
+              para: ContratoEstado.EM_ADENDA,
+              adendaId: a.id,
+            } as object,
+            actorUserId,
+            actorTipo: 'USER',
+          },
+        });
+      }
 
       return a;
     });

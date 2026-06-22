@@ -15,11 +15,22 @@ export class ContratoComentariosService {
 
   async list(
     contratoId: string,
-    opts: { versaoId?: string; clausulaRef?: string; includeResolved?: boolean } = {},
+    opts: {
+      versaoId?: string;
+      clausulaRef?: string;
+      includeResolved?: boolean;
+      /**
+       * Defense in depth: caller deve passar quando a chamada vem de
+       * via autenticada. Quando vem da rota pública /c/:token a
+       * resolução do token já garante o scoping, por isso é opcional.
+       */
+      tenantId?: string;
+    } = {},
   ) {
     return this.prisma.contratoComentario.findMany({
       where: {
         contratoId,
+        ...(opts.tenantId && { contrato: { tenantId: opts.tenantId, deletedAt: null } }),
         ...(opts.versaoId && { versaoId: opts.versaoId }),
         ...(opts.clausulaRef && { clausulaRef: opts.clausulaRef }),
         ...(!opts.includeResolved && { resolvido: false }),

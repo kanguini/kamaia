@@ -135,8 +135,13 @@ export class ComplianceService {
     });
     if (!acto) throw new NotFoundException('Acto not found');
 
-    const updated = await this.prisma.contratoActoRegulatorio.update({
-      where: { id: actoId },
+    // BUG fix (auditoria #8): updateMany com optimistic where evita
+    // double-emit de evento/audit/webhook quando duas requests
+    // simultâneas chegam. Apenas a primeira passa o filtro
+    // `estado != CONCLUIDO`; a segunda actualiza 0 rows e podemos
+    // devolver o estado actual sem repetir side-effects.
+    const r = await this.prisma.contratoActoRegulatorio.updateMany({
+      where: { id: actoId, estado: { not: ActoEstado.CONCLUIDO } },
       data: {
         estado: ActoEstado.CONCLUIDO,
         concluidoEm: new Date(),
@@ -145,6 +150,14 @@ export class ComplianceService {
         custoEmAKZ: dto.custoEmAKZ,
         responsavelId: actorUserId,
       },
+    });
+    if (r.count === 0) {
+      // Já estava concluído — idempotente, devolve estado actual sem
+      // tocar audit/event/webhook
+      return this.prisma.contratoActoRegulatorio.findUnique({ where: { id: actoId } });
+    }
+    const updated = await this.prisma.contratoActoRegulatorio.findUniqueOrThrow({
+      where: { id: actoId },
     });
 
     await this.prisma.contratoEvento.create({
@@ -285,6 +298,23 @@ export class ComplianceService {
           dto.descricao ??
           `Prazo ${acto.tipo.replaceAll('_', ' ').toLowerCase()} (compliance)`,
         cumprida: false,
+      },
+    });
+    // BUG fix (auditoria #6): timeline estava a perder este evento.
+    // Sem evento, alguém auditando a posteriori não vê a data-chave
+    // criada nem o link com o acto regulatório.
+    await this.prisma.contratoEvento.create({
+      data: {
+        contratoId: acto.contratoId,
+        tipo: ContratoEventoTipo.DATA_CHAVE_ADICIONADA,
+        resumo: `Prazo agendado para acto ${acto.tipo.replaceAll('_', ' ').toLowerCase()}: ${dto.data.toISOString().slice(0, 10)}`,
+        payload: {
+          actoId: acto.id,
+          dataChaveId: dataChave.id,
+          prazo: dto.data.toISOString(),
+        } as object,
+        actorUserId,
+        actorTipo: 'USER',
       },
     });
     const updated = await this.prisma.contratoActoRegulatorio.update({

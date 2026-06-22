@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   UseGuards,
@@ -33,7 +34,7 @@ export class ContratoAssinaturasController {
       select: { id: true },
     });
     if (!c) return [];
-    return this.assinaturas.list(contratoId);
+    return this.assinaturas.list(contratoId, tenant.tenantId);
   }
 
   @Get(':id')
@@ -47,7 +48,7 @@ export class ContratoAssinaturasController {
       where: { id: contratoId, tenantId: tenant.tenantId, deletedAt: null },
       select: { id: true },
     });
-    if (!c) throw new Error('Contrato not found');
-    return this.assinaturas.get(id);
+    if (!c) throw new NotFoundException('Contrato not found');
+    return this.assinaturas.get(id, contratoId, tenant.tenantId);
   }
 }
