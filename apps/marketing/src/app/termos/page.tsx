@@ -5,7 +5,7 @@ import { Footer } from '@/components/Footer'
 export const metadata: Metadata = {
   title: 'Termos de serviço',
   description:
-    'Termos e condições de uso da plataforma Kamaia — SaaS de gestão jurídica para advogados em Angola.',
+    'Termos e condições de uso do Kamaia — Contract Lifecycle Management para empresas e sociedades de advogados em Angola.',
   alternates: { canonical: '/termos' },
 }
 
@@ -151,9 +151,11 @@ export default function TermosPage() {
             <section>
               <h2>9. Limitação de responsabilidade</h2>
               <p>
-                O Kamaia é uma ferramenta de apoio. A responsabilidade pela
-                prática jurídica, cumprimento de prazos e qualidade do trabalho
-                permanece inteiramente dos advogados utilizadores.
+                O Kamaia é uma ferramenta de apoio à gestão de contratos. As
+                sugestões do Compliance Engine (Imposto de Selo, registos,
+                BNA, AGT) requerem confirmação humana; a responsabilidade
+                fiscal e jurídica pelos contratos e actos regulatórios
+                permanece inteiramente do utilizador.
               </p>
               <p>
                 Na máxima medida permitida pela lei angolana, a nossa

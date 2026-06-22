@@ -5,10 +5,10 @@ import type { MetadataRoute } from 'next'
 // every page automatically.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Kamaia — Plataforma estratégica de prática jurídica',
+    name: 'Kamaia — Contract Lifecycle Management para Angola',
     short_name: 'Kamaia',
     description:
-      'Uma nova forma de ver a prática jurídica. Abordagem multidisciplinar, metodologias ágeis e assistente IA contextual.',
+      'CLM horizontal para Angola e PALOP. Imposto de Selo, registos, BNA e AGT automáticos. IA Q&A sobre legislação angolana.',
     start_url: '/',
     display: 'standalone',
     background_color: '#0a0f1f',

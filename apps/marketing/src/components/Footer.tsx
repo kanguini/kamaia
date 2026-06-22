@@ -23,8 +23,8 @@ export function Footer() {
         <div>
           <Logo height={22} className="text-white" />
           <p className="mt-4 max-w-xs text-sm text-white/60">
-            Plataforma estratégica de prática jurídica. Eleva o jurista de
-            agente do direito a baluarte da estratégia.
+            Contract Lifecycle Management para Angola e PALOP. Compliance
+            angolano embebido — TGIS, registos, BNA, AGT.
           </p>
         </div>
         {Object.entries(LINKS).map(([group, links]) => (

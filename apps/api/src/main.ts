@@ -5,6 +5,7 @@ import './instrument';
 
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { json, urlencoded } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -27,6 +28,9 @@ async function bootstrap() {
     console.log('[bootstrap] Creating Nest application...');
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log'],
+      // Body limit aumentado de 100KB (default Express) para 25MB
+      // — documents upload via base64 com PDF grande facilmente excede 100KB.
+      bodyParser: false,
     });
     console.log('[bootstrap] Nest application created');
 
@@ -34,6 +38,13 @@ async function bootstrap() {
 
     console.log('[bootstrap] Configuring helmet + CORS...');
     app.use(helmet());
+
+    // ─── Body parsers ─────────────────────────────────────────
+    // Documents upload em base64 + import lote com metadata grande
+    // requerem mais do que os 100KB default. 25MB cobre PDFs típicos
+    // de contrato (a maioria <5MB). Acima disto, multipart streaming.
+    app.use(json({ limit: '25mb' }));
+    app.use(urlencoded({ limit: '25mb', extended: true }));
 
     const frontendUrl = config.get<string>('FRONTEND_URL', 'http://localhost:3000');
     const allowedOrigins = frontendUrl.split(',').map((o) => o.trim());
@@ -49,7 +60,21 @@ async function bootstrap() {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      // CRÍTICO: X-Tenant-Id é enviado por todos os requests autenticados
+      // do frontend. Sem ele no preflight, o browser bloqueia 100% das
+      // chamadas autenticadas (resultado: app aparece em branco após login).
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Tenant-Id',
+        'X-Requested-With',
+      ],
+      exposedHeaders: [
+        'X-Kamaia-Delivery',
+        'X-Kamaia-Backup-Id',
+        'X-Kamaia-Backup-Size',
+      ],
+      maxAge: 86400,  // 24h cache do preflight
     });
 
     app.setGlobalPrefix('api');

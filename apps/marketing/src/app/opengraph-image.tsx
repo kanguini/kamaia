@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og'
 // Open Graph card — shown when kamaia.cc is shared on LinkedIn, WhatsApp,
 // Facebook, Messenger, etc. Next.js auto-adds the og:image meta tag.
 export const alt =
-  'Kamaia — Plataforma estratégica de prática jurídica. Uma nova forma de ver a prática jurídica.'
+  'Kamaia — Contract Lifecycle Management para Angola. O sistema operativo dos teus contratos.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -99,7 +99,7 @@ export default function OpengraphImage() {
                 background: '#6be49a',
               }}
             />
-            Plataforma estratégica de prática jurídica
+            Contract Lifecycle Management · Angola & PALOP
           </div>
 
           <div
@@ -113,8 +113,8 @@ export default function OpengraphImage() {
               flexDirection: 'column',
             }}
           >
-            <span>Uma nova forma de ver</span>
-            <span style={{ color: '#9cb6ff' }}>a prática jurídica.</span>
+            <span>O sistema operativo</span>
+            <span style={{ color: '#9cb6ff' }}>dos teus contratos.</span>
           </div>
 
           <div

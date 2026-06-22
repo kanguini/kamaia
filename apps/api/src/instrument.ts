@@ -15,7 +15,7 @@ if (dsn) {
     tracesSampleRate: parseFloat(
       process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1',
     ),
-    // Não captura PII por default — gabineteId / userId são suficientes
+    // Não captura PII por default — tenantId / userId são suficientes
     // para correlação sem expor emails/passwords.
     sendDefaultPii: false,
     // Filtra erros já tratados pelo Result<T> pattern (não-throws).
