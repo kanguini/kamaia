@@ -24,6 +24,11 @@ import { ContratoTerminacaoController } from './terminacao/terminacao.controller
 import { ContratoTerminacaoService } from './terminacao/terminacao.service';
 import { ContratoVersoesController } from './versoes/versoes.controller';
 import { ContratoVersoesService } from './versoes/versoes.service';
+import {
+  ContratoPdfController,
+  ContratoPdfPublicController,
+} from './pdf/pdf.controller';
+import { ContratoPdfService } from './pdf/pdf.service';
 
 @Module({
   imports: [ComplianceModule, WebhooksModule],
@@ -40,6 +45,8 @@ import { ContratoVersoesService } from './versoes/versoes.service';
     ContratoComentariosController,
     ContratoAssinaturasController,
     ContratoPublicoController,
+    ContratoPdfController,
+    ContratoPdfPublicController,
   ],
   providers: [
     ContratosService,
@@ -53,6 +60,7 @@ import { ContratoVersoesService } from './versoes/versoes.service';
     ContratoColaboradoresService,
     ContratoComentariosService,
     ContratoAssinaturasService,
+    ContratoPdfService,
   ],
   exports: [ContratosService],
 })
