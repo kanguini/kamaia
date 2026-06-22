@@ -6,17 +6,21 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  check:
-    name: Lint, Type Check & Test
-    runs-on: ubuntu-latest
+# Cancel in-flight runs do mesmo PR para poupar minutes
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-    # Postgres ephemeral — sobe um Postgres 16 só para esta job
-    # para corrermos `prisma migrate deploy` real (não apenas generate).
-    # Sem isto, drift schema entre branches passa silenciosamente.
+jobs:
+  # ─── Job 1: Lint + typecheck + unit tests ─────────────────
+  unit:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: kamaia
           POSTGRES_PASSWORD: kamaia_ci
@@ -31,10 +35,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://kamaia:kamaia_ci@localhost:5432/kamaia_ci
-      # Secrets de teste — não usados em produção.
-      JWT_SECRET: ci-jwt-secret
-      JWT_REFRESH_SECRET: ci-jwt-refresh-secret
-      PORTAL_SECRET: ci-portal-secret
+      JWT_SECRET: ci-jwt-secret-not-for-prod
+      JWT_EXPIRES_IN: 1h
       NODE_ENV: test
 
     steps:
@@ -50,20 +52,189 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build shared packages
+      - name: Build shared-types
         run: npx turbo build --filter=@kamaia/shared-types
+
+      - name: Apply migrations (valida baseline + drift)
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
 
       - name: Generate Prisma client
         run: npx prisma generate --schema=apps/api/prisma/schema.prisma
 
-      - name: Apply migrations (validates migration history)
-        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
-
-      - name: Type check
+      - name: Typecheck
         run: npm run typecheck
 
       - name: Lint
         run: npm run lint
 
-      - name: Test
+      - name: Unit tests (jest, no DB needed)
         run: npm run test
+        working-directory: apps/api
+
+  # ─── Job 2: E2E (tenant isolation + adendas + lifecycle + perf) ───
+  e2e:
+    name: E2E tests + performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: unit
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: kamaia
+          POSTGRES_PASSWORD: kamaia_ci
+          POSTGRES_DB: kamaia_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kamaia"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kamaia:kamaia_ci@localhost:5432/kamaia_ci
+      JWT_SECRET: ci-jwt-secret-not-for-prod
+      JWT_EXPIRES_IN: 1h
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared-types
+        run: npx turbo build --filter=@kamaia/shared-types
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=apps/api/prisma/schema.prisma
+
+      - name: Seed (catálogo TGIS + tipos + diplomas)
+        run: npx ts-node prisma/seed.ts
+        working-directory: apps/api
+
+      - name: E2E tests
+        run: npx jest --config test/jest-e2e.json --runInBand
+        working-directory: apps/api
+
+  # ─── Job 3: Smoke test via HTTP contra API booted ────────
+  smoke:
+    name: Smoke test (HTTP happy path)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: unit
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: kamaia
+          POSTGRES_PASSWORD: kamaia_ci
+          POSTGRES_DB: kamaia_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kamaia"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://kamaia:kamaia_ci@localhost:5432/kamaia_ci
+      JWT_SECRET: ci-jwt-secret-not-for-prod
+      JWT_EXPIRES_IN: 1h
+      APP_PORT: 3001
+      NODE_ENV: development  # /seed só corre em não-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared-types
+        run: npx turbo build --filter=@kamaia/shared-types
+
+      - name: Apply migrations + seed
+        run: |
+          npx prisma migrate deploy --schema=apps/api/prisma/schema.prisma
+          npx prisma generate --schema=apps/api/prisma/schema.prisma
+          npx ts-node apps/api/prisma/seed.ts
+
+      - name: Boot API in background
+        run: |
+          cd apps/api
+          nohup npx ts-node -P tsconfig.json src/main.ts > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: Wait for API ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "API up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start in 60s"
+          tail -100 /tmp/api.log
+          exit 1
+
+      - name: Run smoke test
+        run: bash scripts/smoke-test.sh
+
+      - name: Stop API
+        if: always()
+        run: kill $(cat /tmp/api.pid) 2>/dev/null || true
+
+      - name: Upload API logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-log-${{ github.run_id }}
+          path: /tmp/api.log
+          retention-days: 7
+
+  # ─── Job 4: Frontend build (no install necessário se cache hit) ──
+  web:
+    name: Frontend typecheck + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared-types
+        run: npx turbo build --filter=@kamaia/shared-types
+
+      - name: Typecheck web
+        run: npm run typecheck
+        working-directory: apps/web
+
+      - name: Typecheck marketing
+        run: npm run typecheck
+        working-directory: apps/marketing
