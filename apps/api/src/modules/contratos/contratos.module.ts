@@ -18,6 +18,8 @@ import { ContratoEventosController } from './eventos/eventos.controller';
 import { ContratoEventosService } from './eventos/eventos.service';
 import { ContratoNegociacaoController } from './negociacao/negociacao.controller';
 import { ContratoNegociacaoService } from './negociacao/negociacao.service';
+import { ContratoObrigacoesController } from './obrigacoes/obrigacoes.controller';
+import { ContratoObrigacoesService } from './obrigacoes/obrigacoes.service';
 import { ContratoPartesController } from './partes/partes.controller';
 import { ContratoPartesService } from './partes/partes.service';
 import { ContratoTerminacaoController } from './terminacao/terminacao.controller';
@@ -39,6 +41,7 @@ import { ContratoPdfService } from './pdf/pdf.service';
     ContratoDatasChaveController,
     ContratoEventosController,
     ContratoNegociacaoController,
+    ContratoObrigacoesController,
     ContratoTerminacaoController,
     ContratoAdendasController,
     ContratoColaboradoresController,
@@ -55,6 +58,7 @@ import { ContratoPdfService } from './pdf/pdf.service';
     ContratoDatasChaveService,
     ContratoEventosService,
     ContratoNegociacaoService,
+    ContratoObrigacoesService,
     ContratoTerminacaoService,
     ContratoAdendasService,
     ContratoColaboradoresService,

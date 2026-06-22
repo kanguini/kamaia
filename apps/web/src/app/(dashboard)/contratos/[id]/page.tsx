@@ -30,6 +30,7 @@ import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
 import { ComplianceTab as ComplianceTabNew } from '@/components/contratos/compliance-tab'
 import { VersoesTab as VersoesTabNew } from '@/components/contratos/versoes-tab'
 import { DocumentosTab } from '@/components/contratos/documentos-tab'
+import { ObrigacoesTab } from '@/components/contratos/obrigacoes-tab'
 
 interface Contrato {
   id: string
@@ -51,7 +52,7 @@ interface Contrato {
   responsavel: { id: string; firstName: string; lastName: string } | null
 }
 
-type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'documentos' | 'partes' | 'datas-chave' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
+type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'documentos' | 'partes' | 'datas-chave' | 'obrigacoes' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
 
 const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'resumo', label: 'Resumo' },
@@ -62,6 +63,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'documentos', label: 'Documentos' },
   { key: 'partes', label: 'Partes' },
   { key: 'datas-chave', label: 'Datas-chave' },
+  { key: 'obrigacoes', label: 'Obrigações' },
   { key: 'negociacao', label: 'Negociação' },
   { key: 'compliance', label: 'Compliance' },
   { key: 'timeline', label: 'Timeline' },
@@ -135,6 +137,7 @@ export default function ContratoDetailPage() {
         {tab === 'documentos' && <DocumentosTab contratoId={String(id)} />}
         {tab === 'partes' && <PartesTab contratoId={String(id)} />}
         {tab === 'datas-chave' && <DatasChaveTab contratoId={String(id)} />}
+        {tab === 'obrigacoes' && <ObrigacoesTab contratoId={String(id)} />}
         {tab === 'negociacao' && <NegociacaoTab contratoId={String(id)} />}
         {tab === 'compliance' && <ComplianceTabNew contratoId={String(id)} />}
         {tab === 'timeline' && <TimelineTab contratoId={String(id)} />}
