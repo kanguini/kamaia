@@ -32,6 +32,13 @@ const CreateClausulaSchema = z.object({
   conteudo: z.string().min(5),
   leiAplicavelArt: z.string().max(300).optional(),
   tags: z.array(z.string()).default([]),
+  /**
+   * Adicionado em L.3: aceita códigos de TipoContrato a que a
+   * cláusula se aplica explicitamente (e.g. ["PRESTACAO_SERVICOS",
+   * "CONSULTORIA"]). Usado pelo IaDraftingService para filtrar
+   * cláusulas relevantes ao tipo do contrato em drafting.
+   */
+  tipoContratoCodigos: z.array(z.string()).default([]),
   idioma: z.string().default('pt-AO'),
   origemContratoId: z.string().uuid().optional(),
 });

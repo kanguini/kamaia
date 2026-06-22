@@ -53,6 +53,7 @@ export class ClausulasService {
       conteudo: string;
       leiAplicavelArt?: string;
       tags?: string[];
+      tipoContratoCodigos?: string[];
       idioma?: string;
       origemContratoId?: string;
     },

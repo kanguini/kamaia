@@ -28,10 +28,11 @@ import { Badge } from '@/components/ui/badge'
 import { renderMarkdownPreview } from '@/lib/markdown'
 import { fmtDateTime } from '@/lib/clm-format'
 import { VersaoDireccao } from '@kamaia/shared-types'
-import { Save, FileText, Eye, Code2, Sparkles } from 'lucide-react'
+import { Save, FileText, Eye, Code2, Sparkles, BookmarkPlus } from 'lucide-react'
 import { ComentariosPanel } from './comentarios-panel'
 import { DraftIaDrawer, type DraftResult } from './draft-ia-drawer'
 import { MarkdownToolbar, applyKeyboardShortcut } from './markdown-toolbar'
+import { SaveClausulaDrawer } from './save-clausula-drawer'
 
 interface VersaoFull {
   id: string
@@ -58,6 +59,8 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [creating, setCreating] = useState(false)
   const [iaOpen, setIaOpen] = useState(false)
+  const [saveClausulaOpen, setSaveClausulaOpen] = useState(false)
+  const [selectedText, setSelectedText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const { mutate: createVersao, loading: creatingLoading, error: createErr } = useMutation<
@@ -350,6 +353,24 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
 
         <Button
           variant="secondary"
+          onClick={() => {
+            const ta = textareaRef.current
+            if (!ta) return
+            const sel = draft.slice(ta.selectionStart, ta.selectionEnd)
+            if (!sel.trim()) {
+              alert('Selecciona texto no editor para gravar como cláusula.')
+              return
+            }
+            setSelectedText(sel)
+            setSaveClausulaOpen(true)
+          }}
+          leftIcon={<BookmarkPlus size={13} />}
+          title="Selecciona um trecho do editor e grava-o como cláusula reutilizável na biblioteca"
+        >
+          Salvar cláusula
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => setIaOpen(true)}
           leftIcon={<Sparkles size={13} />}
           title="Pede ao Claude para redigir o corpo a partir dos dados do contrato"
@@ -428,6 +449,13 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
       </div>
 
       <ComentariosPanel contratoId={contratoId} versaoId={selected?.id ?? null} />
+
+      <SaveClausulaDrawer
+        open={saveClausulaOpen}
+        onClose={() => setSaveClausulaOpen(false)}
+        textoSelecionado={selectedText}
+        contratoId={contratoId}
+      />
 
       <DraftIaDrawer
         open={iaOpen}
