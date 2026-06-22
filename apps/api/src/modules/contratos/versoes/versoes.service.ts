@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   ContratoEventoTipo,
   VersaoDireccao,
 } from '@kamaia/shared-types';
+import { renderMarkdownToHtml } from '../../../common/markdown';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -27,6 +28,8 @@ export class ContratoVersoesService {
       documentId?: string;
       hashSHA256?: string;
       comentario?: string;
+      corpoMarkdown?: string;
+      geradoPorIA?: boolean;
     },
   ) {
     await this.assertContrato(tenantId, contratoId);
@@ -43,7 +46,15 @@ export class ContratoVersoesService {
         contratoId,
         ordem,
         criadoPor: actorUserId,
-        ...dto,
+        versao: dto.versao,
+        direccao: dto.direccao,
+        documentId: dto.documentId,
+        hashSHA256: dto.hashSHA256,
+        comentario: dto.comentario,
+        corpoMarkdown: dto.corpoMarkdown,
+        // Render HTML server-side a partir do markdown
+        ...(dto.corpoMarkdown && { corpoHtml: renderMarkdownToHtml(dto.corpoMarkdown) }),
+        geradoPorIA: dto.geradoPorIA ?? false,
         ...(dto.direccao === VersaoDireccao.ASSINADO_FINAL && {
           seloTemporal: new Date(),
         }),
@@ -69,6 +80,39 @@ export class ContratoVersoesService {
     });
 
     return versao;
+  }
+
+  /**
+   * Edita o corpo (markdown) de uma versão existente.
+   * NÃO permitido se a versão já foi assinada por qualquer parte.
+   * Caso contrário (drafting normal), o markdown e o HTML render
+   * actualizam-se atómicamente.
+   */
+  async editarCorpo(
+    tenantId: string,
+    contratoId: string,
+    versaoId: string,
+    dto: { corpoMarkdown: string; geradoPorIA?: boolean },
+  ) {
+    await this.assertContrato(tenantId, contratoId);
+    const v = await this.prisma.contratoVersao.findFirst({
+      where: { id: versaoId, contratoId },
+      include: { assinaturas: { where: { estado: 'ASSINADA' }, take: 1 } },
+    });
+    if (!v) throw new NotFoundException('Versão not found');
+    if (v.assinaturas.length > 0) {
+      throw new BadRequestException(
+        'Versão já assinada — não pode ser editada. Cria nova versão.',
+      );
+    }
+    return this.prisma.contratoVersao.update({
+      where: { id: versaoId },
+      data: {
+        corpoMarkdown: dto.corpoMarkdown,
+        corpoHtml: renderMarkdownToHtml(dto.corpoMarkdown),
+        geradoPorIA: dto.geradoPorIA ?? v.geradoPorIA,
+      },
+    });
   }
 
   private async assertContrato(tenantId: string, contratoId: string) {

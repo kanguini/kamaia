@@ -217,6 +217,53 @@ export enum VersaoDireccao {
   ASSINADO_FINAL = 'ASSINADO_FINAL',
 }
 
+// ─── Colaboração externa (EXTERNAL role scoped) ──────────
+
+export enum ColaboradorTipoAcesso {
+  LEITURA = 'LEITURA',
+  COMENTARIO = 'COMENTARIO',
+  ASSINATURA = 'ASSINATURA',
+}
+
+export const COLABORADOR_TIPO_ACESSO_LABELS: Record<ColaboradorTipoAcesso, string> = {
+  [ColaboradorTipoAcesso.LEITURA]: 'Apenas leitura',
+  [ColaboradorTipoAcesso.COMENTARIO]: 'Pode comentar',
+  [ColaboradorTipoAcesso.ASSINATURA]: 'Pode assinar',
+};
+
+export enum ColaboradorEstado {
+  PENDENTE = 'PENDENTE',
+  ACTIVO = 'ACTIVO',
+  REVOGADO = 'REVOGADO',
+  EXPIRADO = 'EXPIRADO',
+}
+
+export enum ComentarioAutorTipo {
+  USER = 'USER',
+  COLABORADOR = 'COLABORADOR',
+}
+
+export enum AssinaturaMetodo {
+  DESENHADA_BROWSER = 'DESENHADA_BROWSER',
+  MANUSCRITA_DIGITALIZADA = 'MANUSCRITA_DIGITALIZADA',
+  CERTIFICADO_DIGITAL = 'CERTIFICADO_DIGITAL',
+  PIN_SMS = 'PIN_SMS',
+}
+
+export const ASSINATURA_METODO_LABELS: Record<AssinaturaMetodo, string> = {
+  [AssinaturaMetodo.DESENHADA_BROWSER]: 'Desenhada no browser',
+  [AssinaturaMetodo.MANUSCRITA_DIGITALIZADA]: 'Manuscrita digitalizada',
+  [AssinaturaMetodo.CERTIFICADO_DIGITAL]: 'Certificado digital qualificado',
+  [AssinaturaMetodo.PIN_SMS]: 'PIN via SMS',
+};
+
+export enum AssinaturaEstado {
+  PENDENTE = 'PENDENTE',
+  ASSINADA = 'ASSINADA',
+  REJEITADA = 'REJEITADA',
+  REVOGADA = 'REVOGADA',
+}
+
 // ─── Parte (Papel) ────────────────────────────────────────
 
 export enum PartePapel {

@@ -455,6 +455,9 @@ model Contrato {
   eventos             ContratoEvento[]
   terminacao          ContratoTerminacao?
   documentos          Document[]
+  colaboradores       ContratoColaborador[]
+  comentarios         ContratoComentario[]
+  assinaturas         ContratoAssinatura[]
 
   @@unique([tenantId, numeroInterno])
   @@index([tenantId, estado])
@@ -500,6 +503,14 @@ model ContratoVersao {
   comentario      String?        @db.Text
   criadoPor       String         @map("criado_por") @db.Uuid
 
+  // Conteúdo editável da versão (Markdown + HTML render).
+  // Permite drafting interno + IA + diff line-by-line. Quando há
+  // PDF assinado externo, documentId aponta para o ficheiro e o
+  // markdown fica como referência reconstrutível.
+  corpoMarkdown   String?        @map("corpo_markdown") @db.Text
+  corpoHtml       String?        @map("corpo_html") @db.Text
+  geradoPorIA     Boolean        @default(false) @map("gerado_por_ia")
+
   // IA extraction
   extracao        Json?
   extracaoStatus  ExtracaoStatus? @map("extracao_status")
@@ -513,6 +524,8 @@ model ContratoVersao {
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
 
   contrato        Contrato       @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  assinaturas     ContratoAssinatura[]
+  comentarios     ContratoComentario[]
 
   @@unique([contratoId, ordem])
   @@index([contratoId])
@@ -1219,4 +1232,162 @@ model WebhookDelivery {
 
   @@index([webhookId, status])
   @@map("webhook_deliveries")
+}
+
+// ═══════════════════════════════════════════════════════════
+// COLABORAÇÃO EXTERNA — convidados scoped por contrato
+// ═══════════════════════════════════════════════════════════
+
+enum ColaboradorTipoAcesso {
+  LEITURA       // só vê o contrato (read-only)
+  COMENTARIO    // pode adicionar comentários
+  ASSINATURA    // pode assinar (implica LEITURA)
+}
+
+enum ColaboradorEstado {
+  PENDENTE      // convite enviado, não aceite
+  ACTIVO        // aceitou e está a usar
+  REVOGADO      // owner revogou acesso
+  EXPIRADO      // TTL passou
+}
+
+/// Colaborador externo com acesso scoped a um único contrato.
+/// O acesso é via magic link contendo o token; sem necessidade
+/// de criar User na tenancy principal.
+model ContratoColaborador {
+  id                 String                @id @default(uuid()) @db.Uuid
+  contratoId         String                @map("contrato_id") @db.Uuid
+  email              String                @db.VarChar(200)
+  nome               String?               @db.VarChar(200)
+  tipoAcesso         ColaboradorTipoAcesso @map("tipo_acesso")
+  estado             ColaboradorEstado     @default(PENDENTE)
+
+  // Magic link
+  tokenHash          String                @unique @map("token_hash") @db.VarChar(200)
+  tokenPrefix        String                @map("token_prefix") @db.VarChar(8)  // para UI mostrar `xxx-xxxx`
+  expiresAt          DateTime              @map("expires_at") @db.Timestamptz
+
+  // Auditoria de acesso
+  convidadoPor       String                @map("convidado_por") @db.Uuid
+  convidadoEm        DateTime              @default(now()) @map("convidado_em") @db.Timestamptz
+  aceitouEm          DateTime?             @map("aceitou_em") @db.Timestamptz
+  revogadoEm         DateTime?             @map("revogado_em") @db.Timestamptz
+  ultimaActividade   DateTime?             @map("ultima_actividade") @db.Timestamptz
+  ipAddress          String?               @map("ip_address") @db.VarChar(45)
+  userAgent          String?               @map("user_agent") @db.Text
+
+  contrato           Contrato              @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  comentarios        ContratoComentario[]
+  assinaturas        ContratoAssinatura[]
+
+  @@index([contratoId, estado])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("contrato_colaboradores")
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMENTÁRIOS por cláusula (threads internas + externas)
+// ═══════════════════════════════════════════════════════════
+
+enum ComentarioAutorTipo {
+  USER             // colaborador interno do tenant
+  COLABORADOR      // convidado externo (ContratoColaborador)
+}
+
+/// Comentário por âncora dentro do markdown do contrato.
+/// `clausulaRef` é um anchor estável (ex: "cl-5.2" ou linha range).
+/// Suporta threads via `parentComentarioId`.
+model ContratoComentario {
+  id                String              @id @default(uuid()) @db.Uuid
+  contratoId        String              @map("contrato_id") @db.Uuid
+  versaoId          String?             @map("versao_id") @db.Uuid
+  clausulaRef       String              @map("clausula_ref") @db.VarChar(200)
+  parentComentarioId String?            @map("parent_comentario_id") @db.Uuid
+
+  // Autor (uma das duas FKs preenchidas)
+  autorTipo         ComentarioAutorTipo @map("autor_tipo")
+  autorUserId       String?             @map("autor_user_id") @db.Uuid
+  autorColaboradorId String?            @map("autor_colaborador_id") @db.Uuid
+  autorNome         String              @map("autor_nome") @db.VarChar(200)  // denormalizado p/ histórico
+
+  texto             String              @db.Text
+  resolvido         Boolean             @default(false)
+  resolvidoEm       DateTime?           @map("resolvido_em") @db.Timestamptz
+  resolvidoPor      String?             @map("resolvido_por") @db.Uuid
+
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  contrato          Contrato            @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  versao            ContratoVersao?     @relation(fields: [versaoId], references: [id])
+  parent            ContratoComentario? @relation("Replies", fields: [parentComentarioId], references: [id])
+  replies           ContratoComentario[] @relation("Replies")
+  colaborador       ContratoColaborador? @relation(fields: [autorColaboradorId], references: [id])
+
+  @@index([contratoId, resolvido])
+  @@index([versaoId])
+  @@index([clausulaRef])
+  @@map("contrato_comentarios")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ASSINATURAS — colectadas dentro do produto
+// ═══════════════════════════════════════════════════════════
+
+enum AssinaturaMetodo {
+  DESENHADA_BROWSER          // canvas pad
+  MANUSCRITA_DIGITALIZADA    // upload de imagem
+  CERTIFICADO_DIGITAL        // futuro: certificado qualificado
+  PIN_SMS                    // futuro: confirmação via SMS
+}
+
+enum AssinaturaEstado {
+  PENDENTE
+  ASSINADA
+  REJEITADA
+  REVOGADA
+}
+
+/// Assinatura electrónica colectada — força probatória.
+/// Para força executiva (Lei n.º 1/11) é preciso certificado qualificado.
+/// O `hashContratoSnapshot` é o SHA256 do markdown da versão no momento
+/// da assinatura; garante que a versão assinada não é adulterada.
+model ContratoAssinatura {
+  id                    String              @id @default(uuid()) @db.Uuid
+  contratoId            String              @map("contrato_id") @db.Uuid
+  versaoId              String              @map("versao_id") @db.Uuid
+  parteId               String?             @map("parte_id") @db.Uuid     // ContratoParte
+  colaboradorId         String?             @map("colaborador_id") @db.Uuid  // se assinado por convite externo
+  signatarioNome        String              @map("signatario_nome") @db.VarChar(200)
+  signatarioEmail       String?             @map("signatario_email") @db.VarChar(200)
+  signatarioBI          String?             @map("signatario_bi") @db.VarChar(40)
+  cargo                 String?             @db.VarChar(100)
+
+  metodo                AssinaturaMetodo
+  estado                AssinaturaEstado    @default(PENDENTE)
+
+  // Conteúdo da assinatura
+  imagemBase64          String?             @map("imagem_base64") @db.Text  // PNG da assinatura desenhada
+  imagemStorageKey      String?             @map("imagem_storage_key") @db.VarChar(500)
+
+  // Prova
+  hashContratoSnapshot  String              @map("hash_contrato_snapshot") @db.VarChar(64)
+  ipAddress             String?             @map("ip_address") @db.VarChar(45)
+  userAgent             String?             @map("user_agent") @db.Text
+  geoCidade             String?             @map("geo_cidade") @db.VarChar(100)
+  geoPais               String?             @map("geo_pais") @db.VarChar(2)
+
+  // Lifecycle
+  solicitadaEm          DateTime            @default(now()) @map("solicitada_em") @db.Timestamptz
+  assinadaEm            DateTime?           @map("assinada_em") @db.Timestamptz
+  revogadaEm            DateTime?           @map("revogada_em") @db.Timestamptz
+  observacoes           String?             @db.Text
+
+  contrato              Contrato            @relation(fields: [contratoId], references: [id], onDelete: Cascade)
+  versao                ContratoVersao      @relation(fields: [versaoId], references: [id])
+  colaborador           ContratoColaborador? @relation(fields: [colaboradorId], references: [id])
+
+  @@index([contratoId, estado])
+  @@index([versaoId])
+  @@map("contrato_assinaturas")
 }

@@ -1,18 +1,18 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import {
+  ColaboradorTipoAcesso,
   JwtPayload,
   Role,
   TenantContext,
-  VersaoDireccao,
 } from '@kamaia/shared-types';
 import { z } from 'zod';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -22,28 +22,19 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { TenantGuard } from '../../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../../common/pipes/parse-zod.pipe';
-import { ContratoVersoesService } from './versoes.service';
+import { ContratoColaboradoresService } from './colaboradores.service';
 
-const CreateVersaoSchema = z.object({
-  versao: z.string().min(1).max(20),
-  direccao: z.nativeEnum(VersaoDireccao),
-  documentId: z.string().uuid().optional(),
-  hashSHA256: z.string().length(64).optional(),
-  comentario: z.string().max(2000).optional(),
-  corpoMarkdown: z.string().max(500_000).optional(),
-  geradoPorIA: z.boolean().optional(),
-});
-type CreateVersaoDto = z.infer<typeof CreateVersaoSchema>;
-
-const EditarCorpoSchema = z.object({
-  corpoMarkdown: z.string().min(0).max(500_000),
-  geradoPorIA: z.boolean().optional(),
+const CreateColaboradorSchema = z.object({
+  email: z.string().email().max(200),
+  nome: z.string().max(200).optional(),
+  tipoAcesso: z.nativeEnum(ColaboradorTipoAcesso),
+  ttlDias: z.number().int().min(1).max(365).optional(),
 });
 
-@Controller('contratos/:contratoId/versoes')
+@Controller('contratos/:contratoId/colaboradores')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
-export class ContratoVersoesController {
-  constructor(private readonly versoes: ContratoVersoesService) {}
+export class ContratoColaboradoresController {
+  constructor(private readonly colaboradores: ContratoColaboradoresService) {}
 
   @Get()
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
@@ -51,7 +42,7 @@ export class ContratoVersoesController {
     @Tenant() tenant: TenantContext,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
   ) {
-    return this.versoes.list(tenant.tenantId, contratoId);
+    return this.colaboradores.list(tenant.tenantId, contratoId);
   }
 
   @Post()
@@ -60,20 +51,20 @@ export class ContratoVersoesController {
     @Tenant() tenant: TenantContext,
     @CurrentUser() user: JwtPayload,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
-    @Body(new ParseZodPipe(CreateVersaoSchema)) dto: CreateVersaoDto,
+    @Body(new ParseZodPipe(CreateColaboradorSchema))
+    dto: z.infer<typeof CreateColaboradorSchema>,
   ) {
-    return this.versoes.create(tenant.tenantId, user.sub, contratoId, dto);
+    return this.colaboradores.create(tenant.tenantId, user.sub, contratoId, dto);
   }
 
-  @Patch(':versaoId/corpo')
+  @Delete(':id')
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
-  async editarCorpo(
+  async revogar(
     @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
-    @Param('versaoId', new ParseUUIDPipe()) versaoId: string,
-    @Body(new ParseZodPipe(EditarCorpoSchema))
-    dto: z.infer<typeof EditarCorpoSchema>,
+    @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.versoes.editarCorpo(tenant.tenantId, contratoId, versaoId, dto);
+    return this.colaboradores.revogar(tenant.tenantId, user.sub, contratoId, id);
   }
 }
