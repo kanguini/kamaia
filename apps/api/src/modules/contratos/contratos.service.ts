@@ -194,7 +194,7 @@ export class ContratosService {
     });
     if (!contrato) throw new NotFoundException('Contrato not found');
 
-    if (!canTransition(contrato.estado, para)) {
+    if (!canTransition(contrato.estado as ContratoEstado, para)) {
       throw new BadRequestException(
         `Transição inválida: ${contrato.estado} → ${para}`,
       );

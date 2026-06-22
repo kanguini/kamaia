@@ -55,35 +55,35 @@ export class SeedService {
 
   async seedTiposContrato() {
     this.logger.log('Seeding TipoContrato (global catalog)...');
+    // findFirst+create/update em vez de upsert: o compound unique
+    // (tenantId, codigo) tem tenantId nullable e Postgres trata NULL
+    // como distinto, impedindo upsert idempotente.
     for (const t of TIPOS_CONTRATO_SEED) {
-      await this.prisma.tipoContrato.upsert({
-        where: {
-          tenantId_codigo: { tenantId: null as unknown as string, codigo: t.codigo },
-        },
-        create: {
-          tenantId: null,
-          codigo: t.codigo,
-          nome: t.nome,
-          categoria: t.categoria,
-          descricao: t.descricao,
-          tgisVerbaNumero: t.tgisVerbaNumero,
-          requerNotario: t.requerNotario ?? false,
-          registosRequeridos: t.registosRequeridos ?? [],
-          gatilhoBNA: t.gatilhoBNA as object | undefined,
-          retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
-          clausulasObrigatorias: t.clausulasObrigatorias ?? [],
-        },
-        update: {
-          nome: t.nome,
-          categoria: t.categoria,
-          descricao: t.descricao,
-          tgisVerbaNumero: t.tgisVerbaNumero,
-          requerNotario: t.requerNotario ?? false,
-          registosRequeridos: t.registosRequeridos ?? [],
-          retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
-          clausulasObrigatorias: t.clausulasObrigatorias ?? [],
-        },
+      const existing = await this.prisma.tipoContrato.findFirst({
+        where: { tenantId: null, codigo: t.codigo },
       });
+      const data = {
+        codigo: t.codigo,
+        nome: t.nome,
+        categoria: t.categoria,
+        descricao: t.descricao,
+        tgisVerbaNumero: t.tgisVerbaNumero,
+        requerNotario: t.requerNotario ?? false,
+        registosRequeridos: t.registosRequeridos ?? [],
+        gatilhoBNA: t.gatilhoBNA as object | undefined,
+        retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
+        clausulasObrigatorias: t.clausulasObrigatorias ?? [],
+      };
+      if (existing) {
+        await this.prisma.tipoContrato.update({
+          where: { id: existing.id },
+          data,
+        });
+      } else {
+        await this.prisma.tipoContrato.create({
+          data: { tenantId: null, ...data },
+        });
+      }
     }
     this.logger.log(`Seeded ${TIPOS_CONTRATO_SEED.length} TipoContrato`);
   }

@@ -60,7 +60,7 @@ export class EntidadesService {
 
   async create(tenantId: string, actorUserId: string, dto: CreateEntidadeDto) {
     const e = await this.prisma.entidade.create({
-      data: { tenantId, ...dto },
+      data: { tenantId, ...dto } as Prisma.EntidadeUncheckedCreateInput,
     });
     await this.audit.log({
       tenantId,
@@ -82,7 +82,7 @@ export class EntidadesService {
     const before = await this.get(tenantId, id);
     const after = await this.prisma.entidade.update({
       where: { id },
-      data: dto,
+      data: dto as Prisma.EntidadeUncheckedUpdateInput,
     });
     await this.audit.log({
       tenantId,

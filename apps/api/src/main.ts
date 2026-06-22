@@ -8,6 +8,15 @@ import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
+// Global BigInt → string serializer. Os valores monetários são guardados
+// em BigInt (centavos) e o serializador padrão JSON throwa em BigInt.
+// Express usa JSON.stringify directamente, por isso o shim tem de ser
+// no prototype antes de qualquer handler responder.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   // Log as early as possible so we see output even if app crashes later
   console.log('[bootstrap] Starting Kamaia API...');

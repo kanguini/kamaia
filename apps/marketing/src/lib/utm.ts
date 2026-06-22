@@ -11,6 +11,8 @@ type Source =
   | 'pricing'
   | 'cta_final'
   | 'features_cta'
+  | 'funcs_cta'
+  | 'precos_cta'
 
 export function appUrl(
   path: '/register' | '/login' | string,

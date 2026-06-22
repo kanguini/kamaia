@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ActoEstado,
-  ActoRegulatorioTipo,
   AuditAction,
   ComplianceContext,
   ContratoEventoTipo,

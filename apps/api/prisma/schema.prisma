@@ -6,7 +6,7 @@
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions", "fullTextSearchPostgres"]
+  previewFeatures = ["postgresqlExtensions", "fullTextSearch"]
 }
 
 datasource db {
@@ -547,6 +547,7 @@ model ContratoParte {
 
   contrato             Contrato    @relation(fields: [contratoId], references: [id], onDelete: Cascade)
   entidade             Entidade    @relation(fields: [entidadeId], references: [id])
+  obrigacoesComoResponsavel ContratoObrigacao[]
 
   @@index([contratoId])
   @@index([entidadeId])

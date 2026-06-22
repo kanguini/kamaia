@@ -33,24 +33,30 @@ async function main() {
   console.log(`  ✓ ${TGIS_SEED.length} verbas`);
 
   console.log('▶ Seeding TipoContrato (catálogo global)...');
+  // findFirst+create em vez de upsert porque o compound unique
+  // (tenantId, codigo) tem tenantId nullable e Postgres trata NULL como
+  // distinto em índices únicos — upsert dispara constraint violation.
   for (const t of TIPOS_CONTRATO_SEED) {
-    await prisma.tipoContrato.upsert({
-      where: { tenantId_codigo: { tenantId: null as unknown as string, codigo: t.codigo } },
-      create: {
-        tenantId: null,
-        codigo: t.codigo,
-        nome: t.nome,
-        categoria: t.categoria,
-        descricao: t.descricao,
-        tgisVerbaNumero: t.tgisVerbaNumero,
-        requerNotario: t.requerNotario ?? false,
-        registosRequeridos: t.registosRequeridos ?? [],
-        gatilhoBNA: t.gatilhoBNA as object | undefined,
-        retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
-        clausulasObrigatorias: t.clausulasObrigatorias ?? [],
-      },
-      update: {},
+    const existing = await prisma.tipoContrato.findFirst({
+      where: { tenantId: null, codigo: t.codigo },
     });
+    if (!existing) {
+      await prisma.tipoContrato.create({
+        data: {
+          tenantId: null,
+          codigo: t.codigo,
+          nome: t.nome,
+          categoria: t.categoria,
+          descricao: t.descricao,
+          tgisVerbaNumero: t.tgisVerbaNumero,
+          requerNotario: t.requerNotario ?? false,
+          registosRequeridos: t.registosRequeridos ?? [],
+          gatilhoBNA: t.gatilhoBNA as object | undefined,
+          retencaoIRTpadrao: t.retencaoIRTpadrao ?? false,
+          clausulasObrigatorias: t.clausulasObrigatorias ?? [],
+        },
+      });
+    }
   }
   console.log(`  ✓ ${TIPOS_CONTRATO_SEED.length} tipos`);
 
