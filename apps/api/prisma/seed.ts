@@ -10,6 +10,7 @@ import { LEGISLACAO_SEED } from '../src/modules/seed/data/legislacao';
 import { TGIS_SEED } from '../src/modules/seed/data/tgis';
 import { TIPOS_CONTRATO_SEED } from '../src/modules/seed/data/tipos-contrato';
 import { CLAUSULAS_BASE_SEED } from '../src/modules/seed/data/clausulas';
+import { TEMPLATES_BASE_SEED } from '../src/modules/seed/data/templates';
 
 const prisma = new PrismaClient();
 
@@ -178,6 +179,42 @@ async function main() {
       console.log(`  ✓ ${CLAUSULAS_BASE_SEED.length} cláusulas-base criadas`);
     } else {
       console.log(`  ✓ Biblioteca de cláusulas já existe (${existingClausulas})`);
+    }
+
+    // ─── Templates base ─────────────────────────────────────
+    const existingTemplates = await prisma.template.count({
+      where: { tenantId: demoTenant.id },
+    });
+    if (existingTemplates === 0) {
+      console.log('▶ Seeding templates base pt-AO...');
+      const tiposByCodigo = new Map(
+        (await prisma.tipoContrato.findMany({ where: { tenantId: null } }))
+          .map((t) => [t.codigo, t.id]),
+      );
+      let criados = 0;
+      for (const t of TEMPLATES_BASE_SEED) {
+        const tipoId = tiposByCodigo.get(t.tipoCodigo);
+        if (!tipoId) {
+          console.warn(`  ⚠ TipoContrato '${t.tipoCodigo}' não encontrado — skip template "${t.nome}"`);
+          continue;
+        }
+        await prisma.template.create({
+          data: {
+            tenantId: demoTenant.id,
+            tipoId,
+            nome: t.nome,
+            descricao: t.descricao,
+            conteudo: t.conteudo,
+            versao: 1,
+            idiomas: ['pt-AO'],
+            isActive: true,
+          },
+        });
+        criados += 1;
+      }
+      console.log(`  ✓ ${criados} templates base criados`);
+    } else {
+      console.log(`  ✓ Templates já existem (${existingTemplates})`);
     }
   }
 
