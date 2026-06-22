@@ -49,6 +49,9 @@ export class ContratoPdfService {
           where: { estado: 'ASSINADA' },
           orderBy: { assinadaEm: 'asc' },
         },
+        actosRegulatorios: {
+          orderBy: [{ tipo: 'asc' }, { prazoLimite: 'asc' }],
+        },
       },
     });
 
@@ -174,9 +177,102 @@ export class ContratoPdfService {
       });
     }
 
+    // ─── Notas regulatórias (compliance) ──────────────
+    // Adicionado por L.4 — o engine sugere actos regulatórios mas é
+    // crítico que o PDF assinado inclua o disclaimer + lista dos
+    // actos detectados para defesa em auditoria fiscal/regulatória.
+    if (contrato.actosRegulatorios.length > 0) {
+      doc.addPage();
+      doc
+        .fillColor('#9ca3af')
+        .fontSize(9)
+        .text('NOTAS REGULATÓRIAS (COMPLIANCE)', { characterSpacing: 1.6 });
+      doc.moveDown(0.4);
+      doc
+        .fillColor('#475569')
+        .fontSize(9)
+        .text(
+          'O motor de compliance do Kamaia sugere os actos regulatórios abaixo com base nas regras versionadas aplicáveis. Cada acto requer confirmação humana antes de produzir efeitos. A lei vigente à data do facto tributário (não a data presente) é a aplicável.',
+          { align: 'justify' },
+        );
+      doc.moveDown(1);
+
+      renderComplianceTable(doc, contrato.actosRegulatorios);
+    }
+
     drawFooter();
     doc.end();
     return done;
+  }
+}
+
+interface ActoForPdf {
+  tipo: string;
+  estado: string;
+  prazoLimite: Date | null;
+  valorLiquidar: bigint | null;
+  custoEmAKZ: bigint | null;
+  referenciaLegal: string | null;
+  observacoes: string | null;
+  detectadoAutomaticamente: boolean;
+}
+
+function renderComplianceTable(
+  doc: PDFKit.PDFDocument,
+  actos: ActoForPdf[],
+) {
+  for (const a of actos) {
+    const startY = doc.y;
+    if (startY > doc.page.height - 150) {
+      doc.addPage();
+    }
+    doc
+      .fillColor('#0f172a')
+      .fontSize(11)
+      .text(a.tipo.replaceAll('_', ' '));
+    doc.fillColor('#475569').fontSize(9);
+    const meta: string[] = [`Estado: ${a.estado.replaceAll('_', ' ').toLowerCase()}`];
+    if (a.prazoLimite) meta.push(`Prazo: ${formatDatePt(a.prazoLimite)}`);
+    if (a.valorLiquidar) meta.push(`Valor a liquidar: ${formatMoneyPt(a.valorLiquidar)}`);
+    if (a.custoEmAKZ && a.custoEmAKZ !== a.valorLiquidar)
+      meta.push(`Custo: ${formatMoneyPt(a.custoEmAKZ)}`);
+    doc.text(meta.join(' · '));
+    if (a.referenciaLegal) {
+      doc.fillColor('#6b7280').fontSize(8).text(`Referência legal: ${a.referenciaLegal}`);
+    }
+    if (a.observacoes) {
+      doc.fillColor('#475569').fontSize(9).text(a.observacoes);
+    }
+    if (a.detectadoAutomaticamente) {
+      doc
+        .fillColor('#9ca3af')
+        .fontSize(7)
+        .text('Detectado automaticamente pelo motor de compliance — confirmar.');
+    }
+    doc.moveDown(0.6);
+    doc
+      .strokeColor('#e5e7eb')
+      .lineWidth(0.5)
+      .moveTo(60, doc.y)
+      .lineTo(doc.page.width - 60, doc.y)
+      .stroke();
+    doc.moveDown(0.4);
+  }
+}
+
+function formatDatePt(d: Date): string {
+  return new Date(d).toLocaleDateString('pt-PT');
+}
+
+function formatMoneyPt(v: bigint, moeda = 'AOA'): string {
+  const major = Number(v) / 100;
+  try {
+    return new Intl.NumberFormat('pt-AO', {
+      style: 'currency',
+      currency: moeda,
+    }).format(major);
+  } catch {
+    return `${major.toFixed(2)} ${moeda}`.trim();
   }
 }
 
