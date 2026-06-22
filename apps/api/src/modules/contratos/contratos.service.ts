@@ -301,22 +301,46 @@ export class ContratosService {
   }
 
   async list(tenantId: string, q: ListContratosQuery) {
+    // L.5: full-text search via tsvector + GIN. Quando q.q está
+    // presente, usamos websearch_to_tsquery (sintaxe user-friendly:
+    // suporta "frase exacta", -negação, OR) sobre o searchVector
+    // pré-computado. O ILIKE %x% antigo era O(n) sequential scan e
+    // não usava o índice GIN existente — degradação séria em 50k+
+    // contratos/tenant.
+    //
+    // Quando q.q está set, fazemos pre-query SQL para obter IDs com
+    // match, depois passamos os IDs para o findMany principal. Mantém
+    // includes e contadores sem duplicar a lógica de filtros.
+    let ftsIds: string[] | undefined;
+    if (q.q && q.q.trim()) {
+      const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM contratos
+        WHERE tenant_id = ${tenantId}::uuid
+          AND deleted_at IS NULL
+          AND (
+            search_vector @@ websearch_to_tsquery('portuguese', ${q.q})
+            OR numero_interno ILIKE ${`%${q.q}%`}
+          )
+        ORDER BY ts_rank(search_vector, websearch_to_tsquery('portuguese', ${q.q})) DESC
+        LIMIT 500
+      `;
+      ftsIds = rows.map((r) => r.id);
+      if (ftsIds.length === 0) {
+        return { data: [], nextCursor: null, total: 0 };
+      }
+    }
+
     const where: Prisma.ContratoWhereInput = {
       tenantId,
       deletedAt: null,
+      ...(ftsIds && { id: { in: ftsIds } }),
       ...(q.estado && { estado: q.estado }),
       ...(q.tipoId && { tipoId: q.tipoId }),
       ...(q.carteiraId && { carteiraId: q.carteiraId }),
       ...(q.responsavelId && { responsavelId: q.responsavelId }),
       ...(q.contraparteId && {
         partes: { some: { entidadeId: q.contraparteId } },
-      }),
-      ...(q.q && {
-        OR: [
-          { titulo: { contains: q.q, mode: 'insensitive' } },
-          { numeroInterno: { contains: q.q, mode: 'insensitive' } },
-          { descricao: { contains: q.q, mode: 'insensitive' } },
-        ],
       }),
     };
 
