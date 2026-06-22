@@ -16,3 +16,11 @@ process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 
 // Keep Jest output readable.
 jest.setTimeout(30_000);
+
+// BigInt JSON serializer — main.ts adiciona este shim em runtime
+// normal, mas testes E2E criam a app via Test.createTestingModule
+// e bypassam main.ts.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};

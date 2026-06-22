@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
+import { AlertsScheduler } from './alerts-scheduler.service';
 import {
   ListNotificationsQuery,
   ListNotificationsQuerySchema,
@@ -25,7 +26,10 @@ import { NotificationsService } from './notifications.service';
 @Controller('notifications')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly alerts: AlertsScheduler,
+  ) {}
 
   @Get()
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER, Role.EXTERNAL)
@@ -54,5 +58,15 @@ export class NotificationsController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.notifications.createTestSet(tenant.tenantId, user.sub);
+  }
+
+  /**
+   * Dispara manualmente o scan de alertas (sem esperar pelo cron diário).
+   * Útil para testes ou para forçar disparo após alteração de datas-chave.
+   */
+  @Post('alerts/run')
+  @Roles(Role.ADMIN)
+  async runAlerts() {
+    return this.alerts.runOnce();
   }
 }

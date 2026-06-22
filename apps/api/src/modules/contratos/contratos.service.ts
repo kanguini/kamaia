@@ -108,7 +108,10 @@ export class ContratosService {
       where,
       take: q.limit + 1,
       ...(q.cursor && { cursor: { id: q.cursor }, skip: 1 }),
-      orderBy: { [q.orderBy]: q.orderDir },
+      // Tuple [campoEscolhido, id] garante ordering determinístico
+      // — sem isto, cursor pagination perde rows quando o campo
+      // primário tem duplicados (e.g. createdAt em batch inserts).
+      orderBy: [{ [q.orderBy]: q.orderDir }, { id: q.orderDir }],
       include: {
         tipo: { select: { codigo: true, nome: true, categoria: true } },
         carteira: { select: { id: true, nome: true } },
