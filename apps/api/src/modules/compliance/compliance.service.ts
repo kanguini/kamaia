@@ -4,6 +4,7 @@ import {
   AuditAction,
   ComplianceContext,
   ContratoEventoTipo,
+  DataChaveTipo,
   EntityType,
   TipoContratoCategoria,
 } from '@kamaia/shared-types';
@@ -176,6 +177,150 @@ export class ComplianceService {
     });
 
     return updated;
+  }
+
+  /**
+   * Marca o acto como EM_CURSO — útil quando o utilizador iniciou a
+   * diligência (ex.: pedido de liquidação à AGT, agendamento de
+   * registo predial) mas ainda não tem o comprovativo final.
+   */
+  async marcarEmCurso(
+    actoId: string,
+    tenantId: string,
+    actorUserId: string,
+    dto: { observacoes?: string },
+  ) {
+    const acto = await this.assertActo(actoId, tenantId);
+    const updated = await this.prisma.contratoActoRegulatorio.update({
+      where: { id: actoId },
+      data: {
+        estado: ActoEstado.EM_CURSO,
+        observacoes: dto.observacoes ?? acto.observacoes,
+        responsavelId: actorUserId,
+      },
+    });
+    await this.prisma.contratoEvento.create({
+      data: {
+        contratoId: acto.contratoId,
+        tipo: ContratoEventoTipo.ACTO_DETECTADO,
+        resumo: `${acto.tipo} marcado como em curso`,
+        payload: { actoId, regraId: acto.regraId } as object,
+        actorUserId,
+        actorTipo: 'USER',
+      },
+    });
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.UPDATE,
+      entityType: EntityType.CONTRATO_ACTO_REGULATORIO,
+      entityId: actoId,
+      beforeData: { estado: acto.estado } as object,
+      afterData: { estado: updated.estado } as object,
+    });
+    return updated;
+  }
+
+  /**
+   * Marca o acto como NAO_APLICAVEL — utilizador rejeita a sugestão
+   * do engine porque, no caso concreto, não aplica (e.g. parte detém
+   * isenção comprovada). Requer motivo no `observacoes` para audit
+   * trail defensável.
+   */
+  async marcarInaplicavel(
+    actoId: string,
+    tenantId: string,
+    actorUserId: string,
+    dto: { motivo: string },
+  ) {
+    const acto = await this.assertActo(actoId, tenantId);
+    const updated = await this.prisma.contratoActoRegulatorio.update({
+      where: { id: actoId },
+      data: {
+        estado: ActoEstado.NAO_APLICAVEL,
+        observacoes: dto.motivo,
+        responsavelId: actorUserId,
+      },
+    });
+    await this.prisma.contratoEvento.create({
+      data: {
+        contratoId: acto.contratoId,
+        tipo: ContratoEventoTipo.ACTO_DETECTADO,
+        resumo: `${acto.tipo} marcado como não aplicável: ${dto.motivo.slice(0, 100)}`,
+        payload: { actoId, regraId: acto.regraId, motivo: dto.motivo } as object,
+        actorUserId,
+        actorTipo: 'USER',
+      },
+    });
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.UPDATE,
+      entityType: EntityType.CONTRATO_ACTO_REGULATORIO,
+      entityId: actoId,
+      beforeData: { estado: acto.estado } as object,
+      afterData: { estado: updated.estado, motivo: dto.motivo } as object,
+    });
+    return updated;
+  }
+
+  /**
+   * Agenda um prazo para o acto criando uma `ContratoDataChave`
+   * vinculada. Útil para o acto entrar nos alertas de vencimento
+   * normais do contrato (alerts-scheduler já varre datas-chave).
+   */
+  async agendarPrazo(
+    actoId: string,
+    tenantId: string,
+    actorUserId: string,
+    dto: { data: Date; descricao?: string },
+  ) {
+    const acto = await this.assertActo(actoId, tenantId);
+    const dataChave = await this.prisma.contratoDataChave.create({
+      data: {
+        contratoId: acto.contratoId,
+        tipo: DataChaveTipo.OUTRO,
+        data: dto.data,
+        descricao:
+          dto.descricao ??
+          `Prazo ${acto.tipo.replaceAll('_', ' ').toLowerCase()} (compliance)`,
+        cumprida: false,
+      },
+    });
+    const updated = await this.prisma.contratoActoRegulatorio.update({
+      where: { id: actoId },
+      data: { prazoLimite: dto.data, responsavelId: actorUserId },
+    });
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.UPDATE,
+      entityType: EntityType.CONTRATO_ACTO_REGULATORIO,
+      entityId: actoId,
+      afterData: { prazoLimite: dto.data, dataChaveId: dataChave.id } as object,
+    });
+    return { acto: updated, dataChave };
+  }
+
+  private async assertActo(actoId: string, tenantId: string) {
+    const acto = await this.prisma.contratoActoRegulatorio.findFirst({
+      where: { id: actoId, contrato: { tenantId } },
+    });
+    if (!acto) throw new NotFoundException('Acto not found');
+    return acto;
+  }
+
+  /** Lista actos de um contrato, em ordem natural por prazo. */
+  async listarPorContrato(contratoId: string, tenantId: string) {
+    const c = await this.prisma.contrato.findFirst({
+      where: { id: contratoId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!c) throw new NotFoundException('Contrato not found');
+    return this.prisma.contratoActoRegulatorio.findMany({
+      where: { contratoId },
+      orderBy: [{ prazoLimite: 'asc' }, { createdAt: 'asc' }],
+    });
   }
 
   /** Lista actos por estado, com prazo a vencer — útil para dashboards. */

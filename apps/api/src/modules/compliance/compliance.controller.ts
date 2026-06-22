@@ -27,6 +27,19 @@ const MarcarConcluidoSchema = z.object({
   custoEmAKZ: z.coerce.bigint().optional(),
 });
 
+const MarcarEmCursoSchema = z.object({
+  observacoes: z.string().max(2000).optional(),
+});
+
+const MarcarInaplicavelSchema = z.object({
+  motivo: z.string().min(5).max(2000),
+});
+
+const AgendarPrazoSchema = z.object({
+  data: z.coerce.date(),
+  descricao: z.string().max(300).optional(),
+});
+
 @Controller('compliance')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class ComplianceController {
@@ -40,6 +53,16 @@ export class ComplianceController {
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
   async listarRegras() {
     return this.engine.listAllRules();
+  }
+
+  /** Actos regulatórios de um contrato específico. */
+  @Get('contratos/:contratoId/actos')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
+  async listarPorContrato(
+    @Tenant() tenant: TenantContext,
+    @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
+  ) {
+    return this.service.listarPorContrato(contratoId, tenant.tenantId);
   }
 
   /** Pendentes a vencer nos próximos N dias. */
@@ -77,5 +100,51 @@ export class ComplianceController {
     dto: z.infer<typeof MarcarConcluidoSchema>,
   ) {
     return this.service.marcarConcluido(actoId, tenant.tenantId, user.sub, dto);
+  }
+
+  /** Marca acto como em curso (diligência iniciada, sem comprovativo). */
+  @Patch('actos/:actoId/em-curso')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async emCurso(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('actoId', new ParseUUIDPipe()) actoId: string,
+    @Body(new ParseZodPipe(MarcarEmCursoSchema))
+    dto: z.infer<typeof MarcarEmCursoSchema>,
+  ) {
+    return this.service.marcarEmCurso(actoId, tenant.tenantId, user.sub, dto);
+  }
+
+  /**
+   * Marca acto como NAO_APLICAVEL. Exige motivo para audit trail —
+   * o engine sugere, o utilizador rejeita justificando. Defesa em
+   * caso de auditoria fiscal/regulatória posterior.
+   */
+  @Patch('actos/:actoId/inaplicavel')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async inaplicavel(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('actoId', new ParseUUIDPipe()) actoId: string,
+    @Body(new ParseZodPipe(MarcarInaplicavelSchema))
+    dto: z.infer<typeof MarcarInaplicavelSchema>,
+  ) {
+    return this.service.marcarInaplicavel(actoId, tenant.tenantId, user.sub, dto);
+  }
+
+  /**
+   * Agenda prazo para o acto, criando uma data-chave linkada — entra
+   * automaticamente nos alertas de vencimento via alerts-scheduler.
+   */
+  @Post('actos/:actoId/agendar-prazo')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async agendarPrazo(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('actoId', new ParseUUIDPipe()) actoId: string,
+    @Body(new ParseZodPipe(AgendarPrazoSchema))
+    dto: z.infer<typeof AgendarPrazoSchema>,
+  ) {
+    return this.service.agendarPrazo(actoId, tenant.tenantId, user.sub, dto);
   }
 }
