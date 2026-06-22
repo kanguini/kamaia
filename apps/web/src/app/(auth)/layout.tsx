@@ -380,8 +380,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <aside className="k2-auth-brand">
         <div className="k2-auth-noise" aria-hidden="true" />
         <div className="k2-auth-slogan">
-          <p>Gestão jurídica inteligente,</p>
-          <p>Pessoas, Processos e Tecnologia</p>
+          <p>O sistema operativo</p>
+          <p>dos teus contratos.</p>
         </div>
       </aside>
 

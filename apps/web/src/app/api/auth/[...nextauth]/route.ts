@@ -2,37 +2,42 @@ import NextAuth, { NextAuthOptions, User } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { api } from '@/lib/api'
 
+/**
+ * NextAuth handler — adaptado ao novo formato de resposta da API CLM.
+ *
+ * Resposta de /auth/login (CLM):
+ *   { accessToken, user, tenants[] }
+ *
+ * (O legacy retornava `{ data: { tokens: { accessToken, refreshToken }, user } }`.
+ * O NextAuth handler ficou stale após o pivot — fixado aqui.)
+ *
+ * O API novo não tem `/auth/refresh` nem refresh tokens explícitos.
+ * O JWT dura 24h por defeito (config no backend); quando expira o
+ * utilizador re-loga.
+ */
 interface AuthResponse {
-  data: {
-    tokens: {
-      accessToken: string
-      refreshToken: string
-    }
-    user: {
-      id: string
-      email: string
-      firstName: string
-      lastName: string
-    }
-  }
-}
-
-interface RefreshResponse {
-  data: {
-    tokens: {
-      accessToken: string
-      refreshToken: string
-    }
-  }
-}
-
-interface MeResponse {
-  data: {
+  accessToken: string
+  user: {
     id: string
     email: string
     firstName: string
     lastName: string
   }
+  tenants?: Array<{
+    id: string
+    slug: string
+    nome: string
+    plan: string
+    role: string
+    isDefault?: boolean
+  }>
+}
+
+interface MeResponse {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
 }
 
 const authOptions: NextAuthOptions = {
@@ -58,16 +63,20 @@ const authOptions: NextAuthOptions = {
             }),
           })
 
-          const { tokens, user } = response.data
+          if (!response?.accessToken || !response?.user) {
+            console.error('Auth: unexpected response shape', response)
+            return null
+          }
+
+          const { accessToken, user } = response
 
           return {
             id: user.id,
             email: user.email,
-            name: `${user.firstName} ${user.lastName}`,
+            name: `${user.firstName} ${user.lastName}`.trim(),
             firstName: user.firstName,
             lastName: user.lastName,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
+            accessToken,
           } as User
         } catch (error) {
           console.error('Auth error:', error)
@@ -80,7 +89,6 @@ const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (account && user && account.provider === 'credentials') {
         token.accessToken = (user as User).accessToken
-        token.refreshToken = (user as User).refreshToken
         token.user = {
           id: user.id as string,
           email: user.email as string,
@@ -89,34 +97,7 @@ const authOptions: NextAuthOptions = {
         }
       }
 
-      if (token.accessToken) {
-        try {
-          const payload = JSON.parse(
-            Buffer.from((token.accessToken as string).split('.')[1], 'base64').toString(),
-          )
-          const exp = payload.exp * 1000
-
-          if (Date.now() >= exp - 60_000) {
-            try {
-              const response = await api<RefreshResponse>('/auth/refresh', {
-                method: 'POST',
-                noTenant: true,
-                body: JSON.stringify({
-                  refreshToken: token.refreshToken,
-                }),
-              })
-              token.accessToken = response.data.tokens.accessToken
-              token.refreshToken = response.data.tokens.refreshToken
-            } catch (error) {
-              console.error('Token refresh error:', error)
-              return token
-            }
-          }
-        } catch (error) {
-          console.error('JWT decode error:', error)
-        }
-      }
-
+      // Re-hidrata user info se ainda não tem (sessão antiga)
       if (!token.user && token.accessToken) {
         try {
           const me = await api<MeResponse>('/users/me', {
@@ -124,10 +105,10 @@ const authOptions: NextAuthOptions = {
             noTenant: true,
           })
           token.user = {
-            id: me.data.id,
-            email: me.data.email,
-            firstName: me.data.firstName,
-            lastName: me.data.lastName,
+            id: me.id,
+            email: me.email,
+            firstName: me.firstName,
+            lastName: me.lastName,
           }
         } catch (error) {
           console.error('JWT hydrate /users/me error:', error)
@@ -141,8 +122,6 @@ const authOptions: NextAuthOptions = {
         session.user = token.user
       }
       session.accessToken = token.accessToken as string
-      session.refreshToken = token.refreshToken as string | undefined
-
       return session
     },
   },
@@ -152,6 +131,7 @@ const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
+    maxAge: 24 * 60 * 60,  // 24h — alinhado com JWT da API
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
