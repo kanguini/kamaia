@@ -5,17 +5,26 @@ import { useSession } from 'next-auth/react'
 import { api, ACTIVE_TENANT_KEY, getActiveTenantId, setActiveTenantId } from '@/lib/api'
 import type { Role, TenantPlan } from '@kamaia/shared-types'
 
+/**
+ * Shape devolvido por `GET /tenants` no API CLM:
+ *
+ *   [
+ *     { id, slug, nome, plan, status, parentTenantId, logoUrl, role, isDefault },
+ *     ...
+ *   ]
+ *
+ * Não está embrulhado em `{ data: [...] }` — é array directo.
+ */
 export interface TenantMembership {
-  tenantId: string
-  tenantName: string
-  role: Role
+  id: string
+  slug: string
+  nome: string
   plan: TenantPlan
+  status: string
   parentTenantId: string | null
-  isDefault?: boolean
-}
-
-interface TenantsResponse {
-  data: TenantMembership[]
+  logoUrl: string | null
+  role: Role
+  isDefault: boolean
 }
 
 export function useTenants() {
@@ -35,19 +44,22 @@ export function useTenants() {
     }
     let cancelled = false
     setLoading(true)
-    api<TenantsResponse>('/tenants', {
+    api<TenantMembership[]>('/tenants', {
       token: session.accessToken,
       noTenant: true,
     })
-      .then((res) => {
+      .then((list) => {
         if (cancelled) return
-        const list = res.data ?? []
-        setTenants(list)
-        // First-login bootstrap: if no active tenant set, pick default or first.
-        if (!getActiveTenantId() && list.length > 0) {
-          const def = list.find((t) => t.isDefault) ?? list[0]
-          setActiveTenantId(def.tenantId)
-          setActiveTenantIdState(def.tenantId)
+        const safe = Array.isArray(list) ? list : []
+        setTenants(safe)
+        // First-login bootstrap: se não há tenant activo, escolhe default ou primeiro.
+        // Também recovers se o tenant guardado já não estiver na lista actual.
+        const stored = getActiveTenantId()
+        const validStored = stored && safe.some((t) => t.id === stored)
+        if (!validStored && safe.length > 0) {
+          const def = safe.find((t) => t.isDefault) ?? safe[0]
+          setActiveTenantId(def.id)
+          setActiveTenantIdState(def.id)
         }
       })
       .catch((err) => {
@@ -65,7 +77,6 @@ export function useTenants() {
     setActiveTenantId(tenantId)
     setActiveTenantIdState(tenantId)
     if (typeof window !== 'undefined') {
-      // Force a reload so every cached fetch refreshes under the new tenant.
       window.location.reload()
     }
   }, [])
@@ -81,7 +92,7 @@ export function useTenants() {
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  const active = tenants.find((t) => t.tenantId === activeTenantId) ?? null
+  const active = tenants.find((t) => t.id === activeTenantId) ?? null
 
   return { tenants, active, activeTenantId, loading, switchTenant }
 }

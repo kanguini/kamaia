@@ -245,7 +245,7 @@ function TenantSwitcher() {
       >
         <Building2 size={14} />
         <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {active?.tenantName ?? 'Selecciona organização'}
+          {active?.nome ?? 'Selecciona organização'}
         </span>
         {active?.plan === TenantPlan.AGENCY && (
           <span style={{ fontSize: 10, color: 'var(--k2-accent)', letterSpacing: '0.06em' }}>AGENCY</span>
@@ -269,15 +269,15 @@ function TenantSwitcher() {
           }}
         >
           {tenants.map((t) => {
-            const isActive = active?.tenantId === t.tenantId
+            const isActive = active?.id === t.id
             return (
               <button
-                key={t.tenantId}
+                key={t.id}
                 type="button"
                 role="option"
                 aria-selected={isActive}
                 onClick={() => {
-                  if (!isActive) switchTenant(t.tenantId)
+                  if (!isActive) switchTenant(t.id)
                   setOpen(false)
                 }}
                 style={{
@@ -297,7 +297,7 @@ function TenantSwitcher() {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.tenantName}
+                    {t.nome}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--k2-text-dim)' }}>
                     {t.plan} · {t.role}
