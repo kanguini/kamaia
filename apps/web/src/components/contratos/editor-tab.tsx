@@ -18,7 +18,7 @@
  * drafting manual sólido.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
 import { useMutation } from '@/hooks/use-api'
@@ -31,6 +31,7 @@ import { VersaoDireccao } from '@kamaia/shared-types'
 import { Save, FileText, Eye, Code2, Sparkles } from 'lucide-react'
 import { ComentariosPanel } from './comentarios-panel'
 import { DraftIaDrawer, type DraftResult } from './draft-ia-drawer'
+import { MarkdownToolbar, applyKeyboardShortcut } from './markdown-toolbar'
 
 interface VersaoFull {
   id: string
@@ -57,6 +58,7 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
   const [viewMode, setViewMode] = useState<ViewMode>('split')
   const [creating, setCreating] = useState(false)
   const [iaOpen, setIaOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const { mutate: createVersao, loading: creatingLoading, error: createErr } = useMutation<
     unknown,
@@ -385,18 +387,34 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
 
       <div className={`editor-grid ${viewMode === 'split' ? 'split' : 'single'}`}>
         {(viewMode === 'editor' || viewMode === 'split') && (
-          <textarea
-            className="md-input"
-            value={draft}
-            onChange={(e) => onChangeDraft(e.target.value)}
-            disabled={readOnly}
-            placeholder={
-              readOnly
-                ? 'Versão já assinada. Cria uma nova versão para editar.'
-                : '# Cláusula 1.ª — Objecto\n\nEscreve o corpo do contrato em markdown.\n\n## 1.1.\n\nO presente contrato tem por objecto...'
-            }
-            spellCheck={false}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <MarkdownToolbar
+              textareaRef={textareaRef}
+              value={draft}
+              onChange={onChangeDraft}
+              disabled={readOnly}
+            />
+            <textarea
+              ref={textareaRef}
+              className="md-input"
+              value={draft}
+              onChange={(e) => onChangeDraft(e.target.value)}
+              onKeyDown={(e) => {
+                const ta = textareaRef.current
+                if (!ta) return
+                const consumed = applyKeyboardShortcut(e, ta, draft, onChangeDraft)
+                if (consumed) e.preventDefault()
+              }}
+              disabled={readOnly}
+              placeholder={
+                readOnly
+                  ? 'Versão já assinada. Cria uma nova versão para editar.'
+                  : '# Cláusula 1.ª — Objecto\n\nEscreve o corpo do contrato em markdown.\n\n## 1.1.\n\nO presente contrato tem por objecto...'
+              }
+              spellCheck={false}
+              style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+            />
+          </div>
         )}
         {(viewMode === 'preview' || viewMode === 'split') && (
           <div
