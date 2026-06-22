@@ -9,6 +9,7 @@ import {
 } from '@kamaia/shared-types';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { ComplianceEngine } from './engine/compliance.engine';
 
 /**
@@ -30,6 +31,7 @@ export class ComplianceService {
     private readonly prisma: PrismaService,
     private readonly engine: ComplianceEngine,
     private readonly audit: AuditService,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   /**
@@ -105,6 +107,19 @@ export class ComplianceService {
       afterData: { regras: novos.map((d) => ({ id: d.regraId, tipo: d.tipo })) },
     });
 
+    // Webhook: cada acto detectado dispara um evento separado
+    for (const d of novos) {
+      await this.webhooks.enqueueEvent(tenantId, 'acto_regulatorio.detectado', {
+        contratoId,
+        tipo: d.tipo,
+        regraId: d.regraId,
+        regraVersao: d.regraVersao,
+        tgisVerbaNumero: d.tgisVerbaNumero,
+        valorLiquidar: d.valorLiquidar?.toString(),
+        prazoLimite: d.prazoLimite?.toISOString(),
+      });
+    }
+
     return { adicionados: novos.length, totalSugeridos: detectados.length };
   }
 
@@ -150,6 +165,14 @@ export class ComplianceService {
       entityId: actoId,
       beforeData: acto as object,
       afterData: updated as object,
+    });
+
+    await this.webhooks.enqueueEvent(tenantId, 'acto_regulatorio.concluido', {
+      contratoId: acto.contratoId,
+      actoId,
+      tipo: acto.tipo,
+      regraId: acto.regraId,
+      concluidoEm: updated.concluidoEm?.toISOString(),
     });
 
     return updated;

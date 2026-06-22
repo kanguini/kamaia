@@ -14,6 +14,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { ComplianceService } from '../compliance/compliance.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import {
   CreateContratoDto,
   ListContratosQuery,
@@ -26,6 +27,7 @@ export class ContratosService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly compliance: ComplianceService,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   /**
@@ -62,6 +64,15 @@ export class ContratosService {
       entityType: EntityType.CONTRATO,
       entityId: contrato.id,
       afterData: contrato as object,
+    });
+
+    // Dispara webhook subscriptions interessadas
+    await this.webhooks.enqueueEvent(tenantId, 'contrato.criado', {
+      contratoId: contrato.id,
+      numeroInterno: contrato.numeroInterno,
+      titulo: contrato.titulo,
+      tipoId: contrato.tipoId,
+      estado: contrato.estado,
     });
 
     return contrato;
@@ -229,6 +240,29 @@ export class ContratosService {
     // Dispara compliance em estados críticos
     if (para === ContratoEstado.ASSINADO || para === ContratoEstado.REPOSITORIO) {
       await this.compliance.avaliarContrato(id, tenantId, actorUserId);
+    }
+
+    // Webhook genérico para qualquer transição
+    await this.webhooks.enqueueEvent(tenantId, 'contrato.estado_alterado', {
+      contratoId: id,
+      numeroInterno: contrato.numeroInterno,
+      de: contrato.estado,
+      para,
+      motivo,
+    });
+
+    // Webhooks específicos para estados-chave
+    if (para === ContratoEstado.ASSINADO) {
+      await this.webhooks.enqueueEvent(tenantId, 'contrato.assinado', {
+        contratoId: id,
+        numeroInterno: contrato.numeroInterno,
+      });
+    }
+    if (para === ContratoEstado.TERMINADO) {
+      await this.webhooks.enqueueEvent(tenantId, 'contrato.terminado', {
+        contratoId: id,
+        numeroInterno: contrato.numeroInterno,
+      });
     }
 
     return updated;
