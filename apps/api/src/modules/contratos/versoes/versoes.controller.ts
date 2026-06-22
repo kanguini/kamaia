@@ -6,6 +6,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -75,5 +76,21 @@ export class ContratoVersoesController {
     dto: z.infer<typeof EditarCorpoSchema>,
   ) {
     return this.versoes.editarCorpo(tenant.tenantId, contratoId, versaoId, dto);
+  }
+
+  /**
+   * Diff line-by-line entre esta versão e a anterior.
+   * Query param `against` permite escolher outra versão como base
+   * (default = imediatamente anterior em ordem).
+   */
+  @Get(':versaoId/diff')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
+  async diff(
+    @Tenant() tenant: TenantContext,
+    @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
+    @Param('versaoId', new ParseUUIDPipe()) versaoId: string,
+    @Query('against') against?: string,
+  ) {
+    return this.versoes.diff(tenant.tenantId, contratoId, versaoId, against);
   }
 }

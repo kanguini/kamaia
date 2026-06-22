@@ -4,6 +4,7 @@ import {
   VersaoDireccao,
 } from '@kamaia/shared-types';
 import { renderMarkdownToHtml } from '../../../common/markdown';
+import { diffLines, type DiffResult } from '../../../common/text-diff';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -115,6 +116,82 @@ export class ContratoVersoesService {
     });
   }
 
+  /**
+   * Diff line-by-line entre duas versões do mesmo contrato.
+   * Tipicamente usado no fluxo de negociação: "v3.0-contraparte"
+   * versus "v2.0-interna" para ver o que mudou na ronda anterior.
+   *
+   * Se `versaoAnteriorId` for omitida, escolhe automaticamente a
+   * versão imediatamente anterior em ordem.
+   *
+   * O diff é calculado on-demand (não cacheado) — o markdown é a fonte
+   * de verdade; cachar diff invalidaria com cada edição.
+   */
+  async diff(
+    tenantId: string,
+    contratoId: string,
+    versaoId: string,
+    versaoAnteriorId?: string,
+  ): Promise<DiffResult & { versaoNova: VersaoRef; versaoAnterior: VersaoRef }> {
+    await this.assertContrato(tenantId, contratoId);
+
+    const versaoNova = await this.prisma.contratoVersao.findFirst({
+      where: { id: versaoId, contratoId },
+      select: { id: true, ordem: true, versao: true, corpoMarkdown: true, createdAt: true },
+    });
+    if (!versaoNova) throw new NotFoundException('Versão not found');
+    if (versaoNova.corpoMarkdown === null) {
+      throw new BadRequestException(
+        'Esta versão não tem corpo editável (provavelmente é importada como PDF). Diff só funciona em versões com markdown.',
+      );
+    }
+
+    let versaoAnterior;
+    if (versaoAnteriorId) {
+      versaoAnterior = await this.prisma.contratoVersao.findFirst({
+        where: { id: versaoAnteriorId, contratoId },
+        select: { id: true, ordem: true, versao: true, corpoMarkdown: true, createdAt: true },
+      });
+    } else {
+      // Auto-pick: versão imediatamente anterior (ordem < versaoNova.ordem) com corpoMarkdown
+      versaoAnterior = await this.prisma.contratoVersao.findFirst({
+        where: {
+          contratoId,
+          ordem: { lt: versaoNova.ordem },
+          corpoMarkdown: { not: null },
+        },
+        orderBy: { ordem: 'desc' },
+        select: { id: true, ordem: true, versao: true, corpoMarkdown: true, createdAt: true },
+      });
+    }
+
+    if (!versaoAnterior) {
+      // Primeiro draft — diff contra string vazia (tudo é adição)
+      const result = diffLines('', versaoNova.corpoMarkdown);
+      return {
+        ...result,
+        versaoNova: stripCorpo(versaoNova),
+        versaoAnterior: {
+          id: '',
+          ordem: 0,
+          versao: '(vazio)',
+          createdAt: versaoNova.createdAt,
+        },
+      };
+    }
+
+    const result = diffLines(
+      versaoAnterior.corpoMarkdown ?? '',
+      versaoNova.corpoMarkdown,
+    );
+
+    return {
+      ...result,
+      versaoNova: stripCorpo(versaoNova),
+      versaoAnterior: stripCorpo(versaoAnterior),
+    };
+  }
+
   private async assertContrato(tenantId: string, contratoId: string) {
     const c = await this.prisma.contrato.findFirst({
       where: { id: contratoId, tenantId, deletedAt: null },
@@ -122,4 +199,15 @@ export class ContratoVersoesService {
     });
     if (!c) throw new NotFoundException('Contrato not found');
   }
+}
+
+export interface VersaoRef {
+  id: string;
+  ordem: number;
+  versao: string;
+  createdAt: Date;
+}
+
+function stripCorpo(v: { id: string; ordem: number; versao: string; createdAt: Date }): VersaoRef {
+  return { id: v.id, ordem: v.ordem, versao: v.versao, createdAt: v.createdAt };
 }

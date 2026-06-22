@@ -24,7 +24,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Plus, Download, Sparkles, FileText } from 'lucide-react'
+import { Plus, Download, Sparkles, FileText, GitCompare } from 'lucide-react'
 import { VersaoDireccao } from '@kamaia/shared-types'
 import { api, apiUrl, getActiveTenantId } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +36,7 @@ import {
   type UploadedDocument,
 } from '@/components/ui/document-dropzone'
 import { fmtDateTime } from '@/lib/clm-format'
+import { DiffDrawer } from './diff-drawer'
 
 interface Versao {
   id: string
@@ -77,6 +78,7 @@ export function VersoesTab({ contratoId }: { contratoId: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [diffVersaoId, setDiffVersaoId] = useState<string | null>(null)
 
   const fetchVersoes = async () => {
     if (status !== 'authenticated' || !session?.accessToken) return
@@ -146,7 +148,15 @@ export function VersoesTab({ contratoId }: { contratoId: string }) {
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {items.map((v) => (
-              <VersaoRow key={v.id} versao={v} />
+              <VersaoRow
+                key={v.id}
+                versao={v}
+                onDiff={
+                  v.corpoMarkdown !== null
+                    ? () => setDiffVersaoId(v.id)
+                    : undefined
+                }
+              />
             ))}
           </ul>
         )}
@@ -162,13 +172,30 @@ export function VersoesTab({ contratoId }: { contratoId: string }) {
           await fetchVersoes()
         }}
       />
+
+      <DiffDrawer
+        open={diffVersaoId !== null}
+        onClose={() => setDiffVersaoId(null)}
+        contratoId={contratoId}
+        versaoId={diffVersaoId}
+        versaoLabel={items.find((v) => v.id === diffVersaoId)?.versao}
+        outrasVersoes={items
+          .filter((v) => v.id !== diffVersaoId && v.corpoMarkdown !== null)
+          .map((v) => ({ id: v.id, ordem: v.ordem, versao: v.versao }))}
+      />
     </div>
   )
 }
 
 // ─── Linha ────────────────────────────────────
 
-function VersaoRow({ versao }: { versao: Versao }) {
+function VersaoRow({
+  versao,
+  onDiff,
+}: {
+  versao: Versao
+  onDiff?: () => void
+}) {
   const downloadDoc = () => {
     if (!versao.documentId) return
     void downloadById(versao.documentId)
@@ -218,15 +245,27 @@ function VersaoRow({ versao }: { versao: Versao }) {
           </div>
         )}
       </div>
-      {versao.documentId && (
-        <Button
-          variant="secondary"
-          onClick={downloadDoc}
-          leftIcon={<Download size={12} />}
-        >
-          Anexo
-        </Button>
-      )}
+      <div style={{ display: 'inline-flex', gap: 6 }}>
+        {onDiff && (
+          <Button
+            variant="secondary"
+            onClick={onDiff}
+            leftIcon={<GitCompare size={12} />}
+            title="Comparar com versão anterior"
+          >
+            Comparar
+          </Button>
+        )}
+        {versao.documentId && (
+          <Button
+            variant="secondary"
+            onClick={downloadDoc}
+            leftIcon={<Download size={12} />}
+          >
+            Anexo
+          </Button>
+        )}
+      </div>
     </li>
   )
 }
