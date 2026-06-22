@@ -9,10 +9,14 @@ import {
   TerminacaoTipo,
 } from '@kamaia/shared-types';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WebhooksService } from '../../webhooks/webhooks.service';
 
 @Injectable()
 export class ContratoTerminacaoService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhooks: WebhooksService,
+  ) {}
 
   async registar(
     tenantId: string,
@@ -34,8 +38,8 @@ export class ContratoTerminacaoService {
       throw new BadRequestException('Contrato já terminado');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const term = await tx.contratoTerminacao.create({
+    const term = await this.prisma.$transaction(async (tx) => {
+      const t = await tx.contratoTerminacao.create({
         data: {
           contratoId,
           createdBy: actorUserId,
@@ -56,8 +60,17 @@ export class ContratoTerminacaoService {
           actorTipo: 'USER',
         },
       });
-      return term;
+      return t;
     });
+
+    await this.webhooks.enqueueEvent(tenantId, 'contrato.terminado', {
+      contratoId,
+      numeroInterno: c.numeroInterno,
+      tipoTerminacao: dto.tipo,
+      dataEfectiva: dto.dataEfectiva.toISOString(),
+    });
+
+    return term;
   }
 
   async get(tenantId: string, contratoId: string) {
