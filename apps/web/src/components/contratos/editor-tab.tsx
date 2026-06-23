@@ -28,11 +28,12 @@ import { Badge } from '@/components/ui/badge'
 import { renderMarkdownPreview } from '@/lib/markdown'
 import { fmtDateTime } from '@/lib/clm-format'
 import { VersaoDireccao } from '@kamaia/shared-types'
-import { Save, FileText, Eye, Code2, Sparkles, BookmarkPlus } from 'lucide-react'
+import { Save, FileText, Eye, Code2, Sparkles, BookmarkPlus, FileSearch } from 'lucide-react'
 import { ComentariosPanel } from './comentarios-panel'
 import { DraftIaDrawer, type DraftResult } from './draft-ia-drawer'
 import { MarkdownToolbar, applyKeyboardShortcut } from './markdown-toolbar'
 import { SaveClausulaDrawer } from './save-clausula-drawer'
+import { PdfPreviewDrawer } from './pdf-preview-drawer'
 
 interface VersaoFull {
   id: string
@@ -61,6 +62,7 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
   const [iaOpen, setIaOpen] = useState(false)
   const [saveClausulaOpen, setSaveClausulaOpen] = useState(false)
   const [selectedText, setSelectedText] = useState('')
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const { mutate: createVersao, loading: creatingLoading, error: createErr } = useMutation<
@@ -377,6 +379,14 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
         >
           Redigir com IA
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => setPdfPreviewOpen(true)}
+          leftIcon={<FileSearch size={13} />}
+          title="Pré-visualiza o PDF completo do contrato (corpo + folha de assinaturas + compliance)"
+        >
+          Preview PDF
+        </Button>
         <Button variant="secondary" onClick={onNovaVersao} loading={creating || creatingLoading}>
           Nova versão
         </Button>
@@ -454,6 +464,12 @@ export function EditorTab({ contratoId }: { contratoId: string }) {
         open={saveClausulaOpen}
         onClose={() => setSaveClausulaOpen(false)}
         textoSelecionado={selectedText}
+        contratoId={contratoId}
+      />
+
+      <PdfPreviewDrawer
+        open={pdfPreviewOpen}
+        onClose={() => setPdfPreviewOpen(false)}
         contratoId={contratoId}
       />
 
