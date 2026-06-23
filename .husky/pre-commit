@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Pre-commit hook — bloqueia commits que falham lint.
+#
+# Estratégia:
+#   - lint-staged corre eslint/next-lint só sobre os ficheiros em stage
+#     (muito mais rápido que `turbo lint` sobre o monorepo inteiro)
+#   - --max-warnings 0 garante que mesmo warnings bloqueiam (alinhado
+#     com o Vercel, que falha o build em qualquer ESLint error)
+#   - Se precisares de fazer commit emergência sem lint, usa:
+#       git commit --no-verify -m "..."
+#     (NÃO o faças em produção sem justificação clara no commit msg)
+
+npx lint-staged

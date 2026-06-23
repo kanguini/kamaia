@@ -15,9 +15,26 @@
     "migrate": "cd apps/api && npx prisma migrate dev",
     "seed": "cd apps/api && npx ts-node prisma/seed.ts",
     "db:studio": "cd apps/api && npx prisma studio",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": [
+      "bash -c 'cd apps/web && npx next lint --max-warnings 0 --file ${0#apps/web/}'"
+    ],
+    "apps/api/**/*.ts": [
+      "bash -c 'cd apps/api && npx eslint --max-warnings 0'"
+    ],
+    "apps/marketing/**/*.{ts,tsx}": [
+      "bash -c 'cd apps/marketing && npx next lint --max-warnings 0 --file ${0#apps/marketing/}'"
+    ],
+    "packages/**/*.ts": [
+      "bash -c 'cd packages/shared-types && npx tsc --noEmit'"
+    ]
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "turbo": "^2.3.0",
     "typescript": "^5.4.0"
   },
