@@ -70,12 +70,26 @@ export class TenantGuard implements CanActivate {
       });
 
       if (parentMembership && parentMembership.acceptedAt) {
+        // AUDIT fix: herança de papel de parent → child restrita.
+        // Anteriormente o user assumia o seu papel exacto do parent
+        // (ex.: LEGAL_LEAD do parent virava LEGAL_LEAD em qualquer
+        // child). Isso é privilege creep — a Membership child existe
+        // precisamente para o tenant escolher níveis distintos.
+        //
+        // Política nova: apenas ADMIN do parent herda como ADMIN no
+        // child (modo AGENCY). Outros papéis são rebaixados para
+        // VIEWER no child — leitura sem mutação, salvo Membership
+        // explícita.
+        const inheritedRole =
+          parentMembership.role === 'ADMIN' ? 'ADMIN' : 'VIEWER';
+
         request.tenant = {
           tenantId,
-          role: parentMembership.role,
+          role: inheritedRole,
           parentTenantId: tenant.parentTenantId,
           plan: tenant.plan,
           viaParent: true,
+          parentRole: parentMembership.role,
         };
         return true;
       }

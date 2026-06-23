@@ -78,6 +78,43 @@ export class MailService {
       return { ok: false, stubbed: false, url, error: (err as Error).message };
     }
   }
+
+  /**
+   * Envio genérico de email (sem template). Usado pelo
+   * NotificationDeliveryWorker para entregar alertas in-app que o
+   * tenant configurou como EMAIL.
+   *
+   * Mesmo padrão graceful: se Resend não configurado, loga e devolve
+   * stubbed=true; se falha, devolve ok=false sem throw.
+   */
+  async sendGeneric(params: {
+    to: string;
+    subject: string;
+    text: string;
+  }): Promise<{ ok: boolean; stubbed: boolean; id?: string; error?: string }> {
+    const html = `<pre style="font-family: -apple-system, sans-serif; white-space: pre-wrap;">${params.text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')}</pre>`;
+
+    if (!this.resend) {
+      this.logger.log(`[STUB] Email para ${params.to}: ${params.subject}`);
+      return { ok: true, stubbed: true };
+    }
+    try {
+      const result = await this.resend.emails.send({
+        from: this.fromAddress,
+        to: params.to,
+        subject: params.subject,
+        html,
+        text: params.text,
+      });
+      return { ok: true, stubbed: false, id: result.data?.id };
+    } catch (err) {
+      const msg = (err as Error).message;
+      this.logger.error(`Falhou envio genérico para ${params.to}: ${msg}`);
+      return { ok: false, stubbed: false, error: msg };
+    }
+  }
 }
 
 function renderInviteHtml(p: {
