@@ -19,6 +19,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
+import { MembershipsService } from '../memberships/memberships.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 
@@ -40,6 +41,13 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, ip?: string) {
+    // AUDIT fix: política partilhada — Zod só verifica length≥8.
+    // Aqui aplicamos a regra completa (maiúscula + dígito) antes de
+    // criar o user. Caso contrário tínhamos a estranha situação em
+    // que um user registado podia falhar ao tentar mudar a sua
+    // própria password porque a política do reset era mais estrita.
+    MembershipsService.assertPasswordPolicy(dto.password);
+
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
@@ -295,11 +303,10 @@ export class AuthService {
    * expirado — front-end mostra mensagem dedicada.
    */
   async resetPassword(token: string, newPassword: string): Promise<{ ok: true }> {
-    if (newPassword.length < 8) {
-      throw new BadRequestException(
-        'Palavra-passe tem de ter pelo menos 8 caracteres.',
-      );
-    }
+    // AUDIT fix: política partilhada com MembershipsService.acceptByToken
+    // — uma única fonte de verdade evita "uma palavra-passe forte
+    // chega para o reset mas não para o convite" e vice-versa.
+    MembershipsService.assertPasswordPolicy(newPassword);
 
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     const user = await this.prisma.user.findUnique({

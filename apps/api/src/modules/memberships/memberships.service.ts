@@ -11,6 +11,22 @@ import { AuditService } from '../audit/audit.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 
+/**
+ * MembershipsService — gere associação User↔Tenant + convites.
+ *
+ * INVARIANTES protegidos por esta auditoria:
+ *  1. Cada tenant tem SEMPRE ≥1 ADMIN com acceptedAt!=null e
+ *     deletedAt=null. Demote/remove do último ADMIN é rejeitado.
+ *  2. Aceitação de convite com password tem política mínima:
+ *     ≥8 chars, ≥1 maiúscula, ≥1 dígito. (Caracteres especiais
+ *     são encorajados mas não exigidos — evita atritos UX que
+ *     forçam users a guardar passwords em ficheiros.)
+ *  3. Consumo de token é atómico: `updateMany` com filtro composto
+ *     (hash + expira + acceptedAt:null) garante check-and-set sem
+ *     race entre duas tabs / dispositivos.
+ */
+const MIN_PASSWORD_LENGTH = 8;
+
 @Injectable()
 export class MembershipsService {
   constructor(
@@ -18,6 +34,48 @@ export class MembershipsService {
     private readonly audit: AuditService,
     private readonly mail: MailService,
   ) {}
+
+  /**
+   * Conta ADMINs efectivos do tenant — aceites e não soft-deleted.
+   * Usado para proteger o invariante "≥1 ADMIN sempre".
+   */
+  private async countActiveAdmins(
+    tenantId: string,
+    excludeMembershipId?: string,
+  ): Promise<number> {
+    return this.prisma.membership.count({
+      where: {
+        tenantId,
+        role: Role.ADMIN,
+        acceptedAt: { not: null },
+        deletedAt: null,
+        ...(excludeMembershipId && { NOT: { id: excludeMembershipId } }),
+      },
+    });
+  }
+
+  /**
+   * Política de password — uma única função para garantir consistência
+   * entre acceptByToken, auth.register, auth.resetPassword. Lança
+   * BadRequest com mensagem human-friendly em PT.
+   */
+  static assertPasswordPolicy(password: string): void {
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new BadRequestException(
+        `Palavra-passe tem de ter ≥${MIN_PASSWORD_LENGTH} caracteres.`,
+      );
+    }
+    if (!/[A-Z]/.test(password)) {
+      throw new BadRequestException(
+        'Palavra-passe tem de ter pelo menos uma letra maiúscula.',
+      );
+    }
+    if (!/\d/.test(password)) {
+      throw new BadRequestException(
+        'Palavra-passe tem de ter pelo menos um dígito.',
+      );
+    }
+  }
 
   async list(tenantId: string) {
     // AUDIT fix: filtra soft-deleted
@@ -177,14 +235,20 @@ export class MembershipsService {
       throw new BadRequestException('Convite já aceite');
     }
 
-    // Se user não tem password, exige a fornecida
+    // Se user não tem password, exige a fornecida.
+    // Quando falta, devolve "needsPassword" sem aplicar política —
+    // o UI mostra primeiro o form, depois retry com password.
     const needsPassword = !m.user.passwordHash;
-    if (needsPassword && (!providedPassword || providedPassword.length < 8)) {
+    if (needsPassword && !providedPassword) {
       return {
         needsPassword: true,
         membershipId: m.id,
         userEmail: m.user.email,
       };
+    }
+    if (needsPassword && providedPassword) {
+      // AUDIT fix: política de password unificada (≥8, +maiúscula, +dígito)
+      MembershipsService.assertPasswordPolicy(providedPassword);
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -196,14 +260,32 @@ export class MembershipsService {
           data: { passwordHash: hash },
         });
       }
-      const updated = await tx.membership.update({
-        where: { id: m.id },
+      // AUDIT fix: consumo atómico do token via updateMany com
+      // filtro composto (hash + ainda não aceite + dentro do TTL).
+      // Fecha race onde duas tabs / dispositivos tentavam aceitar
+      // o mesmo convite — só um vence; o outro recebe count=0 →
+      // BadRequest "convite já aceite".
+      const r = await tx.membership.updateMany({
+        where: {
+          id: m.id,
+          inviteTokenHash: tokenHash,
+          acceptedAt: null,
+          inviteExpiresAt: { gt: new Date() },
+        },
         data: {
           acceptedAt: new Date(),
           inviteTokenHash: null,
           inviteTokenPrefix: null,
           inviteExpiresAt: null,
         },
+      });
+      if (r.count === 0) {
+        throw new BadRequestException(
+          'Convite já foi aceite ou expirou entretanto.',
+        );
+      }
+      const updated = await tx.membership.findUniqueOrThrow({
+        where: { id: m.id },
       });
       return {
         needsPassword: false,
@@ -225,6 +307,19 @@ export class MembershipsService {
     if (!m || m.tenantId !== tenantId || m.deletedAt) {
       throw new NotFoundException('Membership not found');
     }
+
+    // AUDIT fix: protege invariante "≥1 ADMIN sempre". Demote do
+    // último ADMIN deixaria o tenant sem ninguém capaz de gerir
+    // memberships, billing, etc. Bloqueamos hard.
+    if (m.role === Role.ADMIN && newRole !== Role.ADMIN) {
+      const outrosAdmins = await this.countActiveAdmins(tenantId, membershipId);
+      if (outrosAdmins === 0) {
+        throw new ConflictException(
+          'Não é possível remover o último ADMIN do tenant. Promove outro user a ADMIN primeiro.',
+        );
+      }
+    }
+
     const before = m;
     const after = await this.prisma.membership.update({
       where: { id: membershipId },
@@ -245,6 +340,10 @@ export class MembershipsService {
   /**
    * AUDIT fix: soft-delete em vez de hard. Permite re-convidar mantendo
    * histórico; protege audit log.
+   *
+   * NOVA protecção (esta auditoria): bloqueia remoção do último ADMIN
+   * e bloqueia self-remove quando o actor é o único ADMIN. Sem isto,
+   * um clique acidental matava o controlo do tenant.
    */
   async remove(membershipId: string, tenantId: string, actorUserId: string) {
     const m = await this.prisma.membership.findUnique({
@@ -253,6 +352,27 @@ export class MembershipsService {
     if (!m || m.tenantId !== tenantId || m.deletedAt) {
       throw new NotFoundException('Membership not found');
     }
+
+    // Protecção do invariante "≥1 ADMIN sempre"
+    if (m.role === Role.ADMIN && m.acceptedAt) {
+      const outrosAdmins = await this.countActiveAdmins(tenantId, membershipId);
+      if (outrosAdmins === 0) {
+        throw new ConflictException(
+          'Não é possível remover o último ADMIN do tenant. Promove outro user a ADMIN primeiro.',
+        );
+      }
+    }
+
+    // Protecção contra self-remove sem outro admin a tomar conta
+    if (m.userId === actorUserId && m.role === Role.ADMIN) {
+      const outrosAdmins = await this.countActiveAdmins(tenantId, membershipId);
+      if (outrosAdmins === 0) {
+        throw new ConflictException(
+          'Não é possível sair como único ADMIN. Promove outro user a ADMIN antes.',
+        );
+      }
+    }
+
     const updated = await this.prisma.membership.update({
       where: { id: membershipId },
       data: { deletedAt: new Date() },
