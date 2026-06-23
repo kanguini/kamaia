@@ -97,60 +97,57 @@ export default function ExecutiveOverviewPage() {
         fontFamily: 'Geist, -apple-system, system-ui, sans-serif',
       }}
     >
-      <Toolbar />
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <Toolbar />
 
-      <Header />
+        <Header />
 
-      {error && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: 12,
-            background: '#ffdad6',
-            color: '#93000a',
-            border: `1px solid ${T.bad}`,
-            borderRadius: 6,
-            fontSize: 13,
-          }}
-        >
-          {error}
+        {error && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              background: 'var(--k2-bg-elev)',
+              color: T.bad,
+              border: `1px solid ${T.bad}`,
+              borderRadius: 6,
+              fontSize: 13,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* AUDIT P0 #1: grid colapsa a 1 coluna em < 900px para evitar
+            colisão chart×metrics em mobile. */}
+        <div className="k2-dash-grid" style={{ marginTop: 20 }}>
+          <ChartCard data={data} loading={loading} range={range} onRange={setRange} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <MetricCard
+              label="Contratos activos"
+              value={data?.activos ?? 0}
+              delta={data?.tendencia.deltaPercent ?? 0}
+              deltaLabel="este trimestre"
+              loading={loading}
+              href="/contratos?estado=ACTIVO"
+              icon={FileText}
+            />
+            <MetricCard
+              label="Expiram em 30 dias"
+              value={data?.expiraEm30 ?? 0}
+              riscoCentavos={data?.expiraEm30RiscoCentavos}
+              loading={loading}
+              href="/contratos?expiraEmDias=30"
+              icon={Clock}
+              tone="warning"
+            />
+          </div>
         </div>
-      )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 2fr) minmax(280px, 1fr)',
-          gap: 16,
-          marginTop: 20,
-        }}
-      >
-        <ChartCard data={data} loading={loading} range={range} onRange={setRange} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <MetricCard
-            label="Active contracts"
-            value={data?.activos ?? 0}
-            delta={data?.tendencia.deltaPercent ?? 0}
-            deltaLabel="this quarter"
-            loading={loading}
-            href="/contratos?estado=ACTIVO"
-            icon={FileText}
-          />
-          <MetricCard
-            label="Expiring < 30 days"
-            value={data?.expiraEm30 ?? 0}
-            riscoCentavos={data?.expiraEm30RiscoCentavos}
-            loading={loading}
-            href="/contratos?expiraEmDias=30"
-            icon={Clock}
-            tone="warning"
-          />
-        </div>
+        <RecentActivity data={data} loading={loading} />
+
+        <DistribuicaoEstado data={data} loading={loading} />
       </div>
-
-      <RecentActivity data={data} loading={loading} />
-
-      <DistribuicaoEstado data={data} loading={loading} />
     </div>
   )
 }
@@ -160,6 +157,13 @@ export default function ExecutiveOverviewPage() {
 // ─────────────────────────────────────
 
 function Toolbar() {
+  const [q, setQ] = useState('')
+  // AUDIT P2 #12: search agora liga ao endpoint real via navegação
+  // para /contratos?search=Q. Enter submete; clicar fora preserva
+  // o input (UX comum em busca global de SaaS).
+  const submit = () => {
+    if (q.trim()) window.location.href = `/contratos?search=${encodeURIComponent(q.trim())}`
+  }
   return (
     <div
       style={{
@@ -181,7 +185,10 @@ function Toolbar() {
           }}
         />
         <input
-          placeholder="Quick search contracts…"
+          placeholder="Procurar contratos…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
           style={{
             width: '100%',
             padding: '8px 12px 8px 34px',
@@ -192,9 +199,6 @@ function Toolbar() {
             color: T.ink,
             outline: 'none',
             fontFamily: 'inherit',
-          }}
-          onChange={() => {
-            /* TODO: wire global search */
           }}
         />
       </div>
@@ -228,7 +232,7 @@ function Header() {
             color: T.ink,
           }}
         >
-          Executive Overview
+          Visão Executiva
         </h1>
         <p
           style={{
@@ -238,7 +242,7 @@ function Header() {
             lineHeight: 1.5,
           }}
         >
-          Status of current contract lifecycle management.
+          Estado actual da carteira de contratos.
         </p>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -261,7 +265,7 @@ function Header() {
           onClick={() => window.print()}
         >
           <Download size={14} />
-          Export PDF
+          Exportar PDF
         </button>
         <Link
           href="/contratos/novo"
@@ -271,7 +275,7 @@ function Header() {
             gap: 6,
             padding: '8px 14px',
             background: T.ink,
-            color: T.surface,
+            color: 'var(--k2-accent-fg)',
             border: `1px solid ${T.ink}`,
             borderRadius: 6,
             fontSize: 13,
@@ -280,7 +284,7 @@ function Header() {
           }}
         >
           <Plus size={14} />
-          New Contract
+          Novo contrato
         </Link>
       </div>
     </div>
@@ -321,10 +325,10 @@ function ChartCard({
               letterSpacing: '-0.01em',
             }}
           >
-            Contract Trends
+            Tendência de contratos
           </div>
           <div style={{ fontSize: 12, color: T.inkDim, marginTop: 2 }}>
-            Activity volume over the last 6 months
+            Volume de actividade nos últimos 6 meses
           </div>
         </div>
         <RangeToggle value={range} onChange={onRange} />
@@ -340,7 +344,7 @@ function ChartCard({
             fontSize: 13,
           }}
         >
-          Loading…
+          A carregar…
         </div>
       ) : (
         <Sparkline series={data?.serie6m ?? []} />
@@ -448,10 +452,13 @@ function Sparkline({ series }: { series: { mes: string; count: number }[] }) {
           />
         ))}
       </svg>
+      {/* AUDIT P2 #9: gap garante separação visual em mobile,
+          onde antes os labels colavam ("JanFevMarAbrMaiJun"). */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${data.length}, 1fr)`,
+          gap: 4,
           marginTop: 6,
           fontSize: 11,
           color: T.inkDim,
@@ -586,7 +593,7 @@ function MetricCard({
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          ⚠ Estimated Risk: {valor}
+          ⚠ Risco estimado: {valor}
         </div>
       )}
     </Link>
@@ -639,7 +646,7 @@ function RecentActivity({
             letterSpacing: '-0.01em',
           }}
         >
-          Recent Activity
+          Actividade recente
         </div>
         <Link
           href="/contratos"
@@ -650,25 +657,28 @@ function RecentActivity({
             fontWeight: 500,
           }}
         >
-          View All →
+          Ver todos →
         </Link>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      {/* AUDIT P0 #3: scroll horizontal em mobile para não cortar
+          colunas. Em desktop a tabela ocupa 100% normalmente. */}
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr>
-            <Th>Document Name</Th>
-            <Th>Status</Th>
-            <Th>Responsible</Th>
-            <Th>Last Modified</Th>
-            <Th align="right">Action</Th>
+            <Th>Documento</Th>
+            <Th>Estado</Th>
+            <Th>Responsável</Th>
+            <Th>Última edição</Th>
+            <Th align="right">Acção</Th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
               <td colSpan={5} style={tdEmpty}>
-                Loading…
+                A carregar…
               </td>
             </tr>
           )}
@@ -736,13 +746,14 @@ function RecentActivity({
                     fontWeight: 500,
                   }}
                 >
-                  Open →
+                  Abrir →
                 </Link>
               </Td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
@@ -817,7 +828,7 @@ function DistribuicaoEstado({
 
   return (
     <div style={{ marginTop: 16 }}>
-      <div style={{ ...labelStyle, marginBottom: 10 }}>POR ESTADO</div>
+      <div style={{ ...labelStyle, marginBottom: 10 }}>DISTRIBUIÇÃO POR ESTADO</div>
       <div
         style={{
           display: 'grid',

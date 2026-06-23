@@ -12,60 +12,65 @@
    ═════════════════════════════════════════════════════════════ */
 @layer base {
   :root {
-    /* Surfaces — tonal layering em azul-tinted whites */
-    --k2-bg: #f8f9ff;              /* Monolith surface */
-    --k2-bg-elev: #ffffff;          /* surface-container-lowest (cards/sidebar) */
-    --k2-bg-elev-2: #eff4ff;        /* surface-container-low (table headers, chips) */
-    --k2-bg-hover: #dce9ff;         /* surface-container-high (hover) */
+    /* Paleta monocromática — preto, branco e escala de neutrals.
+       Sem tints coloridos (azul/blue removido). Semantic colors
+       (good/warn/bad) mantêm-se para estados que exigem
+       comunicação imediata, mas usados com baixa saturação para
+       coexistirem com a estética mono. */
 
-    /* Borders — bordas finas substituem shadows pesados */
-    --k2-border: #e5eeff;           /* soft (cards) */
-    --k2-border-strong: #c2c6d8;    /* outline-variant (inputs em hover) */
+    /* Surfaces — tonal layering em greys neutros */
+    --k2-bg: #fafafa;              /* canvas */
+    --k2-bg-elev: #ffffff;          /* cards/sidebar — branco puro */
+    --k2-bg-elev-2: #f4f4f5;        /* table headers, chips */
+    --k2-bg-hover: #ececed;         /* hover */
 
-    /* Ink (texto) */
-    --k2-text: #0b1c30;             /* on-surface */
-    --k2-text-dim: #424656;         /* on-surface-variant */
-    --k2-text-mute: #727687;        /* outline */
+    /* Borders — gray-200/gray-300 */
+    --k2-border: #e4e4e7;           /* soft */
+    --k2-border-strong: #c8c8cc;    /* inputs em hover */
 
-    /* Accent — azul vibrante reservado para action/focus */
-    --k2-accent: #0066ff;           /* primary-container — vibrant blue */
-    --k2-accent-dim: #0050cb;       /* primary — hover/active */
+    /* Ink */
+    --k2-text: #0a0a0a;             /* black quase puro */
+    --k2-text-dim: #525258;         /* gray-600 */
+    --k2-text-mute: #8a8a91;        /* gray-500 */
+
+    /* Accent — PRETO para primary actions (em vez de azul).
+       Hover usa gray-800 para feedback subtil. */
+    --k2-accent: #0a0a0a;           /* black — buttons/links/active */
+    --k2-accent-dim: #2a2a2a;       /* hover */
     --k2-accent-fg: #ffffff;
 
-    /* Semantic */
-    --k2-good: #1b8c4a;
-    --k2-warn: #a33200;             /* Monolith tertiary */
-    --k2-bad: #ba1a1a;              /* Monolith error */
+    /* Semantic — desaturados para coexistir com mono */
+    --k2-good: #166534;             /* green-800 */
+    --k2-warn: #9a3412;             /* orange-800 */
+    --k2-bad: #991b1b;              /* red-800 */
 
     /* Shape */
-    --k2-radius: 8px;               /* container (0.5rem) */
-    --k2-radius-sm: 4px;            /* input/btn (0.25rem) */
-    --k2-radius-lg: 12px;           /* modal/drawer */
+    --k2-radius: 8px;
+    --k2-radius-sm: 4px;
+    --k2-radius-lg: 12px;
 
     /* Layout */
-    --k2-sidebar-w: 260px;          /* Monolith spec */
+    --k2-sidebar-w: 260px;
     --k2-topbar-h: 60px;
   }
 
-  /* Dark Monolith — paleta derivada (Monolith não é nativamente
-     dark mas mantemos paridade funcional para users que escolherem
-     o toggle). Hierarquia: inverse-surface como base + tints. */
+  /* Dark mode — inversão monocromática. */
   .dark {
-    --k2-bg: #0a1421;               /* deep navy */
-    --k2-bg-elev: #15233a;          /* cards */
-    --k2-bg-elev-2: #1f3552;        /* elevated/headers */
-    --k2-bg-hover: #2a4570;         /* hover */
-    --k2-border: #213145;           /* soft */
-    --k2-border-strong: #38456a;
-    --k2-text: #eaf1ff;             /* inverse-on-surface */
-    --k2-text-dim: #b3c5ff;
-    --k2-text-mute: #727687;
-    --k2-accent: #b3c5ff;           /* inverse-primary — soft blue */
-    --k2-accent-dim: #4a7dff;
-    --k2-accent-fg: #001849;
-    --k2-good: #6be49a;
-    --k2-warn: #ffb59d;
-    --k2-bad: #ffb4ab;
+    --k2-bg: #0a0a0a;
+    --k2-bg-elev: #161616;
+    --k2-bg-elev-2: #1f1f1f;
+    --k2-bg-hover: #2a2a2a;
+    --k2-border: #2a2a2a;
+    --k2-border-strong: #3a3a3a;
+    --k2-text: #fafafa;
+    --k2-text-dim: #b3b3b8;
+    --k2-text-mute: #71717a;
+    --k2-accent: #fafafa;           /* branco para primary em dark */
+    --k2-accent-dim: #e4e4e7;
+    --k2-accent-fg: #0a0a0a;
+    --k2-good: #4ade80;
+    --k2-warn: #fb923c;
+    --k2-bad: #f87171;
   }
 }
 
@@ -479,6 +484,18 @@
 @layer utilities {
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; }
   .not-sr-only { position: static; width: auto; height: auto; padding: 0; margin: 0; overflow: visible; clip: auto; white-space: normal; }
+}
+
+/* ═══ Dashboard responsive grid ═══
+   AUDIT P0 #1: colapsa chart×metrics em 1 coluna a <900px para
+   evitar colisão visual em mobile/tablet. */
+.k2-dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .k2-dash-grid { grid-template-columns: 1fr; }
 }
 
 /* Modal entrance animation — applied via the .k2-modal-panel class on
