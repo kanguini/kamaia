@@ -3,51 +3,69 @@
 @tailwind utilities;
 
 /* ═════════════════════════════════════════════════════════════
-   Kamaia 2.0 tokens — scoped alongside legacy tokens so we can
-   roll out the new design surface-by-surface without breaking
-   the existing pages. Reference: Claude Design "kamaia-2-0".
+   Kamaia 2.0 → "Monolith Enterprise" tokens.
+   Roll-out global: os valores --k2-* foram mapeados para a paleta
+   azul-tinted do design system Monolith (#0066ff primary,
+   surface-container-* tints). As referências CSS em todo o
+   projecto continuam a usar var(--k2-*) — só os valores mudam,
+   por isso todas as páginas herdam o redesign automaticamente.
    ═════════════════════════════════════════════════════════════ */
 @layer base {
   :root {
-    /* Light — pure whites + deep-ink */
-    --k2-bg: #ffffff;
-    --k2-bg-elev: #fafafa;
-    --k2-bg-elev-2: #f0f0f0;
-    --k2-bg-hover: #ededed;
-    --k2-border: #e4e4e4;
-    --k2-border-strong: #d0d0d0;
-    --k2-text: #000000;
-    --k2-text-dim: #5a5a5a;
-    --k2-text-mute: #a0a0a0;
-    --k2-accent: #2952d9;
-    --k2-accent-dim: #1e3fb8;
+    /* Surfaces — tonal layering em azul-tinted whites */
+    --k2-bg: #f8f9ff;              /* Monolith surface */
+    --k2-bg-elev: #ffffff;          /* surface-container-lowest (cards/sidebar) */
+    --k2-bg-elev-2: #eff4ff;        /* surface-container-low (table headers, chips) */
+    --k2-bg-hover: #dce9ff;         /* surface-container-high (hover) */
+
+    /* Borders — bordas finas substituem shadows pesados */
+    --k2-border: #e5eeff;           /* soft (cards) */
+    --k2-border-strong: #c2c6d8;    /* outline-variant (inputs em hover) */
+
+    /* Ink (texto) */
+    --k2-text: #0b1c30;             /* on-surface */
+    --k2-text-dim: #424656;         /* on-surface-variant */
+    --k2-text-mute: #727687;        /* outline */
+
+    /* Accent — azul vibrante reservado para action/focus */
+    --k2-accent: #0066ff;           /* primary-container — vibrant blue */
+    --k2-accent-dim: #0050cb;       /* primary — hover/active */
     --k2-accent-fg: #ffffff;
-    --k2-good: #2a9e5c;
-    --k2-warn: #c8891a;
-    --k2-bad: #c2404f;
-    --k2-radius: 10px;
-    --k2-radius-sm: 7px;
-    --k2-radius-lg: 14px;
-    --k2-sidebar-w: 248px;
+
+    /* Semantic */
+    --k2-good: #1b8c4a;
+    --k2-warn: #a33200;             /* Monolith tertiary */
+    --k2-bad: #ba1a1a;              /* Monolith error */
+
+    /* Shape */
+    --k2-radius: 8px;               /* container (0.5rem) */
+    --k2-radius-sm: 4px;            /* input/btn (0.25rem) */
+    --k2-radius-lg: 12px;           /* modal/drawer */
+
+    /* Layout */
+    --k2-sidebar-w: 260px;          /* Monolith spec */
     --k2-topbar-h: 60px;
   }
 
+  /* Dark Monolith — paleta derivada (Monolith não é nativamente
+     dark mas mantemos paridade funcional para users que escolherem
+     o toggle). Hierarquia: inverse-surface como base + tints. */
   .dark {
-    --k2-bg: #000000;
-    --k2-bg-elev: #0e0e0e;
-    --k2-bg-elev-2: #161616;
-    --k2-bg-hover: #1a1a1a;
-    --k2-border: #1c1c1c;
-    --k2-border-strong: #2a2a2a;
-    --k2-text: #ffffff;
-    --k2-text-dim: #a0a0a0;
-    --k2-text-mute: #5c5c5c;
-    --k2-accent: #4a7dff;
-    --k2-accent-dim: #3460d9;
-    --k2-accent-fg: #ffffff;
+    --k2-bg: #0a1421;               /* deep navy */
+    --k2-bg-elev: #15233a;          /* cards */
+    --k2-bg-elev-2: #1f3552;        /* elevated/headers */
+    --k2-bg-hover: #2a4570;         /* hover */
+    --k2-border: #213145;           /* soft */
+    --k2-border-strong: #38456a;
+    --k2-text: #eaf1ff;             /* inverse-on-surface */
+    --k2-text-dim: #b3c5ff;
+    --k2-text-mute: #727687;
+    --k2-accent: #b3c5ff;           /* inverse-primary — soft blue */
+    --k2-accent-dim: #4a7dff;
+    --k2-accent-fg: #001849;
     --k2-good: #6be49a;
-    --k2-warn: #e4b86b;
-    --k2-bad: #e46b7a;
+    --k2-warn: #ffb59d;
+    --k2-bad: #ffb4ab;
   }
 }
 
@@ -105,7 +123,7 @@
   }
 
   html, body {
-    font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+    font-family: Geist, var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
   }
 
   body {
@@ -133,7 +151,7 @@
   overflow-x: clip;
   background: var(--k2-bg);
   color: var(--k2-text);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: Geist, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-feature-settings: 'tnum', 'zero';
   letter-spacing: -0.005em;
 }
@@ -400,7 +418,7 @@
   }
 
   input, textarea, select, button {
-    font-family: var(--font-inter), Inter, system-ui, sans-serif;
+    font-family: Geist, var(--font-inter), Inter, system-ui, sans-serif;
   }
 
   *:focus-visible {

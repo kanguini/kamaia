@@ -5,11 +5,12 @@ import { useState, useEffect, useCallback } from 'react'
 type Theme = 'light' | 'dark'
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('dark')
+  // Default = 'light' alinhado com o redesign Monolith Enterprise.
+  const [theme, setThemeState] = useState<Theme>('light')
 
   useEffect(() => {
     const stored = localStorage.getItem('kamaia-theme') as Theme | null
-    const initial = stored || 'dark'
+    const initial = stored || 'light'
     setThemeState(initial)
     document.documentElement.classList.toggle('dark', initial === 'dark')
   }, [])

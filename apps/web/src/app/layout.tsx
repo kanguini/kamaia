@@ -36,15 +36,14 @@ export const metadata: Metadata = {
   },
 }
 
-// Runs before the first paint: reads the stored theme (default dark) and sets
-// the .dark class on <html> so the k2 tokens resolve to the right palette
-// immediately. Without this, the page renders in the :root (light) variables
-// for a tick, then flashes to dark once the client hydrates.
+// Runs before the first paint: reads the stored theme and sets the
+// .dark class only if explicitly chosen. Default = light, alinhado
+// com o redesign Monolith Enterprise (which is light-first).
 const THEME_BOOTSTRAP = `
 (function(){try{
   var t = localStorage.getItem('kamaia-theme');
-  if (t !== 'light') { document.documentElement.classList.add('dark'); }
-}catch(e){ document.documentElement.classList.add('dark'); }})();
+  if (t === 'dark') { document.documentElement.classList.add('dark'); }
+}catch(e){}})();
 `
 
 export default function RootLayout({
@@ -58,7 +57,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         {GEIST_FONT_LINK}
       </head>
-      <body className={`${inter.variable} ${inter.className}`}>
+      <body className={inter.variable} style={{ fontFamily: 'Geist, Inter, -apple-system, system-ui, sans-serif' }}>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

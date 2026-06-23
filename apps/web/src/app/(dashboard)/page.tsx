@@ -57,21 +57,27 @@ interface DashboardData {
   }>
 }
 
-// Tokens "Monolith Enterprise" — overrides locais ao --k2-*
+/**
+ * Tokens via CSS variables globais — desde o roll-out do design
+ * Monolith Enterprise, `--k2-*` já tem os valores correctos (cores
+ * azul-tinted + ink #0b1c30 + accent #0066ff). Não precisamos de
+ * overrides locais; mantemos o objecto `T` apenas para referência
+ * semântica dentro do componente.
+ */
 const T = {
-  surface: '#ffffff',
-  surfaceMuted: '#f8f9ff',
-  borderSoft: '#e5eeff',
-  borderHard: '#c2c6d8',
-  ink: '#0b1c30',
-  inkDim: '#424656',
-  inkMute: '#727687',
-  primary: '#0066ff',
-  primaryDark: '#0050cb',
-  primaryFg: '#ffffff',
-  good: '#1b8c4a',
-  warn: '#a33200',
-  bad: '#ba1a1a',
+  surface: 'var(--k2-bg-elev)',
+  surfaceMuted: 'var(--k2-bg)',
+  borderSoft: 'var(--k2-border)',
+  borderHard: 'var(--k2-border-strong)',
+  ink: 'var(--k2-text)',
+  inkDim: 'var(--k2-text-dim)',
+  inkMute: 'var(--k2-text-mute)',
+  primary: 'var(--k2-accent)',
+  primaryDark: 'var(--k2-accent-dim)',
+  primaryFg: 'var(--k2-accent-fg)',
+  good: 'var(--k2-good)',
+  warn: 'var(--k2-warn)',
+  bad: 'var(--k2-bad)',
 }
 
 type Range = '6M' | '1Y' | 'ALL'
