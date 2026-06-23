@@ -9,6 +9,23 @@ const inter = Inter({
   display: 'swap',
 })
 
+/**
+ * Geist Sans usada no redesign "Monolith Enterprise" do Dashboard.
+ * Carregada via Google Fonts no <head> para evitar dependência
+ * adicional no node_modules durante o rollout incremental. O
+ * fallback do CSS é Inter, que já está carregada como fonte base.
+ */
+const GEIST_FONT_LINK = (
+  <>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </>
+)
+
 export const metadata: Metadata = {
   title: 'Kamaia — Contract Lifecycle Management',
   description: 'CLM para Angola — gestão de contratos, compliance e IA jurídica.',
@@ -39,6 +56,7 @@ export default function RootLayout({
     <html lang="pt-AO" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+        {GEIST_FONT_LINK}
       </head>
       <body className={`${inter.variable} ${inter.className}`}>
         <SessionProvider>{children}</SessionProvider>

@@ -567,58 +567,216 @@ export class ContratosService {
 
   // ─── Dashboards / agregados ──────────────────────────────────────
 
+  /**
+   * Dashboard executivo — alinhado com o redesign "Executive Overview".
+   *
+   * Devolve:
+   *  - counters core: total, activos, expiraEm{30,90}, denunciaEm60, actos
+   *  - porEstado: distribuição
+   *  - tendência: count vs trimestre anterior (deltaPercent)
+   *  - serie6m: contratos criados por mês nos últimos 6 meses (chart)
+   *  - riscoExpiracaoCentavos: soma do valor dos contratos a expirar em 30d
+   *  - recentes: últimos 5 contratos por updatedAt (tabela "Recent Activity")
+   *
+   * Tudo numa única passagem ao DB via Promise.all para minimizar
+   * round-trips no painel inicial.
+   */
   async dashboard(tenantId: string) {
     const agora = new Date();
     const em30 = new Date(); em30.setDate(em30.getDate() + 30);
     const em90 = new Date(); em90.setDate(em90.getDate() + 90);
 
-    const [porEstado, expiraEm30, expiraEm90, denunciaEm60, actosPendentes, total] =
-      await Promise.all([
-        this.prisma.contrato.groupBy({
-          by: ['estado'],
-          where: { tenantId, deletedAt: null },
-          _count: true,
-        }),
-        this.prisma.contrato.count({
-          where: {
-            tenantId,
-            deletedAt: null,
-            dataTermo: { gte: agora, lte: em30 },
-          },
-        }),
-        this.prisma.contrato.count({
-          where: {
-            tenantId,
-            deletedAt: null,
-            dataTermo: { gte: agora, lte: em90 },
-          },
-        }),
-        this.prisma.contratoDataChave.count({
-          where: {
-            contrato: { tenantId, deletedAt: null },
-            tipo: { in: ['JANELA_DENUNCIA_INICIO', 'JANELA_DENUNCIA_FIM'] },
-            data: { gte: agora, lte: new Date(agora.getTime() + 60 * 86_400_000) },
-            cumprida: false,
-          },
-        }),
-        this.prisma.contratoActoRegulatorio.count({
-          where: {
-            contrato: { tenantId, deletedAt: null },
-            estado: { in: ['PENDENTE', 'EM_CURSO'] },
-          },
-        }),
-        this.prisma.contrato.count({
-          where: { tenantId, deletedAt: null },
-        }),
-      ]);
+    // Janela do trimestre anterior — usada para delta %
+    const inicioTrimestreActual = new Date();
+    inicioTrimestreActual.setMonth(inicioTrimestreActual.getMonth() - 3);
+    const inicioTrimestreAnterior = new Date(inicioTrimestreActual);
+    inicioTrimestreAnterior.setMonth(inicioTrimestreAnterior.getMonth() - 3);
 
-    return {
-      total,
-      porEstado: Object.fromEntries(porEstado.map((p) => [p.estado, p._count])),
+    // Janela 6m para o chart
+    const inicio6m = new Date();
+    inicio6m.setMonth(inicio6m.getMonth() - 6);
+    inicio6m.setDate(1);
+    inicio6m.setHours(0, 0, 0, 0);
+
+    const [
+      porEstado,
       expiraEm30,
+      expiraEm30Valor,
       expiraEm90,
       denunciaEm60,
       actosPendentes,
+      total,
+      activos,
+      criadosTrimestreActual,
+      criadosTrimestreAnterior,
+      serie6mRaw,
+      recentes,
+    ] = await Promise.all([
+      this.prisma.contrato.groupBy({
+        by: ['estado'],
+        where: { tenantId, deletedAt: null },
+        _count: true,
+      }),
+      this.prisma.contrato.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          dataTermo: { gte: agora, lte: em30 },
+        },
+      }),
+      this.prisma.contrato.aggregate({
+        where: {
+          tenantId,
+          deletedAt: null,
+          dataTermo: { gte: agora, lte: em30 },
+        },
+        _sum: { valor: true },
+      }),
+      this.prisma.contrato.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          dataTermo: { gte: agora, lte: em90 },
+        },
+      }),
+      this.prisma.contratoDataChave.count({
+        where: {
+          contrato: { tenantId, deletedAt: null },
+          tipo: { in: ['JANELA_DENUNCIA_INICIO', 'JANELA_DENUNCIA_FIM'] },
+          data: { gte: agora, lte: new Date(agora.getTime() + 60 * 86_400_000) },
+          cumprida: false,
+        },
+      }),
+      this.prisma.contratoActoRegulatorio.count({
+        where: {
+          contrato: { tenantId, deletedAt: null },
+          estado: { in: ['PENDENTE', 'EM_CURSO'] },
+        },
+      }),
+      this.prisma.contrato.count({
+        where: { tenantId, deletedAt: null },
+      }),
+      this.prisma.contrato.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          estado: 'ACTIVO',
+        },
+      }),
+      this.prisma.contrato.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          createdAt: { gte: inicioTrimestreActual },
+        },
+      }),
+      this.prisma.contrato.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          createdAt: { gte: inicioTrimestreAnterior, lt: inicioTrimestreActual },
+        },
+      }),
+      // Série 6m via raw SQL — group by month, locale Portugal.
+      this.prisma.$queryRaw<Array<{ mes: Date; count: bigint }>>`
+        SELECT date_trunc('month', created_at) AS mes,
+               COUNT(*)::bigint AS count
+          FROM contratos
+         WHERE tenant_id = ${tenantId}::uuid
+           AND deleted_at IS NULL
+           AND created_at >= ${inicio6m}
+         GROUP BY 1
+         ORDER BY 1
+      `,
+      this.prisma.contrato.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { updatedAt: 'desc' },
+        take: 5,
+        select: {
+          id: true,
+          numeroInterno: true,
+          titulo: true,
+          estado: true,
+          updatedAt: true,
+          responsavelId: true,
+        },
+      }),
+    ]);
+
+    // Delta % vs trimestre anterior
+    const deltaPercent =
+      criadosTrimestreAnterior === 0
+        ? criadosTrimestreActual > 0
+          ? 100
+          : 0
+        : Math.round(
+            ((criadosTrimestreActual - criadosTrimestreAnterior) /
+              criadosTrimestreAnterior) *
+              100 *
+              10,
+          ) / 10;
+
+    // Resolve nomes dos responsáveis em batch
+    const userIds = recentes
+      .map((c) => c.responsavelId)
+      .filter((v): v is string => !!v);
+    const users =
+      userIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true, email: true },
+          })
+        : [];
+    const userMap = new Map(
+      users.map((u) => [u.id, `${u.firstName} ${u.lastName}`.trim() || u.email]),
+    );
+
+    // Série 6m: garantir que todos os 6 buckets existem mesmo sem dados.
+    const meses: { mes: string; mesIso: string; count: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setHours(0, 0, 0, 0);
+      d.setMonth(d.getMonth() - i);
+      const iso = d.toISOString().slice(0, 7); // YYYY-MM
+      const hit = serie6mRaw.find(
+        (r) => r.mes.toISOString().slice(0, 7) === iso,
+      );
+      meses.push({
+        mes: d.toLocaleDateString('pt-PT', { month: 'short' }).replace('.', ''),
+        mesIso: iso,
+        count: hit ? Number(hit.count) : 0,
+      });
+    }
+
+    return {
+      total,
+      activos,
+      porEstado: Object.fromEntries(porEstado.map((p) => [p.estado, p._count])),
+      expiraEm30,
+      expiraEm30RiscoCentavos:
+        expiraEm30Valor._sum.valor !== null
+          ? expiraEm30Valor._sum.valor.toString()
+          : '0',
+      expiraEm90,
+      denunciaEm60,
+      actosPendentes,
+      tendencia: {
+        criadosTrimestre: criadosTrimestreActual,
+        criadosTrimestreAnterior,
+        deltaPercent,
+      },
+      serie6m: meses,
+      recentes: recentes.map((c) => ({
+        id: c.id,
+        numeroInterno: c.numeroInterno,
+        titulo: c.titulo,
+        estado: c.estado,
+        updatedAt: c.updatedAt.toISOString(),
+        responsavelNome: c.responsavelId
+          ? userMap.get(c.responsavelId) ?? null
+          : null,
+      })),
     };
   }
 
