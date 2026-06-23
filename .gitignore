@@ -52,3 +52,4 @@ pgdata/
 redis-data/
 uploads/
 .vercel
+stitch_*.zip
