@@ -149,7 +149,7 @@ export class WebhookDeliveryWorker {
     responseBody: string,
   ): Promise<void> {
     if (novaTentativa >= MAX_TENTATIVAS) {
-      await this.prisma.webhookDelivery.update({
+      const updated = await this.prisma.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
           status: 'FAILED',
@@ -157,7 +157,31 @@ export class WebhookDeliveryWorker {
           responseBody,
           tentativas: novaTentativa,
         },
+        include: {
+          webhook: { select: { tenantId: true, url: true, nome: true } },
+        },
       });
+      // AUDIT fix: dead-letter alert. Quando MAX tentativas falha,
+      // notifica o tenant in-app + email (via NotificationsService).
+      // Sem isto, falhas acumulavam silenciosamente.
+      try {
+        await this.prisma.notification.create({
+          data: {
+            tenantId: updated.webhook.tenantId,
+            userId: updated.webhook.tenantId, // notifica owner do tenant
+            channel: 'IN_APP',
+            tipo: 'WEBHOOK_FAILED',
+            titulo: `Webhook "${updated.webhook.nome}" falhou`,
+            conteudo: `O endpoint ${updated.webhook.url} falhou após ${MAX_TENTATIVAS} tentativas. Verifica a configuração e tenta de novo.`,
+            payload: { deliveryId, lastError: responseBody.slice(0, 500) } as object,
+            status: 'PENDING',
+          },
+        });
+      } catch (e) {
+        this.logger.error(
+          `Falha a criar dead-letter notification: ${e instanceof Error ? e.message : e}`,
+        );
+      }
       return;
     }
 
