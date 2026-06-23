@@ -302,7 +302,7 @@ export default function IAPage() {
                       </div>
                       <div style={{ color: 'var(--k2-text-mute)', marginTop: 2 }}>{c.titulo}</div>
                       <div style={{ color: 'var(--k2-text-dim)', marginTop: 4, fontStyle: 'italic' }}>
-                        "{c.trecho.slice(0, 180)}…"
+                        &ldquo;{c.trecho.slice(0, 180)}…&rdquo;
                       </div>
                     </div>
                   ))}

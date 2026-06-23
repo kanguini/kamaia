@@ -95,7 +95,7 @@ export function TemplatePicker({
     return (
       <div style={emptyStateStyle}>
         Não há templates para este tipo. Cria um em <strong>Biblioteca → Templates</strong>{' '}
-        ou usa "Folha em branco com IA".
+        ou usa &ldquo;Folha em branco com IA&rdquo;.
       </div>
     )
   }
