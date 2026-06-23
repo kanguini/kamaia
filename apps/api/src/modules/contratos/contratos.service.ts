@@ -146,6 +146,22 @@ export class ContratosService {
         },
       });
 
+      // L.2: outbox dentro da tx — rollback se algo falhar a seguir
+      await this.webhooks.enqueueEvent(
+        tenantId,
+        'contrato.criado',
+        {
+          contratoId: c.id,
+          numeroInterno: c.numeroInterno,
+          titulo: c.titulo,
+          tipoId: c.tipoId,
+          estado: c.estado,
+          partesCount: partes?.length ?? 0,
+          hasDocumentoInicial: !!documentoInicialId,
+        },
+        tx,
+      );
+
       return c;
     });
 
@@ -156,17 +172,6 @@ export class ContratosService {
       entityType: EntityType.CONTRATO,
       entityId: contrato.id,
       afterData: contrato as object,
-    });
-
-    // Dispara webhook subscriptions interessadas
-    await this.webhooks.enqueueEvent(tenantId, 'contrato.criado', {
-      contratoId: contrato.id,
-      numeroInterno: contrato.numeroInterno,
-      titulo: contrato.titulo,
-      tipoId: contrato.tipoId,
-      estado: contrato.estado,
-      partesCount: partes?.length ?? 0,
-      hasDocumentoInicial: !!documentoInicialId,
     });
 
     return contrato;

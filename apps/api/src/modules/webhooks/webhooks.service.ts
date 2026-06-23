@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -73,15 +74,24 @@ export class WebhooksService {
    * Enfileira um evento para entrega a todos os webhooks subscritos.
    * Retorna o número de deliveries criadas.
    *
-   * Esta API é a que os outros módulos (Contratos, Compliance, etc)
-   * chamam quando algo acontece.
+   * L.2 — Outbox-style: aceita `tx` opcional para o caller poder
+   * executar enqueueEvent DENTRO da sua transaction de domínio.
+   * Assim, se o INSERT da entidade de negócio rollback, as deliveries
+   * também rollback — garante consistência at-least-once vs lost-on-
+   * partial-failure que tínhamos antes (enqueueEvent fora da tx).
+   *
+   * Os callers em transactions devem passar `tx`; os callers que
+   * disparam eventos fora de qualquer transaction (e.g. eventos
+   * agendados) podem chamar sem `tx`.
    */
   async enqueueEvent(
     tenantId: string,
     event: string,
     payload: object,
+    tx?: Prisma.TransactionClient,
   ): Promise<number> {
-    const subs = await this.prisma.webhook.findMany({
+    const db = tx ?? this.prisma;
+    const subs = await db.webhook.findMany({
       where: {
         tenantId,
         isActive: true,
@@ -89,7 +99,7 @@ export class WebhooksService {
       },
     });
     if (subs.length === 0) return 0;
-    await this.prisma.webhookDelivery.createMany({
+    await db.webhookDelivery.createMany({
       data: subs.map((s) => ({
         webhookId: s.id,
         event,
