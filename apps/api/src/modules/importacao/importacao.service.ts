@@ -9,6 +9,7 @@ import {
 } from '@kamaia/shared-types';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { ContratosService } from '../contratos/contratos.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AddLinhaDto,
@@ -116,32 +117,55 @@ export class ImportacaoService {
     let processadas = 0;
     let falhas = 0;
 
+    // FIX auditoria: cada linha tem a sua tx; numeroInterno gerado
+    // dentro da tx com advisory lock (igual ao ContratosService.create)
+    // — evita duplicates de UNIQUE constraint em alto throughput
     for (const linha of linhas) {
       try {
         if (!tipo) {
           throw new Error('Nenhum TipoContrato disponível para o tenant');
         }
-        const numeroInterno = await this.gerarNumero(tenantId);
-        const titulo =
-          (linha.metadataInput as { titulo?: string } | null)?.titulo ??
-          `Importado ${numeroInterno}`;
-        const contrato = await this.prisma.contrato.create({
-          data: {
+        await this.prisma.$transaction(async (tx) => {
+          const numeroInterno = await ContratosService.gerarNumeroNaTransaction(
+            tx,
             tenantId,
-            numeroInterno,
-            titulo,
-            tipoId: tipo.id,
-            estado: ContratoEstado.REPOSITORIO,
-            origem: ContratoOrigem.IMPORTADO_REPOSITORIO,
-            createdBy: actorUserId,
-          },
-        });
-        await this.prisma.importacaoLinha.update({
-          where: { id: linha.id },
-          data: {
-            estado: LinhaEstado.CRIADO,
-            contratoId: contrato.id,
-          },
+          );
+          const titulo =
+            (linha.metadataInput as { titulo?: string } | null)?.titulo ??
+            `Importado ${numeroInterno}`;
+          const contrato = await tx.contrato.create({
+            data: {
+              tenantId,
+              numeroInterno,
+              titulo,
+              tipoId: tipo.id,
+              estado: ContratoEstado.REPOSITORIO,
+              origem: ContratoOrigem.IMPORTADO_REPOSITORIO,
+              createdBy: actorUserId,
+            },
+          });
+          await tx.importacaoLinha.update({
+            where: { id: linha.id },
+            data: {
+              estado: LinhaEstado.CRIADO,
+              contratoId: contrato.id,
+            },
+          });
+          // Linka documentId se fornecido na metadata
+          if (linha.documentId) {
+            await tx.contratoVersao.create({
+              data: {
+                contratoId: contrato.id,
+                ordem: 1,
+                criadoPor: actorUserId,
+                versao: 'v1.0-importado',
+                direccao: 'ASSINADO_FINAL',
+                documentId: linha.documentId,
+                comentario: 'Importação em lote — documento original anexado',
+                seloTemporal: new Date(),
+              },
+            });
+          }
         });
         processadas += 1;
       } catch (e) {
@@ -224,19 +248,6 @@ export class ImportacaoService {
     return lote;
   }
 
-  private async gerarNumero(tenantId: string): Promise<string> {
-    const ano = new Date().getUTCFullYear();
-    const prefixo = `CT-${ano}-`;
-    const ultimo = await this.prisma.contrato.findFirst({
-      where: { tenantId, numeroInterno: { startsWith: prefixo } },
-      orderBy: { numeroInterno: 'desc' },
-      select: { numeroInterno: true },
-    });
-    let seq = 1;
-    if (ultimo) {
-      const m = /(\d+)$/.exec(ultimo.numeroInterno);
-      if (m) seq = parseInt(m[1], 10) + 1;
-    }
-    return `${prefixo}${seq.toString().padStart(5, '0')}`;
-  }
+  // gerarNumero() removido em audit fix — agora delegamos a
+  // ContratosService.gerarNumeroNaTransaction (race-safe, advisory lock)
 }
