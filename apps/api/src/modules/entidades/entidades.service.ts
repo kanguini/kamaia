@@ -479,16 +479,36 @@ export class EntidadesService {
         where: { entidadeId: sourceId },
         data: { entidadeId: targetId },
       });
-      // 2. Re-aponta contactos e KYC docs
+
+      // 2. Re-aponta contactos. AUDIT: depois do move, pode ficar
+      // mais que um isPrincipal=true (um de cada lado). Forçamos
+      // que apenas um sobreviva — o do target tem prioridade
+      // (estado escolhido pelo utilizador como canónico).
       await tx.entidadeContacto.updateMany({
         where: { entidadeId: sourceId },
         data: { entidadeId: targetId },
       });
+      const principais = await tx.entidadeContacto.findMany({
+        where: { entidadeId: targetId, isPrincipal: true },
+        orderBy: { createdAt: 'asc' }, // mais antigo (provavelmente do target)
+        select: { id: true },
+      });
+      if (principais.length > 1) {
+        await tx.entidadeContacto.updateMany({
+          where: { id: { in: principais.slice(1).map((p) => p.id) } },
+          data: { isPrincipal: false },
+        });
+      }
+
+      // 3. KYC: mesma lógica de move; sem regra de unicidade
+      // funcional além do constraint do DB (e.g. (entidadeId, tipo)
+      // não é unique no schema actual). Move tudo cru.
       await tx.entidadeDocumentoKYC.updateMany({
         where: { entidadeId: sourceId },
         data: { entidadeId: targetId },
       });
-      // 3. Soft-delete source
+
+      // 4. Soft-delete source
       await tx.entidade.update({
         where: { id: sourceId },
         data: { deletedAt: new Date() },
@@ -506,6 +526,65 @@ export class EntidadesService {
       });
       return r;
     });
+  }
+
+  /**
+   * Procura potenciais duplicados no tenant — entidades com o mesmo
+   * NIF (case sensitive, trimmed) ou nomes muito similares
+   * (case-insensitive equality após normalização de espaços).
+   *
+   * UI usa para pré-povoar o diálogo de merge sem o utilizador ter
+   * de procurar manualmente.
+   *
+   * Performance: dois queries — um por NIF GROUP BY, um por nome
+   * normalizado GROUP BY. Para o limite de 50k entidades por
+   * tenant é OK; acima disso, mover para job assíncrono.
+   */
+  async findDuplicates(tenantId: string) {
+    const porNif = await this.prisma.$queryRaw<
+      Array<{ nif: string; ids: string[]; nomes: string[] }>
+    >`
+      SELECT nif,
+             array_agg(id::text ORDER BY created_at) AS ids,
+             array_agg(nome ORDER BY created_at) AS nomes
+      FROM entidades
+      WHERE tenant_id = ${tenantId}::uuid
+        AND deleted_at IS NULL
+        AND nif IS NOT NULL
+        AND length(trim(nif)) > 0
+      GROUP BY nif
+      HAVING count(*) > 1
+      ORDER BY count(*) DESC
+      LIMIT 100
+    `;
+
+    const porNome = await this.prisma.$queryRaw<
+      Array<{ nome_norm: string; ids: string[]; nomes: string[] }>
+    >`
+      SELECT lower(regexp_replace(trim(nome), '\\s+', ' ', 'g')) AS nome_norm,
+             array_agg(id::text ORDER BY created_at) AS ids,
+             array_agg(nome ORDER BY created_at) AS nomes
+      FROM entidades
+      WHERE tenant_id = ${tenantId}::uuid
+        AND deleted_at IS NULL
+      GROUP BY nome_norm
+      HAVING count(*) > 1
+      ORDER BY count(*) DESC
+      LIMIT 100
+    `;
+
+    return {
+      porNif: porNif.map((g) => ({
+        chave: g.nif,
+        ids: g.ids,
+        nomes: g.nomes,
+      })),
+      porNome: porNome.map((g) => ({
+        chave: g.nome_norm,
+        ids: g.ids,
+        nomes: g.nomes,
+      })),
+    };
   }
 
   // ─── helpers ─────────────────────────────────

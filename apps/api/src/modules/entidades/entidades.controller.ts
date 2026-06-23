@@ -212,4 +212,15 @@ export class EntidadesController {
   ) {
     return this.entidades.merge(tenant.tenantId, user.sub, targetId, dto.sourceId);
   }
+
+  /**
+   * Lista potenciais duplicados no tenant — agrupados por NIF
+   * exacto e por nome normalizado. Apenas LEGAL_LEAD/ADMIN porque
+   * a UI de seguimento (merge) só é exposta a esses roles.
+   */
+  @Get('duplicates/scan')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async scanDuplicates(@Tenant() tenant: TenantContext) {
+    return this.entidades.findDuplicates(tenant.tenantId);
+  }
 }
