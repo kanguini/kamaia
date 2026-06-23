@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { Loader2, Eye, EyeOff } from 'lucide-react'
+import { CheckCircle2, Loader2, Eye, EyeOff } from 'lucide-react'
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -17,15 +17,28 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
 
+  // Query params: ?email=...&accepted=1 (vindo do fluxo /accept-invite)
+  const justAccepted = searchParams.get('accepted') === '1'
+  const prefilledEmail = searchParams.get('email') ?? ''
+
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
-  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: prefilledEmail, password: '' },
+  })
+
+  useEffect(() => {
+    if (prefilledEmail) setValue('email', prefilledEmail)
+  }, [prefilledEmail, setValue])
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
@@ -53,6 +66,12 @@ export default function LoginPage() {
       <AccentGlyph />
       <h1>Entrar</h1>
       <p className="lede">Acede à tua organização para continuar.</p>
+
+      {justAccepted && !error && (
+        <div className="banner-ok" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CheckCircle2 size={14} /> Convite aceite. Inicia sessão para continuar.
+        </div>
+      )}
 
       {error && <div className="error">{error}</div>}
 
@@ -113,6 +132,15 @@ export default function LoginPage() {
       </p>
 
       <style jsx>{`
+        .banner-ok {
+          background: rgba(16,185,129,0.10);
+          border: 1px solid rgba(16,185,129,0.30);
+          color: #065f46;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          margin-bottom: 12px;
+        }
         .pw-wrap { position: relative; }
         .pw-wrap :global(input) { padding-right: 40px; }
         .pw-toggle {
