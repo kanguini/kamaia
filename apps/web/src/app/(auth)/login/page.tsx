@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -15,7 +15,27 @@ const loginSchema = z.object({
 })
 type LoginFormData = z.infer<typeof loginSchema>
 
+/**
+ * Wrapper Suspense — exigido pelo Next 14 App Router quando o
+ * componente usa `useSearchParams()` numa página pré-renderizada.
+ * Sem isto, `next build` falha com "missing-suspense-with-csr-bailout"
+ * porque os search params só existem em runtime.
+ */
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}>
+          <Loader2 size={22} color="var(--k2-text-mute)" className="animate-spin" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)

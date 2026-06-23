@@ -7,11 +7,11 @@
  */
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
-import { Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search } from 'lucide-react'
 import {
   ContratoEstado,
   CONTRATO_ESTADO_LABELS,
@@ -38,7 +38,26 @@ interface TipoContrato {
   nome: string
 }
 
+/**
+ * Wrapper Suspense — exigido pelo Next 14 App Router porque
+ * `useSearchParams()` é usado no inner form. Sem isto o `next build`
+ * falha em prerender com "missing-suspense-with-csr-bailout".
+ */
 export default function ContratosListPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}>
+          <Loader2 size={22} color="var(--k2-text-mute)" className="animate-spin" />
+        </div>
+      }
+    >
+      <ContratosListInner />
+    </Suspense>
+  )
+}
+
+function ContratosListInner() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
