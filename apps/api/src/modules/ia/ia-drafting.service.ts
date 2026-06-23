@@ -128,9 +128,10 @@ export class IaDraftingService {
         },
         take: 6,
         orderBy: { usoCount: 'desc' },
-        select: { titulo: true, conteudo: true, categoria: true },
+        select: { id: true, titulo: true, conteudo: true, categoria: true },
       }),
       this.prisma.clausula.findMany({
+        select: { id: true, titulo: true, conteudo: true, categoria: true },
         where: {
           tenantId,
           isApproved: true,
@@ -152,10 +153,25 @@ export class IaDraftingService {
         },
         take: 8,
         orderBy: { usoCount: 'desc' },
-        select: { titulo: true, conteudo: true, categoria: true },
       }),
     ]);
     const clausulas = [...especificas, ...transversais];
+
+    // FIX auditoria Cláusulas: incrementa usoCount das cláusulas que
+    // efectivamente entraram no contexto de drafting. Métrica fica
+    // útil para ordenar lista no frontend e priorizar no prompt da IA.
+    // Fire-and-forget — falhar aqui não deve impactar o drafting.
+    if (clausulas.length > 0) {
+      const ids = clausulas.map((c) => c.id);
+      this.prisma.clausula
+        .updateMany({
+          where: { id: { in: ids }, tenantId },
+          data: { usoCount: { increment: 1 } },
+        })
+        .catch(() => {
+          /* silent */
+        });
+    }
 
     const userMessage = this.buildUserMessage(contrato, clausulas, dto.prompt);
 

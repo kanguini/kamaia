@@ -30,6 +30,11 @@ type CreateCarteiraDto = z.infer<typeof CreateCarteiraSchema>;
 const UpdateCarteiraSchema = CreateCarteiraSchema.partial();
 type UpdateCarteiraDto = z.infer<typeof UpdateCarteiraSchema>;
 
+const MoverContratosSchema = z.object({
+  targetCarteiraId: z.string().uuid().nullable(),
+  contratoIds: z.array(z.string().uuid()).min(1).max(500),
+});
+
 @Controller('carteiras')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class CarteirasController {
@@ -79,5 +84,25 @@ export class CarteirasController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.carteiras.softDelete(tenant.tenantId, user.sub, id);
+  }
+
+  /**
+   * Mover N contratos entre carteiras (ou desligar todos passando
+   * targetCarteiraId=null). Substitui o loop manual de N PATCH.
+   */
+  @Post('mover-contratos')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
+  async moverContratos(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(MoverContratosSchema))
+    dto: z.infer<typeof MoverContratosSchema>,
+  ) {
+    return this.carteiras.moverContratos(
+      tenant.tenantId,
+      user.sub,
+      dto.targetCarteiraId,
+      dto.contratoIds,
+    );
   }
 }
