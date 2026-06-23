@@ -48,6 +48,6 @@ export class BackupController {
   @Get('exports')
   @Roles(Role.ADMIN)
   async list(@Tenant() tenant: TenantContext) {
-    return { data: this.backup.list(tenant.tenantId) };
+    return { data: await this.backup.list(tenant.tenantId) };
   }
 }

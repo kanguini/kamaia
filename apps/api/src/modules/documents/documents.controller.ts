@@ -43,9 +43,10 @@ export class DocumentsController {
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
   async get(
     @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
-    return this.documents.getDownloadUrl(tenant.tenantId, id);
+    return this.documents.getDownloadUrl(tenant.tenantId, user.sub, id);
   }
 
   @Post()

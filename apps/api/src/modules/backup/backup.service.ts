@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,20 +11,27 @@ export interface BackupExport {
   createdAt: string;
   completedAt: string | null;
   sizeBytes: number | null;
-  manifest: {
-    contratos: number;
-    entidades: number;
-    carteiras: number;
-    actosRegulatorios: number;
-    versoes: number;
-    documents: number;
-    auditLogs: number;
-  } | null;
+  manifest: BackupManifest | null;
   errorMessage: string | null;
+}
+
+interface BackupManifest {
+  contratos: number;
+  entidades: number;
+  carteiras: number;
+  actosRegulatorios: number;
+  versoes: number;
+  documents: number;
+  auditLogs: number;
 }
 
 /**
  * BackupService — dump JSON real por tenant.
+ *
+ * AUDIT fix: histórico em-memória perdia-se em cada restart do API.
+ * Agora persiste em `backup_exports` table com retenção via TTL
+ * (job futuro de cleanup). Cada run cria a row com status=running
+ * antes de começar; actualiza para done/failed no fim.
  *
  * Estratégia:
  *   - Snapshot síncrono em-memória para datasets pequenos/médios
@@ -38,41 +44,48 @@ export interface BackupExport {
 @Injectable()
 export class BackupService {
   private readonly logger = new Logger(BackupService.name);
-  private readonly history: BackupExport[] = [];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
 
-  list(tenantId: string): BackupExport[] {
-    return this.history.filter((e) => e.tenantId === tenantId).slice(0, 50);
+  async list(tenantId: string): Promise<BackupExport[]> {
+    const rows = await this.prisma.backupExport.findMany({
+      where: { tenantId },
+      orderBy: { startedAt: 'desc' },
+      take: 50,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      requestedBy: r.requestedBy,
+      status: r.status as BackupExport['status'],
+      createdAt: r.startedAt.toISOString(),
+      completedAt: r.completedAt?.toISOString() ?? null,
+      sizeBytes: r.sizeBytes !== null ? Number(r.sizeBytes) : null,
+      manifest: (r.manifest as BackupManifest | null) ?? null,
+      errorMessage: r.errorMessage,
+    }));
   }
 
   async generateDump(
     tenantId: string,
     actorUserId: string,
   ): Promise<{ summary: BackupExport; data: object }> {
-    const entry: BackupExport = {
-      id: randomUUID(),
-      tenantId,
-      requestedBy: actorUserId,
-      status: 'running',
-      createdAt: new Date().toISOString(),
-      completedAt: null,
-      sizeBytes: null,
-      manifest: null,
-      errorMessage: null,
-    };
-    this.history.unshift(entry);
+    // Cria entrada persistente — sobrevive a restart
+    const exportRow = await this.prisma.backupExport.create({
+      data: {
+        tenantId,
+        requestedBy: actorUserId,
+        status: 'running',
+      },
+    });
 
     try {
       const data = await this.collect(tenantId);
       const json = this.stringifyBigInt(data);
-      entry.status = 'done';
-      entry.completedAt = new Date().toISOString();
-      entry.sizeBytes = Buffer.byteLength(json, 'utf8');
-      entry.manifest = {
+      const manifest: BackupManifest = {
         contratos: (data.contratos as unknown[]).length,
         entidades: (data.entidades as unknown[]).length,
         carteiras: (data.carteiras as unknown[]).length,
@@ -82,6 +95,16 @@ export class BackupService {
         auditLogs: (data.auditLogs as unknown[]).length,
       };
 
+      const updated = await this.prisma.backupExport.update({
+        where: { id: exportRow.id },
+        data: {
+          status: 'done',
+          completedAt: new Date(),
+          sizeBytes: BigInt(Buffer.byteLength(json, 'utf8')),
+          manifest: manifest as object,
+        },
+      });
+
       await this.audit.log({
         tenantId,
         actorUserId,
@@ -89,18 +112,37 @@ export class BackupService {
         entityType: EntityType.TENANT,
         entityId: tenantId,
         afterData: {
-          exportId: entry.id,
-          sizeBytes: entry.sizeBytes,
-          manifest: entry.manifest,
+          exportId: updated.id,
+          sizeBytes: updated.sizeBytes?.toString(),
+          manifest,
         },
       });
 
-      return { summary: entry, data };
+      return {
+        summary: {
+          id: updated.id,
+          tenantId,
+          requestedBy: actorUserId,
+          status: 'done',
+          createdAt: updated.startedAt.toISOString(),
+          completedAt: updated.completedAt?.toISOString() ?? null,
+          sizeBytes: Number(updated.sizeBytes ?? 0),
+          manifest,
+          errorMessage: null,
+        },
+        data,
+      };
     } catch (e) {
-      entry.status = 'failed';
-      entry.completedAt = new Date().toISOString();
-      entry.errorMessage = e instanceof Error ? e.message : String(e);
-      this.logger.error(`Backup falhou para ${tenantId}: ${entry.errorMessage}`);
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.error(`Backup falhou para ${tenantId}: ${msg}`);
+      await this.prisma.backupExport.update({
+        where: { id: exportRow.id },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          errorMessage: msg,
+        },
+      });
       throw e;
     }
   }

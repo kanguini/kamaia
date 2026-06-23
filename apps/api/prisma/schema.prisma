@@ -77,6 +77,7 @@ model Tenant {
   usageQuota      UsageQuota?
   apiKeys         ApiKey[]
   webhooks        Webhook[]
+  backupExports   BackupExport[]
 
   @@index([parentTenantId])
   @@index([slug])
@@ -994,6 +995,26 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorUserId])
   @@map("audit_logs")
+}
+
+/// BackupExport — persiste histórico de dumps por tenant. Substitui
+/// o array em-memória que se perdia em cada restart do API. Retenção
+/// 90 dias (job de cleanup numa próxima iteração).
+model BackupExport {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  requestedBy   String   @map("requested_by") @db.Uuid
+  status        String   @db.VarChar(20) // queued|running|done|failed
+  sizeBytes     BigInt?  @map("size_bytes")
+  manifest      Json?
+  errorMessage  String?  @map("error_message") @db.Text
+  startedAt     DateTime @default(now()) @map("started_at") @db.Timestamptz
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, startedAt])
+  @@map("backup_exports")
 }
 
 // ═══════════════════════════════════════════════════════════

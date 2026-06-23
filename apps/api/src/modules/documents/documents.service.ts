@@ -1,5 +1,11 @@
 import { createHash, randomUUID } from 'crypto';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { Prisma, DocumentStorageType } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
@@ -12,6 +18,8 @@ import { DocumentStorage, STORAGE_TOKEN } from './storage';
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -47,9 +55,23 @@ export class DocumentsService {
     return doc;
   }
 
-  async getDownloadUrl(tenantId: string, id: string) {
+  async getDownloadUrl(
+    tenantId: string,
+    actorUserId: string | undefined,
+    id: string,
+  ) {
     const doc = await this.get(tenantId, id);
     const url = await this.storage.signedUrl(doc.storageKey);
+    // AUDIT fix #5: regista quem pediu o signed URL (auditoria de acessos)
+    if (actorUserId) {
+      await this.audit.log({
+        tenantId,
+        actorUserId,
+        action: AuditAction.READ,
+        entityType: EntityType.DOCUMENT,
+        entityId: doc.id,
+      });
+    }
     return { url, mimeType: doc.mimeType, nome: doc.nome };
   }
 
@@ -59,7 +81,17 @@ export class DocumentsService {
     dto: CreateDocumentDto,
   ) {
     const buffer = Buffer.from(dto.contentBase64, 'base64');
-    const hash = dto.hashSHA256 ?? createHash('sha256').update(buffer).digest('hex');
+    const computedHash = createHash('sha256').update(buffer).digest('hex');
+
+    // AUDIT fix #4: se cliente forneceu hashSHA256, validar match.
+    // Sem isto, atacante podia fingir integridade enviando hash
+    // bonito e payload diferente.
+    if (dto.hashSHA256 && dto.hashSHA256.toLowerCase() !== computedHash) {
+      throw new BadRequestException(
+        'hashSHA256 fornecido não corresponde ao conteúdo — possível corrupção ou ataque',
+      );
+    }
+    const hash = computedHash;
 
     // ID gerado antes para compor a storageKey.
     const id = randomUUID();
@@ -100,11 +132,24 @@ export class DocumentsService {
   }
 
   async softDelete(tenantId: string, actorUserId: string, id: string) {
-    await this.get(tenantId, id);
+    const doc = await this.get(tenantId, id);
     await this.prisma.document.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+
+    // AUDIT fix #3: storage cleanup. Antes, storage file ficava órfão
+    // no R2/local até manualmente removido. Best-effort — se delete
+    // do storage falhar, o doc fica marcado deletedAt (lista filtra)
+    // mas o ficheiro permanece. Logamos para reaper batch futuro.
+    try {
+      await this.storage.delete(doc.storageKey);
+    } catch (e) {
+      this.logger.warn(
+        `Falhou storage.delete para ${doc.storageKey}: ${e instanceof Error ? e.message : e}. Ficheiro fica para reaper.`,
+      );
+    }
+
     await this.audit.log({
       tenantId,
       actorUserId,
