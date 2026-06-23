@@ -8,12 +8,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { api } from '@/lib/api'
+import { api, apiUrl, getActiveTenantId } from '@/lib/api'
 import { useMutation } from '@/hooks/use-api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Send } from 'lucide-react'
+import { Plus, Send, BookOpen } from 'lucide-react'
 import { fmtDateTime } from '@/lib/clm-format'
+
+interface Citation {
+  documentCodigo: string
+  titulo: string
+  artigo: string | null
+  trecho: string
+}
 
 interface Conversation {
   id: string
@@ -26,6 +33,9 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   createdAt: string
+  /** Estado UI: streaming (resposta a chegar), settled (gravada) */
+  streaming?: boolean
+  citacoes?: Citation[]
 }
 
 interface ConversationsResponse {
@@ -74,10 +84,7 @@ export default function IAPage() {
   }, [messages])
 
   const { mutate: createConv } = useMutation<{ title?: string }, Conversation>('/ia/conversations', 'POST')
-  const { mutate: sendMsg, loading: sending } = useMutation<{ content: string }, { userMessage: Message; assistantMessage: Message }>(
-    activeId ? `/ia/conversations/${activeId}/messages` : '/ia/conversations/_/messages',
-    'POST',
-  )
+  const [sending, setSending] = useState(false)
 
   const handleNew = async () => {
     const conv = await createConv({})
@@ -88,23 +95,131 @@ export default function IAPage() {
     }
   }
 
+  /**
+   * Envia mensagem via SSE streaming. Faz fetch para /stream endpoint
+   * com headers Bearer + X-Tenant-Id (EventSource não suporta headers,
+   * por isso usamos fetch + ReadableStream parser).
+   *
+   * Eventos consumidos:
+   *  - user-msg: confirma id real da mensagem do utilizador
+   *  - citations: array de chunks RAG; anexa ao próximo assistant
+   *  - text: delta de texto; concatena na bolha streaming
+   *  - done: marca streaming=false, atribui id real
+   *  - error: substitui placeholder com mensagem de erro
+   */
   const handleSend = async () => {
-    if (!input.trim() || !activeId) return
+    if (!input.trim() || !activeId || !session?.accessToken) return
     const content = input.trim()
     setInput('')
-    // optimistic user message
-    const tempId = `tmp-${Date.now()}`
+    setSending(true)
+
+    const tempUserId = `tmp-u-${Date.now()}`
+    const tempAssistantId = `tmp-a-${Date.now()}`
+
     setMessages((prev) => [
       ...prev,
-      { id: tempId, role: 'user', content, createdAt: new Date().toISOString() },
+      { id: tempUserId, role: 'user', content, createdAt: new Date().toISOString() },
+      { id: tempAssistantId, role: 'assistant', content: '', createdAt: new Date().toISOString(), streaming: true },
     ])
-    const result = await sendMsg({ content })
-    if (result) {
-      setMessages((prev) => [
-        ...prev.filter((m) => m.id !== tempId),
-        result.userMessage,
-        result.assistantMessage,
-      ])
+
+    try {
+      const tenantId = getActiveTenantId()
+      const res = await fetch(
+        apiUrl(`/ia/conversations/${activeId}/messages/stream`),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.accessToken}`,
+            ...(tenantId ? { 'X-Tenant-Id': tenantId } : {}),
+            Accept: 'text/event-stream',
+          },
+          body: JSON.stringify({ content }),
+        },
+      )
+      if (!res.ok || !res.body) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let pendingCitations: Citation[] | undefined
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const blocks = buffer.split('\n\n')
+        buffer = blocks.pop() ?? ''
+
+        for (const block of blocks) {
+          const lines = block.split('\n')
+          const eventLine = lines.find((l) => l.startsWith('event: '))
+          const dataLine = lines.find((l) => l.startsWith('data: '))
+          if (!eventLine || !dataLine) continue
+          const kind = eventLine.slice(7).trim()
+          const data = JSON.parse(dataLine.slice(6).trim())
+
+          if (kind === 'user-msg') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempUserId ? { ...m, id: data.messageId } : m,
+              ),
+            )
+          } else if (kind === 'citations') {
+            pendingCitations = data.citacoes as Citation[]
+          } else if (kind === 'text') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? { ...m, content: m.content + (data.delta as string) }
+                  : m,
+              ),
+            )
+          } else if (kind === 'done') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? {
+                      ...m,
+                      id: data.assistantMessageId,
+                      streaming: false,
+                      citacoes: pendingCitations,
+                    }
+                  : m,
+              ),
+            )
+          } else if (kind === 'error') {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? {
+                      ...m,
+                      content: `⚠ ${data.message}`,
+                      streaming: false,
+                    }
+                  : m,
+              ),
+            )
+            break
+          }
+        }
+      }
+    } catch (e) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempAssistantId
+            ? {
+                ...m,
+                content: `⚠ Erro de ligação: ${(e as Error).message}`,
+                streaming: false,
+              }
+            : m,
+        ),
+      )
+    } finally {
+      setSending(false)
     }
   }
 
@@ -144,7 +259,7 @@ export default function IAPage() {
       {/* Chat */}
       <section style={{ display: 'flex', flexDirection: 'column', background: 'var(--k2-bg-elev)', border: '1px solid var(--k2-border)', borderRadius: 'var(--k2-radius)' }}>
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--k2-border)', fontSize: 11, color: 'var(--k2-text-mute)' }}>
-          As respostas da IA são <strong>placeholders</strong> nesta fase — a integração com o motor de extracção e Q&A está em desenvolvimento.
+          Respostas em tempo-real via streaming. Citações à legislação aparecem por baixo de cada resposta.
         </div>
         <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {!activeId && <div style={{ color: 'var(--k2-text-mute)' }}>Cria uma conversa para começar.</div>}
@@ -152,20 +267,56 @@ export default function IAPage() {
             <div
               key={m.id}
               style={{
-                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '70%',
-                padding: '10px 14px',
-                borderRadius: 12,
-                background: m.role === 'user' ? 'var(--k2-accent)' : 'var(--k2-bg-elev-2)',
-                color: m.role === 'user' ? 'var(--k2-accent-fg)' : 'var(--k2-text)',
-                fontSize: 13,
-                whiteSpace: 'pre-wrap',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                gap: 6,
               }}
             >
-              {m.content}
+              <div
+                style={{
+                  maxWidth: '70%',
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  background: m.role === 'user' ? 'var(--k2-accent)' : 'var(--k2-bg-elev-2)',
+                  color: m.role === 'user' ? 'var(--k2-accent-fg)' : 'var(--k2-text)',
+                  fontSize: 13,
+                  whiteSpace: 'pre-wrap',
+                  position: 'relative',
+                }}
+              >
+                {m.content || (m.streaming && '…')}
+                {m.streaming && m.content && (
+                  <span style={{ display: 'inline-block', width: 8, height: 14, background: 'var(--k2-text-dim)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink 800ms infinite' }} />
+                )}
+              </div>
+              {m.role === 'assistant' && m.citacoes && m.citacoes.length > 0 && (
+                <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--k2-text-mute)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <BookOpen size={10} /> Citações
+                  </div>
+                  {m.citacoes.map((c, i) => (
+                    <div key={i} style={{ background: 'var(--k2-bg)', border: '1px solid var(--k2-border)', borderRadius: 'var(--k2-radius-sm)', padding: '6px 10px', fontSize: 11 }}>
+                      <div style={{ fontWeight: 500, color: 'var(--k2-text)' }}>
+                        {c.documentCodigo}{c.artigo ? ` art. ${c.artigo}` : ''}
+                      </div>
+                      <div style={{ color: 'var(--k2-text-mute)', marginTop: 2 }}>{c.titulo}</div>
+                      <div style={{ color: 'var(--k2-text-dim)', marginTop: 4, fontStyle: 'italic' }}>
+                        "{c.trecho.slice(0, 180)}…"
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
+        <style jsx>{`
+          @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+          }
+        `}</style>
         <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid var(--k2-border)' }}>
           <Input
             value={input}
