@@ -212,6 +212,31 @@ model Entidade {
   paisResidencia           String                       @default("AO") @map("pais_residencia") @db.VarChar(2)
   observacoes              String?                      @db.Text
 
+  // ─── Pessoa singular ─────────────────────────────────────
+  /// Estado civil — relevante para alienação de bens (Código Civil
+  /// arts. 1678ss exige consentimento do cônjuge em determinados
+  /// regimes). Só faz sentido para PESSOA_SINGULAR.
+  estadoCivil              String?                      @map("estado_civil") @db.VarChar(40)
+  regimeBens               String?                      @map("regime_bens") @db.VarChar(40)
+  profissao                String?                      @db.VarChar(100)
+  /// Data de validade do BI ou passaporte (lembrete proactivo
+  /// quando expira durante a vigência de um contrato).
+  biEmitidoEm              DateTime?                    @map("bi_emitido_em") @db.Date
+  biValidoAte              DateTime?                    @map("bi_valido_ate") @db.Date
+  biEmissor                String?                      @map("bi_emissor") @db.VarChar(100)
+
+  // ─── Pessoa colectiva ────────────────────────────────────
+  /// Forma jurídica — Lda, SA, EI, etc (Lei n.º 1/04). Determina
+  /// capital social mínimo, órgãos sociais e responsabilidade dos
+  /// sócios. Só faz sentido para PESSOA_COLECTIVA.
+  formaJuridica            String?                      @map("forma_juridica") @db.VarChar(40)
+  /// Capital social em centavos (BigInt — nunca floats para valores
+  /// monetários, regra do projecto).
+  capitalSocialCentavos    BigInt?                      @map("capital_social_centavos")
+  capitalSocialMoeda       String?                      @map("capital_social_moeda") @db.VarChar(3)
+  objectoSocial            String?                      @map("objecto_social") @db.Text
+  dataConstituicao         DateTime?                    @map("data_constituicao") @db.Date
+
   // FTS
   searchVector             Unsupported("tsvector")?     @map("search_vector")
 

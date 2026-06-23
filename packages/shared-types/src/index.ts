@@ -52,6 +52,49 @@ export enum EntidadeNacionalidadeCambial {
   NAO_RESIDENTE = 'NAO_RESIDENTE',
 }
 
+/**
+ * Estado civil de pessoa singular — relevante para contratos
+ * imobiliários e patrimoniais (Código Civil angolano arts. 1678ss
+ * exige consentimento do cônjuge em alienação de bens comuns).
+ */
+export enum EntidadeEstadoCivil {
+  SOLTEIRO = 'SOLTEIRO',
+  CASADO = 'CASADO',
+  UNIAO_DE_FACTO = 'UNIAO_DE_FACTO',
+  DIVORCIADO = 'DIVORCIADO',
+  VIUVO = 'VIUVO',
+  SEPARADO_JUDICIALMENTE = 'SEPARADO_JUDICIALMENTE',
+}
+
+/**
+ * Regime de bens (só aplicável quando estado civil = CASADO).
+ * Determina se contratos de alienação requerem consentimento do
+ * cônjuge ou se cada cônjuge pode contratar isoladamente.
+ */
+export enum EntidadeRegimeBens {
+  COMUNHAO_GERAL = 'COMUNHAO_GERAL',
+  COMUNHAO_ADQUIRIDOS = 'COMUNHAO_ADQUIRIDOS',
+  SEPARACAO = 'SEPARACAO',
+}
+
+/**
+ * Forma jurídica de pessoa colectiva angolana — alinhado com a Lei
+ * das Sociedades Comerciais (Lei n.º 1/04). Determina capital
+ * social mínimo, órgãos sociais e responsabilidade dos sócios.
+ */
+export enum EntidadeFormaJuridica {
+  LDA = 'LDA',                  // Sociedade por quotas
+  SA = 'SA',                    // Sociedade anónima
+  EI = 'EI',                    // Empresário em nome individual
+  EIRL = 'EIRL',                // Estabelecimento individual de responsabilidade limitada
+  COOPERATIVA = 'COOPERATIVA',
+  ASSOCIACAO = 'ASSOCIACAO',
+  FUNDACAO = 'FUNDACAO',
+  SUCURSAL = 'SUCURSAL',        // Sucursal de empresa estrangeira
+  ENTIDADE_PUBLICA = 'ENTIDADE_PUBLICA',
+  OUTRO = 'OUTRO',
+}
+
 // ─── CONTRATO — Estados + Origem ──────────────────────────
 
 export enum ContratoEstado {

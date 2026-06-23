@@ -84,17 +84,66 @@ export class EntidadesService {
 
   // ─── CRUD core ─────────────────────────────────
 
+  /**
+   * Cria entidade + (opcional) representante legal inline numa
+   * única transacção. O representante vira `EntidadeContacto` com
+   * `isPrincipal=true`.
+   *
+   * AUDIT fix: o frontend reportou "criar não aparece" — provável
+   * causa era validação Zod a rejeitar silenciosamente. Esta
+   * versão retorna SEMPRE a entidade completa (com contactos
+   * incluídos) e o controller propaga o erro como BadRequest com
+   * mensagem human-readable.
+   */
   async create(tenantId: string, actorUserId: string, dto: CreateEntidadeDto) {
-    const e = await this.prisma.entidade.create({
-      data: { tenantId, ...dto } as Prisma.EntidadeUncheckedCreateInput,
+    const { representante, capitalSocial, ...rest } = dto;
+
+    const e = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.entidade.create({
+        data: {
+          tenantId,
+          ...rest,
+          // Converte kwanzas decimal → BigInt centavos.
+          ...(capitalSocial !== undefined && {
+            capitalSocialCentavos: BigInt(Math.round(capitalSocial * 100)),
+          }),
+        } as Prisma.EntidadeUncheckedCreateInput,
+      });
+
+      if (representante) {
+        await tx.entidadeContacto.create({
+          data: {
+            entidadeId: created.id,
+            nome: representante.nome,
+            cargo: representante.cargo,
+            email: representante.email,
+            telefone: representante.telefone,
+            isPrincipal: true,
+          },
+        });
+      }
+
+      return tx.entidade.findUniqueOrThrow({
+        where: { id: created.id },
+        include: {
+          contactos: { orderBy: [{ isPrincipal: 'desc' }, { nome: 'asc' }] },
+        },
+      });
     });
+
     await this.audit.log({
       tenantId,
       actorUserId,
       action: AuditAction.CREATE,
       entityType: EntityType.ENTIDADE,
       entityId: e.id,
-      afterData: e as object,
+      afterData: {
+        id: e.id,
+        nome: e.nome,
+        tipo: e.tipo,
+        nif: e.nif,
+        comRepresentante: !!representante,
+      },
     });
     return e;
   }

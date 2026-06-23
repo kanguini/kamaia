@@ -17,9 +17,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
-import { useMutation } from '@/hooks/use-api'
 import { BulkImportDrawer } from '@/components/entidades/bulk-import-drawer'
+import { EntidadeFormDrawer } from '@/components/entidades/entidade-form-drawer'
 
 interface Entidade {
   id: string
@@ -41,6 +40,14 @@ export default function EntidadesPage() {
   const [loading, setLoading] = useState(true)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
   const [showBulkImport, setShowBulkImport] = useState(false)
+  /**
+   * Counter para forçar refetch após criar/importar — incrementar
+   * `refreshKey` re-corre o useEffect mesmo quando os filtros não
+   * mudaram. Resolve o bug "criar não aparece" (que era afinal a
+   * lista a não refrescar quando o user deixava cursor=null e
+   * filtros vazios).
+   */
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const query = useMemo(() => {
     const sp = new URLSearchParams()
@@ -66,7 +73,7 @@ export default function EntidadesPage() {
     return () => {
       cancelled = true
     }
-  }, [query, session?.accessToken, status, cursor])
+  }, [query, session?.accessToken, status, cursor, refreshKey])
 
   useEffect(() => {
     setCursor(null)
@@ -97,10 +104,9 @@ export default function EntidadesPage() {
         onClose={() => setShowBulkImport(false)}
         onDone={() => {
           setShowBulkImport(false)
-          // refresh: triggers cursor reset
-          setSearch((s) => s + '')
           setCursor(null)
           setItems([])
+          setRefreshKey((k) => k + 1)
         }}
       />
 
@@ -167,109 +173,22 @@ export default function EntidadesPage() {
         </div>
       )}
 
-      <QuickCreateDrawer
+      <EntidadeFormDrawer
         open={showQuickCreate}
         onClose={() => setShowQuickCreate(false)}
-        onCreated={(novo) => {
+        onCreated={() => {
+          // AUDIT fix do bug "criar não aparece": refetch explícito
+          // em vez de optimistic insert. Mais fiável quando há
+          // filtros activos na lista (e.g. utilizador filtra por
+          // Não-residente, cria um Residente — o optimistic ia
+          // mostrar mas o refetch real iria escondê-lo, criando
+          // inconsistência confusa).
           setShowQuickCreate(false)
-          setItems((prev) => [novo, ...prev])
+          setCursor(null)
+          setItems([])
+          setRefreshKey((k) => k + 1)
         }}
       />
     </div>
-  )
-}
-
-/**
- * Slide-over para criar entidade rápida.
- *
- * Substitui o modal-centro antigo por Drawer para uniformizar com o
- * resto da app (decisão UX: todos os formulários slide-over).
- */
-function QuickCreateDrawer({
-  open,
-  onClose,
-  onCreated,
-}: {
-  open: boolean
-  onClose: () => void
-  onCreated: (e: Entidade) => void
-}) {
-  const [nome, setNome] = useState('')
-  const [tipo, setTipo] = useState<EntidadeTipo>(EntidadeTipo.PESSOA_COLECTIVA)
-  const [nif, setNif] = useState('')
-  const [residente, setResidente] = useState<EntidadeNacionalidadeCambial>(EntidadeNacionalidadeCambial.RESIDENTE)
-  const { mutate, loading, error } = useMutation<unknown, Entidade>('/entidades', 'POST')
-
-  // Reset ao fechar para evitar arrastar dados entre aberturas.
-  useEffect(() => {
-    if (!open) {
-      setNome('')
-      setTipo(EntidadeTipo.PESSOA_COLECTIVA)
-      setNif('')
-      setResidente(EntidadeNacionalidadeCambial.RESIDENTE)
-    }
-  }, [open])
-
-  const submit = async () => {
-    const result = await mutate({
-      nome,
-      tipo,
-      nacionalidadeCambial: residente,
-      nif: nif || undefined,
-    })
-    if (result) onCreated(result)
-  }
-
-  return (
-    <Drawer open={open} onClose={onClose} width={520}>
-      <DrawerHeader
-        title="Nova entidade"
-        subtitle="Pessoa singular ou colectiva que entra nos teus contratos."
-        onClose={onClose}
-      />
-      <DrawerBody>
-        {error && (
-          <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', padding: '10px 14px', borderRadius: 'var(--k2-radius-sm)', fontSize: 13 }}>
-            {error}
-          </div>
-        )}
-        <form
-          id="nova-entidade-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void submit()
-          }}
-          style={{ display: 'grid', gap: 14 }}
-        >
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-            Nome
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome / Razão social" autoFocus />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-            Tipo
-            <Select value={tipo} onChange={(e) => setTipo(e.target.value as EntidadeTipo)}>
-              <option value={EntidadeTipo.PESSOA_COLECTIVA}>Pessoa colectiva</option>
-              <option value={EntidadeTipo.PESSOA_SINGULAR}>Pessoa singular</option>
-            </Select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-            Residência cambial
-            <Select value={residente} onChange={(e) => setResidente(e.target.value as EntidadeNacionalidadeCambial)}>
-              <option value={EntidadeNacionalidadeCambial.RESIDENTE}>Residente</option>
-              <option value={EntidadeNacionalidadeCambial.NAO_RESIDENTE}>Não-residente</option>
-            </Select>
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--k2-text-dim)' }}>
-            NIF (opcional)
-            <Input value={nif} onChange={(e) => setNif(e.target.value)} />
-          </label>
-        </form>
-      </DrawerBody>
-      <DrawerFooter>
-        <div style={{ flex: 1 }} />
-        <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
-        <Button type="submit" form="nova-entidade-form" loading={loading}>Criar</Button>
-      </DrawerFooter>
-    </Drawer>
   )
 }
