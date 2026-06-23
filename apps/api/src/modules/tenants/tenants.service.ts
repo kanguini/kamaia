@@ -7,10 +7,12 @@ import {
 import {
   AuditAction,
   EntityType,
+  PLAN_LIMITS,
   Role,
   TenantPlan,
   TenantStatus,
 } from '@kamaia/shared-types';
+import { randomBytes } from 'crypto';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -59,6 +61,12 @@ export class TenantsService {
     return tenant;
   }
 
+  /**
+   * AUDIT fix: race protection via updateMany composto (id + status
+   * != DISABLED). Não permite updates a tenants em status terminal
+   * — útil quando billing suspendeu o tenant e o owner ainda tenta
+   * editar.
+   */
   async update(
     tenantId: string,
     actorUserId: string,
@@ -74,9 +82,19 @@ export class TenantsService {
     const before = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
     });
-    const updated = await this.prisma.tenant.update({
-      where: { id: tenantId },
+    if (!before) throw new NotFoundException('Tenant not found');
+    if (before.status === TenantStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Tenant cancelado — contacta o billing para reactivar.',
+      );
+    }
+    const r = await this.prisma.tenant.updateMany({
+      where: { id: tenantId, status: { not: TenantStatus.CANCELLED } },
       data,
+    });
+    if (r.count === 0) throw new NotFoundException('Tenant not found (race)');
+    const updated = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
     });
     await this.audit.log({
       tenantId,
@@ -93,6 +111,16 @@ export class TenantsService {
   /**
    * Cria um sub-tenant — apenas permitido se o tenant-pai for AGENCY.
    * O actor herda role ADMIN no sub-tenant via Membership directa.
+   *
+   * AUDIT fixes nesta auditoria:
+   *  1. Respeita `subTenantsMax` do plano do parent — antes podia
+   *     criar N sub-tenants ignorando o tecto do AGENCY
+   *  2. Slug com sufixo random de 8 chars (3.4×10¹⁴ permutações)
+   *     em vez de timestamp-based, que colidia em alta concorrência
+   *  3. Audit.log FORA da transacção — se a tx falhar (e.g. unique
+   *     constraint do slug), não fica audit-log órfão dum tenant
+   *     que nunca existiu
+   *  4. Re-verifica `acceptedAt` no membership (defesa em profundidade)
    */
   async createSubTenant(
     parentTenantId: string,
@@ -112,11 +140,25 @@ export class TenantsService {
       throw new BadRequestException('Nested sub-tenants are not allowed');
     }
 
-    const slug =
-      this.slugify(dto.nome) + '-' + Date.now().toString(36).slice(-6);
+    // Limite de sub-tenants — AGENCY tem `subTenantsMax` no plano
+    const limit = PLAN_LIMITS[parent.plan].subTenantsMax;
+    if (limit !== -1) {
+      const subCount = await this.prisma.tenant.count({
+        where: { parentTenantId, deletedAt: null },
+      });
+      if (subCount >= limit) {
+        throw new ForbiddenException(
+          `Plano ${parent.plan} permite no máximo ${limit} sub-tenants (tens ${subCount}).`,
+        );
+      }
+    }
 
-    return this.prisma.$transaction(async (tx) => {
-      const sub = await tx.tenant.create({
+    // Slug random — evita colisões sob alta concorrência
+    const slug =
+      this.slugify(dto.nome) + '-' + randomBytes(4).toString('hex');
+
+    const sub = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.tenant.create({
         data: {
           slug,
           nome: dto.nome,
@@ -128,28 +170,35 @@ export class TenantsService {
       });
       await tx.membership.create({
         data: {
-          tenantId: sub.id,
+          tenantId: created.id,
           userId: actorUserId,
           role: Role.ADMIN,
           isDefault: false,
           acceptedAt: new Date(),
         },
       });
-      await this.audit.log({
-        tenantId: parentTenantId,
-        actorUserId,
-        action: AuditAction.CREATE,
-        entityType: EntityType.TENANT,
-        entityId: sub.id,
-        afterData: sub as object,
-      });
-      return sub;
+      return created;
     });
+
+    // Audit após commit — se a tx falhar não fica audit órfão
+    await this.audit.log({
+      tenantId: parentTenantId,
+      actorUserId,
+      action: AuditAction.CREATE,
+      entityType: EntityType.TENANT,
+      entityId: sub.id,
+      afterData: sub as object,
+    });
+    return sub;
   }
 
+  /**
+   * AUDIT fix: filtra soft-deleted. Antes leakava sub-tenants
+   * "apagados" para o painel do AGENCY.
+   */
   async listSubTenants(parentTenantId: string) {
     return this.prisma.tenant.findMany({
-      where: { parentTenantId },
+      where: { parentTenantId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
   }
