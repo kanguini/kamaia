@@ -183,6 +183,9 @@ model Entidade {
   numeroBI                 String?                      @map("numero_bi") @db.VarChar(30)
   matriculaRC              String?                      @map("matricula_rc") @db.VarChar(50)
   nacionalidadeCambial     EntidadeNacionalidadeCambial @default(RESIDENTE) @map("nacionalidade_cambial")
+  /// E.5: instituição financeira (banco, seguradora, leasing,
+  /// microfinanças). Activa regras compliance específicas BNA.
+  isInstituicaoFinanceira  Boolean                      @default(false) @map("is_instituicao_financeira")
   sectorActividade         String?                      @map("sector_actividade") @db.VarChar(100)
   morada                   Json?
   paisResidencia           String                       @default("AO") @map("pais_residencia") @db.VarChar(2)
