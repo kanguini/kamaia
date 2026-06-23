@@ -19,6 +19,7 @@ import { Input, Select } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
 import { useMutation } from '@/hooks/use-api'
+import { BulkImportDrawer } from '@/components/entidades/bulk-import-drawer'
 
 interface Entidade {
   id: string
@@ -39,6 +40,7 @@ export default function EntidadesPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
+  const [showBulkImport, setShowBulkImport] = useState(false)
 
   const query = useMemo(() => {
     const sp = new URLSearchParams()
@@ -80,10 +82,27 @@ export default function EntidadesPage() {
             Pessoas singulares e colectivas que entram nos teus contratos.
           </p>
         </div>
-        <Button leftIcon={<Plus size={14} />} onClick={() => setShowQuickCreate(true)}>
-          Nova entidade
-        </Button>
+        <div style={{ display: 'inline-flex', gap: 8 }}>
+          <Button variant="secondary" onClick={() => setShowBulkImport(true)}>
+            Importar CSV
+          </Button>
+          <Button leftIcon={<Plus size={14} />} onClick={() => setShowQuickCreate(true)}>
+            Nova entidade
+          </Button>
+        </div>
       </header>
+
+      <BulkImportDrawer
+        open={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        onDone={() => {
+          setShowBulkImport(false)
+          // refresh: triggers cursor reset
+          setSearch((s) => s + '')
+          setCursor(null)
+          setItems([])
+        }}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) repeat(2, minmax(160px, 200px))', gap: 10 }}>
         <div style={{ position: 'relative' }}>
