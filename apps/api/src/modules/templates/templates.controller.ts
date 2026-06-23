@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -73,9 +74,25 @@ export class TemplatesController {
   @Roles(Role.ADMIN, Role.LEGAL_LEAD)
   async update(
     @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ParseZodPipe(UpdateTemplateSchema)) dto: UpdateTemplateDto,
   ) {
-    return this.templates.update(tenant.tenantId, id, dto);
+    return this.templates.update(tenant.tenantId, user.sub, id, dto);
+  }
+
+  /**
+   * Soft-delete (deletedAt). Distingue de `isActive=false` (archive)
+   * — usar este endpoint quando o template não deve mais aparecer
+   * sequer no histórico de selecção de novos contratos.
+   */
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async delete(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.templates.softDelete(tenant.tenantId, user.sub, id);
   }
 }

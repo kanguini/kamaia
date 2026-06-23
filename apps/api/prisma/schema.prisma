@@ -354,6 +354,10 @@ model Template {
   createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz
   createdBy       String?     @map("created_by") @db.Uuid
+  /// AUDIT fix: soft-delete (regra "nunca DELETE físico em dados de
+  /// negócio" do CLAUDE.md). isActive era flag de visibilidade; agora
+  /// distinguimos archived (isActive=false) de deleted (deletedAt!=null).
+  deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz
 
   tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tipo            TipoContrato @relation(fields: [tipoId], references: [id])
