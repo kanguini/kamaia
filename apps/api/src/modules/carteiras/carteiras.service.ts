@@ -1,7 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
+import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+type CarteiraComCount = Prisma.CarteiraGetPayload<{
+  include: { _count: { select: { contratos: true } } };
+}>;
+
+export interface CarteiraResponse {
+  id: string;
+  tenantId: string;
+  nome: string;
+  descricao: string | null;
+  metadata: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date;
+  contratosCount: number;
+}
 
 @Injectable()
 export class CarteirasService {
@@ -10,9 +26,28 @@ export class CarteirasService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(tenantId: string) {
-    // FIX auditoria: frontend espera campo `contratosCount` flat; antes
-    // devolvíamos `_count: { contratos }` e ficava NaN no UI.
+  /**
+   * Forma uniforme de resposta — usada em list/get/create/update.
+   * AUDIT fix: anteriormente `create`/`update` devolviam a row
+   * Prisma raw (sem contratosCount) e `list`/`get` devolviam a
+   * forma mapeada. Quem consumisse os 4 endpoints como o mesmo
+   * tipo apanhava NaN ou metadata em falta. Agora todos passam
+   * por aqui.
+   */
+  private shape(c: CarteiraComCount | (CarteiraComCount & { _count?: { contratos: number } })): CarteiraResponse {
+    return {
+      id: c.id,
+      tenantId: c.tenantId,
+      nome: c.nome,
+      descricao: c.descricao,
+      metadata: c.metadata,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      contratosCount: c._count?.contratos ?? 0,
+    };
+  }
+
+  async list(tenantId: string): Promise<CarteiraResponse[]> {
     const rows = await this.prisma.carteira.findMany({
       where: { tenantId, deletedAt: null },
       orderBy: { nome: 'asc' },
@@ -22,18 +57,10 @@ export class CarteirasService {
         },
       },
     });
-    return rows.map((c) => ({
-      id: c.id,
-      tenantId: c.tenantId,
-      nome: c.nome,
-      descricao: c.descricao,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-      contratosCount: c._count.contratos,
-    }));
+    return rows.map((c) => this.shape(c));
   }
 
-  async get(tenantId: string, id: string) {
+  async get(tenantId: string, id: string): Promise<CarteiraResponse> {
     const c = await this.prisma.carteira.findFirst({
       where: { id, tenantId, deletedAt: null },
       include: {
@@ -43,24 +70,17 @@ export class CarteirasService {
       },
     });
     if (!c) throw new NotFoundException('Carteira not found');
-    return {
-      id: c.id,
-      tenantId: c.tenantId,
-      nome: c.nome,
-      descricao: c.descricao,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-      contratosCount: c._count.contratos,
-    };
+    return this.shape(c);
   }
 
   async create(
     tenantId: string,
     actorUserId: string,
     dto: { nome: string; descricao?: string; metadata?: object },
-  ) {
+  ): Promise<CarteiraResponse> {
     const c = await this.prisma.carteira.create({
       data: { tenantId, ...dto },
+      include: { _count: { select: { contratos: true } } },
     });
     await this.audit.log({
       tenantId,
@@ -70,19 +90,31 @@ export class CarteirasService {
       entityId: c.id,
       afterData: c as object,
     });
-    return c;
+    return this.shape(c);
   }
 
+  /**
+   * AUDIT fix: o `update.where: { id }` original abria janela para
+   * race com soft-delete intermédio — alguém apagasse a carteira
+   * entre o `get` (assert tenant) e o `update`, e o `update` ainda
+   * passava. Usamos `updateMany` com `where` composto (id + tenant
+   * + deletedAt:null) para fechar a janela. count=0 → 404 explícito.
+   */
   async update(
     tenantId: string,
     actorUserId: string,
     id: string,
     dto: { nome?: string; descricao?: string; metadata?: object },
-  ) {
+  ): Promise<CarteiraResponse> {
     const before = await this.get(tenantId, id);
-    const after = await this.prisma.carteira.update({
-      where: { id },
+    const r = await this.prisma.carteira.updateMany({
+      where: { id, tenantId, deletedAt: null },
       data: dto,
+    });
+    if (r.count === 0) throw new NotFoundException('Carteira not found (race)');
+    const after = await this.prisma.carteira.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { contratos: { where: { deletedAt: null } } } } },
     });
     await this.audit.log({
       tenantId,
@@ -93,7 +125,7 @@ export class CarteirasService {
       beforeData: before as object,
       afterData: after as object,
     });
-    return after;
+    return this.shape(after);
   }
 
   /**
@@ -127,9 +159,18 @@ export class CarteirasService {
   }
 
   /**
-   * FIX auditoria: novo endpoint para mover contratos em batch entre
-   * carteiras. Substitui o loop de N PATCH /contratos/:id que o user
-   * teria de fazer manualmente.
+   * Move N contratos em batch entre carteiras (ou desliga todos
+   * passando targetCarteiraId=null). Substitui o loop manual de
+   * N PATCH.
+   *
+   * AUDIT fix: o caller original perdia visibilidade sobre que IDs
+   * falharam — `r.count` podia ser < `contratoIds.length` mas o
+   * cliente não sabia quais. Agora devolvemos `naoEncontrados`
+   * explicitamente (IDs que não pertenciam ao tenant, foram
+   * soft-deleted, ou não existiam).
+   *
+   * Tudo numa $transaction: se algum contrato perder o tenant
+   * entre o updateMany e o second pass, o resultado é consistente.
    */
   async moverContratos(
     tenantId: string,
@@ -141,26 +182,50 @@ export class CarteirasService {
     if (targetCarteiraId) {
       await this.get(tenantId, targetCarteiraId);
     }
-    const r = await this.prisma.contrato.updateMany({
-      where: {
-        id: { in: contratoIds },
-        tenantId,
-        deletedAt: null,
+
+    const { movidos, naoEncontrados, antes } = await this.prisma.$transaction(
+      async (tx) => {
+        // Pre-fetch contratos elegíveis (para distinguir movidos de
+        // não-encontrados, e capturar before-state para audit).
+        const elegiveis = await tx.contrato.findMany({
+          where: {
+            id: { in: contratoIds },
+            tenantId,
+            deletedAt: null,
+          },
+          select: { id: true, carteiraId: true },
+        });
+        const elegiveisIds = new Set(elegiveis.map((c) => c.id));
+        const naoEncontrados = contratoIds.filter((id) => !elegiveisIds.has(id));
+
+        if (elegiveisIds.size === 0) {
+          return { movidos: 0, naoEncontrados, antes: [] as typeof elegiveis };
+        }
+
+        const r = await tx.contrato.updateMany({
+          where: { id: { in: Array.from(elegiveisIds) } },
+          data: { carteiraId: targetCarteiraId },
+        });
+        return { movidos: r.count, naoEncontrados, antes: elegiveis };
       },
-      data: { carteiraId: targetCarteiraId },
-    });
+    );
+
     await this.audit.log({
       tenantId,
       actorUserId,
       action: AuditAction.UPDATE,
       entityType: EntityType.CARTEIRA,
       entityId: targetCarteiraId ?? 'unassigned',
+      beforeData: {
+        carteiraIds: antes.map((c) => ({ id: c.id, carteiraId: c.carteiraId })),
+      },
       afterData: {
-        movidos: r.count,
+        movidos,
+        naoEncontrados,
         contratoIds,
         targetCarteiraId,
       },
     });
-    return { movidos: r.count };
+    return { movidos, naoEncontrados };
   }
 }
