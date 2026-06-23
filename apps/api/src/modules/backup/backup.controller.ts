@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Header,
@@ -14,6 +15,8 @@ import { Tenant } from '../../common/decorators/tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
+import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
+import { RestoreBackupDto, RestoreBackupSchema } from './backup.dto';
 import { BackupService } from './backup.service';
 
 @Controller('backup')
@@ -49,5 +52,31 @@ export class BackupController {
   @Roles(Role.ADMIN)
   async list(@Tenant() tenant: TenantContext) {
     return { data: await this.backup.list(tenant.tenantId) };
+  }
+
+  /**
+   * Restaura um dump JSON para o tenant activo.
+   *
+   * Body:
+   *  - `backup`: o objecto JSON completo (com `summary` + `payload`)
+   *  - `dryRun` (default `true`): apenas valida e devolve manifest
+   *  - `collisionPolicy` (`skip`|`error`): comportamento em colisão
+   *    de IDs com rows existentes
+   *
+   * Resposta: `{ manifest, summary }`. `manifest.totalWritten` indica
+   * o que foi inserido (zero em dry-run).
+   *
+   * Apenas ADMIN. Tenant alvo é sempre o tenant activo do actor — o
+   * `tenantId` original no backup é informativo, é reescrito em cada
+   * row. Memberships e AuditLog são saltados de propósito.
+   */
+  @Post('restore')
+  @Roles(Role.ADMIN)
+  async restore(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(RestoreBackupSchema)) dto: RestoreBackupDto,
+  ) {
+    return this.backup.restore(tenant.tenantId, user.sub, dto);
   }
 }

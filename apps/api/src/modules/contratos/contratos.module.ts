@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ComplianceModule } from '../compliance/compliance.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { ContratoAdendasController } from './adendas/adendas.controller';
 import { ContratoAdendasService } from './adendas/adendas.service';
@@ -31,9 +32,11 @@ import {
   ContratoPdfPublicController,
 } from './pdf/pdf.controller';
 import { ContratoPdfService } from './pdf/pdf.service';
+import { RenovacaoController } from './renovacao/renovacao.controller';
+import { RenovacaoEngineService } from './renovacao/renovacao.service';
 
 @Module({
-  imports: [ComplianceModule, WebhooksModule],
+  imports: [ComplianceModule, WebhooksModule, NotificationsModule],
   controllers: [
     ContratosController,
     ContratoVersoesController,
@@ -50,6 +53,7 @@ import { ContratoPdfService } from './pdf/pdf.service';
     ContratoPublicoController,
     ContratoPdfController,
     ContratoPdfPublicController,
+    RenovacaoController,
   ],
   providers: [
     ContratosService,
@@ -65,7 +69,8 @@ import { ContratoPdfService } from './pdf/pdf.service';
     ContratoComentariosService,
     ContratoAssinaturasService,
     ContratoPdfService,
+    RenovacaoEngineService,
   ],
-  exports: [ContratosService],
+  exports: [ContratosService, RenovacaoEngineService],
 })
 export class ContratosModule {}

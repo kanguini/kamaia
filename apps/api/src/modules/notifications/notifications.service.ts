@@ -17,16 +17,27 @@ export class NotificationsService {
    * (Resend para EMAIL, Twilio para SMS, web-push VAPID para PUSH,
    * SSE/WebSocket para IN_APP) tomará a entrega e moverá para SENT/FAILED.
    */
-  async create(params: {
-    channel: NotificationChannel;
-    type: NotificationType | string;
-    userId: string;
-    tenantId: string;
-    titulo: string;
-    conteudo: string;
-    payload?: Record<string, unknown>;
-  }) {
-    return this.prisma.notification.create({
+  /**
+   * Cria notification em status PENDING. Aceita opcionalmente um
+   * `tx` para correr dentro de uma transacção existente — necessário
+   * quando o caller (alerts-scheduler, renovação engine) quer
+   * garantir atomicidade entre notification + ContratoEvento +
+   * webhook outbox.
+   */
+  async create(
+    params: {
+      channel: NotificationChannel;
+      type: NotificationType | string;
+      userId: string;
+      tenantId: string;
+      titulo: string;
+      conteudo: string;
+      payload?: Record<string, unknown>;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.notification.create({
       data: {
         tenantId: params.tenantId,
         userId: params.userId,

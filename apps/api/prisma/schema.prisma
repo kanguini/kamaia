@@ -109,6 +109,13 @@ model User {
   failedLoginCount Int          @default(0) @map("failed_login_count")
   lockedUntil     DateTime?     @map("locked_until") @db.Timestamptz
 
+  /// Password reset — SHA-256 hash de token raw. Mesma técnica que
+  /// invite tokens: prefix de 8 chars para debug + hash de 64. TTL
+  /// 1h. Limpo a zero após uso ou expiração.
+  resetTokenHash   String?   @unique @map("reset_token_hash") @db.VarChar(64)
+  resetTokenPrefix String?   @map("reset_token_prefix") @db.VarChar(20)
+  resetExpiresAt   DateTime? @map("reset_expires_at") @db.Timestamptz
+
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz
@@ -120,6 +127,7 @@ model User {
   aiConversations AIConversation[]
 
   @@index([email])
+  @@index([resetTokenHash])
   @@map("users")
 }
 
@@ -445,8 +453,19 @@ model Contrato {
   dataInicioVigencia  DateTime?        @map("data_inicio_vigencia") @db.Date
   dataTermo           DateTime?        @map("data_termo") @db.Date
   renovacaoAutomatica Boolean          @default(false) @map("renovacao_automatica")
+  /// Duração de cada ciclo de renovação tácita, em meses. Necessário
+  /// para o motor calcular o novo `dataTermo` automaticamente.
+  /// Quando NULL e `renovacaoAutomatica=true`, o motor recusa-se a
+  /// renovar e produz `RENOVACAO_FALHOU` para o operador completar.
+  prazoRenovacaoMeses Int?             @map("prazo_renovacao_meses")
   janelaDenunciaDias  Int?             @map("janela_denuncia_dias")
   prazoIndeterminado  Boolean          @default(false) @map("prazo_indeterminado")
+
+  /// Denúncia tempestiva — quando preenchido, a renovação automática
+  /// é bloqueada. O motor verifica isto antes de qualquer renovação.
+  denunciaEm          DateTime?        @map("denuncia_em") @db.Timestamptz
+  denunciaPorUserId   String?          @map("denuncia_por_user_id") @db.Uuid
+  denunciaMotivo      String?          @map("denuncia_motivo") @db.Text
 
   // Override de gatilhos regulatórios (caso o tipo não cubra)
   overrideNotario     Boolean?         @map("override_notario")
@@ -1004,6 +1023,7 @@ model BackupExport {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String   @map("tenant_id") @db.Uuid
   requestedBy   String   @map("requested_by") @db.Uuid
+  type          String   @default("export") @db.VarChar(20) // export|restore
   status        String   @db.VarChar(20) // queued|running|done|failed
   sizeBytes     BigInt?  @map("size_bytes")
   manifest      Json?
@@ -1014,6 +1034,7 @@ model BackupExport {
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, startedAt])
+  @@index([tenantId, type, startedAt])
   @@map("backup_exports")
 }
 

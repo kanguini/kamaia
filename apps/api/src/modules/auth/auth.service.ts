@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
   AuditAction,
@@ -13,20 +16,27 @@ import {
   TenantStatus,
 } from '@kamaia/shared-types';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { AuditService } from '../audit/audit.service';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 
 const BCRYPT_ROUNDS = 12;
 const MAX_FAILED_LOGINS = 5;
 const LOCKOUT_MINUTES = 15;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly audit: AuditService,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async register(dto: RegisterDto, ip?: string) {
@@ -199,5 +209,147 @@ export class AuthService {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 50);
+  }
+
+  // ─── Password reset ──────────────────────────────────────────────
+
+  /**
+   * Inicia recuperação de palavra-passe. **Resposta uniforme** —
+   * devolvemos sucesso mesmo quando o email não está registado, para
+   * evitar enumeração. O lado-cliente nunca consegue distinguir.
+   *
+   * Gera token raw (24 bytes URL-safe), armazena só o hash SHA-256
+   * com prefix (debug) e expira em 1h. Envia link por email via
+   * MailService.sendGeneric.
+   */
+  async forgotPassword(email: string): Promise<{ ok: true }> {
+    const normalised = email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalised },
+    });
+
+    if (user && user.isActive && !user.deletedAt) {
+      const rawToken = crypto.randomBytes(24).toString('base64url');
+      const prefix = rawToken.slice(0, 8);
+      const hash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetTokenHash: hash,
+          resetTokenPrefix: prefix,
+          resetExpiresAt: expires,
+        },
+      });
+
+      const webBase =
+        this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000';
+      const link = `${webBase.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
+
+      const sendResult = await this.mail.sendGeneric({
+        to: user.email,
+        subject: 'Repor palavra-passe — Kamaia',
+        text:
+          `Olá ${user.firstName},\n\n` +
+          `Recebemos um pedido para repor a tua palavra-passe.\n\n` +
+          `Clica no link abaixo (válido durante 1 hora):\n${link}\n\n` +
+          `Se não pediste isto, ignora este email — a tua palavra-passe ` +
+          `actual continua válida.\n\n— Equipa Kamaia`,
+      });
+
+      // Audit log — não loga o token (só prefix); ip preserved
+      // separadamente no controller.
+      await this.audit.log({
+        actorUserId: user.id,
+        action: AuditAction.PASSWORD_CHANGE,
+        entityType: EntityType.USER,
+        entityId: user.id,
+        afterData: {
+          tokenPrefix: prefix,
+          expiresAt: expires.toISOString(),
+          mailStubbed: sendResult.stubbed,
+        },
+      });
+    } else if (user) {
+      this.logger.warn(
+        `forgot-password: user ${normalised} desactivado/eliminado — sem efeito`,
+      );
+    }
+
+    // Resposta uniforme — caller não distingue se o email existe
+    return { ok: true };
+  }
+
+  /**
+   * Consome o token e define nova palavra-passe.
+   *
+   * Validações: token hash existe, ainda dentro do TTL, user activo,
+   * nova password ≥ 8 chars. Após sucesso:
+   *   - actualiza passwordHash
+   *   - limpa reset_token_* + zera failedLoginCount + remove lockedUntil
+   *   - invalida sessões activas (UserSession.deletedAt)
+   *   - audit log
+   *
+   * Erros: BadRequest com code='INVALID_TOKEN' para token inválido/
+   * expirado — front-end mostra mensagem dedicada.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ ok: true }> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException(
+        'Palavra-passe tem de ter pelo menos 8 caracteres.',
+      );
+    }
+
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await this.prisma.user.findUnique({
+      where: { resetTokenHash: hash },
+    });
+
+    if (!user || !user.resetExpiresAt || user.resetExpiresAt < new Date()) {
+      throw new BadRequestException({
+        code: 'INVALID_TOKEN',
+        error: 'Token inválido ou expirado.',
+      });
+    }
+    if (!user.isActive || user.deletedAt) {
+      throw new BadRequestException({
+        code: 'INVALID_TOKEN',
+        error: 'Conta inactiva.',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash,
+          resetTokenHash: null,
+          resetTokenPrefix: null,
+          resetExpiresAt: null,
+          failedLoginCount: 0,
+          lockedUntil: null,
+        },
+      });
+      // Invalida sessões — força re-login em todos os dispositivos.
+      // (Se UserSession não tiver deletedAt, este updateMany é no-op
+      // graças ao filtro `where`.)
+      await tx.userSession.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    await this.audit.log({
+      actorUserId: user.id,
+      action: AuditAction.PASSWORD_CHANGE,
+      entityType: EntityType.USER,
+      entityId: user.id,
+      afterData: { via: 'reset-token' },
+    });
+
+    return { ok: true };
   }
 }

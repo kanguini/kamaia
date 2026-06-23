@@ -232,47 +232,59 @@ export class AlertsScheduler {
     // Quem é notificado: responsável do contrato + ADMINs do tenant
     const destinatarios = await this.resolverDestinatarios(c.tenantId, c.responsavelId);
 
-    for (const userId of destinatarios) {
-      for (const channel of [NotificationChannel.IN_APP, NotificationChannel.EMAIL]) {
-        await this.notifications.create({
-          channel,
-          type: notifType,
-          userId,
-          tenantId: c.tenantId,
-          titulo,
-          conteudo,
-          payload: {
+    // Atomicidade: notifications + outbox webhook + ContratoEvento
+    // num único $transaction. Se qualquer passo falhar, fazemos
+    // rollback e a próxima passagem do cron repete (sem deixar
+    // notifications órfãs ou timeline inconsistente).
+    await this.prisma.$transaction(async (tx) => {
+      for (const userId of destinatarios) {
+        for (const channel of [NotificationChannel.IN_APP, NotificationChannel.EMAIL]) {
+          await this.notifications.create(
+            {
+              channel,
+              type: notifType,
+              userId,
+              tenantId: c.tenantId,
+              titulo,
+              conteudo,
+              payload: {
+                contratoId: c.id,
+                numeroInterno: c.numeroInterno,
+                dataChaveId: dc.id,
+                tipoDataChave: dc.tipo,
+                diasAntes,
+              },
+            },
+            tx,
+          );
+        }
+      }
+
+      if (webhookEvent) {
+        await this.webhooks.enqueueEvent(
+          c.tenantId,
+          webhookEvent,
+          {
             contratoId: c.id,
             numeroInterno: c.numeroInterno,
-            dataChaveId: dc.id,
-            tipoDataChave: dc.tipo,
+            titulo: c.titulo,
+            dataChaveTipo: dc.tipo,
+            data: dc.data.toISOString(),
             diasAntes,
           },
-        });
+          tx,
+        );
       }
-    }
 
-    // Webhook
-    if (webhookEvent) {
-      await this.webhooks.enqueueEvent(c.tenantId, webhookEvent, {
-        contratoId: c.id,
-        numeroInterno: c.numeroInterno,
-        titulo: c.titulo,
-        dataChaveTipo: dc.tipo,
-        data: dc.data.toISOString(),
-        diasAntes,
+      await tx.contratoEvento.create({
+        data: {
+          contratoId: c.id,
+          tipo: ContratoEventoTipo.ALERTA_DISPARADO,
+          resumo: titulo,
+          payload: { dataChaveId: dc.id, diasAntes, notifType } as object,
+          actorTipo: 'SYSTEM',
+        },
       });
-    }
-
-    // Marca como disparado na timeline
-    await this.prisma.contratoEvento.create({
-      data: {
-        contratoId: c.id,
-        tipo: ContratoEventoTipo.ALERTA_DISPARADO,
-        resumo: titulo,
-        payload: { dataChaveId: dc.id, diasAntes, notifType } as object,
-        actorTipo: 'SYSTEM',
-      },
     });
   }
 
@@ -304,41 +316,54 @@ export class AlertsScheduler {
       `Prazo limite: ${acto.prazoLimite.toISOString().slice(0, 10)}\n`;
 
     const destinatarios = await this.resolverDestinatarios(c.tenantId, c.responsavelId);
-    for (const userId of destinatarios) {
-      await this.notifications.create({
-        channel: NotificationChannel.IN_APP,
-        type: notifType,
-        userId,
-        tenantId: c.tenantId,
-        titulo,
-        conteudo,
-        payload: {
+
+    // Mesma estratégia: tudo numa $transaction para garantir
+    // notifications + webhook + ContratoEvento juntos ou nada.
+    await this.prisma.$transaction(async (tx) => {
+      for (const userId of destinatarios) {
+        await this.notifications.create(
+          {
+            channel: NotificationChannel.IN_APP,
+            type: notifType,
+            userId,
+            tenantId: c.tenantId,
+            titulo,
+            conteudo,
+            payload: {
+              contratoId: c.id,
+              actoId: acto.id,
+              tipo: acto.tipo,
+              diasAtePrazo,
+            },
+          },
+          tx,
+        );
+      }
+
+      await this.webhooks.enqueueEvent(
+        c.tenantId,
+        'acto_regulatorio.detectado',
+        {
           contratoId: c.id,
+          numeroInterno: c.numeroInterno,
           actoId: acto.id,
           tipo: acto.tipo,
+          prazoLimite: acto.prazoLimite.toISOString(),
           diasAtePrazo,
+          severidade: notifType,
+        },
+        tx,
+      );
+
+      await tx.contratoEvento.create({
+        data: {
+          contratoId: c.id,
+          tipo: ContratoEventoTipo.ALERTA_DISPARADO,
+          resumo: titulo,
+          payload: { actoId: acto.id, bucket: notifType, diasAtePrazo } as object,
+          actorTipo: 'SYSTEM',
         },
       });
-    }
-
-    await this.webhooks.enqueueEvent(c.tenantId, 'acto_regulatorio.detectado', {
-      contratoId: c.id,
-      numeroInterno: c.numeroInterno,
-      actoId: acto.id,
-      tipo: acto.tipo,
-      prazoLimite: acto.prazoLimite.toISOString(),
-      diasAtePrazo,
-      severidade: notifType,
-    });
-
-    await this.prisma.contratoEvento.create({
-      data: {
-        contratoId: c.id,
-        tipo: ContratoEventoTipo.ALERTA_DISPARADO,
-        resumo: titulo,
-        payload: { actoId: acto.id, bucket: notifType, diasAtePrazo } as object,
-        actorTipo: 'SYSTEM',
-      },
     });
   }
 

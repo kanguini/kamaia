@@ -46,6 +46,12 @@ export const CreateContratoSchema = z.object({
   dataInicioVigencia: z.coerce.date().optional(),
   dataTermo: z.coerce.date().optional(),
   renovacaoAutomatica: z.boolean().default(false),
+  /**
+   * Duração do ciclo de renovação tácita (em meses). Necessário se
+   * `renovacaoAutomatica=true` para o motor calcular o novo termo.
+   * Min 1, max 120 (10 anos é tecto razoável).
+   */
+  prazoRenovacaoMeses: z.coerce.number().int().min(1).max(120).optional(),
   janelaDenunciaDias: z.coerce.number().int().positive().optional(),
   prazoIndeterminado: z.boolean().default(false),
 

@@ -136,7 +136,15 @@ function makeMocks(state: State) {
         },
       ),
     },
-  };
+  } as Record<string, unknown>;
+
+  // $transaction passa o próprio prisma como tx — os modelos
+  // mockados já têm os mesmos métodos `create`/`findFirst`/etc.
+  // Suficiente para os specs porque não estamos a testar isolation,
+  // mas sim a sequência de operações.
+  (prisma as { $transaction: unknown }).$transaction = jest.fn(
+    async (cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma),
+  );
 
   return { prisma, notifications, webhooks };
 }
@@ -237,6 +245,7 @@ describe('AlertsScheduler', () => {
       't-1',
       'contrato.expira_em_30_dias',
       expect.objectContaining({ contratoId: 'c-1', diasAntes: 30 }),
+      expect.anything(),
     );
   });
 
@@ -249,6 +258,7 @@ describe('AlertsScheduler', () => {
       't-1',
       'contrato.expira_em_7_dias',
       expect.objectContaining({ diasAntes: 7 }),
+      expect.anything(),
     );
   });
 
@@ -261,6 +271,7 @@ describe('AlertsScheduler', () => {
       't-1',
       'contrato.janela_denuncia_proxima',
       expect.any(Object),
+      expect.anything(),
     );
     const notif = mocks.notifications.create.mock.calls[0][0] as unknown as { type: NotificationType };
     expect(notif.type).toBe(NotificationType.JANELA_DENUNCIA_PROXIMA);

@@ -106,6 +106,7 @@ export function NovoContratoFlow({
   const [dataInicioVigencia, setDataInicioVigencia] = useState('')
   const [dataTermo, setDataTermo] = useState('')
   const [renovacaoAutomatica, setRenovacaoAutomatica] = useState(false)
+  const [prazoRenovacaoMeses, setPrazoRenovacaoMeses] = useState('')
   const [janelaDenunciaDias, setJanelaDenunciaDias] = useState('')
   const [responsavelId, setResponsavelId] = useState('')
 
@@ -239,6 +240,10 @@ export function NovoContratoFlow({
         dataInicioVigencia: dataInicioVigencia || undefined,
         dataTermo: dataTermo || undefined,
         renovacaoAutomatica,
+        prazoRenovacaoMeses:
+          renovacaoAutomatica && prazoRenovacaoMeses
+            ? Number(prazoRenovacaoMeses)
+            : undefined,
         janelaDenunciaDias: janelaDenunciaDias ? Number(janelaDenunciaDias) : undefined,
         responsavelId: responsavelId || undefined,
         partes: partesPayload.length > 0 ? partesPayload : undefined,
@@ -431,6 +436,23 @@ export function NovoContratoFlow({
                   Renovação automática
                 </label>
               </Row>
+              {renovacaoAutomatica && (
+                <Row>
+                  <Field
+                    label="Prazo de cada renovação (meses)"
+                    hint="Período do ciclo de renovação tácita. Ex.: 12 = renova por mais 1 ano."
+                  >
+                    <Input
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={prazoRenovacaoMeses}
+                      onChange={(e) => setPrazoRenovacaoMeses(e.target.value)}
+                      placeholder="Ex.: 12"
+                    />
+                  </Field>
+                </Row>
+              )}
               <Field label="Responsável">
                 <Select value={responsavelId} onChange={(e) => setResponsavelId(e.target.value)}>
                   <option value="">Eu</option>
@@ -638,11 +660,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint?: string
+  children: React.ReactNode
+}) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--k2-text-dim)' }}>{label}</span>
       {children}
+      {hint && (
+        <span style={{ fontSize: 11, color: 'var(--k2-text-mute)', lineHeight: 1.4 }}>{hint}</span>
+      )}
     </label>
   )
 }

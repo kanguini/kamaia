@@ -27,11 +27,20 @@ export interface DiffVersaoRef {
   createdAt: string
 }
 
+interface WordOp {
+  op: 'equal' | 'add' | 'remove'
+  text: string
+}
+
 interface DiffLine {
   op: 'equal' | 'add' | 'remove'
   text: string
   oldLine?: number
   newLine?: number
+  /** Diff word-level inline quando linha foi pareada como modificação. */
+  wordOps?: WordOp[]
+  /** Id de pareamento (mesma linha lógica). */
+  pairId?: number
 }
 
 interface DiffResponse {
@@ -237,9 +246,56 @@ function UnifiedRow({ line }: { line: DiffLine }) {
       <span style={lineNumCellStyle}>{line.newLine ?? ''}</span>
       <span style={{ ...lineNumCellStyle, textAlign: 'center' }}>{prefix}</span>
       <span style={{ padding: '0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {line.text || ' '}
+        <InlineText line={line} />
       </span>
     </div>
+  )
+}
+
+/**
+ * Render do texto da linha. Quando `wordOps` está presente, mostra
+ * o diff word-level com cada palavra removida tachada e cada
+ * adicionada sublinhada — em vez de pintar a linha inteira na cor
+ * da operação. Para linhas sem `wordOps` cai no texto plain.
+ */
+function InlineText({ line }: { line: DiffLine }) {
+  if (!line.wordOps || line.wordOps.length === 0) {
+    return <>{line.text || ' '}</>
+  }
+  return (
+    <>
+      {line.wordOps.map((t, i) => {
+        if (t.op === 'equal') return <span key={i}>{t.text}</span>
+        if (t.op === 'remove') {
+          return (
+            <span
+              key={i}
+              style={{
+                background: 'rgba(220,38,38,0.22)',
+                textDecoration: 'line-through',
+                color: '#7f1d1d',
+                borderRadius: 2,
+              }}
+            >
+              {t.text}
+            </span>
+          )
+        }
+        return (
+          <span
+            key={i}
+            style={{
+              background: 'rgba(16,185,129,0.22)',
+              color: '#065f46',
+              borderRadius: 2,
+              fontWeight: 500,
+            }}
+          >
+            {t.text}
+          </span>
+        )
+      })}
+    </>
   )
 }
 
@@ -281,7 +337,7 @@ function SplitCell({ line }: { side: 'L' | 'R'; line: DiffLine | null }) {
     >
       <span style={lineNumCellStyle}>{line.oldLine ?? line.newLine ?? ''}</span>
       <span style={{ padding: '0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {line.text || ' '}
+        <InlineText line={line} />
       </span>
     </div>
   )

@@ -31,6 +31,7 @@ import { ComplianceTab as ComplianceTabNew } from '@/components/contratos/compli
 import { VersoesTab as VersoesTabNew } from '@/components/contratos/versoes-tab'
 import { DocumentosTab } from '@/components/contratos/documentos-tab'
 import { ObrigacoesTab } from '@/components/contratos/obrigacoes-tab'
+import { DenunciarButton } from '@/components/contratos/denunciar-button'
 
 interface Contrato {
   id: string
@@ -46,7 +47,10 @@ interface Contrato {
   dataInicioVigencia: string | null
   dataTermo: string | null
   renovacaoAutomatica: boolean
+  prazoRenovacaoMeses: number | null
   janelaDenunciaDias: number | null
+  denunciaEm: string | null
+  denunciaMotivo: string | null
   tipo: { id: string; nome: string } | null
   carteira: { id: string; nome: string } | null
   responsavel: { id: string; firstName: string; lastName: string } | null
@@ -73,7 +77,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 export default function ContratoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState<TabKey>('resumo')
-  const { data: contrato, loading, error } = useApi<Contrato>(`/contratos/${id}`)
+  const { data: contrato, loading, error, refetch } = useApi<Contrato>(`/contratos/${id}`)
 
   if (error) {
     return <div style={{ color: 'var(--k2-bad)' }}>{error}</div>
@@ -95,7 +99,14 @@ export default function ContratoDetailPage() {
           </h1>
         </div>
         {contrato && (
-          <Badge variant={estadoBadgeVariant(contrato.estado)}>{estadoLabel(contrato.estado)}</Badge>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {contrato.renovacaoAutomatica &&
+              !contrato.denunciaEm &&
+              contrato.estado === ContratoEstado.ACTIVO && (
+                <DenunciarButton contratoId={contrato.id} onDone={() => refetch()} />
+              )}
+            <Badge variant={estadoBadgeVariant(contrato.estado)}>{estadoLabel(contrato.estado)}</Badge>
+          </div>
         )}
       </header>
 
@@ -159,8 +170,23 @@ function ResumoTab({ contrato }: { contrato: Contrato }) {
       <Info label="Data assinatura" value={fmtDate(contrato.dataAssinatura)} />
       <Info label="Início vigência" value={fmtDate(contrato.dataInicioVigencia)} />
       <Info label="Data termo" value={fmtDate(contrato.dataTermo)} />
-      <Info label="Renovação automática" value={contrato.renovacaoAutomatica ? 'Sim' : 'Não'} />
+      <Info
+        label="Renovação automática"
+        value={
+          contrato.renovacaoAutomatica
+            ? contrato.prazoRenovacaoMeses
+              ? `Sim — ciclo de ${contrato.prazoRenovacaoMeses}m`
+              : 'Sim (sem prazo definido)'
+            : 'Não'
+        }
+      />
       <Info label="Janela de denúncia" value={contrato.janelaDenunciaDias ? `${contrato.janelaDenunciaDias} dias` : null} />
+      {contrato.denunciaEm && (
+        <Info
+          label="Denúncia tempestiva"
+          value={`${fmtDate(contrato.denunciaEm)}${contrato.denunciaMotivo ? ` — ${contrato.denunciaMotivo}` : ''}`}
+        />
+      )}
       {contrato.descricao && (
         <div style={{ gridColumn: '1 / -1' }}>
           <Info label="Descrição" value={contrato.descricao} multiline />

@@ -67,4 +67,15 @@ export class RagController {
   async search(@Body(new ParseZodPipe(SearchSchema)) dto: SearchDto) {
     return this.rag.search(dto);
   }
+
+  /**
+   * Re-popula embeddings para chunks com vector=NULL. Útil depois
+   * de adicionar OPENAI_API_KEY a um ambiente que estava em modo
+   * fallback textual.
+   */
+  @Post('legislation/:id/reembed')
+  @Roles(Role.ADMIN)
+  async reembed(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.rag.reembed(id);
+  }
 }
