@@ -276,7 +276,7 @@ function Header() {
             padding: '8px 14px',
             background: T.ink,
             color: 'var(--k2-accent-fg)',
-            border: `1px solid ${T.ink}`,
+            // AUDIT: shapes filled não levam border (rule).
             borderRadius: 6,
             fontSize: 13,
             fontWeight: 500,

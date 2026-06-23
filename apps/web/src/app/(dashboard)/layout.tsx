@@ -23,6 +23,7 @@ import {
   Upload,
   Bot,
   BookOpen,
+  ScrollText,
   Bell,
   Settings,
   Sun,
@@ -32,6 +33,9 @@ import {
   Check,
   Menu,
   X,
+  Search,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/hooks/use-theme'
@@ -60,7 +64,7 @@ const WORK_NAV: NavItem[] = [
 const TOOLS_NAV: NavItem[] = [
   { label: 'IA', href: '/ia', icon: Bot },
   { label: 'Templates', href: '/biblioteca/templates', icon: BookOpen },
-  { label: 'Cláusulas', href: '/biblioteca/clausulas', icon: BookOpen },
+  { label: 'Cláusulas', href: '/biblioteca/clausulas', icon: ScrollText },
   { label: 'Configurações', href: '/configuracoes/organizacao', icon: Settings, match: (p) => p.startsWith('/configuracoes') },
 ]
 
@@ -68,14 +72,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { data: session } = useSession()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  // Persiste preferência colapsada por sessão para evitar reset
+  // entre navegações. Default = expandido.
+  const [collapsed, setCollapsed] = useState(false)
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem('kamaia-sidebar') === 'collapsed')
+    } catch {}
+  }, [])
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c
+      try {
+        localStorage.setItem('kamaia-sidebar', next ? 'collapsed' : 'expanded')
+      } catch {}
+      return next
+    })
+  }
 
   return (
     <ToastProvider>
-      <div className="k2-shell">
+      <div className={cn('k2-shell', collapsed && 'collapsed')}>
         <Sidebar
           pathname={pathname}
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
         />
 
         <div className="k2-main">
@@ -94,35 +117,51 @@ function Sidebar({
   pathname,
   open,
   onClose,
+  collapsed,
+  onToggleCollapsed,
 }: {
   pathname: string
   open: boolean
   onClose: () => void
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }) {
   return (
-    <aside className={cn('k2-sidebar', open && 'open')}>
+    <aside className={cn('k2-sidebar', open && 'open', collapsed && 'collapsed')}>
+      {/* AUDIT: header limpo — sem chevron decorativo nem sub-label "CLM".
+          Mantém apenas o logo e o toggle de colapsar. */}
       <div className="k2-sb-head">
         <div className="k2-brand">
           <div className="k2-brand-logo" aria-label="Kamaia">
             <Logo height={20} />
           </div>
-          <div className="k2-brand-sub">CLM</div>
         </div>
-        <button className="k2-ws-btn" onClick={onClose} aria-label="Fechar menu">
-          {open ? <X size={15} /> : <ChevronDown size={15} />}
+        <button
+          className="k2-ws-btn"
+          onClick={() => {
+            if (open) onClose()
+            else onToggleCollapsed()
+          }}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {open ? <X size={15} /> : collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
         </button>
       </div>
 
       <nav className="k2-nav-group">
-        <div className="k2-nav-label">Trabalho</div>
+        {!collapsed && <div className="k2-nav-label">Trabalho</div>}
         {WORK_NAV.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClick={onClose} />
+          <NavLink key={item.href} item={item} pathname={pathname} onClick={onClose} collapsed={collapsed} />
         ))}
-        <div className="k2-nav-label" style={{ marginTop: 8 }}>
-          Ferramentas
-        </div>
+        {!collapsed && (
+          <div className="k2-nav-label" style={{ marginTop: 8 }}>
+            Ferramentas
+          </div>
+        )}
         {TOOLS_NAV.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClick={onClose} />
+          <NavLink key={item.href} item={item} pathname={pathname} onClick={onClose} collapsed={collapsed} />
         ))}
       </nav>
     </aside>
@@ -133,10 +172,12 @@ function NavLink({
   item,
   pathname,
   onClick,
+  collapsed,
 }: {
   item: NavItem
   pathname: string
   onClick?: () => void
+  collapsed?: boolean
 }) {
   const Icon = item.icon
   const active = item.match
@@ -149,9 +190,10 @@ function NavLink({
       className={cn('k2-nav-item', active && 'active')}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
+      title={collapsed ? item.label : undefined}
     >
       <Icon />
-      <span>{item.label}</span>
+      {!collapsed && <span>{item.label}</span>}
     </Link>
   )
 }
@@ -178,7 +220,7 @@ function Topbar({
 
       <TenantSwitcher />
 
-      <div style={{ flex: 1 }} />
+      <GlobalSearch />
 
       <div className="k2-topbar-actions">
         <button
@@ -192,6 +234,32 @@ function Topbar({
         <UserMenu user={user} initials={initials} />
       </div>
     </header>
+  )
+}
+
+/**
+ * Pesquisa global no topbar — Enter navega para /contratos?search=Q.
+ * Em viewport <600px o input desaparece (ficaria com tamanho útil).
+ */
+function GlobalSearch() {
+  const [q, setQ] = useState('')
+  const submit = () => {
+    if (q.trim()) {
+      window.location.href = `/contratos?search=${encodeURIComponent(q.trim())}`
+    }
+  }
+  return (
+    <div className="k2-topbar-search">
+      <Search size={14} aria-hidden />
+      <input
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder="Procurar contratos, entidades…"
+        aria-label="Pesquisa global"
+      />
+    </div>
   )
 }
 

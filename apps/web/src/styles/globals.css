@@ -160,6 +160,12 @@
   font-feature-settings: 'tnum', 'zero';
   letter-spacing: -0.005em;
 }
+/* Sidebar colapsada — 64px só icons. */
+.k2-shell.collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+.k2-sidebar.collapsed { width: 64px; }
+.k2-sidebar.collapsed .k2-nav-item { justify-content: center; padding: 10px 0; }
+.k2-sidebar.collapsed .k2-brand { justify-content: center; }
+.k2-sidebar.collapsed .k2-sb-head { padding: 14px 8px 12px; flex-direction: column; gap: 10px; }
 
 /* Sidebar */
 .k2-sidebar {
@@ -350,6 +356,33 @@
   font-weight: 500;
 }
 .k2-topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+/* Search global no topbar */
+.k2-topbar-search {
+  flex: 1;
+  max-width: 480px;
+  margin: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--k2-bg-elev-2);
+  border-radius: var(--k2-radius-sm);
+  color: var(--k2-text-mute);
+}
+.k2-topbar-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--k2-text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.k2-topbar-search input::placeholder { color: var(--k2-text-mute); }
+@media (max-width: 720px) {
+  .k2-topbar-search { display: none; }
+}
 .k2-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px;

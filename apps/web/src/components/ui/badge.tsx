@@ -1,5 +1,19 @@
 'use client'
 
+/**
+ * Badge — chips monocromáticas com alto contraste.
+ *
+ * Decisões de design (corrigindo audit UX):
+ *  - Paleta mono-first: maioria das chips usa preto/branco/gray
+ *  - Fills sólidos (sem transparências 12% que matavam contraste)
+ *  - Sem borders quando há fill (regra "shapes filled não têm contorno")
+ *  - Outline-only só usado quando a chip *exige* "outline" semantic
+ *    (warning de atenção que não é estado terminal)
+ *  - Variantes categoriais (civel, laboral, etc.) caem em `default`
+ *    porque o texto já é discriminador suficiente — color-coding
+ *    arco-íris violava a estética mono.
+ */
+
 import { cn } from '@/lib/utils'
 
 type BadgeVariant =
@@ -10,35 +24,47 @@ type BadgeVariant =
   | 'civel' | 'laboral' | 'criminal' | 'comercial' | 'administrativo' | 'familia' | 'arbitragem'
   | 'success' | 'warning' | 'danger' | 'info'
 
+/**
+ * Quatro classes funcionais:
+ *  - SOFT     → bg gray-100 + dark text (chip neutra)
+ *  - SOLID    → bg preto + white text (positivo/info forte/destaque)
+ *  - OUTLINE  → bg transparente + border preto (warning/atenção)
+ *  - DANGER   → bg vermelho-800 + white (perigo crítico)
+ */
+const SOFT = 'bg-[var(--k2-bg-elev-2)] text-[var(--k2-text-dim)]'
+const SOLID = 'bg-[var(--k2-text)] text-[var(--k2-accent-fg)]'
+const OUTLINE = 'bg-transparent text-[var(--k2-text)] border border-[var(--k2-text)]'
+const DANGER = 'bg-[var(--k2-bad)] text-white'
+
 const variantStyles: Record<string, string> = {
-  default: 'bg-surface-raised text-ink-muted border border-border',
-  // Status processo
-  activo: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  suspenso: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  encerrado: 'bg-surface-raised text-ink-muted',
-  arquivado: 'bg-surface-raised text-ink-muted',
-  // Status prazo
-  pendente: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  cumprido: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  expirado: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  cancelado: 'bg-surface-raised text-ink-muted',
-  // Prioridade
-  alta: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  media: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  baixa: 'bg-surface-raised text-ink-muted',
-  // Tipo processo
-  civel: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  laboral: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  criminal: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  comercial: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
-  administrativo: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-  familia: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
-  arbitragem: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  // Semantic
-  success: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  danger: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  default: SOFT,
+  // Estados terminais → soft
+  encerrado: SOFT,
+  arquivado: SOFT,
+  cancelado: SOFT,
+  baixa: SOFT,
+  // Estados activos / positivos → solid black
+  activo: SOLID,
+  cumprido: SOLID,
+  pendente: SOLID,
+  success: SOLID,
+  info: SOLID,
+  // Atenção / warning → outline mono
+  suspenso: OUTLINE,
+  media: OUTLINE,
+  warning: OUTLINE,
+  // Crítico → vermelho desaturado sólido
+  expirado: DANGER,
+  alta: DANGER,
+  danger: DANGER,
+  // Categoriais (não-semantic) → soft
+  civel: SOFT,
+  laboral: SOFT,
+  criminal: SOFT,
+  comercial: SOFT,
+  administrativo: SOFT,
+  familia: SOFT,
+  arbitragem: SOFT,
 }
 
 export interface BadgeProps {
