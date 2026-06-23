@@ -6,8 +6,10 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { z } from 'zod';
 import { JwtPayload, Role, TenantContext } from '@kamaia/shared-types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -100,5 +102,59 @@ export class IaController {
     @Body(new ParseZodPipe(SendMessageSchema)) dto: SendMessageDto,
   ) {
     return this.ia.sendMessage(tenant.tenantId, user.sub, id, dto);
+  }
+
+  /**
+   * Variante streaming via Server-Sent Events.
+   *
+   * Cliente: usar EventSource ou fetch() + ReadableStream + parser SSE.
+   * Formato: `event: <kind>\ndata: <JSON>\n\n` por chunk.
+   *
+   * Kinds emitidos:
+   *  - user-msg: id da mensagem do utilizador
+   *  - citations: array de chunks de legislação (apenas se RAG resolve)
+   *  - text: { delta: "..." } chunk de texto (vários)
+   *  - done: { assistantMessageId, modelo, tokensInput, tokensOutput }
+   *  - error: { message }
+   *
+   * Reduz latência percebida de 5-10s para tempo-real letra-a-letra.
+   */
+  @Post('conversations/:id/messages/stream')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER)
+  async stream(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ParseZodPipe(SendMessageSchema)) dto: SendMessageDto,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Nginx/Vercel: desliga buffering
+    res.flushHeaders();
+
+    const write = (kind: string, data: unknown) => {
+      res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      for await (const ev of this.ia.sendMessageStream(
+        tenant.tenantId,
+        user.sub,
+        id,
+        dto,
+      )) {
+        const { kind, ...rest } = ev;
+        write(kind, rest);
+        if (kind === 'done' || kind === 'error') break;
+      }
+    } catch (e) {
+      write('error', {
+        message: e instanceof Error ? e.message : 'Stream error',
+      });
+    } finally {
+      res.end();
+    }
   }
 }
