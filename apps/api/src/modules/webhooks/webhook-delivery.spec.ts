@@ -78,7 +78,10 @@ function makeDelivery(over: Partial<MockDelivery> = {}): MockDelivery {
     createdAt: new Date(),
     webhook: {
       id: 'wh-1',
-      url: 'https://example.test/hook',
+      // 8.8.8.8 é IP público literal — passa o SSRF check sem DNS.
+      // Para os specs do worker importa só a forma do request
+      // (fetch é stubbed), não o destino real.
+      url: 'https://8.8.8.8/hook',
       secret: 'super-secret-32-bytes-of-entropy-here',
       isActive: true,
     },
@@ -197,7 +200,7 @@ describe('WebhookDeliveryWorker', () => {
     const d = makeDelivery();
     state.deliveries.set(d.id, d);
     global.fetch = jest.fn(async () => {
-      throw new Error('ENOTFOUND example.test');
+      throw new Error('ENOTFOUND 8.8.8.8');
     }) as never;
 
     await worker.tick();

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSafeWebhookUrl } from './url-safety';
 
 /**
  * Webhooks: o tenant subscreve um endpoint que recebe eventos do
@@ -37,11 +38,18 @@ export class WebhooksService {
     return w;
   }
 
-  /** O secret é gerado server-side e devolvido uma única vez. */
+  /**
+   * O secret é gerado server-side e devolvido uma única vez.
+   *
+   * AUDIT fix: URL validada contra SSRF antes de gravar — bloqueia
+   * loopback, RFC 1918, metadata endpoints, portas de serviços
+   * internos (DB, Redis, etc) e exige https em produção.
+   */
   async create(
     tenantId: string,
     dto: { nome: string; url: string; events: string[] },
   ) {
+    await assertSafeWebhookUrl(dto.url);
     const secret = randomBytes(32).toString('base64url');
     const w = await this.prisma.webhook.create({
       data: {
@@ -55,13 +63,25 @@ export class WebhooksService {
     return { ...w, secret };
   }
 
+  /**
+   * AUDIT fix: re-valida URL se vier no update; mesma defesa SSRF
+   * que no create. updateMany composto fecha race com soft-delete.
+   */
   async update(
     tenantId: string,
     id: string,
     dto: { nome?: string; url?: string; events?: string[]; isActive?: boolean },
   ) {
     await this.get(tenantId, id);
-    return this.prisma.webhook.update({ where: { id }, data: dto });
+    if (dto.url !== undefined) {
+      await assertSafeWebhookUrl(dto.url);
+    }
+    const r = await this.prisma.webhook.updateMany({
+      where: { id, tenantId },
+      data: dto,
+    });
+    if (r.count === 0) throw new NotFoundException('Webhook not found (race)');
+    return this.prisma.webhook.findUniqueOrThrow({ where: { id } });
   }
 
   async remove(tenantId: string, id: string) {

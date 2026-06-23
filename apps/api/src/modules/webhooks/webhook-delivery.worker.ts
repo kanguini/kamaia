@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { createHmac } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSafeWebhookUrl } from './url-safety';
 
 /**
  * Worker de entrega de webhooks.
@@ -23,6 +24,9 @@ import { PrismaService } from '../prisma/prisma.service';
 const MAX_DELIVERIES_PER_TICK = 25;
 const HTTP_TIMEOUT_MS = 8000;
 const MAX_TENTATIVAS = 6;
+/** Tecto para o body de resposta lido para audit — evita OOM se o
+ * receiver mandar gigabytes. */
+const MAX_RESPONSE_BODY_BYTES = 32 * 1024; // 32KB
 
 const BACKOFF_SECONDS: number[] = [
   60,        //  1m
@@ -100,6 +104,23 @@ export class WebhookDeliveryWorker {
       .update(body)
       .digest('hex');
 
+    // AUDIT fix: defesa em profundidade contra SSRF — re-valida URL
+    // no momento da entrega. URLs podem ter sido whitelisted no
+    // create e depois o owner mudar o DNS para apontar a um IP
+    // privado (DNS rebinding). Fazer outra resolução aqui fecha a
+    // janela.
+    try {
+      await assertSafeWebhookUrl(d.webhook.url);
+    } catch (e) {
+      await this.scheduleRetry(
+        d.id,
+        d.tentativas + 1,
+        null,
+        `URL bloqueada por SSRF check: ${(e as Error).message}`,
+      );
+      return;
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
 
@@ -118,7 +139,11 @@ export class WebhookDeliveryWorker {
       });
       clearTimeout(timeout);
 
-      const responseBody = (await res.text()).slice(0, 2000);
+      // AUDIT fix: stream-bound response read. `await res.text()`
+      // ingere o body inteiro em memória — receiver malicioso podia
+      // mandar 10GB e provocar OOM. Lê chunks até MAX_RESPONSE_BODY_BYTES
+      // e descarta o resto.
+      const responseBody = await readBoundedText(res, MAX_RESPONSE_BODY_BYTES);
 
       if (res.ok) {
         await this.prisma.webhookDelivery.update({
@@ -161,22 +186,45 @@ export class WebhookDeliveryWorker {
           webhook: { select: { tenantId: true, url: true, nome: true } },
         },
       });
-      // AUDIT fix: dead-letter alert. Quando MAX tentativas falha,
-      // notifica o tenant in-app + email (via NotificationsService).
-      // Sem isto, falhas acumulavam silenciosamente.
+      // AUDIT fix: dead-letter alert. Versão anterior usava
+      // `userId: tenantId` — coincidência de UUID criava notification
+      // órfã que ninguém via. Agora resolvemos os ADMINs do tenant
+      // e criamos uma notification por cada (IN_APP + EMAIL), pelo
+      // que o tenant recebe alerta no painel e no email.
       try {
-        await this.prisma.notification.create({
-          data: {
+        const admins = await this.prisma.membership.findMany({
+          where: {
             tenantId: updated.webhook.tenantId,
-            userId: updated.webhook.tenantId, // notifica owner do tenant
-            channel: 'IN_APP',
-            tipo: 'WEBHOOK_FAILED',
-            titulo: `Webhook "${updated.webhook.nome}" falhou`,
-            conteudo: `O endpoint ${updated.webhook.url} falhou após ${MAX_TENTATIVAS} tentativas. Verifica a configuração e tenta de novo.`,
-            payload: { deliveryId, lastError: responseBody.slice(0, 500) } as object,
-            status: 'PENDING',
+            role: 'ADMIN',
+            acceptedAt: { not: null },
+            deletedAt: null,
           },
+          select: { userId: true },
         });
+        const titulo = `Webhook "${updated.webhook.nome}" falhou`;
+        const conteudo = `O endpoint ${updated.webhook.url} falhou após ${MAX_TENTATIVAS} tentativas. Verifica a configuração e tenta de novo.`;
+        const payload = {
+          deliveryId,
+          lastError: responseBody.slice(0, 500),
+          webhookUrl: updated.webhook.url,
+        } as object;
+
+        for (const { userId } of admins) {
+          for (const channel of ['IN_APP', 'EMAIL'] as const) {
+            await this.prisma.notification.create({
+              data: {
+                tenantId: updated.webhook.tenantId,
+                userId,
+                channel,
+                tipo: 'WEBHOOK_FAILED',
+                titulo,
+                conteudo,
+                payload,
+                status: 'PENDING',
+              },
+            });
+          }
+        }
       } catch (e) {
         this.logger.error(
           `Falha a criar dead-letter notification: ${e instanceof Error ? e.message : e}`,
@@ -199,4 +247,50 @@ export class WebhookDeliveryWorker {
       },
     });
   }
+}
+
+/**
+ * Lê texto da resposta com tecto de bytes. Cancela o reader assim
+ * que o limite é atingido, garantindo que receivers maliciosos
+ * (10GB em chunks lentos) não esgotam memória nem prendem o tick.
+ *
+ * Devolve string truncada (com sufixo "…") quando o body excede o
+ * limite. Não usa `await res.text()` porque essa função carrega
+ * tudo em memória antes de retornar.
+ */
+async function readBoundedText(res: Response, maxBytes: number): Promise<string> {
+  if (!res.body) return '';
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8', { fatal: false });
+  let out = '';
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.length;
+        if (total > maxBytes) {
+          // Decode só até ao limite — descarta o resto.
+          const left = maxBytes - (total - value.length);
+          if (left > 0) {
+            out += decoder.decode(value.subarray(0, left), { stream: false });
+          }
+          out += '…';
+          // Cancela o reader para libertar conexão e parar download.
+          try {
+            await reader.cancel();
+          } catch {
+            // ignore
+          }
+          break;
+        }
+        out += decoder.decode(value, { stream: true });
+      }
+    }
+    out += decoder.decode();
+  } catch {
+    // Stream interrompido — devolvemos o que temos.
+  }
+  return out;
 }
