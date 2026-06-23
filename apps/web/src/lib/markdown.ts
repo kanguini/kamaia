@@ -28,6 +28,12 @@ function renderInline(s: string): string {
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     '<a href="$2" rel="noopener" target="_blank">$1</a>',
   )
+  // Destaque para placeholders [A COMPLETAR — ...] (audit L.4 / AUDIT.13)
+  out = out.replace(
+    /\[A COMPLETAR[^\]]*\]/g,
+    (match) =>
+      `<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:3px;font-weight:600;">${match}</span>`,
+  )
   return out
 }
 

@@ -429,10 +429,17 @@ export class ContratosService {
     } = dto;
     void _partes; void _docId; void _estado;
 
-    const after = await this.prisma.contrato.update({
-      where: { id },
+    // AUDIT.11: defense in depth — usar updateMany com filtro
+    // composto evita race em que o contrato é soft-deleted entre
+    // findFirst e update. Atómico.
+    const r = await this.prisma.contrato.updateMany({
+      where: { id, tenantId, deletedAt: null },
       data: updatableFields,
     });
+    if (r.count === 0) {
+      throw new NotFoundException('Contrato not found (race or deleted)');
+    }
+    const after = await this.prisma.contrato.findUniqueOrThrow({ where: { id } });
 
     await this.audit.log({
       tenantId,
@@ -477,10 +484,15 @@ export class ContratosService {
       );
     }
 
-    const updated = await this.prisma.contrato.update({
-      where: { id },
+    // AUDIT.11: updateMany com filtro composto tenantId+deletedAt
+    const r = await this.prisma.contrato.updateMany({
+      where: { id, tenantId, deletedAt: null },
       data: { estado: para },
     });
+    if (r.count === 0) {
+      throw new NotFoundException('Contrato not found (race or deleted)');
+    }
+    const updated = await this.prisma.contrato.findUniqueOrThrow({ where: { id } });
 
     await this.prisma.contratoEvento.create({
       data: {

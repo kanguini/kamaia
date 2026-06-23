@@ -7,6 +7,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { Role, TenantContext } from '@kamaia/shared-types';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -69,7 +70,15 @@ export class ContratoPdfPublicController {
     private readonly colaboradores: ContratoColaboradoresService,
   ) {}
 
+  /**
+   * AUDIT.12: rate limit dedicado para a rota pública. PDF é
+   * CPU-intensivo (pdfkit + render markdown + tabelas + imagem
+   * base64 da assinatura) — sem throttle, atacante com token válido
+   * podia exaurir CPU repetindo o pedido. 5 req/min por IP é
+   * generoso para uso humano (rever PDF) e estanca abuso.
+   */
   @Get()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Header('Content-Type', 'application/pdf')
   async download(
     @Param('token') token: string,

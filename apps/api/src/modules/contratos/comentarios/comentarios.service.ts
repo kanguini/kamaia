@@ -55,6 +55,16 @@ export class ContratoComentariosService {
     autorNome: string;
     texto: string;
   }) {
+    // AUDIT.9: defense in depth — service valida que o contratoId
+    // pertence ao tenant antes de criar. Sem isto, um caller mal
+    // intencionado (ou bug futuro) podia injectar contratoId de
+    // outro tenant e o comentário ficava "órfão" naquele contrato.
+    const c = await this.prisma.contrato.findFirst({
+      where: { id: params.contratoId, tenantId: params.tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!c) throw new NotFoundException('Contrato not found');
+
     const com = await this.prisma.contratoComentario.create({
       data: {
         contratoId: params.contratoId,

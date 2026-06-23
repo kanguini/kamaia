@@ -40,6 +40,17 @@ function renderInline(s: string): string {
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     '<a href="$2" rel="noopener" target="_blank">$1</a>',
   );
+  // AUDIT.13: destaque visual para placeholders [A COMPLETAR — ...]
+  // Engine de templates + IA + stub usam esta convenção para marcar
+  // dados em falta. Pintar em vermelho-âmbar evita que o utilizador
+  // assine um contrato com placeholders esquecidos no meio.
+  // Padrão: \[A COMPLETAR.+?\] — case-sensitive porque o trigger
+  // sempre vem em caixa alta.
+  out = out.replace(
+    /\[A COMPLETAR[^\]]*\]/g,
+    (match) =>
+      `<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:3px;font-weight:600;">${match}</span>`,
+  );
   return out;
 }
 

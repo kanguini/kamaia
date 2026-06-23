@@ -88,11 +88,19 @@ export class ContratoAssinaturasService {
     ip?: string;
     userAgent?: string;
   }) {
-    const versao = await this.prisma.contratoVersao.findUnique({
-      where: { id: params.versaoId },
+    // AUDIT.10: defense in depth — valida cadeia versao → contrato
+    // → tenant. Versão tem contratoId, mas precisamos garantir que o
+    // contrato é do tenant. Atacante com UUID conhecido podia
+    // assinar contrato de tenant alheio se este check faltasse.
+    const versao = await this.prisma.contratoVersao.findFirst({
+      where: {
+        id: params.versaoId,
+        contratoId: params.contratoId,
+        contrato: { tenantId: params.tenantId, deletedAt: null },
+      },
     });
-    if (!versao || versao.contratoId !== params.contratoId) {
-      throw new NotFoundException('Versão não pertence ao contrato');
+    if (!versao) {
+      throw new NotFoundException('Versão não pertence ao contrato neste tenant');
     }
     if (!versao.corpoMarkdown) {
       throw new BadRequestException(
