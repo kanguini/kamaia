@@ -32,6 +32,11 @@ const UpdateRoleSchema = z.object({
 });
 type UpdateRoleDto = z.infer<typeof UpdateRoleSchema>;
 
+const AcceptByTokenSchema = z.object({
+  token: z.string().min(20).max(100),
+  password: z.string().min(8).max(72).optional(),
+});
+
 @Controller('memberships')
 @UseGuards(JwtAuthGuard, TenantGuard)
 export class MembershipsController {
@@ -82,5 +87,23 @@ export class MembershipsController {
     @Tenant() tenant: TenantContext,
   ) {
     return this.memberships.accept(user.sub, tenant.tenantId);
+  }
+}
+
+/**
+ * Rota pública /accept-invite/:token (sem auth) para aceitar convite
+ * via magic-link. Não usa TenantGuard porque o token IS a auth, e a
+ * resolução do tenant acontece dentro do service.
+ */
+@Controller('accept-invite')
+export class MembershipsAcceptController {
+  constructor(private readonly memberships: MembershipsService) {}
+
+  @Post()
+  async acceptByToken(
+    @Body(new ParseZodPipe(AcceptByTokenSchema))
+    dto: z.infer<typeof AcceptByTokenSchema>,
+  ) {
+    return this.memberships.acceptByToken(dto.token, dto.password);
   }
 }

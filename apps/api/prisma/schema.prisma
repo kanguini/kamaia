@@ -131,6 +131,17 @@ model Membership {
   invitedBy   String?  @map("invited_by") @db.Uuid
   invitedAt   DateTime? @map("invited_at") @db.Timestamptz
   acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz
+
+  /// AUDIT fix: magic-link invite token. Hash SHA-256 do raw token
+  /// (mesma técnica usada em ContratoColaborador), com TTL.
+  inviteTokenHash   String?   @unique @map("invite_token_hash") @db.VarChar(64)
+  inviteTokenPrefix String?   @map("invite_token_prefix") @db.VarChar(20)
+  inviteExpiresAt   DateTime? @map("invite_expires_at") @db.Timestamptz
+
+  /// AUDIT fix: soft-delete em vez de hard. Audit trail preserva
+  /// porquê alguém foi removido + permite re-adicionar mantendo histórico.
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -139,6 +150,7 @@ model Membership {
   @@unique([userId, tenantId])
   @@index([tenantId])
   @@index([userId])
+  @@index([inviteTokenHash])
   @@map("memberships")
 }
 

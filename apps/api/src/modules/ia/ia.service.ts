@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { AIMessageRole, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
@@ -96,6 +101,19 @@ export class IaService {
     conversationId: string,
     dto: SendMessageDto,
   ) {
+    // AUDIT fix (IA): respeitar quota iaMessagesLimit do tenant
+    // antes de chamar Claude. Mensagens custam dinheiro; sem este
+    // check, um tenant podia gerar custo ilimitado.
+    const quota = await this.prisma.usageQuota.findUnique({
+      where: { tenantId },
+      select: { iaMessagesLimit: true, iaMessagesUsado: true },
+    });
+    if (quota && quota.iaMessagesUsado >= quota.iaMessagesLimit) {
+      throw new ForbiddenException(
+        `Quota IA esgotada (${quota.iaMessagesUsado}/${quota.iaMessagesLimit}). Renova o plano ou aguarda o próximo ciclo.`,
+      );
+    }
+
     const conv = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, tenantId, userId },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
@@ -218,6 +236,17 @@ export class IaService {
       entityType: EntityType.AI_CONVERSATION,
       entityId: conversationId,
     });
+
+    // AUDIT fix: incrementa contador de quota (fire-and-forget — não
+    // bloqueia retorno se updateMany falhar; cap próximo ciclo)
+    this.prisma.usageQuota
+      .updateMany({
+        where: { tenantId },
+        data: { iaMessagesUsado: { increment: 1 } },
+      })
+      .catch(() => {
+        /* silent */
+      });
 
     return { user: userMsg, assistant: assistantMsg };
   }
