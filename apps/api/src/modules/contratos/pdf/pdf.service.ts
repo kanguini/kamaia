@@ -399,7 +399,7 @@ function renderAssinaturaBlock(
     .stroke();
 
   const padX = 70;
-  let y = startY + 12;
+  const y = startY + 12;
 
   // Imagem
   if (a.imagemBase64) {

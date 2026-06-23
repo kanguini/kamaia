@@ -149,7 +149,7 @@ export function diffLines(oldText: string, newText: string): DiffResult {
     let rEnd = rStart;
     while (rEnd < lines.length && lines[rEnd].op === 'remove') rEnd++;
     // Imediatamente a seguir, bloco de adds
-    let aStart = rEnd;
+    const aStart = rEnd;
     let aEnd = aStart;
     while (aEnd < lines.length && lines[aEnd].op === 'add') aEnd++;
 
