@@ -28,10 +28,12 @@
     --k2-border: #e4e4e7;           /* soft */
     --k2-border-strong: #c8c8cc;    /* inputs em hover */
 
-    /* Ink */
+    /* Ink — todos os tons passam WCAG AA (medido com WebAIM
+       calculator). text-mute foi escurecido de #8a8a91 (3.43:1)
+       para #6e6e76 (5.05:1) para passar AA em hints/captions. */
     --k2-text: #0a0a0a;             /* black quase puro */
-    --k2-text-dim: #525258;         /* gray-600 */
-    --k2-text-mute: #8a8a91;        /* gray-500 */
+    --k2-text-dim: #525258;         /* gray-600 (7.76:1) */
+    --k2-text-mute: #6e6e76;        /* gray-550 (5.05:1) */
 
     /* Accent — PRETO para primary actions (em vez de azul).
        Hover usa gray-800 para feedback subtil. */
@@ -39,10 +41,13 @@
     --k2-accent-dim: #2a2a2a;       /* hover */
     --k2-accent-fg: #ffffff;
 
-    /* Semantic — desaturados para coexistir com mono */
+    /* Semantic — desaturados para coexistir com mono. As variantes
+       *-strong são para *backgrounds sólidos* com texto branco
+       (badges DANGER, banners alarme). Garantem 4.5+ ratio. */
     --k2-good: #166534;             /* green-800 */
     --k2-warn: #9a3412;             /* orange-800 */
-    --k2-bad: #991b1b;              /* red-800 */
+    --k2-bad: #991b1b;              /* red-800 — foreground / badge bg light */
+    --k2-bad-strong: #991b1b;       /* badge DANGER bg (8.31:1 com white) */
 
     /* Shape */
     --k2-radius: 8px;
@@ -54,7 +59,13 @@
     --k2-topbar-h: 60px;
   }
 
-  /* Dark mode — inversão monocromática. */
+  /* Dark mode — inversão monocromática.
+     Mudanças de contraste medido:
+       - text-mute escurecido de #71717a (3.74:1) para #8a8a93
+         (5.29:1) — passa AA em captions.
+       - --k2-bad mantém #f87171 (6.54:1) como FOREGROUND (red text).
+       - --k2-bad-strong = #b91c1c para BACKGROUND de badges DANGER
+         (6.47:1 com texto branco). #f87171 falhava com 2.77:1. */
   .dark {
     --k2-bg: #0a0a0a;
     --k2-bg-elev: #161616;
@@ -64,13 +75,14 @@
     --k2-border-strong: #3a3a3a;
     --k2-text: #fafafa;
     --k2-text-dim: #b3b3b8;
-    --k2-text-mute: #71717a;
+    --k2-text-mute: #8a8a93;
     --k2-accent: #fafafa;           /* branco para primary em dark */
     --k2-accent-dim: #e4e4e7;
     --k2-accent-fg: #0a0a0a;
     --k2-good: #4ade80;
     --k2-warn: #fb923c;
     --k2-bad: #f87171;
+    --k2-bad-strong: #b91c1c;
   }
 }
 

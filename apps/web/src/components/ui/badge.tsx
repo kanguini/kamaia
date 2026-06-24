@@ -34,7 +34,10 @@ type BadgeVariant =
 const SOFT = 'bg-[var(--k2-bg-elev-2)] text-[var(--k2-text-dim)]'
 const SOLID = 'bg-[var(--k2-text)] text-[var(--k2-accent-fg)]'
 const OUTLINE = 'bg-transparent text-[var(--k2-text)] border border-[var(--k2-text)]'
-const DANGER = 'bg-[var(--k2-bad)] text-white'
+// DANGER usa --k2-bad-strong (vermelho mais escuro) para garantir
+// 4.5:1 com texto branco em ambos os temas. --k2-bad fica reservado
+// para *foreground* (texto vermelho sobre fundo claro).
+const DANGER = 'bg-[var(--k2-bad-strong)] text-white'
 
 const variantStyles: Record<string, string> = {
   default: SOFT,

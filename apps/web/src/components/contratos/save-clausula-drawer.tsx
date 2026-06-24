@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Tag, Plus, X } from 'lucide-react'
 import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
@@ -99,8 +100,10 @@ export function SaveClausulaDrawer({
   // Carregar tipos para o picker
   useEffect(() => {
     if (!open || !session?.accessToken) return
-    api<{ data: TipoOpt[] }>('/tipos-contrato?limit=100', { token: session.accessToken })
-      .then((r) => setTipos(r.data ?? []))
+    // /tipos-contrato devolve array directo — usar unwrapList para
+     // evitar dropdown silenciosamente vazio.
+    api<unknown>('/tipos-contrato', { token: session.accessToken })
+      .then((r) => setTipos(unwrapList<TipoOpt>(r)))
       .catch(() => setTipos([]))
   }, [open, session?.accessToken])
 
@@ -182,6 +185,15 @@ export function SaveClausulaDrawer({
             />
           </Field>
           <Field label="Tipos de contrato aplicáveis">
+            {tipos.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginBottom: 6, lineHeight: 1.5 }}>
+                Catálogo vazio.{' '}
+                <a href="/configuracoes/tipos-contrato" style={{ color: 'var(--k2-text)', textDecoration: 'underline' }}>
+                  Cria o primeiro tipo
+                </a>
+                . Cláusulas sem tipos ficam transversais.
+              </div>
+            )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {tipos.map((t) => {
                 const active = codigos.includes(t.codigo)

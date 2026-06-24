@@ -468,12 +468,26 @@ export function NovoContratoFlow({
               </Field>
               <Row>
                 <Field label="Tipo de contrato *">
-                  <Select required value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
-                    <option value="">Selecciona…</option>
+                  <Select required value={tipoId} onChange={(e) => setTipoId(e.target.value)} disabled={tipos.length === 0}>
+                    <option value="">
+                      {tipos.length === 0 ? 'Sem tipos disponíveis' : 'Selecciona…'}
+                    </option>
                     {tipos.map((t) => (
                       <option key={t.id} value={t.id}>{t.nome}</option>
                     ))}
                   </Select>
+                  {tipos.length === 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginTop: 6, lineHeight: 1.5 }}>
+                      O catálogo está vazio.{' '}
+                      <a
+                        href="/configuracoes/tipos-contrato"
+                        style={{ color: 'var(--k2-text)', textDecoration: 'underline' }}
+                      >
+                        Cria o primeiro tipo
+                      </a>
+                      {' '}para continuar.
+                    </div>
+                  )}
                 </Field>
                 <Field label="Carteira (opcional)">
                   <Select value={carteiraId} onChange={(e) => setCarteiraId(e.target.value)}>
