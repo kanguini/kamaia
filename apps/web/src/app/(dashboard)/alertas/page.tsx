@@ -376,7 +376,7 @@ function ActoRow({ a }: { a: PendingActo }) {
       <div style={{ textAlign: 'right' }}>
         {a.valorLiquidar && (
           <div style={{ fontSize: 11, fontWeight: 500 }}>
-            {fmtMoney(a.valorLiquidar, 'AKZ')}
+            {fmtMoney(a.valorLiquidar, 'AOA')}
           </div>
         )}
         <div style={{ fontSize: 11, fontWeight: 500, color: corDias }}>

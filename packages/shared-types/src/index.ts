@@ -742,8 +742,26 @@ export interface ComplianceActoDetectado {
 
 // ─── Helpers ──────────────────────────────────────────────
 
-export const MOEDAS_SUPORTADAS = ['AKZ', 'USD', 'EUR', 'BRL', 'CNY', 'GBP', 'ZAR'] as const;
+/**
+ * Moedas suportadas.
+ *
+ * Decisão histórica importante:
+ *  - **AOA** é o código ISO 4217 oficial para o Kwanza (desde 1999).
+ *    Qualquer integração com BNA, AGT, gateways de pagamento, e
+ *    sistemas internacionais espera AOA.
+ *  - **AKZ** era usado internamente em alguns sistemas angolanos
+ *    como abreviatura de "Kwanza Z" (informal). Mantemos aceite
+ *    para retrocompatibilidade com dados pré-existentes; novos
+ *    contratos devem usar AOA.
+ *
+ * AOA aparece primeiro na lista para ser o default visível em
+ * dropdowns. Display layer (fmtMoney) trata ambos como equivalentes.
+ */
+export const MOEDAS_SUPORTADAS = ['AOA', 'AKZ', 'USD', 'EUR', 'BRL', 'CNY', 'GBP', 'ZAR'] as const;
 export type MoedaSuportada = typeof MOEDAS_SUPORTADAS[number];
+
+/** Moeda canónica para novos contratos / formulários. */
+export const MOEDA_PADRAO: MoedaSuportada = 'AOA';
 
 // ─── Feriados públicos angolanos (fixos) ──────────────────
 //

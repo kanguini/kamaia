@@ -809,7 +809,12 @@ export class ContratosService {
     // hashtext() devolve int4; ok para volumes esperados (não há
     // colisão fora de cenários cosmicamente improváveis em mesmo ano).
     // Lock é xact-scoped: liberta no fim da transaction.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
+    //
+    // Usar $executeRaw e NÃO $queryRaw — pg_advisory_xact_lock
+    // devolve void e o Prisma $queryRaw rebenta a tentar
+    // deserializar "Failed to deserialize column of type 'void'".
+    // $executeRaw foi feito para statements sem resultset.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
 
     // Contagem dentro do lock — leitura consistente.
     const matched = await tx.$queryRaw<Array<{ count: bigint }>>`

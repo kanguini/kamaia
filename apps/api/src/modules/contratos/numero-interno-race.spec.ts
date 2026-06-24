@@ -23,13 +23,21 @@ interface FakeTxLog {
 
 function makeFakeTx(log: FakeTxLog, count: bigint, existentes: string[] = []): Prisma.TransactionClient {
   const tx = {
-    $queryRaw: jest.fn(async (...args: unknown[]) => {
-      const sqlParts = (args[0] as TemplateStringsArray | unknown);
+    // Após bug fix: gerarNumeroNaTransaction agora chama
+    // $executeRaw para o pg_advisory_xact_lock (devolve void).
+    // O COUNT(*) continua em $queryRaw porque tem resultset.
+    $executeRaw: jest.fn(async (...args: unknown[]) => {
+      const sqlParts = args[0] as TemplateStringsArray | unknown;
       const sql = Array.isArray(sqlParts) ? sqlParts.join('?') : String(sqlParts);
       if (sql.includes('pg_advisory_xact_lock')) {
         log.ops.push('lock');
-        return [];
+        return 1;
       }
+      return 0;
+    }),
+    $queryRaw: jest.fn(async (...args: unknown[]) => {
+      const sqlParts = args[0] as TemplateStringsArray | unknown;
+      const sql = Array.isArray(sqlParts) ? sqlParts.join('?') : String(sqlParts);
       if (sql.includes('COUNT(*)')) {
         log.ops.push('count');
         return [{ count }];

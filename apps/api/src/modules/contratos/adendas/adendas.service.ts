@@ -218,7 +218,11 @@ export class ContratoAdendasService {
     // Lock por (tenant, parent) — chave composta para evitar
     // contenção global no tenant. hashtext aceita só uma string,
     // concatenamos com separador improvável de aparecer em IDs.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}::${numeroPai}`}))`;
+    // $executeRaw — pg_advisory_xact_lock devolve void e $queryRaw
+    // rebenta a deserializar ("Failed to deserialize column of
+    // type 'void'"). Mesma armadilha que estava em
+    // ContratosService.gerarNumeroNaTransaction.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}::${numeroPai}`}))`;
 
     const existentes = await tx.contrato.findMany({
       where: { tenantId, numeroInterno: { startsWith: prefixo } },

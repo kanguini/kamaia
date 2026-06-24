@@ -99,9 +99,9 @@ export const TGIS_SEED: TGISVerbaSeed[] = [
     descricao: 'Licenças (estabelecimentos, espectáculos, restauração, hotelaria).',
     tipoTaxa: 'VALOR_FIXO',
     taxaValor: '1500',
-    taxaUnidade: 'AKZ',
+    taxaUnidade: 'AOA',
     responsavelLiquidacao: 'Titular',
-    referenciaLegal: `Verba 12, ${FONTE}. Valores variam por tipo de licença (AKZ 1.500 — 100.000).`,
+    referenciaLegal: `Verba 12, ${FONTE}. Valores variam por tipo de licença (AOA 1.500 — 100.000).`,
     vigenteDesde: VIGENTE_DESDE,
   },
   {

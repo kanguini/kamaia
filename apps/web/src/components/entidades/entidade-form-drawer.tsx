@@ -108,7 +108,8 @@ export function EntidadeFormDrawer({
   const [formaJuridica, setFormaJuridica] = useState<EntidadeFormaJuridica | ''>('')
   const [matriculaRC, setMatriculaRC] = useState('')
   const [capitalSocial, setCapitalSocial] = useState('')
-  const [capitalSocialMoeda, setCapitalSocialMoeda] = useState('AKZ')
+  // AOA é o ISO 4217 oficial — alinhado com o resto da app.
+  const [capitalSocialMoeda, setCapitalSocialMoeda] = useState('AOA')
   const [objectoSocial, setObjectoSocial] = useState('')
   const [dataConstituicao, setDataConstituicao] = useState('')
   const [sectorActividade, setSectorActividade] = useState('')
@@ -149,7 +150,7 @@ export function EntidadeFormDrawer({
       setNumeroBI(''); setBiEmissor(''); setBiValidoAte('')
       setEstadoCivil(''); setRegimeBens(''); setProfissao('')
       setFormaJuridica(''); setMatriculaRC(''); setCapitalSocial('')
-      setCapitalSocialMoeda('AKZ'); setObjectoSocial(''); setDataConstituicao('')
+      setCapitalSocialMoeda('AOA'); setObjectoSocial(''); setDataConstituicao('')
       setSectorActividade('')
       setRepNome(''); setRepCargo(''); setRepBI(''); setRepEmail(''); setRepTelefone('')
       setMoradaRua(''); setMoradaNumero(''); setMoradaBairro('')
@@ -416,7 +417,7 @@ export function EntidadeFormDrawer({
                   </Field>
                   <Field label="Moeda">
                     <Select value={capitalSocialMoeda} onChange={(e) => setCapitalSocialMoeda(e.target.value)}>
-                      <option value="AKZ">AKZ</option>
+                      <option value="AOA">AOA (Kwanza)</option>
                       <option value="USD">USD</option>
                       <option value="EUR">EUR</option>
                     </Select>
