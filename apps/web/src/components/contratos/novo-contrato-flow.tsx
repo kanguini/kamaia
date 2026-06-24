@@ -126,6 +126,12 @@ export function NovoContratoFlow({
   // Geral
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Detalhes campo-a-campo do backend (Zod superRefine).
+  // Sem isto, o utilizador via apenas "VALIDATION_ERROR" sem saber
+  // o que estava mal preenchido.
+  const [errDetails, setErrDetails] = useState<
+    Array<{ path: (string | number)[]; message: string }>
+  >([])
 
   // Carrega catálogos uma vez (lazy fora do trigger do open para
   // evitar latência percebida na 1ª abertura)
@@ -180,6 +186,7 @@ export function NovoContratoFlow({
     setIaRedigirAgora(true)
     setTemplateId(null)
     setErr(null)
+    setErrDetails([])
   }, [open])
 
   // Conjunto de paths preenchidos para o TemplatePicker marcar ✓
@@ -214,6 +221,7 @@ export function NovoContratoFlow({
     if (!session?.accessToken || !caminho) return
     setSubmitting(true)
     setErr(null)
+    setErrDetails([])
     try {
       // Converte valor para centavos BigInt (string)
       let valorCentavos: string | undefined
@@ -312,7 +320,35 @@ export function NovoContratoFlow({
       onClose()
       router.push(`/contratos/${criado.id}`)
     } catch (e) {
-      setErr((e as { error?: string })?.error ?? 'Erro ao criar contrato.')
+      const errObj = (e ?? {}) as {
+        error?: string
+        code?: string
+        message?: string
+        details?: Array<{ path?: (string | number)[]; message?: string }>
+      }
+      // Mensagem principal: prefere details[0].message se for validation
+      // (mais útil que o code genérico "VALIDATION_ERROR").
+      const firstDetail = errObj.details?.[0]?.message
+      const friendly =
+        errObj.code === 'VALIDATION_FAILED' && firstDetail
+          ? firstDetail
+          : errObj.error || errObj.message || 'Erro ao criar contrato.'
+      setErr(friendly)
+      setErrDetails(
+        (errObj.details ?? [])
+          .filter((d): d is { path: (string | number)[]; message: string } =>
+            !!d?.message,
+          )
+          .map((d) => ({ path: d.path ?? [], message: d.message })),
+      )
+      // Scroll para o erro — o drawer pode estar com scroll baixo
+      // depois de o user clicar Criar. Sem isto, o banner aparece
+      // longe da vista e o utilizador pensa que nada aconteceu.
+      setTimeout(() => {
+        document
+          .getElementById('novo-contrato-error')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 50)
     } finally {
       setSubmitting(false)
     }
@@ -335,8 +371,40 @@ export function NovoContratoFlow({
       />
       <DrawerBody>
         {err && (
-          <div style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', padding: '10px 14px', borderRadius: 'var(--k2-radius-sm)', fontSize: 13 }}>
-            {err}
+          <div
+            id="novo-contrato-error"
+            role="alert"
+            style={{
+              background: 'var(--color-danger-bg)',
+              color: 'var(--color-danger-text)',
+              padding: '12px 14px',
+              borderRadius: 'var(--k2-radius-sm)',
+              fontSize: 13,
+              border: '1px solid var(--k2-bad)',
+            }}
+          >
+            <div style={{ fontWeight: 500 }}>{err}</div>
+            {errDetails.length > 0 && (
+              <ul
+                style={{
+                  margin: '8px 0 0',
+                  paddingLeft: 18,
+                  fontSize: 12,
+                  opacity: 0.9,
+                  listStyle: 'disc',
+                }}
+              >
+                {errDetails.slice(0, 6).map((d, i) => (
+                  <li key={i}>
+                    <code style={{ fontSize: 11, opacity: 0.7 }}>
+                      {d.path.join('.')}
+                    </code>
+                    {d.path.length > 0 && ': '}
+                    {d.message}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
