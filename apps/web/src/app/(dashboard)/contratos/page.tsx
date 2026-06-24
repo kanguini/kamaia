@@ -11,6 +11,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import { Loader2, Plus, Search, Upload } from 'lucide-react'
 import {
   ContratoEstado,
@@ -75,6 +76,9 @@ function ContratosListInner() {
 
   const [tipos, setTipos] = useState<TipoContrato[]>([])
   const [novoOpen, setNovoOpen] = useState(false)
+  // Quando true, o modal abre directo no caminho ① (registar
+  // contrato existente — equivalente a "Importar 1 ficheiro").
+  const [importarMode, setImportarMode] = useState(false)
 
   // Auto-abre modal quando vier de /contratos/novo (que faz redirect)
   // ou de qualquer link com `?novo=1`. Limpa query string a seguir.
@@ -88,10 +92,12 @@ function ContratosListInner() {
   // Load filter options (tipos)
   useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return
-    api<PaginatedResponse<TipoContrato>>('/tipos-contrato?limit=100', {
+    // Endpoint não pagina (devolve array directo). Helper defensivo
+     // garante que aceitamos ambas as formas sem assumir.
+    api<unknown>('/tipos-contrato', {
       token: session.accessToken,
     })
-      .then((res) => setTipos(res.data ?? []))
+      .then((res) => setTipos(unwrapList<TipoContrato>(res)))
       .catch(() => setTipos([]))
   }, [session?.accessToken, status])
 
@@ -146,23 +152,41 @@ function ContratosListInner() {
             {total.toLocaleString('pt-AO')} resultado(s)
           </p>
         </div>
-        {/* Importação consolidada aqui (já não no sidebar) — abre o
-            flow de importação que aceita 1 ficheiro ou em massa. */}
+        {/* Importação consolidada aqui (sidebar removido).
+            "Importar" abre o flow de novo contrato directamente
+            no caminho ① (registar existente — equivalente a
+            "1 ficheiro"). Para massa, link no path selector. */}
         <div style={{ display: 'flex', gap: 8 }}>
           <Button
             variant="secondary"
             leftIcon={<Upload size={14} />}
-            onClick={() => router.push('/importacao')}
+            onClick={() => {
+              setImportarMode(true)
+              setNovoOpen(true)
+            }}
           >
             Importar
           </Button>
-          <Button leftIcon={<Plus size={14} />} onClick={() => setNovoOpen(true)}>
+          <Button
+            leftIcon={<Plus size={14} />}
+            onClick={() => {
+              setImportarMode(false)
+              setNovoOpen(true)
+            }}
+          >
             Novo contrato
           </Button>
         </div>
       </header>
 
-      <NovoContratoFlow open={novoOpen} onClose={() => setNovoOpen(false)} />
+      <NovoContratoFlow
+        open={novoOpen}
+        onClose={() => {
+          setNovoOpen(false)
+          setImportarMode(false)
+        }}
+        presetCaminho={importarMode ? 'existente' : undefined}
+      />
 
       <div
         style={{

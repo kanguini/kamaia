@@ -36,10 +36,10 @@ import {
   Info,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import {
   ContratoEstado,
   MOEDAS_SUPORTADAS,
-  PaginatedResponse,
 } from '@kamaia/shared-types'
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
@@ -64,10 +64,6 @@ interface MembershipUser {
   lastName: string
 }
 
-interface MembershipResponse {
-  data: MembershipUser[]
-}
-
 interface ContratoCriado {
   id: string
   numeroInterno: string
@@ -76,16 +72,35 @@ interface ContratoCriado {
 export function NovoContratoFlow({
   open,
   onClose,
+  /**
+   * Pré-selecciona um dos 3 caminhos e avança directo para o step 2.
+   * Usado pelo botão "Importar" da lista de contratos, que entra
+   * directamente em 'existente' (registar contrato pré-existente).
+   * Quando undefined, o utilizador escolhe o caminho no step 1.
+   */
+  presetCaminho,
 }: {
   open: boolean
   onClose: () => void
+  presetCaminho?: Caminho
 }) {
   const router = useRouter()
   const { data: session, status } = useSession()
 
-  // Passo
-  const [step, setStep] = useState<1 | 2>(1)
-  const [caminho, setCaminho] = useState<Caminho | null>(null)
+  // Passo — quando há presetCaminho, salta direct para step 2
+  const [step, setStep] = useState<1 | 2>(presetCaminho ? 2 : 1)
+  const [caminho, setCaminho] = useState<Caminho | null>(presetCaminho ?? null)
+
+  // Quando abre/fecha e tem preset, garante state consistente
+  useEffect(() => {
+    if (open && presetCaminho) {
+      setStep(2)
+      setCaminho(presetCaminho)
+    } else if (open && !presetCaminho) {
+      setStep(1)
+      setCaminho(null)
+    }
+  }, [open, presetCaminho])
 
   // Catálogos
   const [tipos, setTipos] = useState<OptionItem[]>([])
@@ -137,23 +152,20 @@ export function NovoContratoFlow({
   // evitar latência percebida na 1ª abertura)
   useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return
-    // BUG FIX: /tipos-contrato devolve array directo (não wrapped
-     // em `{ data: [...] }`). Sem este fix, o dropdown ficava vazio
-     // mesmo com tipos cadastrados (PaginatedResponse.data === undefined).
+    // /tipos-contrato e /carteiras devolvem array directo (não
+     // paginado). /memberships devolve { data: [...] }. unwrapList
+     // aceita ambas as formas defensivamente — uma única função
+     // para todos os 3 elimina a fonte de "dropdown vazio que
+     // antes mostrava algo".
     Promise.all([
-      api<OptionItem[] | PaginatedResponse<OptionItem>>('/tipos-contrato', { token: session.accessToken }),
-      api<PaginatedResponse<OptionItem>>('/carteiras?limit=100', { token: session.accessToken }),
-      api<MembershipResponse>('/memberships', { token: session.accessToken }),
+      api<unknown>('/tipos-contrato', { token: session.accessToken }),
+      api<unknown>('/carteiras', { token: session.accessToken }),
+      api<unknown>('/memberships', { token: session.accessToken }),
     ])
       .then(([t, c, m]) => {
-        // Aceita ambas as formas — defensivo contra futuras alterações
-        // ao formato do endpoint.
-        const tiposArr = Array.isArray(t)
-          ? t
-          : (t as PaginatedResponse<OptionItem>).data ?? []
-        setTipos(tiposArr)
-        setCarteiras(c.data ?? [])
-        setResponsaveis(m.data ?? [])
+        setTipos(unwrapList<OptionItem>(t))
+        setCarteiras(unwrapList<OptionItem>(c))
+        setResponsaveis(unwrapList<MembershipUser>(m))
       })
       .catch(() => {
         /* tolera carregamento parcial */
@@ -216,6 +228,21 @@ export function NovoContratoFlow({
     !!tipoId &&
     (caminho !== 'existente' || !!docInicial) &&
     (caminho !== 'template' || !!templateId)
+
+  /**
+   * Por que está o submit desactivado. Mostra-se inline ao lado
+   * do botão para o utilizador saber o que falta — antes via o
+   * botão grey-out sem saber porquê.
+   */
+  const motivoDesactivado: string | null = (() => {
+    if (!titulo.trim()) return 'Indica um título.'
+    if (!tipoId) return 'Escolhe um tipo de contrato.'
+    if (caminho === 'existente' && !docInicial) {
+      return 'Anexa o PDF ou Word do contrato.'
+    }
+    if (caminho === 'template' && !templateId) return 'Selecciona um template.'
+    return null
+  })()
 
   const submit = async () => {
     if (!session?.accessToken || !caminho) return
@@ -625,6 +652,18 @@ export function NovoContratoFlow({
           </Button>
         )}
         <div style={{ flex: 1 }} />
+        {step === 2 && motivoDesactivado && !submitting && (
+          <span
+            style={{
+              fontSize: 12,
+              color: 'var(--k2-text-mute)',
+              marginRight: 6,
+              alignSelf: 'center',
+            }}
+          >
+            {motivoDesactivado}
+          </span>
+        )}
         <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
         {step === 2 && (
           <Button
@@ -632,8 +671,9 @@ export function NovoContratoFlow({
             form="novo-contrato-form"
             loading={submitting}
             disabled={!podeSubmeter}
+            title={motivoDesactivado ?? undefined}
           >
-            Criar contrato
+            {caminho === 'existente' ? 'Importar contrato' : 'Criar contrato'}
           </Button>
         )}
       </DrawerFooter>
@@ -685,40 +725,72 @@ function PathSelector({
   ]
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-      {cards.map((c) => (
-        <button
-          key={c.id}
-          type="button"
-          onClick={() => onChange(c.id)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {cards.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onChange(c.id)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              padding: 16,
+              background: value === c.id ? 'var(--k2-bg-elev-2)' : 'var(--k2-bg-elev)',
+              border: `1px solid ${value === c.id ? 'var(--k2-accent)' : 'var(--k2-border)'}`,
+              borderRadius: 'var(--k2-radius)',
+              cursor: 'pointer',
+              textAlign: 'left',
+              color: 'var(--k2-text)',
+              transition: 'border-color 120ms, background 120ms',
+            }}
+          >
+            <div style={{ color: 'var(--k2-text-dim)' }}>{c.icon}</div>
+            <div style={{ fontWeight: 500, fontSize: 14 }}>{c.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--k2-text-dim)', lineHeight: 1.45, flex: 1 }}>
+              {c.desc}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--k2-text-mute)', marginTop: 4 }}>
+              <span>{c.state}</span>
+              <span>{c.mode}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--k2-text)' }}>
+              Continuar <ChevronRight size={11} />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Importação em massa — para carteiras legadas com vários
+          contratos. Navega para a página dedicada com CSV/ZIP. */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 14px',
+          background: 'var(--k2-bg-elev)',
+          border: '1px dashed var(--k2-border)',
+          borderRadius: 'var(--k2-radius-sm)',
+          fontSize: 12,
+          color: 'var(--k2-text-dim)',
+        }}
+      >
+        <span style={{ flex: 1 }}>
+          Tens muitos contratos para migrar de uma vez?
+        </span>
+        <a
+          href="/importacao"
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            padding: 16,
-            background: value === c.id ? 'rgba(99,102,241,0.06)' : 'var(--k2-bg-elev)',
-            border: `1px solid ${value === c.id ? 'var(--k2-accent)' : 'var(--k2-border)'}`,
-            borderRadius: 'var(--k2-radius)',
-            cursor: 'pointer',
-            textAlign: 'left',
             color: 'var(--k2-text)',
-            transition: 'border-color 120ms, background 120ms',
+            textDecoration: 'underline',
+            fontWeight: 500,
           }}
         >
-          <div style={{ color: 'var(--k2-accent)' }}>{c.icon}</div>
-          <div style={{ fontWeight: 500, fontSize: 14 }}>{c.title}</div>
-          <div style={{ fontSize: 12, color: 'var(--k2-text-dim)', lineHeight: 1.45, flex: 1 }}>
-            {c.desc}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--k2-text-mute)', marginTop: 4 }}>
-            <span>{c.state}</span>
-            <span>{c.mode}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--k2-accent)' }}>
-            Continuar <ChevronRight size={11} />
-          </div>
-        </button>
-      ))}
+          Importação em massa (CSV / ZIP) →
+        </a>
+      </div>
     </div>
   )
 }

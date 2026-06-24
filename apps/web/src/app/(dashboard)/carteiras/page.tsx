@@ -12,7 +12,7 @@ import { useApi, useMutation } from '@/hooks/use-api'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
-import type { PaginatedResponse } from '@kamaia/shared-types'
+import { unwrapList } from '@/lib/list'
 
 interface Carteira {
   id: string
@@ -22,9 +22,10 @@ interface Carteira {
 }
 
 export default function CarteirasPage() {
-  const { data, loading, refetch } = useApi<PaginatedResponse<Carteira>>('/carteiras?limit=100')
+  // /carteiras devolve array directo. Unwrap defensivo.
+  const { data, loading, refetch } = useApi<unknown>('/carteiras')
   const [showCreate, setShowCreate] = useState(false)
-  const carteiras = data?.data ?? []
+  const carteiras = unwrapList<Carteira>(data)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

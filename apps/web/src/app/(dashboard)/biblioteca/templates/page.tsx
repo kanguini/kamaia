@@ -5,7 +5,7 @@
  */
 
 import { useApi } from '@/hooks/use-api'
-import type { PaginatedResponse } from '@kamaia/shared-types'
+import { unwrapList } from '@/lib/list'
 import { fmtDateTime } from '@/lib/clm-format'
 
 interface Template {
@@ -18,8 +18,9 @@ interface Template {
 }
 
 export default function TemplatesPage() {
-  const { data, loading } = useApi<PaginatedResponse<Template>>('/templates?limit=100')
-  const templates = data?.data ?? []
+  // /templates devolve array directo (não pagina). Usa unwrap defensivo.
+  const { data, loading } = useApi<unknown>('/templates')
+  const templates = unwrapList<Template>(data)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
