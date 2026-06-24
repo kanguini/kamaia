@@ -382,7 +382,7 @@ export function NovoContratoFlow({
   }
 
   return (
-    <Drawer open={open} onClose={onClose} width={920} position="center">
+    <Drawer open={open} onClose={onClose} width={920}>
       <DrawerHeader
         title="Novo contrato"
         subtitle={

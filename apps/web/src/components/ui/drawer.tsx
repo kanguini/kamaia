@@ -20,17 +20,19 @@ export function Drawer({
   onClose,
   children,
   width = 560,
-  position = 'right',
+  position = 'center',
 }: {
   open: boolean
   onClose: () => void
   children: React.ReactNode
   width?: number
   /**
-   * 'right' (default): slide-in lateral; usar para formulários
-   *   secundários e edição em contexto da página.
-   * 'center': modal flutuante centrado; usar para wizards e
-   *   selectores que não devem competir com o conteúdo de fundo.
+   * 'center' (default): modal flutuante centrado — usar para
+   *   formulários, wizards e selectores. Decisão de UX: todas as
+   *   janelas modais usam este padrão para consistência.
+   * 'right': slide-in lateral — opt-in apenas para casos como
+   *   inspector pane onde queremos o conteúdo de fundo visível
+   *   lateralmente (raro).
    */
   position?: 'right' | 'center'
 }) {
