@@ -11,7 +11,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search, Upload } from 'lucide-react'
 import {
   ContratoEstado,
   CONTRATO_ESTADO_LABELS,
@@ -146,9 +146,20 @@ function ContratosListInner() {
             {total.toLocaleString('pt-AO')} resultado(s)
           </p>
         </div>
-        <Button leftIcon={<Plus size={14} />} onClick={() => setNovoOpen(true)}>
-          Novo contrato
-        </Button>
+        {/* Importação consolidada aqui (já não no sidebar) — abre o
+            flow de importação que aceita 1 ficheiro ou em massa. */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            variant="secondary"
+            leftIcon={<Upload size={14} />}
+            onClick={() => router.push('/importacao')}
+          >
+            Importar
+          </Button>
+          <Button leftIcon={<Plus size={14} />} onClick={() => setNovoOpen(true)}>
+            Novo contrato
+          </Button>
+        </div>
       </header>
 
       <NovoContratoFlow open={novoOpen} onClose={() => setNovoOpen(false)} />

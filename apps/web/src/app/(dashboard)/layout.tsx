@@ -20,7 +20,6 @@ import {
   Building2,
   Briefcase,
   ShieldCheck,
-  Upload,
   Bot,
   BookOpen,
   ScrollText,
@@ -58,7 +57,9 @@ const WORK_NAV: NavItem[] = [
   { label: 'Carteiras', href: '/carteiras', icon: Briefcase },
   { label: 'Alertas', href: '/alertas', icon: Bell },
   { label: 'Compliance', href: '/compliance', icon: ShieldCheck },
-  { label: 'Importação', href: '/importacao', icon: Upload },
+  // Importação foi consolidada dentro do módulo Contratos (botão
+  // "Importar" na lista) — a rota /importacao continua acessível
+  // via link directo mas não está no menu primário.
 ]
 
 const TOOLS_NAV: NavItem[] = [
@@ -220,9 +221,10 @@ function Topbar({
 
       <TenantSwitcher />
 
-      <GlobalSearch />
+      <div style={{ flex: 1 }} />
 
       <div className="k2-topbar-actions">
+        <GlobalSearch />
         <button
           className="k2-icon-btn"
           onClick={toggleTheme}
@@ -238,28 +240,96 @@ function Topbar({
 }
 
 /**
- * Pesquisa global no topbar — Enter navega para /contratos?search=Q.
- * Em viewport <600px o input desaparece (ficaria com tamanho útil).
+ * Pesquisa global — apenas o ícone lupa junto às outras acções do
+ * topbar. Click abre overlay com input centrado. Enter submete e
+ * navega para /contratos?search=Q. ESC fecha.
  */
 function GlobalSearch() {
+  const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setTimeout(() => inputRef.current?.focus(), 30)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   const submit = () => {
     if (q.trim()) {
       window.location.href = `/contratos?search=${encodeURIComponent(q.trim())}`
     }
   }
+
   return (
-    <div className="k2-topbar-search">
-      <Search size={14} aria-hidden />
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="Procurar contratos, entidades…"
-        aria-label="Pesquisa global"
-      />
-    </div>
+    <>
+      <button
+        className="k2-icon-btn"
+        onClick={() => setOpen(true)}
+        aria-label="Pesquisar"
+        title="Pesquisar (⌘K)"
+      >
+        <Search size={16} />
+      </button>
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            paddingTop: '12vh',
+            zIndex: 60,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(560px, 92vw)',
+              background: 'var(--k2-bg-elev)',
+              border: '1px solid var(--k2-border)',
+              borderRadius: 'var(--k2-radius)',
+              padding: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 24px 60px -20px rgba(0,0,0,0.4)',
+            }}
+          >
+            <Search size={16} style={{ color: 'var(--k2-text-mute)', marginLeft: 4 }} />
+            <input
+              ref={inputRef}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+              placeholder="Procurar contratos, entidades…"
+              aria-label="Pesquisa global"
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--k2-text)',
+                fontSize: 15,
+                fontFamily: 'inherit',
+                padding: '8px 4px',
+              }}
+            />
+            <span style={{ fontSize: 10, color: 'var(--k2-text-mute)', padding: '2px 6px', border: '1px solid var(--k2-border)', borderRadius: 4 }}>
+              ESC
+            </span>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

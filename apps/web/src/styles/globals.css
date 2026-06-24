@@ -167,9 +167,11 @@
 .k2-sidebar.collapsed .k2-brand { justify-content: center; }
 .k2-sidebar.collapsed .k2-sb-head { padding: 14px 8px 12px; flex-direction: column; gap: 10px; }
 
-/* Sidebar */
+/* Sidebar — bg igualada ao main para unidade visual.
+   Em vez de elev (#fff/#161616) usamos bg (#fafafa/#0a0a0a).
+   A separação visual é dada pelo border-right subtil. */
 .k2-sidebar {
-  background: var(--k2-bg-elev);
+  background: var(--k2-bg);
   border-right: 1px solid var(--k2-border);
   display: flex;
   flex-direction: column;
@@ -357,32 +359,8 @@
 }
 .k2-topbar-actions { display: flex; align-items: center; gap: 8px; }
 
-/* Search global no topbar */
-.k2-topbar-search {
-  flex: 1;
-  max-width: 480px;
-  margin: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--k2-bg-elev-2);
-  border-radius: var(--k2-radius-sm);
-  color: var(--k2-text-mute);
-}
-.k2-topbar-search input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--k2-text);
-  font-size: 13px;
-  font-family: inherit;
-}
-.k2-topbar-search input::placeholder { color: var(--k2-text-mute); }
-@media (max-width: 720px) {
-  .k2-topbar-search { display: none; }
-}
+/* Search global agora é um botão lupa no topbar. O overlay é
+   inline no Topbar component — sem CSS extra necessário aqui. */
 .k2-btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px;

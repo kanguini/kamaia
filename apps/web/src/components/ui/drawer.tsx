@@ -20,11 +20,19 @@ export function Drawer({
   onClose,
   children,
   width = 560,
+  position = 'right',
 }: {
   open: boolean
   onClose: () => void
   children: React.ReactNode
   width?: number
+  /**
+   * 'right' (default): slide-in lateral; usar para formulários
+   *   secundários e edição em contexto da página.
+   * 'center': modal flutuante centrado; usar para wizards e
+   *   selectores que não devem competir com o conteúdo de fundo.
+   */
+  position?: 'right' | 'center'
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -47,6 +55,8 @@ export function Drawer({
       document.body.style.overflow = prev
     }
   }, [open])
+
+  const centered = position === 'center'
 
   return (
     <>
@@ -84,6 +94,37 @@ export function Drawer({
         .drawer.open {
           transform: translateX(0);
         }
+        /* Centered modal mode — flutuante no centro com max-height
+           e scroll interno. Substitui o slide-in lateral. */
+        .drawer-modal {
+          position: fixed;
+          inset: 0;
+          z-index: 70;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4vh 16px;
+          pointer-events: none;
+        }
+        .drawer-modal.open { pointer-events: auto; }
+        .drawer-modal-panel {
+          width: min(${width}px, 92vw);
+          max-height: 92vh;
+          background: var(--k2-bg);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-lg);
+          box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.5);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          opacity: 0;
+          transform: scale(0.97) translateY(8px);
+          transition: opacity 160ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .drawer-modal.open .drawer-modal-panel {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
       `}</style>
 
       <div
@@ -91,14 +132,28 @@ export function Drawer({
         onClick={onClose}
         aria-hidden="true"
       />
-      <aside
-        ref={ref}
-        className={`drawer ${open ? 'open' : ''}`}
-        role="dialog"
-        aria-modal="true"
-      >
-        {children}
-      </aside>
+      {centered ? (
+        <div className={`drawer-modal ${open ? 'open' : ''}`} onClick={onClose}>
+          <div
+            ref={ref}
+            className="drawer-modal-panel"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
+        </div>
+      ) : (
+        <aside
+          ref={ref}
+          className={`drawer ${open ? 'open' : ''}`}
+          role="dialog"
+          aria-modal="true"
+        >
+          {children}
+        </aside>
+      )}
     </>
   )
 }

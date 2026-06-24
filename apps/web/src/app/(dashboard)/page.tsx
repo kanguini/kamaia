@@ -24,7 +24,6 @@ import {
   FileText,
   Clock,
   Plus,
-  Download,
   ArrowUpRight,
   ArrowDownRight,
   Search,
@@ -246,27 +245,6 @@ function Header() {
         </p>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          type="button"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            background: T.surface,
-            color: T.ink,
-            border: `1px solid ${T.borderHard}`,
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-          onClick={() => window.print()}
-        >
-          <Download size={14} />
-          Exportar PDF
-        </button>
         <Link
           href="/contratos/novo"
           style={{

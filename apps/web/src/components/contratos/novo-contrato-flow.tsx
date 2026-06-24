@@ -131,13 +131,21 @@ export function NovoContratoFlow({
   // evitar latência percebida na 1ª abertura)
   useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return
+    // BUG FIX: /tipos-contrato devolve array directo (não wrapped
+     // em `{ data: [...] }`). Sem este fix, o dropdown ficava vazio
+     // mesmo com tipos cadastrados (PaginatedResponse.data === undefined).
     Promise.all([
-      api<PaginatedResponse<OptionItem>>('/tipos-contrato?limit=100', { token: session.accessToken }),
+      api<OptionItem[] | PaginatedResponse<OptionItem>>('/tipos-contrato', { token: session.accessToken }),
       api<PaginatedResponse<OptionItem>>('/carteiras?limit=100', { token: session.accessToken }),
       api<MembershipResponse>('/memberships', { token: session.accessToken }),
     ])
       .then(([t, c, m]) => {
-        setTipos(t.data ?? [])
+        // Aceita ambas as formas — defensivo contra futuras alterações
+        // ao formato do endpoint.
+        const tiposArr = Array.isArray(t)
+          ? t
+          : (t as PaginatedResponse<OptionItem>).data ?? []
+        setTipos(tiposArr)
         setCarteiras(c.data ?? [])
         setResponsaveis(m.data ?? [])
       })
@@ -311,7 +319,7 @@ export function NovoContratoFlow({
   }
 
   return (
-    <Drawer open={open} onClose={onClose} width={760}>
+    <Drawer open={open} onClose={onClose} width={920} position="center">
       <DrawerHeader
         title="Novo contrato"
         subtitle={
