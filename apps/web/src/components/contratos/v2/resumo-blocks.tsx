@@ -17,7 +17,7 @@
 
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Users,
   ShieldCheck,
@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { fmtMoney } from '@/lib/clm-format'
+import { CustomFieldsDrawer } from './custom-fields-drawer'
 
 interface ContratoFull {
   id: string
@@ -296,22 +297,56 @@ interface ActoRegulatorio {
 export function ResumoCompliance({ contratoId }: { contratoId: string }) {
   const { data: session } = useSession()
   const [actos, setActos] = useState<ActoRegulatorio[] | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const reload = useCallback(async () => {
+    if (!session?.accessToken) return
+    try {
+      const r = await api<{ data: ActoRegulatorio[] } | ActoRegulatorio[]>(
+        `/compliance/contratos/${contratoId}/actos`,
+        { token: session.accessToken },
+      )
+      const list = Array.isArray(r) ? r : r.data
+      setActos(list ?? [])
+    } catch {
+      setActos([])
+    }
+  }, [contratoId, session?.accessToken])
 
   useEffect(() => {
+    void reload()
+  }, [reload])
+
+  const updateActo = async (actoId: string, action: 'concluir' | 'em-curso' | 'inaplicavel') => {
     if (!session?.accessToken) return
-    api<{ data: ActoRegulatorio[] }>(
-      `/contratos/${contratoId}/actos-regulatorios`,
-      { token: session.accessToken },
-    )
-      .then((r) => setActos(r.data ?? []))
-      .catch(() => setActos([]))
-  }, [contratoId, session?.accessToken])
+    setBusy(actoId)
+    try {
+      await api(`/compliance/actos/${actoId}/${action}`, {
+        method: 'PATCH',
+        token: session.accessToken,
+        body: JSON.stringify({}),
+      })
+      await reload()
+    } catch {
+      // silent — uma reload mostrará o estado real do servidor
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const pendentes = actos?.filter((a) => a.estado === 'PENDENTE').length ?? 0
 
   return (
     <Block
       icon={ShieldCheck}
       title="Compliance angolano"
-      badge={actos && actos.length > 0 ? `${actos.length}` : undefined}
+      badge={
+        actos === null
+          ? undefined
+          : pendentes > 0
+            ? `${pendentes} pendente${pendentes === 1 ? '' : 's'}`
+            : `${actos.length}`
+      }
     >
       {actos === null ? (
         <Skeleton lines={3} />
@@ -320,7 +355,12 @@ export function ResumoCompliance({ contratoId }: { contratoId: string }) {
       ) : (
         <div className="c-list">
           {actos.map((a) => (
-            <ActoRow key={a.id} acto={a} />
+            <ActoRow
+              key={a.id}
+              acto={a}
+              busy={busy === a.id}
+              onAction={(act) => void updateActo(a.id, act)}
+            />
           ))}
         </div>
       )}
@@ -335,7 +375,15 @@ export function ResumoCompliance({ contratoId }: { contratoId: string }) {
   )
 }
 
-function ActoRow({ acto }: { acto: ActoRegulatorio }) {
+function ActoRow({
+  acto,
+  busy,
+  onAction,
+}: {
+  acto: ActoRegulatorio
+  busy?: boolean
+  onAction?: (action: 'concluir' | 'em-curso' | 'inaplicavel') => void
+}) {
   const StatusIcon =
     acto.estado === 'CONCLUIDO'
       ? CheckCircle2
@@ -358,11 +406,15 @@ function ActoRow({ acto }: { acto: ActoRegulatorio }) {
     acto.estado === 'EM_CURSO' ? 'Em curso' : null,
     acto.estado === 'CONCLUIDO' ? 'Concluído' : null,
     acto.estado === 'DISPENSADO' ? 'Dispensado' : null,
+    acto.estado === 'INAPLICAVEL' ? 'Inaplicável' : null,
     acto.estado === 'BLOQUEADO' ? 'Bloqueado' : null,
     acto.detectadoAutomaticamente ? 'Auto-detectado' : null,
   ]
     .filter(Boolean)
     .join(' · ')
+
+  const showActions =
+    onAction && (acto.estado === 'PENDENTE' || acto.estado === 'EM_CURSO')
 
   return (
     <div className="acto-row">
@@ -380,6 +432,39 @@ function ActoRow({ acto }: { acto: ActoRegulatorio }) {
           </div>
         )}
       </div>
+      {showActions && (
+        <div className="acto-actions">
+          {acto.estado === 'PENDENTE' && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAction!('em-curso')}
+              className="acto-btn"
+              title="Marcar em curso"
+            >
+              Em curso
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAction!('concluir')}
+            className="acto-btn acto-btn-primary"
+            title="Marcar como cumprido"
+          >
+            Concluir
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAction!('inaplicavel')}
+            className="acto-btn acto-btn-muted"
+            title="Marcar como inaplicável (dispensar)"
+          >
+            Dispensar
+          </button>
+        </div>
+      )}
       <style jsx>{`
         .acto-row {
           display: flex;
@@ -413,6 +498,42 @@ function ActoRow({ acto }: { acto: ActoRegulatorio }) {
           color: var(--k2-text-dim);
           margin-top: 4px;
           font-variant-numeric: tabular-nums;
+        }
+        .acto-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .acto-btn {
+          padding: 3px 8px;
+          font-size: 10px;
+          font-family: inherit;
+          background: var(--k2-bg-elev);
+          border: 1px solid var(--k2-border);
+          color: var(--k2-text-dim);
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          transition: background 120ms ease, color 120ms ease;
+        }
+        .acto-btn:hover:not(:disabled) {
+          background: var(--k2-bg-hover);
+          color: var(--k2-text);
+        }
+        .acto-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .acto-btn-primary {
+          background: var(--k2-accent);
+          color: var(--k2-accent-fg);
+          border-color: var(--k2-accent);
+        }
+        .acto-btn-primary:hover:not(:disabled) {
+          opacity: 0.85;
+        }
+        .acto-btn-muted {
+          background: transparent;
         }
       `}</style>
     </div>
@@ -668,16 +789,24 @@ interface CustomFieldsResponse {
 export function ResumoCustomFields({ contratoId }: { contratoId: string }) {
   const { data: session } = useSession()
   const [items, setItems] = useState<CustomFieldsResponse[] | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!session?.accessToken) return
+    try {
+      const rows = await api<CustomFieldsResponse[]>(
+        `/custom-fields/by-contrato/${contratoId}`,
+        { token: session.accessToken },
+      )
+      setItems(rows)
+    } catch {
+      setItems([])
+    }
+  }, [contratoId, session?.accessToken])
 
   useEffect(() => {
-    if (!session?.accessToken) return
-    api<CustomFieldsResponse[]>(
-      `/custom-fields/by-contrato/${contratoId}`,
-      { token: session.accessToken },
-    )
-      .then(setItems)
-      .catch(() => setItems([]))
-  }, [contratoId, session?.accessToken])
+    void load()
+  }, [load])
 
   // Esconde o bloco completamente quando não há custom fields definidos
   // para este tipo — não queremos "Sem custom fields" a ocupar espaço
@@ -685,28 +814,40 @@ export function ResumoCustomFields({ contratoId }: { contratoId: string }) {
   if (items === null || items.length === 0) return null
 
   return (
-    <Block icon={Sparkles} title="Detalhes do tipo">
-      <dl className="r-dl">
-        {items.map((it) => (
-          <Row
-            key={it.definition.id}
-            label={it.definition.label}
-            value={renderCustomValue(it.definition.type, it.value)}
-            hint={it.definition.hint ?? undefined}
-          />
-        ))}
-      </dl>
-      <style jsx>{`
-        .r-dl {
-          margin: 0;
-          display: grid;
-          grid-template-columns: minmax(110px, max-content) 1fr;
-          row-gap: 8px;
-          column-gap: 16px;
-          font-size: 12px;
-        }
-      `}</style>
-    </Block>
+    <>
+      <Block
+        icon={Sparkles}
+        title="Detalhes do tipo"
+        action={<EditarBtn onClick={() => setEditorOpen(true)} />}
+      >
+        <dl className="r-dl">
+          {items.map((it) => (
+            <Row
+              key={it.definition.id}
+              label={it.definition.label}
+              value={renderCustomValue(it.definition.type, it.value)}
+              hint={it.definition.hint ?? undefined}
+            />
+          ))}
+        </dl>
+        <style jsx>{`
+          .r-dl {
+            margin: 0;
+            display: grid;
+            grid-template-columns: minmax(110px, max-content) 1fr;
+            row-gap: 8px;
+            column-gap: 16px;
+            font-size: 12px;
+          }
+        `}</style>
+      </Block>
+      <CustomFieldsDrawer
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        contratoId={contratoId}
+        onSaved={() => void load()}
+      />
+    </>
   )
 }
 
@@ -741,11 +882,14 @@ function Block({
   icon: Icon,
   title,
   badge,
+  action,
   children,
 }: {
   icon: React.ElementType
   title: string
   badge?: string
+  /** Acção do canto direito do header (e.g. "Editar"). */
+  action?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
@@ -754,6 +898,7 @@ function Block({
         <Icon size={13} className="bl-icon" />
         <span className="bl-title">{title}</span>
         {badge && <span className="bl-badge">{badge}</span>}
+        {action && <div className="bl-action">{action}</div>}
       </header>
       <div className="bl-body">{children}</div>
       <style jsx>{`
@@ -790,6 +935,9 @@ function Block({
           font-size: 10px;
           color: var(--k2-text);
           font-weight: 500;
+        }
+        .bl-action {
+          margin-left: auto;
         }
         .bl-body {
           font-size: 13px;
@@ -843,6 +991,29 @@ function Empty({ hint }: { hint: string }) {
         }
       `}</style>
     </div>
+  )
+}
+
+function EditarBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="ed-btn" title="Editar">
+      Editar
+      <style jsx>{`
+        .ed-btn {
+          background: transparent;
+          border: none;
+          color: var(--k2-text-dim);
+          font-size: 11px;
+          cursor: pointer;
+          padding: 0;
+          font-family: inherit;
+        }
+        .ed-btn:hover {
+          color: var(--k2-text);
+          text-decoration: underline;
+        }
+      `}</style>
+    </button>
   )
 }
 
