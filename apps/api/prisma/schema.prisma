@@ -1269,6 +1269,11 @@ model UsageQuota {
   storageBytesUsado   BigInt   @default(0) @map("storage_bytes_usado")
   iaMessagesLimit     Int      @map("ia_messages_limit")
   iaMessagesUsado     Int      @default(0) @map("ia_messages_usado")
+  /// AI credits separados das messages do chat. Usado para
+  /// operações de alto custo (parsing batch, extracção massiva,
+  /// drafting de contratos completos). Recarregável via top-up.
+  aiCreditsLimit      Int      @default(0) @map("ai_credits_limit")
+  aiCreditsUsado      Int      @default(0) @map("ai_credits_usado")
   periodoInicio       DateTime @map("periodo_inicio") @db.Date
   periodoFim          DateTime @map("periodo_fim") @db.Date
 

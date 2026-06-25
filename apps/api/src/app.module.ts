@@ -29,6 +29,7 @@ import { SeedModule } from './modules/seed/seed.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { MailModule } from './modules/mail/mail.module';
 import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module
     ContratosModule,
     ComplianceModule,
     CustomFieldsModule,
+    BillingModule,
     ImportacaoModule,
     DocumentsModule,
     // IA
