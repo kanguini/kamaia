@@ -383,6 +383,11 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
+        // Onda C.2.4: citations não fazem parte do endpoint
+        // /agent-stream — são exclusivas do legacy RAG /stream
+        // (Q&A com legislação). Aqui ficam sempre undefined.
+        // Quando integrarmos RAG dentro do agente, adicionamos
+        // handler para 'citations' SSE event aqui.
         const pendingCitations: Citation[] | undefined = undefined
         const toolCalls = new Map<string, ToolCallTrace>()
 

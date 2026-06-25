@@ -60,7 +60,10 @@ export function FirstRunBanner() {
     api<Status>('/billing/status', { token: session.accessToken })
       .then((s) => {
         // Mostra apenas se o tenant tem 0 contratos
-        setShow((s.usage?.contratos?.usado ?? 0) === 0)
+        // Onda C.1.5: strict equality — só mostra quando o servidor
+        // confirma 0. Sem ?? fallback, evita-se spam quando API
+        // devolve resposta malformada durante incident.
+        setShow(s.usage?.contratos?.usado === 0)
       })
       .catch(() => setShow(false))
   }, [session?.accessToken])

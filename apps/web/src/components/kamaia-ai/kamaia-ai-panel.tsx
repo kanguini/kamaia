@@ -58,18 +58,28 @@ export function KamaiaAIPanel() {
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Auto-scroll para o fim quando mensagens mudam
+  // Auto-scroll quando mensagens mudam — Onda C.1.1.
+  // Só auto-scroll se o utilizador já está perto do fim. Se ele
+  // scrollou para cima para ler citações antigas, NÃO o puxamos
+  // de volta a cada delta do stream.
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight
+    const el = listRef.current
+    if (!el) return
+    const threshold = 80 // px de tolerância
+    const nearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+    if (nearBottom) {
+      el.scrollTop = el.scrollHeight
     }
   }, [messages])
 
-  // Foca o input quando o panel abre
+  // Foca o input quando o panel abre — Onda C.1.1.
+  // setTimeout cleanup: se o panel toggle rapidamente, o focus
+  // pendente roubava foco do destino seguinte.
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
+    if (!open) return
+    const handle = window.setTimeout(() => inputRef.current?.focus(), 50)
+    return () => window.clearTimeout(handle)
   }, [open])
 
   // ESC fecha (apenas quando foco está dentro do panel)
@@ -110,6 +120,11 @@ export function KamaiaAIPanel() {
         data-kamaia-ai-panel
         className={`kai-panel ${open ? 'open' : ''}`}
         aria-hidden={!open}
+        // Onda C.1.3: `inert` desabilita interacção + tira do tab
+        // order quando o panel está fechado. aria-hidden sozinho
+        // protegia screen readers mas Tab key ainda atingia os
+        // botões/inputs internos.
+        {...(!open ? { inert: '' as never } : {})}
         role="complementary"
         aria-label="Kamaia AI assistant"
       >
@@ -706,8 +721,12 @@ function Message({ message: m }: { message: import('./types').Message }) {
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
+          // Onda C.1.2: settled (não-streaming) message sem conteúdo
+          // e sem tool calls não pode parecer streaming. Antes: '…'.
+          // Agora: ficar vazio para a bolha colapsar, ou mostrar
+          // marcador discreto se errored.
           <span className="kai-bubble-pending">
-            {m.streaming ? '…' : hasToolCalls ? '' : '…'}
+            {m.streaming ? '…' : m.errored ? '⚠' : ''}
           </span>
         )}
         {m.streaming && !isUser && m.content && <span className="kai-caret" />}

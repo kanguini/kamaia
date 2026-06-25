@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CustomFieldType, Prisma } from '@prisma/client';
 import { CustomFieldsService } from './custom-fields.service';
 
@@ -94,7 +94,7 @@ describe('CustomFieldsService — tenant isolation', () => {
     );
   });
 
-  it('rejeita custom fields em tipos do catálogo global', async () => {
+  it('rejeita custom fields em tipos do catálogo global (Onda C.2.2: 404, não 403)', async () => {
     const audit = makeAudit();
     const prisma = makePrisma({
       tipoContrato: {
@@ -107,8 +107,9 @@ describe('CustomFieldsService — tenant isolation', () => {
       },
     });
     const svc = new CustomFieldsService(prisma as never, audit as never);
+    // 404 (não 403) — não revela existência do tipo global ao caller.
     await expect(svc.listByTipo('tipo-global', TENANT)).rejects.toBeInstanceOf(
-      ForbiddenException,
+      NotFoundException,
     );
   });
 

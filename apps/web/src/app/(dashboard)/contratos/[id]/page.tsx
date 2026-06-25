@@ -115,7 +115,9 @@ const TABS: TabDef[] = [
 
 export default function ContratoDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { data: contrato, loading, error } = useApi<Contrato>(`/contratos/${id}`)
+  const { data: contrato, loading, error, refetch } = useApi<Contrato>(
+    `/contratos/${id}`,
+  )
   const { setOpen: setAiOpen, send: aiSend } = useKamaiaAI()
 
   // Modo derivado do estado — decide tab default e banner contextual
@@ -142,6 +144,7 @@ export default function ContratoDetailPage() {
           `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
         )
       }}
+      onRefresh={() => void refetch()}
     />
   ) : (
     <DetailShell
@@ -189,11 +192,13 @@ function Inner({
   modo,
   defaultTab,
   onAiAnalysis,
+  onRefresh,
 }: {
   contrato: Contrato
   modo: ContratoModo
   defaultTab: TabKey
   onAiAnalysis: () => void
+  onRefresh: () => void
 }) {
   const [tab, setTab] = useState<TabKey>(defaultTab)
   const [signWizardOpen, setSignWizardOpen] = useState(false)
@@ -384,8 +389,9 @@ function Inner({
           janelaDenunciaDias: contrato.janelaDenunciaDias,
         }}
         onSaved={() => {
-          // Recarrega a página para reflectir mudanças no Resumo
-          if (typeof window !== 'undefined') window.location.reload()
+          // Onda C.1.8: refetch em vez de window.location.reload —
+          // preserva scroll, side panel state, e tab activa.
+          onRefresh()
         }}
       />
 

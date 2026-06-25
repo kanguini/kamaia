@@ -24,9 +24,17 @@ function renderInline(s: string): string {
   out = out.replace(/`([^`]+)`/g, '<code>$1</code>')
   out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  // Onda C.2.3: URL escape + rel noopener noreferrer.
+  // Antes: `[text](url)` interpolava `$2` raw — uma URL com `"`
+  // (que escapa do regex [^\s)]+) podia injectar atributos
+  // adicionais ou rebentar o atributo `href`.
+  // Agora: encodeURI sobre o URL captura + rel completo.
   out = out.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    '<a href="$2" rel="noopener" target="_blank">$1</a>',
+    (_match, text: string, url: string) => {
+      const safeUrl = encodeURI(url).replace(/"/g, '%22');
+      return `<a href="${safeUrl}" rel="noopener noreferrer" target="_blank">${text}</a>`;
+    },
   )
   // Destaque para placeholders [A COMPLETAR — ...] (audit L.4 / AUDIT.13)
   out = out.replace(

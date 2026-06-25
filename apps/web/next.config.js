@@ -18,6 +18,18 @@ const nextConfig = {
       'recharts',
     ],
   },
+  // Onda C.3.1: redirects server-side em vez de client-side useEffect.
+  // Mais rápido (sem flash), SEO-friendly, e funciona para curl/bots.
+  async redirects() {
+    return [
+      {
+        // Sprint 3.2 moveu Tipos de Contrato para /biblioteca/tipos
+        source: '/configuracoes/tipos-contrato',
+        destination: '/biblioteca/tipos',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig

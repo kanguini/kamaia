@@ -63,13 +63,19 @@ export class CustomFieldsService {
     if (!tipo) {
       throw new NotFoundException('TipoContrato não encontrado');
     }
+    // Onda C.2.2: consistência de disclosure — catalog global e
+    // cross-tenant ambos retornam 404. Antes o ForbiddenException
+    // revelava que o tipo existe (no catálogo global) mesmo a
+    // utilizadores sem permissão. Agora ambos os caminhos são
+    // indistinguíveis para o cliente: "não existe".
+    //
+    // A operação de "clone para tenant" (futura) tratará o caminho
+    // explícito de criação a partir de catálogo global.
     if (tipo.tenantId === null) {
-      throw new ForbiddenException(
-        'Catálogo global não aceita custom fields per-tenant. Clone o tipo primeiro.',
-      );
+      throw new NotFoundException('TipoContrato não encontrado');
     }
     if (tipo.tenantId !== tenantId) {
-      throw new NotFoundException('TipoContrato não encontrado'); // não revela existência cross-tenant
+      throw new NotFoundException('TipoContrato não encontrado');
     }
     return tipo;
   }
@@ -336,6 +342,22 @@ export class CustomFieldsService {
       throw new ConflictException({ message: 'Valores inválidos', errors });
     }
 
+    // Onda C.2.1: captura valores anteriores ANTES do upsert para
+    // que o audit log possa reconstruir mudanças campo-a-campo.
+    // Antes era só `{ count, keys }` — inútil para auditoria
+    // ("quem mudou areaM2 de 120 para 200 em 15/08/2026?").
+    const previousValues = await this.prisma.contratoCustomFieldValue.findMany({
+      where: {
+        contratoId,
+        fieldId: { in: operations.map((o) => o.fieldId) },
+      },
+      select: { fieldId: true, value: true },
+    });
+    const previousByFieldId = new Map(
+      previousValues.map((p) => [p.fieldId, p.value]),
+    );
+    const defByFieldId = new Map(definitions.map((d) => [d.id, d]));
+
     // Onda B.RACE.7: interactive transaction com Serializable isolation
     // + retry em P2002. Antes era array-form ($transaction([...])) sem
     // isolation level — 2 PATCHes paralelos no mesmo (contratoId,
@@ -385,6 +407,18 @@ export class CustomFieldsService {
       throw lastErr;
     }
 
+    // Onda C.2.1: audit log com before/after per-field. Permite
+    // reconstruir o histórico completo de mudanças.
+    const changes = operations.map((op) => {
+      const def = defByFieldId.get(op.fieldId);
+      return {
+        key: def?.key ?? 'unknown',
+        fieldId: op.fieldId,
+        before: previousByFieldId.get(op.fieldId) ?? null,
+        after: op.value,
+      };
+    });
+
     await this.audit.log({
       tenantId,
       actorUserId,
@@ -392,7 +426,10 @@ export class CustomFieldsService {
       entityType: EntityType.CONTRATO,
       entityId: contratoId,
       afterData: {
-        customFieldValues: { count: operations.length, keys: Object.keys(dto.values) },
+        customFieldValues: {
+          count: operations.length,
+          changes,
+        },
       },
     });
 

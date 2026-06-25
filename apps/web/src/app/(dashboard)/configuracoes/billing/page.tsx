@@ -87,6 +87,15 @@ function fmtBytes(bytes: string | number, max = 2): string {
   return `${(n / 1024 / 1024 / 1024).toFixed(max)} GB`
 }
 
+/**
+ * Onda C.1.4: distinguir limite real de unlimited (sentinel -1).
+ * "120 / -1" não diz nada ao utilizador; "120 / ∞" é claro.
+ */
+function fmtQuota(usado: number, limite: number): string {
+  if (limite < 0) return `${usado} / ∞`
+  return `${usado} / ${limite}`
+}
+
 export default function BillingPage() {
   const { data: session } = useSession()
   const [status, setStatus] = useState<BillingStatus | null>(null)
@@ -160,32 +169,41 @@ export default function BillingPage() {
           <UsageCard
             icon={FileText}
             label="Contratos activos"
-            value={`${status.usage.contratos.usado} / ${status.usage.contratos.limite}`}
+            value={fmtQuota(status.usage.contratos.usado, status.usage.contratos.limite)}
             pct={status.usage.contratos.pct}
+            unlimited={status.usage.contratos.limite < 0}
           />
           <UsageCard
             icon={Users}
             label="Utilizadores"
-            value={`${status.usage.utilizadores.usado} / ${status.usage.utilizadores.limite}`}
+            value={fmtQuota(status.usage.utilizadores.usado, status.usage.utilizadores.limite)}
             pct={status.usage.utilizadores.pct}
+            unlimited={status.usage.utilizadores.limite < 0}
           />
           <UsageCard
             icon={HardDrive}
             label="Armazenamento"
-            value={`${fmtBytes(status.usage.storage.usadoBytes)} / ${status.usage.storage.limiteGB} GB`}
+            value={
+              status.usage.storage.limiteGB < 0
+                ? `${fmtBytes(status.usage.storage.usadoBytes)} / ∞`
+                : `${fmtBytes(status.usage.storage.usadoBytes)} / ${status.usage.storage.limiteGB} GB`
+            }
             pct={status.usage.storage.pct}
+            unlimited={status.usage.storage.limiteGB < 0}
           />
           <UsageCard
             icon={MessageSquare}
             label="Mensagens Kamaia AI"
-            value={`${status.usage.iaMessages.usado} / ${status.usage.iaMessages.limite}`}
+            value={fmtQuota(status.usage.iaMessages.usado, status.usage.iaMessages.limite)}
             pct={status.usage.iaMessages.pct}
+            unlimited={status.usage.iaMessages.limite < 0}
           />
           <UsageCard
             icon={Sparkles}
             label="Créditos IA"
-            value={`${status.usage.aiCredits.usado} / ${status.usage.aiCredits.limite}`}
+            value={fmtQuota(status.usage.aiCredits.usado, status.usage.aiCredits.limite)}
             pct={status.usage.aiCredits.pct}
+            unlimited={status.usage.aiCredits.limite < 0}
             hint="Para operações de alto custo (parsing batch, drafting completo)."
           />
         </div>
@@ -397,15 +415,17 @@ function UsageCard({
   value,
   pct,
   hint,
+  unlimited = false,
 }: {
   icon: React.ElementType
   label: string
   value: string
   pct: number
   hint?: string
+  unlimited?: boolean
 }) {
-  const high = pct >= 80
-  const crit = pct >= 95
+  const high = !unlimited && pct >= 80
+  const crit = !unlimited && pct >= 95
   return (
     <div className="uc">
       <div className="uc-head">
@@ -413,13 +433,20 @@ function UsageCard({
         <div className="uc-label">{label}</div>
       </div>
       <div className="uc-value">{value}</div>
-      <div className="uc-bar-wrap">
-        <div
-          className={`uc-bar ${high ? 'high' : ''} ${crit ? 'crit' : ''}`}
-          style={{ width: `${Math.min(100, pct)}%` }}
-        />
-      </div>
-      <div className="uc-pct">{pct}%</div>
+      {/* Onda C.1.4: barra de progresso esconde-se em planos unlimited
+          (não faz sentido mostrar "0% de ∞"). */}
+      {!unlimited && (
+        <>
+          <div className="uc-bar-wrap">
+            <div
+              className={`uc-bar ${high ? 'high' : ''} ${crit ? 'crit' : ''}`}
+              style={{ width: `${Math.min(100, pct)}%` }}
+            />
+          </div>
+          <div className="uc-pct">{pct}%</div>
+        </>
+      )}
+      {unlimited && <div className="uc-pct">Sem limite</div>}
       {hint && <div className="uc-hint">{hint}</div>}
       <style jsx>{`
         .uc {

@@ -72,6 +72,10 @@ function fmtDateHuman(iso: string | null): string | null {
 }
 
 function fmtDaysHuman(dias: number): string {
+  // Onda C.1.6: NaN guard. Antes "há NaN dias" era renderizado quando
+  // dataTermo era string inválida (legacy data) — new Date('invalid')
+  // → getTime()=NaN → daysBetween devolvia NaN.
+  if (!Number.isFinite(dias)) return 'data inválida'
   if (dias === 0) return 'hoje'
   if (dias === 1) return 'amanhã'
   if (dias === -1) return 'ontem'
@@ -203,11 +207,20 @@ export function ResumoPartes({ contratoId }: { contratoId: string }) {
 
   useEffect(() => {
     if (!session?.accessToken) return
+    // Onda C.1.7: cancel flag — evita setState pós-navigate.
+    let cancelled = false
     api<PartesResponse>(`/contratos/${contratoId}/partes`, {
       token: session.accessToken,
     })
-      .then((r) => setPartes(r.data ?? []))
-      .catch(() => setPartes([]))
+      .then((r) => {
+        if (!cancelled) setPartes(r.data ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setPartes([])
+      })
+    return () => {
+      cancelled = true
+    }
   }, [contratoId, session?.accessToken])
 
   return (
@@ -579,6 +592,8 @@ export function ResumoProximosEventos({ contratoId }: { contratoId: string }) {
 
   useEffect(() => {
     if (!session?.accessToken) return
+    // Onda C.1.7: cancel flag — evita setState pós-navigate.
+    let cancelled = false
     Promise.all([
       api<{ data: DataChaveItem[] }>(`/contratos/${contratoId}/datas-chave`, {
         token: session.accessToken,
@@ -587,9 +602,13 @@ export function ResumoProximosEventos({ contratoId }: { contratoId: string }) {
         token: session.accessToken,
       }).catch(() => ({ data: [] })),
     ]).then(([d, o]) => {
+      if (cancelled) return
       setDatas(d.data ?? [])
       setObrigacoes(o.data ?? [])
     })
+    return () => {
+      cancelled = true
+    }
   }, [contratoId, session?.accessToken])
 
   if (datas === null || obrigacoes === null) {
