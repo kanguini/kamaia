@@ -1,49 +1,57 @@
 'use client'
 
 /**
- * Contract detail v2 — redesign Sprint 2.2.
+ * Contract detail — Redesign "Command Center" (pós-auditoria UX).
+ *
+ * A v2 anterior era estruturalmente um clone do Contracko (5 tabs
+ * icon-only, split-pane, blocos). Este redesign parte dos PONTOS
+ * FRACOS dos CLM genéricos e inverte-os:
+ *
+ *   Contracko (reactivo)          →  Kamaia (proactivo)
+ *   ─────────────────────────────────────────────────────────
+ *   Metadata + chat para perguntar → "Precisa da tua atenção" no
+ *                                     topo, resolvível in-line
+ *   Compliance = 1 secção de 5     → Compliance = coluna vertebral,
+ *                                     5 categorias angolanas sempre
+ *                                     visíveis (o moat exposto)
+ *   Contrato isolado               → Relação: "parceiro · N
+ *                                     contratos · exposição total"
+ *   Tab Eventos (só passado)       → Evolução passado→presente→futuro
+ *   Tabs como navegação primária   → Tudo numa vista; tabs viram
+ *                                     "Mais detalhes" colapsável
  *
  * Layout:
- *   ┌─────────────────────────────────────────────────┐
- *   │ Hero strip (breadcrumb + título + estado + ⚡)  │
- *   ├──────────────────┬──────────────────────────────┤
- *   │ Tab Resumo       │ PDF preview live             │
- *   │ ▸ Identificação  │ (sempre visível)             │
- *   │ ▸ Partes         │                              │
- *   │ ▸ Compliance     │                              │
- *   │ ▸ Próximos       │                              │
- *   │ ▸ Custom fields  │                              │
- *   └──────────────────┴──────────────────────────────┘
- *
- * Mudanças face à legacy:
- *  - 5 tabs icon-only (sem texto, ícones com tooltip)
- *  - Split-pane: dados esquerda + PDF direita
- *  - Resumo é uma stack de blocos accionáveis, não uma grelha de
- *    cartões "—"
- *  - Inline natural language: "renova em 8 dias", "em atraso"
- *  - Bloco Compliance angolano visível por defeito (moat exposto)
- *  - Custom fields renderizam dinamicamente conforme o tipo
- *
- * Sprint 2.3 introduzirá modos derivados do estado (Drafting,
- * Signature, Repository). Sprint 2.4 adiciona edição inline + acções
- * do Kamaia AI no header.
+ *   Hero strip (estado, flags, próxima acção, [IA] [Editar])
+ *   ┌─ PRECISA DA TUA ATENÇÃO (resolução in-line) ──────────┐
+ *   ├──────────────────────────┬────────────────────────────┤
+ *   │ Identificação            │  PDF preview (sticky)       │
+ *   │ Compliance angolano (5)  │                             │
+ *   │ Partes & relações        │                             │
+ *   │ Detalhes do tipo         │                             │
+ *   ├──────────────────────────┴────────────────────────────┤
+ *   │ Evolução (timeline)                                    │
+ *   ├────────────────────────────────────────────────────────┤
+ *   │ ▸ Mais detalhes (Termos · Documentos · Conversa)       │
+ *   └────────────────────────────────────────────────────────┘
  */
 
-import { useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import {
   ChevronLeft,
-  FileText,
-  Scale,
-  Bell,
-  Paperclip,
-  MessageSquare,
   Sparkles,
   Edit2,
   MoreHorizontal,
+  Scale,
+  Paperclip,
+  MessageSquare,
+  ChevronDown,
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
+import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import { Badge } from '@/components/ui/badge'
 import {
   ContratoEstado,
@@ -59,20 +67,22 @@ import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia
 import { PdfPreview } from '@/components/contratos/v2/pdf-preview'
 import {
   ResumoIdentificacao,
-  ResumoPartes,
-  ResumoCompliance,
-  ResumoProximosEventos,
   ResumoCustomFields,
 } from '@/components/contratos/v2/resumo-blocks'
+import { AtencaoBlock } from '@/components/contratos/v2/atencao-block'
+import { ComplianceSpine } from '@/components/contratos/v2/compliance-spine'
+import { RelacaoParceiro } from '@/components/contratos/v2/relacao-parceiro'
+import { EvolucaoTimeline } from '@/components/contratos/v2/evolucao-timeline'
+import type {
+  ActoInput,
+  DataChaveInput,
+  ObrigacaoInput,
+} from '@/components/contratos/v2/atencao-engine'
 import { AssinarWizard } from '@/components/contratos/v2/assinar-wizard'
 import { TermosDrawer } from '@/components/contratos/v2/termos-drawer'
-import {
-  EditorTab,
-} from '@/components/contratos/editor-tab'
-import { ObrigacoesTab } from '@/components/contratos/obrigacoes-tab'
+import { EditorTab } from '@/components/contratos/editor-tab'
 import { VersoesTab } from '@/components/contratos/versoes-tab'
 import { DocumentosTab } from '@/components/contratos/documentos-tab'
-import { ComplianceTab } from '@/components/contratos/compliance-tab'
 
 interface Contrato {
   id: string
@@ -97,21 +107,57 @@ interface Contrato {
   responsavel: { id: string; firstName: string; lastName: string } | null
 }
 
-type TabKey = 'resumo' | 'termos' | 'eventos' | 'documentos' | 'conversa'
-
-interface TabDef {
-  key: TabKey
-  label: string
-  icon: React.ElementType
+interface ParteRef {
+  id: string
+  papel: string
+  entidade: { id: string; nome: string }
 }
 
-const TABS: TabDef[] = [
-  { key: 'resumo', label: 'Resumo', icon: FileText },
-  { key: 'termos', label: 'Termos & cláusulas', icon: Scale },
-  { key: 'eventos', label: 'Eventos & notificações', icon: Bell },
-  { key: 'documentos', label: 'Documentos & versões', icon: Paperclip },
-  { key: 'conversa', label: 'Conversa & histórico', icon: MessageSquare },
-]
+// ─── Hook de sinais partilhados ──────────────────────────────────
+// Fetch único dos sinais (actos, datas, obrigações, partes) que
+// alimentam AtencaoBlock + ComplianceSpine + RelacaoParceiro. Evita
+// 3 componentes a buscarem os mesmos endpoints.
+
+function useContratoSinais(contratoId: string) {
+  const { data: session } = useSession()
+  const [actos, setActos] = useState<ActoInput[]>([])
+  const [datas, setDatas] = useState<DataChaveInput[]>([])
+  const [obrigacoes, setObrigacoes] = useState<ObrigacaoInput[]>([])
+  const [partes, setPartes] = useState<ParteRef[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!session?.accessToken) return
+    const token = session.accessToken
+    const [a, d, o, p] = await Promise.all([
+      api<unknown>(`/compliance/contratos/${contratoId}/actos`, { token }).catch(() => []),
+      api<unknown>(`/contratos/${contratoId}/datas-chave`, { token }).catch(() => []),
+      api<unknown>(`/contratos/${contratoId}/obrigacoes`, { token }).catch(() => []),
+      api<unknown>(`/contratos/${contratoId}/partes`, { token }).catch(() => []),
+    ])
+    setActos(unwrapList<ActoInput>(a))
+    setDatas(unwrapList<DataChaveInput>(d))
+    setObrigacoes(unwrapList<ObrigacaoInput>(o))
+    setPartes(unwrapList<ParteRef>(p))
+    setLoaded(true)
+  }, [contratoId, session?.accessToken])
+
+  useEffect(() => {
+    let cancelled = false
+    if (session?.accessToken) {
+      void load().then(() => {
+        if (cancelled) return
+      })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [load, session?.accessToken])
+
+  return { actos, datas, obrigacoes, partes, loaded, reload: load }
+}
+
+// ─── Page ────────────────────────────────────────────────────────
 
 export default function ContratoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -120,24 +166,12 @@ export default function ContratoDetailPage() {
   )
   const { setOpen: setAiOpen, send: aiSend } = useKamaiaAI()
 
-  // Modo derivado do estado — decide tab default e banner contextual
   const modo: ContratoModo = contrato ? contratoModo(contrato.estado) : 'REPOSITORY'
 
-  // Tab default depende do modo:
-  //  - DRAFTING/SIGNATURE: utilizador está provavelmente a redigir/assinar
-  //    → Editor (tab Termos) é o que ele precisa primeiro
-  //  - REPOSITORY/CLOSED: utilizador está a consultar/monitorizar
-  //    → Resumo é o que dá a visão geral
-  const defaultTab: TabKey =
-    modo === 'DRAFTING' || modo === 'SIGNATURE' ? 'termos' : 'resumo'
-
-  // useState fica fora do return; reinicializa quando o modo muda
-  // via key remount no <Inner />
   return contrato ? (
     <Inner
       contrato={contrato}
       modo={modo}
-      defaultTab={defaultTab}
       onAiAnalysis={() => {
         setAiOpen(true)
         void aiSend(
@@ -147,11 +181,7 @@ export default function ContratoDetailPage() {
       onRefresh={() => void refetch()}
     />
   ) : (
-    <DetailShell
-      idForContext={id}
-      loading={loading}
-      error={error}
-    />
+    <DetailShell idForContext={id} loading={loading} error={error} />
   )
 }
 
@@ -165,24 +195,12 @@ function DetailShell({
   error: string | null
 }) {
   useKamaiaPageContext({ type: 'contratos.detail', contratoId: idForContext })
-  if (error) {
-    return <div style={{ color: 'var(--k2-bad)' }}>{error}</div>
-  }
+  if (error) return <div style={{ color: 'var(--k2-bad)' }}>{error}</div>
   return (
-    <div className="cd-page">
-      <div className="cd-loading">{loading ? 'A carregar…' : 'Contrato não encontrado.'}</div>
-      <style jsx>{`
-        .cd-page {
-          min-height: 40vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .cd-loading {
-          color: var(--k2-text-mute);
-          font-size: 13px;
-        }
-      `}</style>
+    <div style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ color: 'var(--k2-text-mute)', fontSize: 13 }}>
+        {loading ? 'A carregar…' : 'Contrato não encontrado.'}
+      </span>
     </div>
   )
 }
@@ -190,19 +208,19 @@ function DetailShell({
 function Inner({
   contrato,
   modo,
-  defaultTab,
   onAiAnalysis,
   onRefresh,
 }: {
   contrato: Contrato
   modo: ContratoModo
-  defaultTab: TabKey
   onAiAnalysis: () => void
   onRefresh: () => void
 }) {
-  const [tab, setTab] = useState<TabKey>(defaultTab)
   const [signWizardOpen, setSignWizardOpen] = useState(false)
   const [termosOpen, setTermosOpen] = useState(false)
+  const [detalhesTab, setDetalhesTab] = useState<'termos' | 'documentos' | 'conversa' | null>(null)
+
+  const sinais = useContratoSinais(contrato.id)
 
   useKamaiaPageContext({
     type: 'contratos.detail',
@@ -215,8 +233,14 @@ function Inner({
   const visivel = userVisibleEstado(contrato.estado)
   const readonly = modo === 'CLOSED'
 
+  // Resolução de actos / vigência refresca contrato + sinais
+  const onResolved = () => {
+    onRefresh()
+    void sinais.reload()
+  }
+
   return (
-    <div className="cd-page">
+    <div className="cd">
       {/* Hero */}
       <header className="cd-hero">
         <Link href="/contratos" className="cd-back">
@@ -248,11 +272,7 @@ function Inner({
             </div>
           </div>
           <div className="cd-hero-actions">
-            <button
-              type="button"
-              className="cd-btn cd-btn-soft"
-              onClick={onAiAnalysis}
-            >
+            <button type="button" className="cd-btn cd-btn-soft" onClick={onAiAnalysis}>
               <Sparkles size={13} /> Análise IA
             </button>
             {!readonly && (
@@ -265,111 +285,89 @@ function Inner({
                 }}
               >
                 <Edit2 size={12} />
-                {modo === 'SIGNATURE'
-                  ? 'Enviar para assinar'
-                  : modo === 'DRAFTING'
-                    ? 'Editor'
-                    : 'Editar'}
+                {modo === 'SIGNATURE' ? 'Enviar para assinar' : modo === 'DRAFTING' ? 'Editor' : 'Editar'}
               </button>
             )}
-            <button
-              type="button"
-              className="cd-btn cd-btn-soft cd-btn-icon"
-              aria-label="Mais acções"
-            >
+            <button type="button" className="cd-btn cd-btn-soft cd-btn-icon" aria-label="Mais acções">
               <MoreHorizontal size={14} />
             </button>
           </div>
         </div>
-
-        {/* Banner de modo — explica o que está em foco neste estado */}
-        {modo === 'DRAFTING' && (
-          <ModeBanner
-            tone="info"
-            text={`Em ${CONTRATO_ESTADO_VISIVEL_LABELS[visivel].toLowerCase()}. O editor de cláusulas é a vista principal.`}
-          />
-        )}
-        {modo === 'SIGNATURE' && (
-          <ModeBanner
-            tone="action"
-            text="Pronto para assinatura. Verifica signatários e posiciona campos antes de enviar."
-          />
-        )}
-        {modo === 'CLOSED' && (
-          <ModeBanner
-            tone="muted"
-            text={`Contrato ${CONTRATO_ESTADO_VISIVEL_LABELS[visivel].toLowerCase()} — vista read-only.`}
-          />
-        )}
       </header>
 
-      {/* Tabs icon-only */}
-      <nav className="cd-tabs" role="tablist">
-        {TABS.map((t) => {
-          const active = tab === t.key
-          return (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={t.label}
-              title={t.label}
-              className={`cd-tab ${active ? 'active' : ''}`}
-              onClick={() => setTab(t.key)}
-            >
-              <t.icon size={14} />
-            </button>
-          )
-        })}
-      </nav>
+      {/* Precisa da tua atenção — lidera a página */}
+      {sinais.loaded && (
+        <AtencaoBlock
+          contratoId={contrato.id}
+          contrato={{
+            estado: contrato.estado,
+            dataTermo: contrato.dataTermo,
+            renovacaoAutomatica: contrato.renovacaoAutomatica,
+            prazoRenovacaoMeses: contrato.prazoRenovacaoMeses,
+            janelaDenunciaDias: contrato.janelaDenunciaDias,
+            denunciaEm: contrato.denunciaEm,
+          }}
+          actos={sinais.actos}
+          datas={sinais.datas}
+          obrigacoes={sinais.obrigacoes}
+          onResolved={onResolved}
+        />
+      )}
 
-      {/* Split-pane: content + PDF */}
+      {/* Split: dados + PDF */}
       <div className="cd-split">
-        <div className="cd-content">
-          {tab === 'resumo' && (
-            <div className="cd-stack">
-              <ResumoIdentificacao contrato={contrato} />
-              <ResumoPartes contratoId={contrato.id} />
-              <ResumoCompliance contratoId={contrato.id} />
-              <ResumoProximosEventos contratoId={contrato.id} />
-              <ResumoCustomFields contratoId={contrato.id} />
-            </div>
-          )}
-
-          {tab === 'termos' && (
-            <div className="cd-stack">
-              <EditorTab contratoId={contrato.id} />
-            </div>
-          )}
-
-          {tab === 'eventos' && (
-            <div className="cd-stack">
-              <ObrigacoesTab contratoId={contrato.id} />
-              <ComplianceTab contratoId={contrato.id} />
-            </div>
-          )}
-
-          {tab === 'documentos' && (
-            <div className="cd-stack">
-              <VersoesTab contratoId={contrato.id} />
-              <DocumentosTab contratoId={contrato.id} />
-            </div>
-          )}
-
-          {tab === 'conversa' && (
-            <div className="cd-stack">
-              <Placeholder
-                title="Conversa & histórico"
-                hint="Comentários por cláusula + timeline de eventos. Em consolidação na Sprint 2.4."
-              />
-            </div>
-          )}
+        <div className="cd-col">
+          <ResumoIdentificacao contrato={contrato} />
+          <ComplianceSpine actos={sinais.actos} />
+          <RelacaoParceiro contratoId={contrato.id} partes={sinais.partes} />
+          <ResumoCustomFields contratoId={contrato.id} />
         </div>
-
         <aside className="cd-pdf">
           <PdfPreview contratoId={contrato.id} />
         </aside>
+      </div>
+
+      {/* Evolução temporal */}
+      <EvolucaoTimeline contratoId={contrato.id} />
+
+      {/* Mais detalhes — secundário, colapsável */}
+      <div className="cd-mais">
+        <div className="cd-mais-tabs">
+          {(['termos', 'documentos', 'conversa'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`cd-mais-tab ${detalhesTab === t ? 'active' : ''}`}
+              onClick={() => setDetalhesTab(detalhesTab === t ? null : t)}
+            >
+              {t === 'termos' && <Scale size={13} />}
+              {t === 'documentos' && <Paperclip size={13} />}
+              {t === 'conversa' && <MessageSquare size={13} />}
+              <span>
+                {t === 'termos' ? 'Termos & cláusulas' : t === 'documentos' ? 'Documentos & versões' : 'Conversa & histórico'}
+              </span>
+              <ChevronDown size={12} className={`cd-mais-chev ${detalhesTab === t ? 'open' : ''}`} />
+            </button>
+          ))}
+        </div>
+        {detalhesTab === 'termos' && (
+          <div className="cd-mais-body">
+            <EditorTab contratoId={contrato.id} />
+          </div>
+        )}
+        {detalhesTab === 'documentos' && (
+          <div className="cd-mais-body">
+            <VersoesTab contratoId={contrato.id} />
+            <DocumentosTab contratoId={contrato.id} />
+          </div>
+        )}
+        {detalhesTab === 'conversa' && (
+          <div className="cd-mais-body">
+            <div className="cd-placeholder">
+              Comentários por cláusula + timeline detalhada em consolidação.
+            </div>
+          </div>
+        )}
       </div>
 
       <AssinarWizard
@@ -377,7 +375,6 @@ function Inner({
         onClose={() => setSignWizardOpen(false)}
         contratoId={contrato.id}
       />
-
       <TermosDrawer
         open={termosOpen}
         onClose={() => setTermosOpen(false)}
@@ -388,19 +385,14 @@ function Inner({
           prazoRenovacaoMeses: contrato.prazoRenovacaoMeses,
           janelaDenunciaDias: contrato.janelaDenunciaDias,
         }}
-        onSaved={() => {
-          // Onda C.1.8: refetch em vez de window.location.reload —
-          // preserva scroll, side panel state, e tab activa.
-          onRefresh()
-        }}
+        onSaved={onResolved}
       />
 
       <style jsx>{`
-        .cd-page {
+        .cd {
           display: flex;
           flex-direction: column;
           gap: 16px;
-          min-height: calc(100vh - 100px);
         }
         .cd-hero {
           display: flex;
@@ -416,9 +408,7 @@ function Inner({
           text-decoration: none;
           align-self: flex-start;
         }
-        .cd-back:hover {
-          color: var(--k2-text-dim);
-        }
+        .cd-back:hover { color: var(--k2-text-dim); }
         .cd-hero-row {
           display: flex;
           justify-content: space-between;
@@ -443,25 +433,11 @@ function Inner({
           font-variant-numeric: tabular-nums;
           flex-wrap: wrap;
         }
-        .cd-numero {
-          color: var(--k2-text-dim);
-        }
-        .cd-dot {
-          color: var(--k2-text-mute);
-          opacity: 0.6;
-        }
-        .cd-prox {
-          color: var(--k2-text-dim);
-        }
-        .cd-prox.urgent {
-          color: var(--k2-warn);
-          font-weight: 500;
-        }
-        .cd-hero-actions {
-          display: inline-flex;
-          gap: 6px;
-          flex-shrink: 0;
-        }
+        .cd-numero { color: var(--k2-text-dim); }
+        .cd-dot { color: var(--k2-text-mute); opacity: 0.6; }
+        .cd-prox { color: var(--k2-text-dim); }
+        .cd-prox.urgent { color: var(--k2-warn); font-weight: 500; }
+        .cd-hero-actions { display: inline-flex; gap: 6px; flex-shrink: 0; }
         .cd-btn {
           display: inline-flex;
           align-items: center;
@@ -475,69 +451,28 @@ function Inner({
           transition: background 120ms ease, border-color 120ms ease;
           border: 1px solid var(--k2-border);
         }
-        .cd-btn-soft {
-          background: var(--k2-bg-elev);
-          color: var(--k2-text-dim);
-        }
-        .cd-btn-soft:hover {
-          background: var(--k2-bg-hover);
-          color: var(--k2-text);
-        }
+        .cd-btn-soft { background: var(--k2-bg-elev); color: var(--k2-text-dim); }
+        .cd-btn-soft:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
         .cd-btn-primary {
           background: var(--k2-accent);
           color: var(--k2-accent-fg);
           border-color: var(--k2-accent);
         }
-        .cd-btn-primary:hover {
-          opacity: 0.9;
-        }
-        .cd-btn-icon {
-          padding: 6px;
-        }
-
-        .cd-tabs {
-          display: flex;
-          gap: 2px;
-          border-bottom: 1px solid var(--k2-border);
-          padding-bottom: 1px;
-        }
-        .cd-tab {
-          display: inline-grid;
-          place-items: center;
-          width: 36px;
-          height: 36px;
-          background: transparent;
-          border: none;
-          color: var(--k2-text-mute);
-          border-bottom: 2px solid transparent;
-          margin-bottom: -1px;
-          cursor: pointer;
-          transition: color 120ms ease, border-color 120ms ease;
-        }
-        .cd-tab:hover {
-          color: var(--k2-text-dim);
-        }
-        .cd-tab.active {
-          color: var(--k2-text);
-          border-bottom-color: var(--k2-text);
-        }
+        .cd-btn-primary:hover { opacity: 0.9; }
+        .cd-btn-icon { padding: 6px; }
 
         .cd-split {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
           gap: 16px;
-          flex: 1;
-          min-height: 0;
         }
         @media (max-width: 1100px) {
-          .cd-split {
-            grid-template-columns: 1fr;
-          }
-          .cd-pdf {
-            min-height: 480px;
-          }
+          .cd-split { grid-template-columns: 1fr; }
         }
-        .cd-content {
+        .cd-col {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
           min-width: 0;
         }
         .cd-pdf {
@@ -545,46 +480,67 @@ function Inner({
           top: 16px;
           align-self: flex-start;
           height: calc(100vh - 180px);
-          min-height: 600px;
+          min-height: 560px;
         }
         @media (max-width: 1100px) {
-          .cd-pdf {
-            position: static;
-            height: auto;
-          }
+          .cd-pdf { position: static; height: auto; min-height: 480px; }
         }
-        .cd-stack {
+
+        .cd-mais {
+          border-top: 1px solid var(--k2-border);
+          padding-top: 12px;
+        }
+        .cd-mais-tabs {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .cd-mais-tab {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 12px;
+          background: var(--k2-bg-elev);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          color: var(--k2-text-dim);
+          font-size: 12px;
+          font-weight: 500;
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 120ms ease, color 120ms ease;
+        }
+        .cd-mais-tab:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
+        .cd-mais-tab.active { color: var(--k2-text); border-color: var(--k2-border-strong); }
+        .cd-mais-chev { transition: transform 160ms ease; }
+        .cd-mais-chev.open { transform: rotate(180deg); }
+        .cd-mais-body {
+          margin-top: 12px;
           display: flex;
           flex-direction: column;
           gap: 12px;
         }
-        .cd-loading {
+        .cd-placeholder {
+          background: var(--k2-bg-elev);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius);
+          padding: 24px;
+          text-align: center;
+          font-size: 12px;
           color: var(--k2-text-mute);
-          font-size: 13px;
-          padding: 12px;
         }
       `}</style>
     </div>
   )
 }
 
-/**
- * Sugere a próxima acção a partir do estado + datas. Hint curto que
- * vai à hero strip, para o utilizador saber em 1 segundo o que importa.
- */
 function proximaAccaoHint(c: Contrato): { text: string; urgent: boolean } | null {
   const now = new Date()
   if (c.dataTermo) {
     const termo = new Date(c.dataTermo)
-    const dias = Math.ceil(
-      (termo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-    )
-    if (dias < 0) {
-      return { text: `Termo expirou há ${Math.abs(dias)} dias`, urgent: true }
-    }
-    if (dias === 0) {
-      return { text: `Termo hoje`, urgent: true }
-    }
+    const dias = Math.ceil((termo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    if (dias < 0) return { text: `Termo expirou há ${Math.abs(dias)} dias`, urgent: true }
+    if (dias === 0) return { text: `Termo hoje`, urgent: true }
     if (dias <= 30) {
       const tipoTermo = c.renovacaoAutomatica ? 'Renova' : 'Termina'
       return { text: `${tipoTermo} em ${dias} dias`, urgent: dias <= 7 }
@@ -593,74 +549,8 @@ function proximaAccaoHint(c: Contrato): { text: string; urgent: boolean } | null
   if (c.estado === ContratoEstado.PRONTO_ASSINATURA) {
     return { text: 'Pronto para assinatura', urgent: true }
   }
-  if (
-    c.estado === ContratoEstado.DRAFTING ||
-    c.estado === ContratoEstado.REV_INTERNA
-  ) {
+  if (c.estado === ContratoEstado.DRAFTING || c.estado === ContratoEstado.REV_INTERNA) {
     return { text: 'Em redacção', urgent: false }
   }
   return null
-}
-
-/**
- * Banner do modo — uma linha contextual que comunica em prosa em que
- * modo o utilizador está e o que pode esperar.
- *
- * 3 tons:
- *   - info: tom calmo, descritivo (DRAFTING)
- *   - action: chama à acção (SIGNATURE)
- *   - muted: read-only, sem chamada (CLOSED)
- */
-function ModeBanner({
-  tone,
-  text,
-}: {
-  tone: 'info' | 'action' | 'muted'
-  text: string
-}) {
-  return (
-    <div className={`mb mb-${tone}`}>
-      {text}
-      <style jsx>{`
-        .mb {
-          margin-top: 10px;
-          padding: 8px 12px;
-          border-radius: var(--k2-radius-sm);
-          border: 1px solid var(--k2-border);
-          font-size: 12px;
-          line-height: 1.4;
-        }
-        .mb-info {
-          background: var(--k2-bg-elev);
-          color: var(--k2-text-dim);
-        }
-        .mb-action {
-          background: var(--k2-bg-elev-2);
-          color: var(--k2-text);
-          border-color: var(--k2-border-strong);
-          font-weight: 500;
-        }
-        .mb-muted {
-          background: transparent;
-          color: var(--k2-text-mute);
-          border-style: dashed;
-        }
-      `}</style>
-    </div>
-  )
-}
-
-function Placeholder({ title, hint }: { title: string; hint: string }) {
-  return (
-    <div style={{
-      background: 'var(--k2-bg-elev)',
-      border: '1px solid var(--k2-border)',
-      borderRadius: 'var(--k2-radius)',
-      padding: 24,
-      textAlign: 'center',
-    }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--k2-text)' }}>{title}</div>
-      <div style={{ fontSize: 12, color: 'var(--k2-text-mute)', marginTop: 6, lineHeight: 1.5 }}>{hint}</div>
-    </div>
-  )
 }
