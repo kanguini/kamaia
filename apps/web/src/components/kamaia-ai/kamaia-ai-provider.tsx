@@ -120,12 +120,28 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
   const [messages, setMessages] = useState<Message[]>([])
   const [sending, setSending] = useState(false)
 
-  // Atalho global ⌘+J / Ctrl+J — funciona em qualquer página
+  // Atalho global ⌘+J / Ctrl+J — funciona em qualquer página.
+  //
+  // Onda B.UI.12: NÃO captura quando:
+  //   - utilizador está em composição IME (acentos, kanji, etc.)
+  //   - foco está num input/textarea/contenteditable
+  //     (deixa o browser/extensions usarem Ctrl+J como costumam)
+  //   - O próprio botão ✨ do topbar já permite toggle por click —
+  //     o atalho é "extra", não único caminho.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.isComposing) return
+      const target = e.target as HTMLElement | null
+      const editable =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable
+      // Toggle vindo do próprio panel é OK (utilizador pode fechar
+      // com ⌘+J mesmo enquanto escreve)
+      const fromPanel = !!target?.closest('[data-kamaia-ai-panel]')
       const isShortcut =
         (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === shortcutKey
-      if (isShortcut) {
+      if (isShortcut && (!editable || fromPanel)) {
         e.preventDefault()
         setOpen((v) => !v)
       } else if (e.key === 'Escape' && open) {
@@ -156,22 +172,55 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
     if (status === 'authenticated') void reloadConversations()
   }, [status, reloadConversations])
 
-  // Carrega mensagens ao mudar de conversa
+  // Carrega mensagens ao mudar de conversa.
+  //
+  // Onda B.UI.13: depende APENAS de `conversationId`. Antes incluía
+  // `session?.accessToken` na dep array — quando NextAuth rotava o
+  // JWT mid-stream, este effect re-corria e fazia setMessages com
+  // o estado do servidor, **apagando** o placeholder do assistente
+  // a meio do streaming. Solução: ler token via ref dentro do
+  // effect, sem o ter como dependência.
+  const tokenRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (!conversationId || !session?.accessToken) {
+    tokenRef.current = session?.accessToken
+  }, [session?.accessToken])
+
+  useEffect(() => {
+    const token = tokenRef.current
+    if (!conversationId || !token) {
       setMessages([])
       return
     }
+    let cancelled = false
     api<MessagesResponse>(`/ia/conversations/${conversationId}/messages`, {
-      token: session.accessToken,
+      token,
     })
-      .then((res) => setMessages(res.data ?? []))
-      .catch(() => setMessages([]))
-  }, [conversationId, session?.accessToken])
+      .then((res) => {
+        if (!cancelled) setMessages(res.data ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) setMessages([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [conversationId])
 
   const selectConversation = useCallback((id: string) => {
     setConversationId(id)
   }, [])
+
+  // Onda B.UI.10: AbortController do stream em vôo. Single source
+  // partilhado: se nova send começa antes da anterior terminar, ou
+  // se a conversa muda, abortamos a anterior.
+  const sendAbortRef = useRef<AbortController | null>(null)
+
+  // Cancela ao desmontar o provider OU ao mudar de conversa
+  useEffect(() => {
+    return () => {
+      sendAbortRef.current?.abort()
+    }
+  }, [conversationId])
 
   // Onda A.5: shared in-flight ref para criação de conversação.
   // Sem isto, click "+" + send rápido criavam 2 conversações em
@@ -296,6 +345,14 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       ])
       setSending(true)
 
+      // Onda B.UI.10: AbortController. Cancela request em vôo se o
+      // utilizador inicia outra send, fecha o panel, ou muda de
+      // conversa. Sem isto, o reader continua a consumir bytes e
+      // chama setMessages em estado irrelevante.
+      sendAbortRef.current?.abort()
+      const ac = new AbortController()
+      sendAbortRef.current = ac
+
       try {
         const tenantId = getActiveTenantId()
         // Sprint 1.2: usa o endpoint agêntico /agent-stream que suporta
@@ -315,6 +372,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               conteudo: text,
               pageContext,
             }),
+            signal: ac.signal,
           },
         )
 
@@ -328,8 +386,17 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
         const pendingCitations: Citation[] | undefined = undefined
         const toolCalls = new Map<string, ToolCallTrace>()
 
+        // Onda B.UI.11: garantir que só a 1ª `navigate` per stream
+        // dispara router.push. Streams com múltiplos open_contrato
+        // (raro mas possível) deixariam o utilizador navegado para
+        // o segundo, perdendo controlo.
+        let hasNavigated = false
+
         const updateToolCalls = () => {
-          const list = Array.from(toolCalls.values())
+          // Onda B.UI.9: clone profundo dos entries para não mutar
+          // o estado que React já capturou em snapshots anteriores
+          // (concurrent rendering tearing).
+          const list = Array.from(toolCalls.values()).map((t) => ({ ...t }))
           setMessages((prev) =>
             prev.map((m) =>
               m.id === tempAssistantId ? { ...m, toolCalls: list } : m,
@@ -382,34 +449,32 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
             } else if (kind === 'tool_executing') {
               const entry = toolCalls.get(String(data.id))
               if (entry) {
-                entry.status = 'executing'
-                toolCalls.set(entry.id, entry)
+                // Clone em vez de mutar — B.UI.9
+                toolCalls.set(entry.id, { ...entry, status: 'executing' })
                 updateToolCalls()
               }
             } else if (kind === 'tool_result') {
-              const entry = toolCalls.get(String(data.id)) ?? {
-                id: String(data.id),
-                name: String(data.name),
-                status: 'done' as const,
-              }
-              entry.status = data.isError ? 'error' : 'done'
+              const existing = toolCalls.get(String(data.id))
               const hint = data.renderHint as ToolCallTrace['renderHint']
-              if (hint) entry.renderHint = hint
-              if (data.uiPayload) {
-                entry.uiPayload = data.uiPayload as ToolCallTrace['uiPayload']
+              const next: ToolCallTrace = {
+                id: existing?.id ?? String(data.id),
+                name: existing?.name ?? String(data.name),
+                status: data.isError ? 'error' : 'done',
+                renderHint: hint ?? existing?.renderHint,
+                uiPayload: data.uiPayload
+                  ? (data.uiPayload as ToolCallTrace['uiPayload'])
+                  : existing?.uiPayload,
+                errorMessage:
+                  data.isError && data.result
+                    ? (data.result as { message?: string }).message ?? 'Erro na tool'
+                    : existing?.errorMessage,
               }
-              if (data.isError && data.result) {
-                const err = data.result as { message?: string }
-                entry.errorMessage = err.message ?? 'Erro na tool'
-              }
-              toolCalls.set(entry.id, entry)
+              toolCalls.set(next.id, next)
               updateToolCalls()
 
-              // Auto-navigate quando a tool é open_contrato (single
-              // result): o utilizador pediu para abrir, fazemos. Não
-              // fechamos o panel — utilizador continua a poder pedir
-              // mais coisas.
+              // Auto-navigate: apenas a 1ª por stream (B.UI.11)
               if (
+                !hasNavigated &&
                 !data.isError &&
                 hint === 'navigate' &&
                 data.result &&
@@ -418,6 +483,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               ) {
                 const target = (data.result as { target: unknown }).target
                 if (typeof target === 'string' && target.startsWith('/')) {
+                  hasNavigated = true
                   router.push(target)
                 }
               }
@@ -453,19 +519,30 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
           }
         }
       } catch (e) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempAssistantId
-              ? {
-                  ...m,
-                  content: `⚠ Erro de ligação: ${(e as Error).message}`,
-                  streaming: false,
-                  errored: true,
-                }
-              : m,
-          ),
-        )
+        // Onda B.UI.10: AbortError não é falha do utilizador — foi
+        // cancelamento intencional (mudou de conversa, fechou panel,
+        // disparou outra send). Não mostra erro na bolha.
+        const isAbort =
+          e instanceof Error &&
+          (e.name === 'AbortError' || e.message.includes('aborted'))
+        if (!isAbort) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempAssistantId
+                ? {
+                    ...m,
+                    content: `⚠ Erro de ligação: ${(e as Error).message}`,
+                    streaming: false,
+                    errored: true,
+                  }
+                : m,
+            ),
+          )
+        }
       } finally {
+        // Só limpar sendAbortRef se ainda apontar para o nosso ac —
+        // se outro send já o substituiu, não tocar.
+        if (sendAbortRef.current === ac) sendAbortRef.current = null
         setSending(false)
       }
     },

@@ -32,6 +32,18 @@ import type { PageContext, ToolContext } from './tool.types';
 const MAX_TURNS = 6;
 const DEFAULT_MAX_TOKENS = 3000;
 
+// Onda B.COST.16 — Hard caps para evitar runaway:
+//   - MAX_TOTAL_OUTPUT_TOKENS: orçamento de OUTPUT tokens somados
+//     entre todos os turns de uma única conversação-turn do
+//     utilizador. 6 turns × 3000 = 18000 era o pior caso; cortamos
+//     para 12000 como sanity (4 turns @ 3000, ou 6 turns @ 2000
+//     médios). Ajustável.
+//   - MAX_WALL_CLOCK_MS: timeout total do loop agêntico. 60s é o
+//     suficiente para 6 chamadas Claude + 6 tool executions sem
+//     fechar streams legítimos.
+const MAX_TOTAL_OUTPUT_TOKENS = 12_000;
+const MAX_WALL_CLOCK_MS = 60_000;
+
 /**
  * System prompt do agente — mais directivo que o Q&A, com instruções
  * explícitas sobre quando usar tools vs quando responder texto.
@@ -94,7 +106,32 @@ export class AgentService {
     let turn = 0;
     const workingMessages = [...messages];
 
+    // Onda B.COST.16: wall-clock + cumulative tokens caps.
+    const startedAt = Date.now();
+
     while (turn < MAX_TURNS) {
+      // Check cumulative caps ANTES de gastar mais tokens neste turn
+      if (totalTokensOutput >= MAX_TOTAL_OUTPUT_TOKENS) {
+        this.logger.warn(
+          `Agent hit MAX_TOTAL_OUTPUT_TOKENS=${MAX_TOTAL_OUTPUT_TOKENS} para conv ${opts.ctx.conversationId}`,
+        );
+        yield {
+          kind: 'error',
+          message: `Limite de output tokens atingido (${totalTokensOutput}/${MAX_TOTAL_OUTPUT_TOKENS}). Reformula a pergunta para ser mais directa.`,
+        };
+        return;
+      }
+      if (Date.now() - startedAt > MAX_WALL_CLOCK_MS) {
+        this.logger.warn(
+          `Agent hit MAX_WALL_CLOCK_MS=${MAX_WALL_CLOCK_MS} para conv ${opts.ctx.conversationId}`,
+        );
+        yield {
+          kind: 'error',
+          message: `Conversação ultrapassou ${MAX_WALL_CLOCK_MS / 1000}s. Reformula para algo mais directo.`,
+        };
+        return;
+      }
+
       turn++;
 
       // Stream do turn actual

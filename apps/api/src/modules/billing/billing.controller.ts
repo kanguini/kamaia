@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Role, TenantContext } from '@kamaia/shared-types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Tenant } from '../../common/decorators/tenant.decorator';
@@ -36,8 +37,18 @@ export class BillingController {
 
   /**
    * Catálogo público de planos. Sem autenticação, sem tenant.
-   * Usado pelo marketing site (Sprint 4.4).
+   * Usado pelo marketing site (Sprint 4.4) com revalidate=3600s.
+   *
+   * Onda B.SEC.15: rate limit explícito (10 req/min/IP) para evitar
+   * scraping massivo. O ThrottlerGuard global aplica-se mas este
+   * decorator override garante limites apertados para este endpoint
+   * mesmo se o global afrouxar no futuro.
+   *
+   * `publicPlans()` filtra por isPublic=true; AGENCY foi colocado
+   * como isPublic=false (sob proposta), por isso as suas quotas
+   * internas NÃO são expostas.
    */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Get('plans')
   async plans() {
     return { data: publicPlans() };

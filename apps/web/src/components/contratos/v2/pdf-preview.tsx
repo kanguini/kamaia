@@ -156,7 +156,7 @@ export function PdfPreview({
               <a
                 href={docUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noreferrer noopener"
                 className="pdf-pv-btn"
                 title="Abrir em separador novo"
                 aria-label="Abrir em separador novo"
@@ -166,6 +166,7 @@ export function PdfPreview({
               <a
                 href={docUrl}
                 download={docName ?? 'documento.pdf'}
+                rel="noreferrer noopener"
                 className="pdf-pv-btn"
                 title="Descarregar"
                 aria-label="Descarregar"
@@ -212,10 +213,22 @@ export function PdfPreview({
           </div>
         )}
         {!loading && !err && docUrl && (
+          // Onda B.SEC.14: sandbox restritivo + no-referrer.
+          //
+          // sandbox sem allow-scripts/forms/popups: PDF.js do navegador
+          // pode executar JS via OpenAction/JavaScript actions do PDF
+          // contra a origem do iframe; sem allow-same-origin nem
+          // allow-scripts, isso fica neutralizado.
+          //
+          // referrerPolicy="no-referrer": signed URL não é enviado no
+          // header Referer ao storage provider (R2/S3) ou a redirects
+          // intermediários, evitando leakage do token signed.
           <iframe
             src={`${docUrl}#toolbar=0&navpanes=0`}
             className="pdf-pv-iframe"
             title={docName ?? 'Pré-visualização do documento'}
+            sandbox=""
+            referrerPolicy="no-referrer"
           />
         )}
       </div>

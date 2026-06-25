@@ -75,8 +75,20 @@ describe('find_or_create_entidade', () => {
   });
 
   it('cria quando createIfMissing=true e não encontra', async () => {
+    // Onda B.RACE.5: mock $transaction agora porque create stub é
+    // serializado dentro de transaction com advisory lock.
     const prisma = {
-      entidade: { findMany: jest.fn().mockResolvedValue([]) },
+      entidade: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      $transaction: jest.fn(async (cb: unknown) => {
+        const tx = {
+          $executeRaw: jest.fn().mockResolvedValue(1),
+          entidade: { findFirst: jest.fn().mockResolvedValue(null) },
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (cb as any)(tx);
+      }),
     } as never;
     const entSvc = {
       create: jest.fn().mockResolvedValue({ id: 'new-id', nome: 'Nova Empresa' }),
@@ -136,7 +148,15 @@ describe('create_contrato', () => {
         }),
         findMany: jest.fn().mockResolvedValue([]),
       },
-      entidade: { findMany: jest.fn().mockResolvedValue(entidades) },
+      entidade: {
+        findMany: jest.fn().mockResolvedValue(entidades),
+        // Onda B.SEC.2: tool valida contraparteId via findFirst
+        // antes de chegar a ContratosService. Mock devolve o id
+        // mock para passar a validação.
+        findFirst: jest.fn(async (args: { where: { id?: string } }) =>
+          args.where.id ? { id: args.where.id } : null,
+        ),
+      },
       contratoActoRegulatorio: {
         findMany: jest.fn().mockResolvedValue(actos),
       },

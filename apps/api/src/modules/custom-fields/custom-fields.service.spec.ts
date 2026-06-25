@@ -39,6 +39,9 @@ interface MockPrisma {
   $transaction: jest.Mock;
 }
 function makePrisma(overrides: Partial<MockPrisma> = {}): MockPrisma {
+  // Onda B.RACE.7: shared mocks para que tx.X seja o mesmo objecto
+  // que prisma.X — assim `toHaveBeenCalledTimes` ainda funciona.
+  const cfvUpsert = jest.fn().mockResolvedValue({});
   return {
     tipoContrato: { findUnique: jest.fn() },
     customFieldDefinition: {
@@ -50,9 +53,21 @@ function makePrisma(overrides: Partial<MockPrisma> = {}): MockPrisma {
     contrato: { findFirst: jest.fn() },
     contratoCustomFieldValue: {
       findMany: jest.fn().mockResolvedValue([]),
-      upsert: jest.fn(),
+      upsert: cfvUpsert,
     },
-    $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+    // Onda B.RACE.7: $transaction agora é callback-form. Para
+    // manter compat com tests que assertam `prisma.contrato
+    // CustomFieldValue.upsert.toHaveBeenCalledTimes`, partilhamos
+    // o MESMO mock entre prisma.X e tx.X.
+    $transaction: jest.fn(async (cb: unknown, _opts?: unknown) => {
+      if (typeof cb === 'function') {
+        const txn = { contratoCustomFieldValue: { upsert: cfvUpsert } };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (cb as any)(txn);
+        return undefined;
+      }
+      return Promise.all(cb as Promise<unknown>[]);
+    }),
     ...overrides,
   };
 }
@@ -291,6 +306,24 @@ describe('CustomFieldsService — upsertValores', () => {
     await expect(
       svc.upsertValores('ct-1', TENANT, USER, {
         values: { inicioOcupacao: '01/06/2026' },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('B.COST.17: rejeita DATE 30 de Fevereiro (regex passa, round-trip falha)', async () => {
+    const { svc } = makeServiceWithDefs();
+    await expect(
+      svc.upsertValores('ct-1', TENANT, USER, {
+        values: { inicioOcupacao: '2026-02-30' },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('B.COST.17: rejeita DATE mês 13', async () => {
+    const { svc } = makeServiceWithDefs();
+    await expect(
+      svc.upsertValores('ct-1', TENANT, USER, {
+        values: { inicioOcupacao: '2026-13-01' },
       }),
     ).rejects.toBeInstanceOf(ConflictException);
   });

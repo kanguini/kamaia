@@ -173,12 +173,16 @@ export function TermosDrawer({ open, onClose, contratoId, initial, onSaved }: Pr
                   ? [
                       ' em ciclos de',
                       {
+                        // Onda B.COST.19: max condicional ao unit.
+                        // Antes era max=120 fixo — utilizador podia
+                        // entrar 120 anos = 1440 meses, ultrapassando
+                        // qualquer validação razoável.
                         type: 'number' as const,
                         value: renovQty,
                         min: 1,
-                        max: 120,
+                        max: renovUnidade === 'anos' ? 10 : 120,
                         onChange: setRenovQty,
-                        placeholder: '12',
+                        placeholder: renovUnidade === 'anos' ? '1' : '12',
                       },
                       {
                         type: 'select' as const,

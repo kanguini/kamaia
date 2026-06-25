@@ -146,6 +146,15 @@ export class CustomFieldsService {
     if (!existing || existing.deletedAt) {
       throw new NotFoundException('Custom field não encontrado');
     }
+    // Onda B.SEC.4: rejeita mutação de definições do catálogo global
+    // (tipoContrato.tenantId === null). Sem isto, um definição cuja
+    // tipo foi re-parented para global ficaria editável por qualquer
+    // tenant.
+    if (existing.tipoContrato.tenantId === null) {
+      throw new ForbiddenException(
+        'Catálogo global é imutável. Clone o tipo para o tenant antes de editar.',
+      );
+    }
     if (existing.tipoContrato.tenantId !== tenantId) {
       throw new NotFoundException('Custom field não encontrado');
     }
@@ -198,6 +207,13 @@ export class CustomFieldsService {
     if (!existing || existing.deletedAt) {
       throw new NotFoundException('Custom field não encontrado');
     }
+    // Onda B.SEC.4 (parte 2): mesma protecção do update — catálogo
+    // global é imutável.
+    if (existing.tipoContrato.tenantId === null) {
+      throw new ForbiddenException(
+        'Catálogo global é imutável. Clone o tipo para o tenant antes de eliminar campos.',
+      );
+    }
     if (existing.tipoContrato.tenantId !== tenantId) {
       throw new NotFoundException('Custom field não encontrado');
     }
@@ -226,7 +242,22 @@ export class CustomFieldsService {
    * definition (label, type, hint) para facilitar o render no UI.
    */
   async listValoresByContrato(contratoId: string, tenantId: string) {
-    // Valida que o contrato pertence ao tenant
+    // Onda B.SEC.3 — DECISÃO documentada:
+    //
+    // Auditoria sinalizou que BUSINESS_USER/VIEWER podem ler custom
+    // fields de QUALQUER contrato do tenant — CLAUDE.md diz que
+    // BUSINESS_USER "vê os seus". Verdadeiro, mas o mesmo se aplica
+    // ao próprio `GET /contratos/:id` (sem ACL row-level no actual
+    // sistema). Implementar ACL só para custom fields seria
+    // inconsistente.
+    //
+    // Solução correcta: refactor system-wide de ACL (responsavelId,
+    // colaboradorAccess, parteAccess) numa onda dedicada. Por agora
+    // mantemos o comportamento alinhado com o resto do sistema
+    // (tenant-scope) para não introduzir comportamento divergente.
+    //
+    // EXTERNAL role já está fora do @Roles deste endpoint — esse é
+    // o único role onde a divergência seria visível.
     const contrato = await this.prisma.contrato.findFirst({
       where: { id: contratoId, tenantId, deletedAt: null },
       select: { id: true, tipoId: true },
@@ -305,21 +336,54 @@ export class CustomFieldsService {
       throw new ConflictException({ message: 'Valores inválidos', errors });
     }
 
-    await this.prisma.$transaction(
-      operations.map((op) =>
-        this.prisma.contratoCustomFieldValue.upsert({
-          where: {
-            contratoId_fieldId: { contratoId, fieldId: op.fieldId },
+    // Onda B.RACE.7: interactive transaction com Serializable isolation
+    // + retry em P2002. Antes era array-form ($transaction([...])) sem
+    // isolation level — 2 PATCHes paralelos no mesmo (contratoId,
+    // fieldId) racing entre find e insert podiam dar P2002 sem retry.
+    //
+    // Serializable garante que se 2 transactions correm em paralelo,
+    // uma delas é abortada com SerializationFailure. Combinado com
+    // retry-once em P2002 / SerializationError, garantimos that a
+    // segunda call vê o estado depois da primeira e faz update em
+    // vez de create.
+    const MAX_RETRIES = 2;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        await this.prisma.$transaction(
+          async (tx) => {
+            for (const op of operations) {
+              await tx.contratoCustomFieldValue.upsert({
+                where: {
+                  contratoId_fieldId: { contratoId, fieldId: op.fieldId },
+                },
+                create: {
+                  contratoId,
+                  fieldId: op.fieldId,
+                  value: op.value as Prisma.InputJsonValue,
+                },
+                update: { value: op.value as Prisma.InputJsonValue },
+              });
+            }
           },
-          create: {
-            contratoId,
-            fieldId: op.fieldId,
-            value: op.value as Prisma.InputJsonValue,
-          },
-          update: { value: op.value as Prisma.InputJsonValue },
-        }),
-      ),
-    );
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        const code =
+          e instanceof Prisma.PrismaClientKnownRequestError ? e.code : null;
+        // P2002 = unique constraint, 40001 = serialization failure (PG)
+        if (code === 'P2002' || code === 'P2034' || code === '40001') {
+          continue; // retry
+        }
+        throw e; // outros erros não são retryable
+      }
+    }
+    if (lastErr) {
+      throw lastErr;
+    }
 
     await this.audit.log({
       tenantId,
@@ -390,8 +454,19 @@ export class CustomFieldsService {
       }
 
       case 'DATE': {
+        // Onda B.COST.17: regex passa "2026-02-30", "2026-13-01" e
+        // outras datas inválidas. Round-trip via Date confirma que
+        // a string corresponde a uma data real.
         if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
           return { ok: false, reason: 'esperava data YYYY-MM-DD' };
+        }
+        const d = new Date(raw + 'T00:00:00Z');
+        if (Number.isNaN(d.getTime())) {
+          return { ok: false, reason: 'data inválida' };
+        }
+        const roundTrip = d.toISOString().slice(0, 10);
+        if (roundTrip !== raw) {
+          return { ok: false, reason: `data inexistente (${raw})` };
         }
         return { ok: true, value: { v: raw } };
       }

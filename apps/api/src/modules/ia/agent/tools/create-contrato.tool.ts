@@ -222,6 +222,33 @@ Estados iniciais permitidos:
 
       // 2. Resolve contraparte
       let contraparteId = args.contraparteId;
+
+      // Onda B.SEC.2: se o LLM passou contraparteId directamente,
+      // valida que pertence ao tenant ANTES de chegar a ContratosService.
+      // Sem isto, um prompt-injected contraparteId de outro tenant
+      // criaria um contrato com referência cross-tenant (o
+      // ContratosService confia no DTO).
+      if (contraparteId) {
+        const ent = await prisma.entidade.findFirst({
+          where: {
+            id: contraparteId,
+            tenantId: ctx.tenantId,
+            deletedAt: null,
+          },
+          select: { id: true },
+        });
+        if (!ent) {
+          return {
+            result: {
+              status: 'error',
+              reason: `Contraparte ${contraparteId} não existe neste tenant.`,
+            },
+            isError: true,
+            renderHint: 'text',
+          };
+        }
+      }
+
       if (!contraparteId && args.contraparteNome) {
         const candidates = await prisma.entidade.findMany({
           where: {

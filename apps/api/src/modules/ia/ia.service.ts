@@ -48,6 +48,35 @@ export class IaService {
     private readonly agent: AgentService,
   ) {}
 
+  /**
+   * Onda B.RACE.6: increment atómico com guard de quota.
+   *
+   * `WHERE iaMessagesUsado < iaMessagesLimit` OR `iaMessagesLimit < 0`
+   * (unlimited). updateMany devolve `count: 0` quando a condição
+   * falha (quota saturada). Não throw em DB error — log + continua;
+   * a mensagem já foi gravada, não vamos partir o turn por causa
+   * disso. Caller pode chamar sem await em hot-path se preferir
+   * (`void this.incrementIaMessagesUsado(tenantId)`).
+   */
+  private async incrementIaMessagesUsado(tenantId: string): Promise<void> {
+    try {
+      await this.prisma.usageQuota.updateMany({
+        where: {
+          tenantId,
+          OR: [
+            { iaMessagesLimit: { lt: 0 } },
+            { iaMessagesUsado: { lt: this.prisma.usageQuota.fields.iaMessagesLimit } },
+          ],
+        },
+        data: { iaMessagesUsado: { increment: 1 } },
+      });
+    } catch (e) {
+      this.logger.warn(
+        `Falha ao incrementar iaMessagesUsado (tenant ${tenantId}): ${(e as Error).message}`,
+      );
+    }
+  }
+
   async createConversation(
     tenantId: string,
     userId: string,
@@ -244,16 +273,7 @@ export class IaService {
       entityId: conversationId,
     });
 
-    // AUDIT fix: incrementa contador de quota (fire-and-forget — não
-    // bloqueia retorno se updateMany falhar; cap próximo ciclo)
-    this.prisma.usageQuota
-      .updateMany({
-        where: { tenantId },
-        data: { iaMessagesUsado: { increment: 1 } },
-      })
-      .catch(() => {
-        /* silent */
-      });
+    await this.incrementIaMessagesUsado(tenantId);
 
     return { user: userMsg, assistant: assistantMsg };
   }
@@ -424,14 +444,7 @@ export class IaService {
       entityId: conversationId,
     });
 
-    this.prisma.usageQuota
-      .updateMany({
-        where: { tenantId },
-        data: { iaMessagesUsado: { increment: 1 } },
-      })
-      .catch(() => {
-        /* silent */
-      });
+    void this.incrementIaMessagesUsado(tenantId);
 
     yield {
       kind: 'done',
@@ -639,14 +652,7 @@ export class IaService {
       afterData: { agent: true, turns, tokensInput: tokensIn, tokensOutput: tokensOut },
     });
 
-    this.prisma.usageQuota
-      .updateMany({
-        where: { tenantId },
-        data: { iaMessagesUsado: { increment: 1 } },
-      })
-      .catch(() => {
-        /* silent */
-      });
+    void this.incrementIaMessagesUsado(tenantId);
 
     yield {
       kind: 'done',

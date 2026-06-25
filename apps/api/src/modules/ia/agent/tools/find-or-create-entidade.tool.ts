@@ -158,30 +158,73 @@ NUNCA invoca com createIfMissing=true sem o utilizador ter autorizado claramente
         };
       }
 
-      // Cria stub mínima
-      const created = await entidadesService.create(ctx.tenantId, ctx.userId, {
-        nome: args.query.trim(),
-        tipo: args.tipo as EntidadeTipo,
-        nacionalidadeCambial: EntidadeNacionalidadeCambial.RESIDENTE,
-        isInstituicaoFinanceira: false,
-        paisResidencia: 'AO',
-      } as never);
+      // Onda B.RACE.5: dois calls paralelos com `createIfMissing=true`
+      // e a mesma `query` ambos passavam o find vazio e ambos
+      // criavam stubs duplicadas. Mitigação:
+      //  1. Advisory xact lock key = hashtext(tenantId::query.lower)
+      //     — serializa calls para o mesmo nome no mesmo tenant.
+      //  2. Re-busca depois do lock — se uma criação concorrente
+      //     entretanto inseriu a entidade, devolve `found` em vez de
+      //     criar duplicado.
+      //
+      // Lock liberta no commit. Custo: minimal (uma trip Postgres
+      // adicional). Trade-off justificado pelo dano de duplicados.
+      const normalizedQuery = args.query.trim().toLowerCase();
+      const created = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${ctx.tenantId}::ent::${normalizedQuery}`}))`;
+
+        const reCheck = await tx.entidade.findFirst({
+          where: {
+            tenantId: ctx.tenantId,
+            deletedAt: null,
+            nome: { equals: args.query.trim(), mode: 'insensitive' },
+          },
+          select: { id: true, nome: true, nif: true },
+        });
+        if (reCheck) {
+          return { recheck: reCheck, created: null };
+        }
+
+        const newEnt = await entidadesService.create(ctx.tenantId, ctx.userId, {
+          nome: args.query.trim(),
+          tipo: args.tipo as EntidadeTipo,
+          nacionalidadeCambial: EntidadeNacionalidadeCambial.RESIDENTE,
+          isInstituicaoFinanceira: false,
+          paisResidencia: 'AO',
+        } as never);
+        return { recheck: null, created: newEnt };
+      });
+
+      // Se a re-check encontrou uma criação concorrente, devolve
+      // como `found` em vez de fingir que criámos.
+      if (created.recheck) {
+        return {
+          result: {
+            status: 'found',
+            entidadeId: created.recheck.id,
+            nome: created.recheck.nome,
+            nif: created.recheck.nif,
+          },
+          renderHint: 'text',
+        };
+      }
+      const finalCreated = created.created!;
 
       return {
         result: {
           status: 'created',
-          entidadeId: created.id,
-          nome: created.nome,
-          hint: `Criei stub "${created.nome}". O utilizador precisa de a completar depois (NIF, sector, morada).`,
+          entidadeId: finalCreated.id,
+          nome: finalCreated.nome,
+          hint: `Criei stub "${finalCreated.nome}". O utilizador precisa de a completar depois (NIF, sector, morada).`,
         },
         renderHint: 'entity',
         uiPayload: {
           items: [
             {
-              id: created.id,
-              label: created.nome,
+              id: finalCreated.id,
+              label: finalCreated.nome,
               sublabel: 'Stub — completa depois',
-              href: `/entidades/${created.id}`,
+              href: `/entidades/${finalCreated.id}`,
             },
           ],
         },

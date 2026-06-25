@@ -398,6 +398,29 @@ model CustomFieldDefinition {
   @@map("custom_field_definitions")
 }
 
+/// Onda B.RACE.8 — DECISÃO documentada sobre soft delete:
+///
+/// CLAUDE.md exige soft-delete para "dados de negócio". Custom field
+/// values são state mutável (utilizador edita "Área m²" de 120 para
+/// 200) — não dados append-only.
+///
+/// Optámos por NÃO ter `deletedAt`. Razões:
+///   - O histórico de mudanças vive no `audit_log` (writeable em
+///     B.RACE.7 — capturará before/after numa sprint futura)
+///   - upsert pattern com `(contratoId, fieldId)` único requer que
+///     o delete-then-recreate funcione; soft-delete obrigaria a
+///     filter EVERY query por `deletedAt IS NULL`
+///   - Limpar um valor = utilizador quer 0/null, não preservar
+///
+/// Quando o utilizador "limpa" um campo no drawer, o frontend
+/// omite-o do payload (linha drawer:115) — o valor persiste mas
+/// nunca vai ao backend para apagar. Isto é uma decisão UX
+/// consciente: explicitamos no comentário do drawer.
+///
+/// Se aparecer requisito legal/regulatório de retenção de valores
+/// históricos (auditoria fiscal angolana, e.g.), aí adicionamos
+/// deletedAt — mas apenas se justificado por requisito específico,
+/// não por consistency-policy global.
 model ContratoCustomFieldValue {
   id            String                @id @default(uuid()) @db.Uuid
   contratoId    String                @map("contrato_id") @db.Uuid

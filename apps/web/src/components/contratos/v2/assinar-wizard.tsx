@@ -120,7 +120,13 @@ export function AssinarWizard({
 
   const canProceed = () => {
     if (step === 1) return !!versaoId
-    if (step === 2) return signers.length >= 1
+    if (step === 2) {
+      // Onda B.COST.18: validar nome.trim() — addCustomSigner cria
+      // entrada com nome vazio que antes passava o step.
+      return (
+        signers.length >= 1 && signers.every((s) => s.nome.trim().length > 0)
+      )
+    }
     if (step === 3)
       return signers.every((s) => {
         if (s.metodo === 'EMAIL') return !!s.email
@@ -140,7 +146,15 @@ export function AssinarWizard({
     setSigners((prev) => [
       ...prev,
       {
-        id: `s-custom-${prev.length}-${prev.length + 1}`,
+        // Onda B.COST.18: usar UUID em vez de length-based id.
+        // Antes: `s-custom-${prev.length}-${prev.length+1}` colidia
+        // após cycles de add/remove (add@2 → "s-custom-2-3", remove,
+        // add@2 → mesmo id). React keys colidiam, valores dos
+        // inputs bleed entre rows.
+        id:
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? `s-custom-${crypto.randomUUID()}`
+            : `s-custom-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
         nome: '',
         metodo: 'EMAIL',
         ordem: prev.length + 1,

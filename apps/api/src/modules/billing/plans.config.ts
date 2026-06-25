@@ -155,10 +155,12 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'Sob proposta',
     ],
     quotas: quotasFromLimits(TenantPlan.AGENCY),
-    // AGENCY pricing é sob proposta. Mantemos isPublic=true para
-    // aparecer na tabela do marketing como opção, mas o card mostra
-    // "Sob proposta" + CTA para /contacto em vez de checkout.
-    isPublic: true,
+    // Onda B.SEC.15: AGENCY agora isPublic=false para não expor as
+    // quotas internas via /billing/plans (que é unauth). O marketing
+    // site mostra apenas "Agência: sob proposta" sem detalhar
+    // limites. Quem se inscreve via /contacto recebe a proposta
+    // personalizada.
+    isPublic: false,
   },
 };
 
