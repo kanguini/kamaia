@@ -1,37 +1,68 @@
 'use client'
 
 /**
- * Kamaia CLM — Contrato detail with tabs.
+ * Contract detail v2 — redesign Sprint 2.2.
  *
- * Tabs: Resumo, Versões, Partes, Datas-chave, Negociação, Compliance, Timeline, Terminação.
- * Each tab fetches its own endpoint when activated.
+ * Layout:
+ *   ┌─────────────────────────────────────────────────┐
+ *   │ Hero strip (breadcrumb + título + estado + ⚡)  │
+ *   ├──────────────────┬──────────────────────────────┤
+ *   │ Tab Resumo       │ PDF preview live             │
+ *   │ ▸ Identificação  │ (sempre visível)             │
+ *   │ ▸ Partes         │                              │
+ *   │ ▸ Compliance     │                              │
+ *   │ ▸ Próximos       │                              │
+ *   │ ▸ Custom fields  │                              │
+ *   └──────────────────┴──────────────────────────────┘
+ *
+ * Mudanças face à legacy:
+ *  - 5 tabs icon-only (sem texto, ícones com tooltip)
+ *  - Split-pane: dados esquerda + PDF direita
+ *  - Resumo é uma stack de blocos accionáveis, não uma grelha de
+ *    cartões "—"
+ *  - Inline natural language: "renova em 8 dias", "em atraso"
+ *  - Bloco Compliance angolano visível por defeito (moat exposto)
+ *  - Custom fields renderizam dinamicamente conforme o tipo
+ *
+ * Sprint 2.3 introduzirá modos derivados do estado (Drafting,
+ * Signature, Repository). Sprint 2.4 adiciona edição inline + acções
+ * do Kamaia AI no header.
  */
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import {
+  ChevronLeft,
+  FileText,
+  Scale,
+  Bell,
+  Paperclip,
+  MessageSquare,
+  Sparkles,
+  Edit2,
+  MoreHorizontal,
+} from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { Badge } from '@/components/ui/badge'
+import { ContratoEstado } from '@kamaia/shared-types'
+import { estadoBadgeVariant, estadoLabel } from '@/lib/clm-format'
+import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
+import { PdfPreview } from '@/components/contratos/v2/pdf-preview'
 import {
-  ContratoEstado,
-  PartePapel,
-  DataChaveTipo,
-  DATA_CHAVE_TIPO_LABELS,
-  ContratoEventoTipo,
-  NegociacaoPontoEstado,
-  NegociacaoPontoCriticidade,
-  TerminacaoTipo,
-} from '@kamaia/shared-types'
-import { estadoBadgeVariant, estadoLabel, fmtDate, fmtDateTime, fmtMoney } from '@/lib/clm-format'
-import { ChevronLeft } from 'lucide-react'
-import { EditorTab } from '@/components/contratos/editor-tab'
-import { PartilhaTab } from '@/components/contratos/partilha-tab'
-import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
-import { ComplianceTab as ComplianceTabNew } from '@/components/contratos/compliance-tab'
-import { VersoesTab as VersoesTabNew } from '@/components/contratos/versoes-tab'
-import { DocumentosTab } from '@/components/contratos/documentos-tab'
+  ResumoIdentificacao,
+  ResumoPartes,
+  ResumoCompliance,
+  ResumoProximosEventos,
+  ResumoCustomFields,
+} from '@/components/contratos/v2/resumo-blocks'
+import {
+  EditorTab,
+} from '@/components/contratos/editor-tab'
 import { ObrigacoesTab } from '@/components/contratos/obrigacoes-tab'
-import { DenunciarButton } from '@/components/contratos/denunciar-button'
+import { VersoesTab } from '@/components/contratos/versoes-tab'
+import { DocumentosTab } from '@/components/contratos/documentos-tab'
+import { ComplianceTab } from '@/components/contratos/compliance-tab'
 
 interface Contrato {
   id: string
@@ -56,319 +87,392 @@ interface Contrato {
   responsavel: { id: string; firstName: string; lastName: string } | null
 }
 
-type TabKey = 'resumo' | 'editor' | 'partilha' | 'assinaturas' | 'versoes' | 'documentos' | 'partes' | 'datas-chave' | 'obrigacoes' | 'negociacao' | 'compliance' | 'timeline' | 'terminacao'
+type TabKey = 'resumo' | 'termos' | 'eventos' | 'documentos' | 'conversa'
 
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'resumo', label: 'Resumo' },
-  { key: 'editor', label: 'Editor' },
-  { key: 'partilha', label: 'Partilha' },
-  { key: 'assinaturas', label: 'Assinaturas' },
-  { key: 'versoes', label: 'Versões' },
-  { key: 'documentos', label: 'Documentos' },
-  { key: 'partes', label: 'Partes' },
-  { key: 'datas-chave', label: 'Datas-chave' },
-  { key: 'obrigacoes', label: 'Obrigações' },
-  { key: 'negociacao', label: 'Negociação' },
-  { key: 'compliance', label: 'Compliance' },
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'terminacao', label: 'Terminação' },
+interface TabDef {
+  key: TabKey
+  label: string
+  icon: React.ElementType
+}
+
+const TABS: TabDef[] = [
+  { key: 'resumo', label: 'Resumo', icon: FileText },
+  { key: 'termos', label: 'Termos & cláusulas', icon: Scale },
+  { key: 'eventos', label: 'Eventos & notificações', icon: Bell },
+  { key: 'documentos', label: 'Documentos & versões', icon: Paperclip },
+  { key: 'conversa', label: 'Conversa & histórico', icon: MessageSquare },
 ]
 
 export default function ContratoDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [tab, setTab] = useState<TabKey>('resumo')
-  const { data: contrato, loading, error, refetch } = useApi<Contrato>(`/contratos/${id}`)
+  const { data: contrato, loading, error } = useApi<Contrato>(`/contratos/${id}`)
+  const { setOpen: setAiOpen, send: aiSend } = useKamaiaAI()
+
+  // Declara o pageContext para o agente saber em que contrato estamos
+  useKamaiaPageContext({
+    type: 'contratos.detail',
+    contratoId: id,
+    numeroInterno: contrato?.numero ?? undefined,
+  })
 
   if (error) {
     return <div style={{ color: 'var(--k2-bad)' }}>{error}</div>
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <Link href="/contratos" style={{ color: 'var(--k2-text-dim)', fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <ChevronLeft size={12} /> Contratos
-      </Link>
+  const proximaAccao = contrato ? proximaAccaoHint(contrato) : null
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--k2-text-mute)', fontVariantNumeric: 'tabular-nums' }}>
-            {contrato?.numero ?? '—'}
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 500, margin: '4px 0 0' }}>
-            {loading ? '…' : contrato?.titulo}
-          </h1>
-        </div>
-        {contrato && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {contrato.renovacaoAutomatica &&
-              !contrato.denunciaEm &&
-              contrato.estado === ContratoEstado.ACTIVO && (
-                <DenunciarButton contratoId={contrato.id} onDone={() => refetch()} />
+  return (
+    <div className="cd-page">
+      {/* Hero */}
+      <header className="cd-hero">
+        <Link href="/contratos" className="cd-back">
+          <ChevronLeft size={12} /> Contratos
+        </Link>
+        <div className="cd-hero-row">
+          <div className="cd-hero-title">
+            <h1 className="cd-h1">
+              {loading ? '…' : contrato?.titulo ?? 'Contrato'}
+            </h1>
+            <div className="cd-hero-meta">
+              {contrato?.numero && <span className="cd-numero">{contrato.numero}</span>}
+              {contrato && (
+                <>
+                  <span className="cd-dot">·</span>
+                  <Badge variant={estadoBadgeVariant(contrato.estado)}>
+                    {estadoLabel(contrato.estado)}
+                  </Badge>
+                </>
               )}
-            <Badge variant={estadoBadgeVariant(contrato.estado)}>{estadoLabel(contrato.estado)}</Badge>
+              {proximaAccao && (
+                <>
+                  <span className="cd-dot">·</span>
+                  <span className={`cd-prox ${proximaAccao.urgent ? 'urgent' : ''}`}>
+                    {proximaAccao.urgent && '⚠ '}
+                    {proximaAccao.text}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-        )}
+          {contrato && (
+            <div className="cd-hero-actions">
+              <button
+                type="button"
+                className="cd-btn cd-btn-soft"
+                onClick={() => {
+                  setAiOpen(true)
+                  void aiSend(
+                    `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
+                  )
+                }}
+              >
+                <Sparkles size={13} /> Análise IA
+              </button>
+              <button type="button" className="cd-btn cd-btn-primary">
+                <Edit2 size={12} /> Editar
+              </button>
+              <button
+                type="button"
+                className="cd-btn cd-btn-soft cd-btn-icon"
+                aria-label="Mais acções"
+              >
+                <MoreHorizontal size={14} />
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
-      <nav
-        style={{
-          display: 'flex',
-          gap: 4,
-          borderBottom: '1px solid var(--k2-border)',
-          overflowX: 'auto',
-        }}
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              padding: '10px 14px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: tab === t.key ? '2px solid var(--k2-accent)' : '2px solid transparent',
-              color: tab === t.key ? 'var(--k2-text)' : 'var(--k2-text-dim)',
-              fontSize: 13,
-              fontWeight: tab === t.key ? 500 : 400,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Tabs icon-only */}
+      <nav className="cd-tabs" role="tablist">
+        {TABS.map((t) => {
+          const active = tab === t.key
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={t.label}
+              title={t.label}
+              className={`cd-tab ${active ? 'active' : ''}`}
+              onClick={() => setTab(t.key)}
+            >
+              <t.icon size={14} />
+            </button>
+          )
+        })}
       </nav>
 
-      <div>
-        {tab === 'resumo' && contrato && <ResumoTab contrato={contrato} />}
-        {tab === 'editor' && <EditorTab contratoId={String(id)} />}
-        {tab === 'partilha' && <PartilhaTab contratoId={String(id)} />}
-        {tab === 'assinaturas' && <AssinaturasTab contratoId={String(id)} />}
-        {tab === 'versoes' && <VersoesTabNew contratoId={String(id)} />}
-        {tab === 'documentos' && <DocumentosTab contratoId={String(id)} />}
-        {tab === 'partes' && <PartesTab contratoId={String(id)} />}
-        {tab === 'datas-chave' && <DatasChaveTab contratoId={String(id)} />}
-        {tab === 'obrigacoes' && <ObrigacoesTab contratoId={String(id)} />}
-        {tab === 'negociacao' && <NegociacaoTab contratoId={String(id)} />}
-        {tab === 'compliance' && <ComplianceTabNew contratoId={String(id)} />}
-        {tab === 'timeline' && <TimelineTab contratoId={String(id)} />}
-        {tab === 'terminacao' && <TerminacaoTab contratoId={String(id)} />}
-      </div>
-    </div>
-  )
-}
+      {/* Split-pane: content + PDF */}
+      <div className="cd-split">
+        <div className="cd-content">
+          {!contrato && loading && <div className="cd-loading">A carregar…</div>}
 
-function ResumoTab({ contrato }: { contrato: Contrato }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-      <Info label="Tipo" value={contrato.tipo?.nome} />
-      <Info label="Carteira" value={contrato.carteira?.nome} />
-      <Info label="Responsável" value={contrato.responsavel ? `${contrato.responsavel.firstName} ${contrato.responsavel.lastName}` : null} />
-      <Info label="Valor" value={fmtMoney(contrato.valor, contrato.moeda)} />
-      <Info label="Lei aplicável" value={contrato.leiAplicavel} />
-      <Info label="Foro" value={contrato.foro} />
-      <Info label="Data assinatura" value={fmtDate(contrato.dataAssinatura)} />
-      <Info label="Início vigência" value={fmtDate(contrato.dataInicioVigencia)} />
-      <Info label="Data termo" value={fmtDate(contrato.dataTermo)} />
-      <Info
-        label="Renovação automática"
-        value={
-          contrato.renovacaoAutomatica
-            ? contrato.prazoRenovacaoMeses
-              ? `Sim — ciclo de ${contrato.prazoRenovacaoMeses}m`
-              : 'Sim (sem prazo definido)'
-            : 'Não'
+          {contrato && tab === 'resumo' && (
+            <div className="cd-stack">
+              <ResumoIdentificacao contrato={contrato} />
+              <ResumoPartes contratoId={contrato.id} />
+              <ResumoCompliance contratoId={contrato.id} />
+              <ResumoProximosEventos contratoId={contrato.id} />
+              <ResumoCustomFields contratoId={contrato.id} />
+            </div>
+          )}
+
+          {contrato && tab === 'termos' && (
+            <div className="cd-stack">
+              <EditorTab contratoId={contrato.id} />
+            </div>
+          )}
+
+          {contrato && tab === 'eventos' && (
+            <div className="cd-stack">
+              <ObrigacoesTab contratoId={contrato.id} />
+              <ComplianceTab contratoId={contrato.id} />
+            </div>
+          )}
+
+          {contrato && tab === 'documentos' && (
+            <div className="cd-stack">
+              <VersoesTab contratoId={contrato.id} />
+              <DocumentosTab contratoId={contrato.id} />
+            </div>
+          )}
+
+          {contrato && tab === 'conversa' && (
+            <div className="cd-stack">
+              <Placeholder
+                title="Conversa & histórico"
+                hint="Comentários por cláusula + timeline de eventos. Em consolidação na Sprint 2.4."
+              />
+            </div>
+          )}
+        </div>
+
+        <aside className="cd-pdf">
+          {contrato && <PdfPreview contratoId={contrato.id} />}
+        </aside>
+      </div>
+
+      <style jsx>{`
+        .cd-page {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          min-height: calc(100vh - 100px);
         }
-      />
-      <Info label="Janela de denúncia" value={contrato.janelaDenunciaDias ? `${contrato.janelaDenunciaDias} dias` : null} />
-      {contrato.denunciaEm && (
-        <Info
-          label="Denúncia tempestiva"
-          value={`${fmtDate(contrato.denunciaEm)}${contrato.denunciaMotivo ? ` — ${contrato.denunciaMotivo}` : ''}`}
-        />
-      )}
-      {contrato.descricao && (
-        <div style={{ gridColumn: '1 / -1' }}>
-          <Info label="Descrição" value={contrato.descricao} multiline />
-        </div>
-      )}
+        .cd-hero {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .cd-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: var(--k2-text-mute);
+          font-size: 11px;
+          text-decoration: none;
+          align-self: flex-start;
+        }
+        .cd-back:hover {
+          color: var(--k2-text-dim);
+        }
+        .cd-hero-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .cd-h1 {
+          margin: 0;
+          font-size: 22px;
+          font-weight: 500;
+          letter-spacing: -0.01em;
+          color: var(--k2-text);
+        }
+        .cd-hero-meta {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 4px;
+          font-size: 12px;
+          color: var(--k2-text-mute);
+          font-variant-numeric: tabular-nums;
+          flex-wrap: wrap;
+        }
+        .cd-numero {
+          color: var(--k2-text-dim);
+        }
+        .cd-dot {
+          color: var(--k2-text-mute);
+          opacity: 0.6;
+        }
+        .cd-prox {
+          color: var(--k2-text-dim);
+        }
+        .cd-prox.urgent {
+          color: var(--k2-warn);
+          font-weight: 500;
+        }
+        .cd-hero-actions {
+          display: inline-flex;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .cd-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 10px;
+          border-radius: var(--k2-radius-sm);
+          font-size: 12px;
+          font-weight: 500;
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 120ms ease, border-color 120ms ease;
+          border: 1px solid var(--k2-border);
+        }
+        .cd-btn-soft {
+          background: var(--k2-bg-elev);
+          color: var(--k2-text-dim);
+        }
+        .cd-btn-soft:hover {
+          background: var(--k2-bg-hover);
+          color: var(--k2-text);
+        }
+        .cd-btn-primary {
+          background: var(--k2-accent);
+          color: var(--k2-accent-fg);
+          border-color: var(--k2-accent);
+        }
+        .cd-btn-primary:hover {
+          opacity: 0.9;
+        }
+        .cd-btn-icon {
+          padding: 6px;
+        }
+
+        .cd-tabs {
+          display: flex;
+          gap: 2px;
+          border-bottom: 1px solid var(--k2-border);
+          padding-bottom: 1px;
+        }
+        .cd-tab {
+          display: inline-grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
+          background: transparent;
+          border: none;
+          color: var(--k2-text-mute);
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1px;
+          cursor: pointer;
+          transition: color 120ms ease, border-color 120ms ease;
+        }
+        .cd-tab:hover {
+          color: var(--k2-text-dim);
+        }
+        .cd-tab.active {
+          color: var(--k2-text);
+          border-bottom-color: var(--k2-text);
+        }
+
+        .cd-split {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 16px;
+          flex: 1;
+          min-height: 0;
+        }
+        @media (max-width: 1100px) {
+          .cd-split {
+            grid-template-columns: 1fr;
+          }
+          .cd-pdf {
+            min-height: 480px;
+          }
+        }
+        .cd-content {
+          min-width: 0;
+        }
+        .cd-pdf {
+          position: sticky;
+          top: 16px;
+          align-self: flex-start;
+          height: calc(100vh - 180px);
+          min-height: 600px;
+        }
+        @media (max-width: 1100px) {
+          .cd-pdf {
+            position: static;
+            height: auto;
+          }
+        }
+        .cd-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .cd-loading {
+          color: var(--k2-text-mute);
+          font-size: 13px;
+          padding: 12px;
+        }
+      `}</style>
     </div>
   )
 }
 
-function Info({ label, value, multiline }: { label: string; value: string | null | undefined; multiline?: boolean }) {
+/**
+ * Sugere a próxima acção a partir do estado + datas. Hint curto que
+ * vai à hero strip, para o utilizador saber em 1 segundo o que importa.
+ */
+function proximaAccaoHint(c: Contrato): { text: string; urgent: boolean } | null {
+  const now = new Date()
+  if (c.dataTermo) {
+    const termo = new Date(c.dataTermo)
+    const dias = Math.ceil(
+      (termo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+    )
+    if (dias < 0) {
+      return { text: `Termo expirou há ${Math.abs(dias)} dias`, urgent: true }
+    }
+    if (dias === 0) {
+      return { text: `Termo hoje`, urgent: true }
+    }
+    if (dias <= 30) {
+      const tipoTermo = c.renovacaoAutomatica ? 'Renova' : 'Termina'
+      return { text: `${tipoTermo} em ${dias} dias`, urgent: dias <= 7 }
+    }
+  }
+  if (c.estado === ContratoEstado.PRONTO_ASSINATURA) {
+    return { text: 'Pronto para assinatura', urgent: true }
+  }
+  if (
+    c.estado === ContratoEstado.DRAFTING ||
+    c.estado === ContratoEstado.REV_INTERNA
+  ) {
+    return { text: 'Em redacção', urgent: false }
+  }
+  return null
+}
+
+function Placeholder({ title, hint }: { title: string; hint: string }) {
   return (
-    <div style={{ background: 'var(--k2-bg-elev)', border: '1px solid var(--k2-border)', borderRadius: 'var(--k2-radius-sm)', padding: '10px 12px' }}>
-      <div style={{ fontSize: 10, color: 'var(--k2-text-mute)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ fontSize: 13, color: 'var(--k2-text)', marginTop: 4, whiteSpace: multiline ? 'pre-wrap' : 'normal' }}>
-        {value ?? '—'}
-      </div>
-    </div>
-  )
-}
-
-// ─── Versões ─────────────────────────────────────────────
-// VersoesTab agora vive em components/contratos/versoes-tab.tsx
-// (lista + drawer de importar minuta com DocumentDropzone).
-
-// ─── Partes ─────────────────────────────────────────────
-interface Parte {
-  id: string
-  papel: PartePapel
-  ordem: number
-  entidade: { id: string; nome: string }
-}
-
-function PartesTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<Parte[]>(`/contratos/${contratoId}/partes`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem partes registadas." />
-  return (
-    <List>
-      {data.map((p) => (
-        <ListRow key={p.id}>
-          <Link href={`/entidades/${p.entidade.id}`} style={{ color: 'var(--k2-text)', textDecoration: 'none', fontWeight: 500 }}>
-            {p.entidade.nome}
-          </Link>
-          <Badge variant="info">{p.papel.replaceAll('_', ' ')}</Badge>
-        </ListRow>
-      ))}
-    </List>
-  )
-}
-
-// ─── Datas-chave ─────────────────────────────────────────
-interface DataChave {
-  id: string
-  tipo: DataChaveTipo
-  data: string
-  descricao: string | null
-  cumprido: boolean
-}
-
-function DatasChaveTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<DataChave[]>(`/contratos/${contratoId}/datas-chave`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem datas-chave registadas." />
-  return (
-    <List>
-      {data.map((d) => (
-        <ListRow key={d.id}>
-          <div style={{ fontWeight: 500 }}>{DATA_CHAVE_TIPO_LABELS[d.tipo]}</div>
-          <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>{fmtDate(d.data)}</div>
-          {d.descricao && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12, gridColumn: '1 / -1' }}>{d.descricao}</div>}
-          <Badge variant={d.cumprido ? 'success' : 'pendente'}>{d.cumprido ? 'Cumprido' : 'Pendente'}</Badge>
-        </ListRow>
-      ))}
-    </List>
-  )
-}
-
-// ─── Negociação ─────────────────────────────────────────
-interface NegociacaoPonto {
-  id: string
-  titulo: string
-  descricao: string | null
-  estado: NegociacaoPontoEstado
-  criticidade: NegociacaoPontoCriticidade
-}
-
-function NegociacaoTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<NegociacaoPonto[]>(`/contratos/${contratoId}/negociacao`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem pontos de negociação." />
-  return (
-    <List>
-      {data.map((p) => (
-        <ListRow key={p.id}>
-          <div style={{ fontWeight: 500 }}>{p.titulo}</div>
-          <Badge variant={p.criticidade === 'CRITICA' || p.criticidade === 'ALTA' ? 'danger' : 'info'}>{p.criticidade}</Badge>
-          <Badge variant={p.estado === 'ACEITE' ? 'success' : p.estado === 'REJEITADO' ? 'danger' : 'pendente'}>
-            {p.estado.replaceAll('_', ' ')}
-          </Badge>
-          {p.descricao && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12, gridColumn: '1 / -1' }}>{p.descricao}</div>}
-        </ListRow>
-      ))}
-    </List>
-  )
-}
-
-// ─── Compliance ─────────────────────────────────────────
-// Compliance tab agora vive em components/contratos/compliance-tab.tsx
-// (versão accionável: re-avaliar + acções por acto). Tipos e UI
-// vivem todos nesse ficheiro.
-
-// ─── Timeline ─────────────────────────────────────────
-interface Evento {
-  id: string
-  tipo: ContratoEventoTipo
-  descricao: string
-  criadoEm: string
-  actor: { firstName: string; lastName: string } | null
-}
-
-function TimelineTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<Evento[]>(`/contratos/${contratoId}/eventos`)
-  if (loading) return <Loading />
-  if (!data || data.length === 0) return <EmptyMsg text="Sem eventos." />
-  return (
-    <div style={{ position: 'relative', paddingLeft: 16, borderLeft: '1px solid var(--k2-border)' }}>
-      {data.map((e) => (
-        <div key={e.id} style={{ position: 'relative', paddingBottom: 16 }}>
-          <span style={{ position: 'absolute', left: -22, top: 4, width: 8, height: 8, borderRadius: '50%', background: 'var(--k2-accent)' }} />
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{e.tipo.replaceAll('_', ' ')}</div>
-          <div style={{ fontSize: 13, color: 'var(--k2-text-dim)' }}>{e.descricao}</div>
-          <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginTop: 2 }}>
-            {fmtDateTime(e.criadoEm)} {e.actor && `· ${e.actor.firstName} ${e.actor.lastName}`}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Terminação ─────────────────────────────────────────
-interface Terminacao {
-  id: string
-  tipo: TerminacaoTipo
-  motivo: string | null
-  dataEfectiva: string
-  criadoEm: string
-}
-
-function TerminacaoTab({ contratoId }: { contratoId: string }) {
-  const { data, loading } = useApi<Terminacao | null>(`/contratos/${contratoId}/terminacao`)
-  if (loading) return <Loading />
-  if (!data) return <EmptyMsg text="Contrato não terminado." />
-  return (
-    <List>
-      <ListRow>
-        <div style={{ fontWeight: 500 }}>{data.tipo.replaceAll('_', ' ')}</div>
-        <div style={{ color: 'var(--k2-text-dim)', fontSize: 12 }}>Data efectiva: {fmtDate(data.dataEfectiva)}</div>
-        {data.motivo && <div style={{ color: 'var(--k2-text-dim)', fontSize: 12, gridColumn: '1 / -1' }}>{data.motivo}</div>}
-      </ListRow>
-    </List>
-  )
-}
-
-// ─── Shared bits ─────────────────────────────────────────
-function Loading() {
-  return <div style={{ color: 'var(--k2-text-mute)', fontSize: 13, padding: 16 }}>A carregar…</div>
-}
-function EmptyMsg({ text }: { text: string }) {
-  return <div style={{ color: 'var(--k2-text-mute)', fontSize: 13, padding: 16 }}>{text}</div>
-}
-function List({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ background: 'var(--k2-bg-elev)', border: '1px solid var(--k2-border)', borderRadius: 'var(--k2-radius)', overflow: 'hidden' }}>
-      {children}
-    </div>
-  )
-}
-function ListRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, padding: '12px 16px', borderTop: '1px solid var(--k2-border)' }}>
-      {children}
+    <div style={{
+      background: 'var(--k2-bg-elev)',
+      border: '1px solid var(--k2-border)',
+      borderRadius: 'var(--k2-radius)',
+      padding: 24,
+      textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--k2-text)' }}>{title}</div>
+      <div style={{ fontSize: 12, color: 'var(--k2-text-mute)', marginTop: 6, lineHeight: 1.5 }}>{hint}</div>
     </div>
   )
 }
