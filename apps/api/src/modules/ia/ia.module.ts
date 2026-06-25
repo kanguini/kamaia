@@ -1,5 +1,11 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
+import { ComplianceModule } from '../compliance/compliance.module';
+import { ComplianceService } from '../compliance/compliance.service';
+import { ContratosModule } from '../contratos/contratos.module';
+import { ContratosService } from '../contratos/contratos.service';
+import { EntidadesModule } from '../entidades/entidades.module';
+import { EntidadesService } from '../entidades/entidades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RagModule } from '../rag/rag.module';
 import { ClaudeProvider } from './claude.provider';
@@ -13,9 +19,17 @@ import { buildFindEntidadesTool } from './agent/tools/find-entidades.tool';
 import { buildOpenContratoTool } from './agent/tools/open-contrato.tool';
 import { buildListDatasChaveTool } from './agent/tools/list-datas-chave.tool';
 import { buildListObrigacoesTool } from './agent/tools/list-obrigacoes.tool';
+import { buildFindOrCreateEntidadeTool } from './agent/tools/find-or-create-entidade.tool';
+import { buildCreateContratoTool } from './agent/tools/create-contrato.tool';
 
 @Module({
-  imports: [RagModule, AuditModule],
+  imports: [
+    RagModule,
+    AuditModule,
+    ContratosModule,
+    EntidadesModule,
+    ComplianceModule,
+  ],
   controllers: [IaController],
   providers: [
     IaService,
@@ -30,6 +44,9 @@ export class IaModule implements OnModuleInit {
   constructor(
     private readonly registry: ToolRegistry,
     private readonly prisma: PrismaService,
+    private readonly contratosService: ContratosService,
+    private readonly entidadesService: EntidadesService,
+    private readonly complianceService: ComplianceService,
   ) {}
 
   /**
@@ -46,5 +63,17 @@ export class IaModule implements OnModuleInit {
     this.registry.register(buildOpenContratoTool(this.prisma));
     this.registry.register(buildListDatasChaveTool(this.prisma));
     this.registry.register(buildListObrigacoesTool(this.prisma));
+
+    // Tools de mutação (Sprint 1.4)
+    this.registry.register(
+      buildFindOrCreateEntidadeTool(this.prisma, this.entidadesService),
+    );
+    this.registry.register(
+      buildCreateContratoTool(
+        this.prisma,
+        this.contratosService,
+        this.complianceService,
+      ),
+    );
   }
 }
