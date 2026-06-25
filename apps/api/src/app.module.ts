@@ -28,6 +28,7 @@ import { BackupModule } from './modules/backup/backup.module';
 import { SeedModule } from './modules/seed/seed.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { MailModule } from './modules/mail/mail.module';
+import { CustomFieldsModule } from './modules/custom-fields/custom-fields.module';
 
 @Module({
   imports: [
@@ -65,6 +66,7 @@ import { MailModule } from './modules/mail/mail.module';
     ClausulasModule,
     ContratosModule,
     ComplianceModule,
+    CustomFieldsModule,
     ImportacaoModule,
     DocumentsModule,
     // IA

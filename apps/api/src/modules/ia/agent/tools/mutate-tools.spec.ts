@@ -152,12 +152,19 @@ describe('create_contrato', () => {
     } as never;
 
     const complianceSvc = { avaliarContrato: jest.fn() } as never;
-    return { prisma, contratosSvc, complianceSvc, contratosSpy: (contratosSvc as never as { create: jest.Mock }).create };
+    const customFieldsSvc = { upsertValores: jest.fn() } as never;
+    return {
+      prisma,
+      contratosSvc,
+      complianceSvc,
+      customFieldsSvc,
+      contratosSpy: (contratosSvc as never as { create: jest.Mock }).create,
+    };
   }
 
   it('falha com isError quando tipo não existe', async () => {
     const m = makeMocks({ tipos: [] });
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     const out = await tool.execute(
       { titulo: 'X', tipoCodigo: 'NAO_EXISTE' } as never,
       CTX_CREATOR,
@@ -171,7 +178,7 @@ describe('create_contrato', () => {
         { tipo: 'IMPOSTO_DE_SELO', observacoes: 'TGIS Verba 23 — 0,5%' },
       ],
     });
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     const out = await tool.execute(
       {
         titulo: 'Contrato teste',
@@ -189,7 +196,7 @@ describe('create_contrato', () => {
 
   it('cria sem partes quando contraparteNome devolve 0', async () => {
     const m = makeMocks({ entidades: [] });
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     const out = await tool.execute(
       {
         titulo: 'X',
@@ -205,7 +212,7 @@ describe('create_contrato', () => {
 
   it('cria com parte quando contraparteId fornecido directamente', async () => {
     const m = makeMocks();
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     await tool.execute(
       {
         titulo: 'X',
@@ -221,7 +228,7 @@ describe('create_contrato', () => {
 
   it('valor em unidades de moeda → BigInt centavos', async () => {
     const m = makeMocks();
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     await tool.execute(
       {
         titulo: 'X',
@@ -241,7 +248,7 @@ describe('create_contrato', () => {
         { id: 'e-2', nome: 'Hexa Industrial' },
       ],
     });
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     const out = await tool.execute(
       {
         titulo: 'X',
@@ -255,7 +262,7 @@ describe('create_contrato', () => {
 
   it('mutates=true e RBAC restrito', () => {
     const m = makeMocks();
-    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc);
+    const tool = buildCreateContratoTool(m.prisma, m.contratosSvc, m.complianceSvc, m.customFieldsSvc);
     expect(tool.mutates).toBe(true);
     expect(tool.requiredRoles).toContain(Role.CONTRACT_MANAGER);
     expect(tool.requiredRoles).not.toContain(Role.VIEWER);

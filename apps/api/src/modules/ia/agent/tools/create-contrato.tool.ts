@@ -3,6 +3,7 @@ import { Role, ContratoEstado, ContratoOrigem } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContratosService } from '../../../contratos/contratos.service';
 import { ComplianceService } from '../../../compliance/compliance.service';
+import { CustomFieldsService } from '../../../custom-fields/custom-fields.service';
 import { defineTool } from '../tool.types';
 import { MOEDAS_SUPORTADAS } from '@kamaia/shared-types';
 
@@ -113,6 +114,13 @@ const CreateContratoArgsSchema = z.object({
     .describe(
       'Estado inicial. DRAFTING para novos a redigir; REPOSITORIO para contratos já existentes importados.',
     ),
+
+  customFields: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe(
+      'Valores para os custom fields do tipo (e.g. Commercial Lease pode ter areaM2, rendaMensal). Key tem de coincidir com a do CustomFieldDefinition. Valores são validados por tipo.',
+    ),
 });
 
 type CreateContratoArgs = z.infer<typeof CreateContratoArgsSchema>;
@@ -140,6 +148,7 @@ export function buildCreateContratoTool(
   prisma: PrismaService,
   contratosService: ContratosService,
   complianceService: ComplianceService,
+  customFieldsService: CustomFieldsService,
 ) {
   return defineTool<CreateContratoArgs, CreateContratoResult>({
     name: 'create_contrato',
@@ -297,7 +306,25 @@ Estados iniciais permitidos:
         dto,
       );
 
-      // 4. Dispara Compliance Engine na mesma stack (não tx, porque
+      // 4. Persiste custom fields se forem fornecidos.
+      // Falhar aqui NÃO destrói o contrato — é melhor termos um contrato
+      // sem custom fields que perder a criação inteira. A Clara vê o
+      // erro no isError do tool_result e pode pedir ao utilizador para
+      // completar manualmente.
+      if (args.customFields && Object.keys(args.customFields).length > 0) {
+        try {
+          await customFieldsService.upsertValores(
+            contrato.id,
+            ctx.tenantId,
+            ctx.userId,
+            { values: args.customFields },
+          );
+        } catch (e) {
+          // Log mas não rollback — contrato fica criado sem custom values
+        }
+      }
+
+      // 5. Dispara Compliance Engine na mesma stack (não tx, porque
       //    create() já fechou a sua). Defensivo: erros aqui são
       //    capturados e devolvidos como warning — contrato fica
       //    criado de qualquer forma.

@@ -4,6 +4,8 @@ import { ComplianceModule } from '../compliance/compliance.module';
 import { ComplianceService } from '../compliance/compliance.service';
 import { ContratosModule } from '../contratos/contratos.module';
 import { ContratosService } from '../contratos/contratos.service';
+import { CustomFieldsModule } from '../custom-fields/custom-fields.module';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import { EntidadesModule } from '../entidades/entidades.module';
 import { EntidadesService } from '../entidades/entidades.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,6 +31,7 @@ import { buildCreateContratoTool } from './agent/tools/create-contrato.tool';
     ContratosModule,
     EntidadesModule,
     ComplianceModule,
+    CustomFieldsModule,
   ],
   controllers: [IaController],
   providers: [
@@ -47,6 +50,7 @@ export class IaModule implements OnModuleInit {
     private readonly contratosService: ContratosService,
     private readonly entidadesService: EntidadesService,
     private readonly complianceService: ComplianceService,
+    private readonly customFieldsService: CustomFieldsService,
   ) {}
 
   /**
@@ -73,6 +77,7 @@ export class IaModule implements OnModuleInit {
         this.prisma,
         this.contratosService,
         this.complianceService,
+        this.customFieldsService,
       ),
     );
   }
