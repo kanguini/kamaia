@@ -57,19 +57,21 @@ interface NavItem {
 }
 
 const WORK_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard, match: (p) => p === '/' },
+  // Kamaia AI é agora a homepage. Mantém Dashboard como link
+  // secundário para utilizadores que prefiram a vista estatística.
+  { label: 'Kamaia AI', href: '/', icon: Sparkles, match: (p) => p === '/' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
   { label: 'Carteiras', href: '/carteiras', icon: Briefcase },
   { label: 'Alertas', href: '/alertas', icon: Bell },
   { label: 'Compliance', href: '/compliance', icon: ShieldCheck },
-  // Importação foi consolidada dentro do módulo Contratos (botão
-  // "Importar" na lista) — a rota /importacao continua acessível
-  // via link directo mas não está no menu primário.
 ]
 
 const TOOLS_NAV: NavItem[] = [
-  { label: 'IA', href: '/ia', icon: Bot },
+  // /ia (chat full-page legacy) continua acessível como ferramenta
+  // — útil para quem prefere a interface ampla em vez do side panel.
+  { label: 'IA — full', href: '/ia', icon: Bot },
   { label: 'Templates', href: '/biblioteca/templates', icon: BookOpen },
   { label: 'Cláusulas', href: '/biblioteca/clausulas', icon: ScrollText },
   { label: 'Configurações', href: '/configuracoes/organizacao', icon: Settings, match: (p) => p.startsWith('/configuracoes') },
