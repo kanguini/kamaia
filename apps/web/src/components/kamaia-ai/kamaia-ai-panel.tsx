@@ -28,8 +28,12 @@ import {
   Sparkles,
   Trash2,
   History,
+  Wrench,
+  ChevronRight,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useKamaiaAI } from './kamaia-ai-provider'
+import type { ToolCallTrace } from './types'
 import { renderMarkdownPreview } from '@/lib/markdown'
 import { fmtDateTime } from '@/lib/clm-format'
 
@@ -525,14 +529,174 @@ export function KamaiaAIPanel() {
   )
 }
 
+/**
+ * ToolCallChip — visualiza o estado de uma tool invocada pelo agente.
+ *
+ * Estados:
+ *  - starting/executing: spinner + nome
+ *  - done: ✓ + nome + items clicáveis (se renderHint=list)
+ *  - error: ⚠ + mensagem
+ */
+function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
+  const isRunning = trace.status === 'starting' || trace.status === 'executing'
+  const isError = trace.status === 'error'
+  const items = trace.uiPayload?.items
+
+  return (
+    <div
+      className={`kai-tool ${isRunning ? 'running' : ''} ${isError ? 'error' : ''}`}
+    >
+      <div className="kai-tool-head">
+        <Wrench size={11} />
+        <span className="kai-tool-name">{prettyToolName(trace.name)}</span>
+        <span className="kai-tool-state">
+          {isRunning && 'a executar…'}
+          {trace.status === 'done' && '✓'}
+          {isError && '⚠'}
+        </span>
+      </div>
+      {isError && trace.errorMessage && (
+        <div className="kai-tool-err">{trace.errorMessage}</div>
+      )}
+      {items && items.length > 0 && (
+        <div className="kai-tool-items">
+          {items.slice(0, 6).map((it) =>
+            it.href ? (
+              <Link key={it.id} href={it.href} className="kai-tool-item">
+                <div className="kai-tool-item-label">{it.label}</div>
+                {it.sublabel && (
+                  <div className="kai-tool-item-sub">{it.sublabel}</div>
+                )}
+                <ChevronRight size={11} className="kai-tool-item-arrow" />
+              </Link>
+            ) : (
+              <div key={it.id} className="kai-tool-item">
+                <div className="kai-tool-item-label">{it.label}</div>
+                {it.sublabel && (
+                  <div className="kai-tool-item-sub">{it.sublabel}</div>
+                )}
+              </div>
+            ),
+          )}
+          {items.length > 6 && (
+            <div className="kai-tool-more">+{items.length - 6} mais</div>
+          )}
+        </div>
+      )}
+      <style jsx>{`
+        .kai-tool {
+          background: var(--k2-bg);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          padding: 8px 10px;
+        }
+        .kai-tool.running {
+          border-color: var(--k2-border-strong);
+        }
+        .kai-tool.error {
+          border-color: var(--k2-bad);
+        }
+        .kai-tool-head {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          color: var(--k2-text);
+          font-weight: 500;
+        }
+        .kai-tool-name {
+          letter-spacing: 0.01em;
+        }
+        .kai-tool-state {
+          font-weight: 400;
+          color: var(--k2-text-mute);
+          margin-left: 4px;
+          font-size: 10px;
+        }
+        .kai-tool-err {
+          font-size: 11px;
+          color: var(--k2-bad);
+          margin-top: 4px;
+        }
+        .kai-tool-items {
+          margin-top: 6px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .kai-tool-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 8px;
+          background: var(--k2-bg-elev-2);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          color: var(--k2-text);
+          font-size: 12px;
+          text-decoration: none;
+          transition: background 120ms ease, border-color 120ms ease;
+        }
+        a.kai-tool-item:hover {
+          background: var(--k2-bg-hover);
+          border-color: var(--k2-border-strong);
+        }
+        .kai-tool-item-label {
+          flex: 1;
+          font-weight: 500;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .kai-tool-item-sub {
+          font-size: 10px;
+          color: var(--k2-text-mute);
+          margin-top: 1px;
+        }
+        .kai-tool-item-arrow {
+          color: var(--k2-text-mute);
+        }
+        .kai-tool-more {
+          font-size: 10px;
+          color: var(--k2-text-mute);
+          text-align: center;
+          padding: 4px;
+        }
+      `}</style>
+    </div>
+  )
+}
+
+/** Mapeia tool name técnico para label humano em pt-AO. */
+function prettyToolName(name: string): string {
+  const map: Record<string, string> = {
+    find_contratos: 'A pesquisar contratos',
+    find_entidades: 'A pesquisar entidades',
+    open_contrato: 'A abrir contrato',
+    list_datas_chave: 'A consultar datas-chave',
+    list_obrigacoes: 'A consultar obrigações',
+    create_contrato: 'A criar contrato',
+    find_or_create_entidade: 'A criar entidade',
+  }
+  return map[name] ?? name
+}
+
 function Message({ message: m }: { message: import('./types').Message }) {
   const isUser = m.role === 'user'
   // Render assistant content as markdown; user fica como plain text para
   // preservar a forma como ele escreveu (incluindo erros tipográficos).
   const html = !isUser && m.content ? renderMarkdownPreview(m.content) : null
+  const hasToolCalls = !isUser && m.toolCalls && m.toolCalls.length > 0
 
   return (
     <div className={`kai-msg ${isUser ? 'user' : 'assistant'}`}>
+      {hasToolCalls && (
+        <div className="kai-tools">
+          {m.toolCalls!.map((tc) => (
+            <ToolCallChip key={tc.id} trace={tc} />
+          ))}
+        </div>
+      )}
       <div className="kai-bubble">
         {isUser ? (
           <span className="kai-bubble-text">{m.content}</span>
@@ -542,7 +706,9 @@ function Message({ message: m }: { message: import('./types').Message }) {
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
-          <span className="kai-bubble-pending">{m.streaming ? '…' : ''}</span>
+          <span className="kai-bubble-pending">
+            {m.streaming ? '…' : hasToolCalls ? '' : '…'}
+          </span>
         )}
         {m.streaming && !isUser && m.content && <span className="kai-caret" />}
       </div>
@@ -645,6 +811,12 @@ function Message({ message: m }: { message: import('./types').Message }) {
           color: var(--k2-text-dim);
           margin-top: 4px;
           font-style: italic;
+        }
+        .kai-tools {
+          max-width: 92%;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
         }
         .kai-bubble-md :global(p) {
           margin: 0 0 8px 0;

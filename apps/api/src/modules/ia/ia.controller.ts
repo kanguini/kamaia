@@ -37,6 +37,22 @@ const DraftContratoSchema = z.object({
   novaVersao: z.boolean().optional(),
 });
 
+/**
+ * Schema do payload do endpoint agêntico. Extends do envio normal
+ * de mensagem com `pageContext` opcional para enriquecer o system
+ * prompt com a página onde o utilizador está.
+ */
+const AgentStreamPayloadSchema = z.object({
+  conteudo: z.string().min(1).max(4000),
+  pageContext: z
+    .object({
+      type: z.string(),
+    })
+    .passthrough()
+    .optional(),
+});
+type AgentStreamPayload = z.infer<typeof AgentStreamPayloadSchema>;
+
 @Controller('ia')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class IaController {
@@ -144,6 +160,68 @@ export class IaController {
         user.sub,
         id,
         dto,
+      )) {
+        const { kind, ...rest } = ev;
+        write(kind, rest);
+        if (kind === 'done' || kind === 'error') break;
+      }
+    } catch (e) {
+      write('error', {
+        message: e instanceof Error ? e.message : 'Stream error',
+      });
+    } finally {
+      res.end();
+    }
+  }
+
+  /**
+   * Endpoint agêntico — Claude com tools.
+   *
+   * Diferente do `/stream` (RAG Q&A inline):
+   *  - Loop multi-turn com tools registadas no ToolRegistry
+   *  - Frontend recebe `tool_use_start`, `tool_executing`, `tool_result`
+   *    para renderizar acções em tempo real
+   *  - pageContext é injectado no system prompt
+   *
+   * RBAC: aceita as mesmas roles que /stream para que o panel funcione
+   * para todos os utilizadores autenticados. Cada tool aplica RBAC
+   * individual interno via ToolRegistry.
+   */
+  @Post('conversations/:id/messages/agent-stream')
+  @Roles(
+    Role.ADMIN,
+    Role.LEGAL_LEAD,
+    Role.CONTRACT_MANAGER,
+    Role.BUSINESS_USER,
+    Role.VIEWER,
+  )
+  async agentStream(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ParseZodPipe(AgentStreamPayloadSchema)) dto: AgentStreamPayload,
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const write = (kind: string, data: unknown) => {
+      res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      for await (const ev of this.ia.sendMessageAgentStream(
+        tenant.tenantId,
+        user.sub,
+        // user.role vem do JWT; o membership específico é validado
+        // pelo TenantGuard antes de chegarmos aqui.
+        tenant.role,
+        id,
+        { conteudo: dto.conteudo },
+        dto.pageContext as never, // PageContext é union — passthrough Zod
       )) {
         const { kind, ...rest } = ev;
         write(kind, rest);

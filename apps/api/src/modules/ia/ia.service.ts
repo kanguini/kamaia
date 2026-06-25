@@ -5,11 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
-import { AIMessageRole, Prisma } from '@prisma/client';
+import { AIMessageRole, Prisma, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RagService } from '../rag/rag.service';
-import { ClaudeMessage, ClaudeProvider } from './claude.provider';
+import {
+  AnthropicStructuredMessage,
+  ClaudeMessage,
+  ClaudeProvider,
+} from './claude.provider';
+import { AgentService } from './agent/agent.service';
+import type { PageContext } from './agent/tool.types';
 import {
   CreateConversationDto,
   ListConversationsQuery,
@@ -39,6 +45,7 @@ export class IaService {
     private readonly audit: AuditService,
     private readonly claude: ClaudeProvider,
     private readonly rag: RagService,
+    private readonly agent: AgentService,
   ) {}
 
   async createConversation(
@@ -432,6 +439,222 @@ export class IaService {
       modelo,
       tokensInput: tokensIn,
       tokensOutput: tokensOut,
+    };
+  }
+
+  /**
+   * Agente — variante com tool use. Diferenças vs sendMessageStream:
+   *  - Usa AgentService (loop multi-turn com tools)
+   *  - Não invoca RAG inline (Claude pode decidir via tools no futuro)
+   *  - Persiste apenas o texto final como assistant message
+   *  - Tool calls / results vão no SSE para o frontend renderizar mas
+   *    NÃO são persistidos (Sprint 1.2 — pode vir depois)
+   *
+   * Caller (controller) é responsável por garantir que o utilizador
+   * autenticado tem role válida (validado pelos guards).
+   */
+  async *sendMessageAgentStream(
+    tenantId: string,
+    userId: string,
+    role: Role,
+    conversationId: string,
+    dto: SendMessageDto,
+    pageContext?: PageContext,
+  ): AsyncGenerator<
+    | { kind: 'user-msg'; messageId: string }
+    | { kind: 'text'; delta: string }
+    | { kind: 'tool_use_start'; id: string; name: string }
+    | { kind: 'tool_executing'; id: string; name: string }
+    | {
+        kind: 'tool_result';
+        id: string;
+        name: string;
+        result: unknown;
+        isError: boolean;
+        renderHint?: string;
+        uiPayload?: unknown;
+      }
+    | {
+        kind: 'done';
+        assistantMessageId: string;
+        modelo: string;
+        tokensInput: number;
+        tokensOutput: number;
+        turns: number;
+      }
+    | { kind: 'error'; message: string }
+  > {
+    // Quota check (mesma lógica do stream Q&A)
+    const quota = await this.prisma.usageQuota.findUnique({
+      where: { tenantId },
+      select: { iaMessagesLimit: true, iaMessagesUsado: true },
+    });
+    if (quota && quota.iaMessagesUsado >= quota.iaMessagesLimit) {
+      yield {
+        kind: 'error',
+        message: `Quota IA esgotada (${quota.iaMessagesUsado}/${quota.iaMessagesLimit}).`,
+      };
+      return;
+    }
+
+    const conv = await this.prisma.aIConversation.findFirst({
+      where: { id: conversationId, tenantId, userId },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+    if (!conv) {
+      yield { kind: 'error', message: 'Conversation not found' };
+      return;
+    }
+
+    // Persiste user message imediatamente
+    const userMsg = await this.prisma.aIMessage.create({
+      data: {
+        conversationId,
+        role: AIMessageRole.USER,
+        conteudo: dto.conteudo,
+      },
+    });
+    yield { kind: 'user-msg', messageId: userMsg.id };
+
+    // Constrói history em formato estruturado
+    const historico: AnthropicStructuredMessage[] = conv.messages
+      .filter(
+        (m) =>
+          m.role === AIMessageRole.USER || m.role === AIMessageRole.ASSISTANT,
+      )
+      .slice(-HISTORY_TURNS * 2)
+      .map((m) => ({
+        role: m.role === AIMessageRole.USER ? ('user' as const) : ('assistant' as const),
+        content: m.conteudo,
+      }));
+    historico.push({ role: 'user', content: dto.conteudo });
+
+    // Stub mode quando não há key
+    if (!this.claude.isAvailable()) {
+      const stub =
+        STUB_PREAMBLE +
+        `Modo agente requer ANTHROPIC_API_KEY configurada.` +
+        DISCLAIMER_FINAL;
+      for (let i = 0; i < stub.length; i += 20) {
+        yield { kind: 'text', delta: stub.slice(i, i + 20) };
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      const assistantMsg = await this.prisma.aIMessage.create({
+        data: {
+          conversationId,
+          role: AIMessageRole.ASSISTANT,
+          conteudo: stub,
+        },
+      });
+      yield {
+        kind: 'done',
+        assistantMessageId: assistantMsg.id,
+        modelo: 'stub',
+        tokensInput: 0,
+        tokensOutput: 0,
+        turns: 0,
+      };
+      return;
+    }
+
+    // Executa agent loop
+    let respostaText = '';
+    let modelo = '';
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let turns = 0;
+    let erroredOut = false;
+
+    for await (const ev of this.agent.run({
+      messages: historico,
+      ctx: {
+        tenantId,
+        userId,
+        role,
+        pageContext,
+        conversationId,
+        messageId: userMsg.id,
+      },
+    })) {
+      if (ev.kind === 'text') {
+        respostaText += ev.delta;
+        yield { kind: 'text', delta: ev.delta };
+      } else if (ev.kind === 'tool_use_start') {
+        yield { kind: 'tool_use_start', id: ev.id, name: ev.name };
+      } else if (ev.kind === 'tool_executing') {
+        yield { kind: 'tool_executing', id: ev.id, name: ev.name };
+      } else if (ev.kind === 'tool_result') {
+        yield {
+          kind: 'tool_result',
+          id: ev.id,
+          name: ev.name,
+          result: ev.result,
+          isError: ev.isError,
+          renderHint: ev.renderHint,
+          uiPayload: ev.uiPayload,
+        };
+      } else if (ev.kind === 'done') {
+        modelo = ev.modelo;
+        tokensIn = ev.tokensInput;
+        tokensOut = ev.tokensOutput;
+        turns = ev.turns;
+      } else if (ev.kind === 'error') {
+        yield { kind: 'error', message: ev.message };
+        erroredOut = true;
+        break;
+      }
+    }
+
+    if (erroredOut) return;
+
+    // Persiste assistant message (apenas texto final; tool calls
+    // só ficam no SSE — sem persistência em Sprint 1.2)
+    const finalContent =
+      respostaText.trim().length > 0
+        ? respostaText
+        : '⚠ A IA executou tools mas não devolveu texto final.';
+
+    const assistantMsg = await this.prisma.aIMessage.create({
+      data: {
+        conversationId,
+        role: AIMessageRole.ASSISTANT,
+        conteudo: finalContent,
+        modelo,
+        tokensInput: tokensIn,
+        tokensOutput: tokensOut,
+      },
+    });
+
+    await this.prisma.aIConversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
+
+    await this.audit.log({
+      tenantId,
+      actorUserId: userId,
+      action: AuditAction.IA_QUERY,
+      entityType: EntityType.AI_CONVERSATION,
+      entityId: conversationId,
+      afterData: { agent: true, turns, tokensInput: tokensIn, tokensOutput: tokensOut },
+    });
+
+    this.prisma.usageQuota
+      .updateMany({
+        where: { tenantId },
+        data: { iaMessagesUsado: { increment: 1 } },
+      })
+      .catch(() => {
+        /* silent */
+      });
+
+    yield {
+      kind: 'done',
+      assistantMessageId: assistantMsg.id,
+      modelo,
+      tokensInput: tokensIn,
+      tokensOutput: tokensOut,
+      turns,
     };
   }
 }

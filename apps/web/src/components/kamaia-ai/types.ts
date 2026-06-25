@@ -35,6 +35,29 @@ export interface Conversation {
   updatedAt: string
 }
 
+/**
+ * Tool call observado durante streaming. Mantido na message do
+ * assistant para o utilizador ver "Clara executou: find_contratos
+ * → 3 resultados" mesmo depois do streaming terminar.
+ */
+export interface ToolCallTrace {
+  id: string
+  name: string
+  status: 'starting' | 'executing' | 'done' | 'error'
+  /** Renderização preferida sugerida pelo backend. */
+  renderHint?: 'text' | 'list' | 'contract' | 'entity' | 'navigate' | 'confirmation'
+  /** Payload UI estruturado (e.g. items clicáveis numa lista). */
+  uiPayload?: {
+    items?: Array<{
+      id: string
+      label: string
+      sublabel?: string
+      href?: string
+    }>
+  }
+  errorMessage?: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -45,4 +68,6 @@ export interface Message {
   citacoes?: Citation[]
   /** Se houve erro durante streaming, fica registado para retry. */
   errored?: boolean
+  /** Tools invocadas durante a resposta (apenas live, não persistidas). */
+  toolCalls?: ToolCallTrace[]
 }

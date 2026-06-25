@@ -25,7 +25,13 @@ import {
 } from 'react'
 import { useSession } from 'next-auth/react'
 import { api, apiUrl, getActiveTenantId } from '@/lib/api'
-import type { Citation, Conversation, Message, PageContext } from './types'
+import type {
+  Citation,
+  Conversation,
+  Message,
+  PageContext,
+  ToolCallTrace,
+} from './types'
 
 interface ConversationsResponse {
   data: Conversation[]
@@ -253,8 +259,11 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
 
       try {
         const tenantId = getActiveTenantId()
+        // Sprint 1.2: usa o endpoint agêntico /agent-stream que suporta
+        // tool use. Backend faz round-trip multi-turn com Claude e
+        // emite tool_use_start/tool_executing/tool_result além de text.
         const res = await fetch(
-          apiUrl(`/ia/conversations/${activeId}/messages/stream`),
+          apiUrl(`/ia/conversations/${activeId}/messages/agent-stream`),
           {
             method: 'POST',
             headers: {
@@ -264,10 +273,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               Accept: 'text/event-stream',
             },
             body: JSON.stringify({
-              content: text,
-              // Sprint 1.1: page context vai como hint no body. O backend
-              // ignora por agora; activamos em Sprint 1.2 quando o
-              // system prompt for enriquecido.
+              conteudo: text,
               pageContext,
             }),
           },
@@ -280,7 +286,17 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
         const reader = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
-        let pendingCitations: Citation[] | undefined
+        const pendingCitations: Citation[] | undefined = undefined
+        const toolCalls = new Map<string, ToolCallTrace>()
+
+        const updateToolCalls = () => {
+          const list = Array.from(toolCalls.values())
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempAssistantId ? { ...m, toolCalls: list } : m,
+            ),
+          )
+        }
 
         while (true) {
           const { value, done } = await reader.read()
@@ -309,8 +325,6 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
                   m.id === tempUserId ? { ...m, id: String(data.messageId) } : m,
                 ),
               )
-            } else if (kind === 'citations') {
-              pendingCitations = data.citacoes as Citation[]
             } else if (kind === 'text') {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -319,6 +333,38 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
                     : m,
                 ),
               )
+            } else if (kind === 'tool_use_start') {
+              toolCalls.set(String(data.id), {
+                id: String(data.id),
+                name: String(data.name),
+                status: 'starting',
+              })
+              updateToolCalls()
+            } else if (kind === 'tool_executing') {
+              const entry = toolCalls.get(String(data.id))
+              if (entry) {
+                entry.status = 'executing'
+                toolCalls.set(entry.id, entry)
+                updateToolCalls()
+              }
+            } else if (kind === 'tool_result') {
+              const entry = toolCalls.get(String(data.id)) ?? {
+                id: String(data.id),
+                name: String(data.name),
+                status: 'done' as const,
+              }
+              entry.status = data.isError ? 'error' : 'done'
+              const hint = data.renderHint as ToolCallTrace['renderHint']
+              if (hint) entry.renderHint = hint
+              if (data.uiPayload) {
+                entry.uiPayload = data.uiPayload as ToolCallTrace['uiPayload']
+              }
+              if (data.isError && data.result) {
+                const err = data.result as { message?: string }
+                entry.errorMessage = err.message ?? 'Erro na tool'
+              }
+              toolCalls.set(entry.id, entry)
+              updateToolCalls()
             } else if (kind === 'done') {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -332,7 +378,6 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
                     : m,
                 ),
               )
-              // Refresca lista de conversas para reflectir updatedAt
               void reloadConversations()
             } else if (kind === 'error') {
               setMessages((prev) =>

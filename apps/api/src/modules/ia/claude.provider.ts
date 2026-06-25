@@ -25,6 +25,63 @@ export interface ClaudeResponse {
   tokensOutput: number;
 }
 
+// ─── Tool use types ──────────────────────────────────────────────
+//
+// A Anthropic Messages API com tool use usa content blocks
+// estruturados em vez de strings. Mantemos os tipos antigos para
+// trás-compatibilidade (Q&A) e introduzimos estes para o agente.
+
+export type AnthropicContentBlock =
+  | { type: 'text'; text: string }
+  | {
+      type: 'tool_use';
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+    }
+  | {
+      type: 'tool_result';
+      tool_use_id: string;
+      content: string;
+      is_error?: boolean;
+    };
+
+export interface AnthropicStructuredMessage {
+  role: 'user' | 'assistant';
+  content: string | AnthropicContentBlock[];
+}
+
+export interface AnthropicToolSpec {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+/**
+ * Eventos yieldados pelo streamWithTools(). O AgentService consome
+ * este stream e re-emite versões enriquecidas para o frontend SSE.
+ */
+export type ClaudeStreamEvent =
+  | { kind: 'text'; delta: string }
+  | { kind: 'tool_use_start'; id: string; name: string }
+  | { kind: 'tool_use_input_delta'; id: string; delta: string }
+  | {
+      kind: 'turn_end';
+      /** Indica se o turn parou para chamar tools (`tool_use`) ou
+          se respondeu naturalmente (`end_turn`). */
+      stopReason: 'tool_use' | 'end_turn' | 'max_tokens' | 'unknown';
+      /** Snapshot dos content blocks construídos durante o turn. */
+      content: AnthropicContentBlock[];
+      modelo: string;
+      tokensInput: number;
+      tokensOutput: number;
+    }
+  | { kind: 'error'; message: string };
+
 const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 2048;
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
@@ -275,5 +332,240 @@ export class ClaudeProvider {
     }
 
     yield { kind: 'done', modelo, tokensInput, tokensOutput };
+  }
+
+  /**
+   * Stream agêntico — variante com tool use.
+   *
+   * Aceita mensagens estruturadas (content pode ser string ou array
+   * de content blocks com tool_use/tool_result) e uma lista de tools.
+   *
+   * Eventos yieldados:
+   *  - text: delta de texto (mesma semântica do completeStream)
+   *  - tool_use_start: tool_use iniciado, com id e name
+   *  - tool_use_input_delta: chunks JSON dos args (input_json_delta)
+   *  - turn_end: turn terminou. `stopReason='tool_use'` significa
+   *    que Claude pediu para executar tools; caller faz round-trip.
+   *  - error: erro
+   *
+   * Caller (AgentService) deve fazer o loop multi-turn: ao receber
+   * `turn_end` com `stopReason='tool_use'`, executa as tools, anexa
+   * tool_result à conversation, chama de novo.
+   */
+  async *streamWithTools(
+    messages: AnthropicStructuredMessage[],
+    tools: AnthropicToolSpec[],
+    systemPrompt: string,
+    maxTokens?: number,
+  ): AsyncGenerator<ClaudeStreamEvent> {
+    if (!this.apiKey) {
+      yield {
+        kind: 'error',
+        message: 'Stream com tools indisponível — ANTHROPIC_API_KEY ausente.',
+      };
+      return;
+    }
+
+    const body = {
+      model: this.model,
+      max_tokens: maxTokens ?? this.maxTokens,
+      stream: true,
+      system: systemPrompt,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      ...(tools.length > 0 ? { tools } : {}),
+    };
+
+    let res: Response;
+    try {
+      res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': this.apiKey,
+          'anthropic-version': ANTHROPIC_VERSION,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      yield {
+        kind: 'error',
+        message: `Falha de rede: ${e instanceof Error ? e.message : String(e)}`,
+      };
+      return;
+    }
+
+    if (!res.ok || !res.body) {
+      const txt = await res.text().catch(() => '');
+      this.logger.error(
+        `Anthropic streamWithTools ${res.status}: ${txt.slice(0, 400)}`,
+      );
+      yield { kind: 'error', message: `Erro IA (${res.status})` };
+      return;
+    }
+
+    // Estado acumulado por content block (indexado por block index)
+    const blocks = new Map<
+      number,
+      {
+        type: 'text' | 'tool_use';
+        // text
+        text?: string;
+        // tool_use
+        id?: string;
+        name?: string;
+        inputJson?: string;
+      }
+    >();
+    let modelo = this.model;
+    let tokensInput = 0;
+    let tokensOutput = 0;
+    let stopReason: 'tool_use' | 'end_turn' | 'max_tokens' | 'unknown' =
+      'unknown';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split('\n\n');
+        buffer = events.pop() ?? '';
+
+        for (const block of events) {
+          const dataLine = block
+            .split('\n')
+            .find((l) => l.startsWith('data: '));
+          if (!dataLine) continue;
+          const json = dataLine.slice(6).trim();
+          if (!json || json === '[DONE]') continue;
+
+          let obj: {
+            type: string;
+            index?: number;
+            delta?: {
+              type?: string;
+              text?: string;
+              partial_json?: string;
+              stop_reason?: string;
+            };
+            content_block?: {
+              type?: string;
+              id?: string;
+              name?: string;
+              text?: string;
+              input?: Record<string, unknown>;
+            };
+            message?: {
+              model?: string;
+              usage?: { input_tokens?: number; output_tokens?: number };
+              stop_reason?: string;
+            };
+            usage?: { input_tokens?: number; output_tokens?: number };
+          };
+          try {
+            obj = JSON.parse(json);
+          } catch {
+            continue;
+          }
+
+          if (obj.type === 'message_start' && obj.message) {
+            if (obj.message.model) modelo = obj.message.model;
+            tokensInput = obj.message.usage?.input_tokens ?? 0;
+          } else if (obj.type === 'content_block_start') {
+            const idx = obj.index ?? -1;
+            const cb = obj.content_block;
+            if (cb?.type === 'text') {
+              blocks.set(idx, { type: 'text', text: '' });
+            } else if (cb?.type === 'tool_use') {
+              blocks.set(idx, {
+                type: 'tool_use',
+                id: cb.id,
+                name: cb.name,
+                inputJson: '',
+              });
+              if (cb.id && cb.name) {
+                yield { kind: 'tool_use_start', id: cb.id, name: cb.name };
+              }
+            }
+          } else if (obj.type === 'content_block_delta') {
+            const idx = obj.index ?? -1;
+            const entry = blocks.get(idx);
+            if (!entry) continue;
+            if (obj.delta?.type === 'text_delta' && obj.delta.text) {
+              entry.text = (entry.text ?? '') + obj.delta.text;
+              yield { kind: 'text', delta: obj.delta.text };
+            } else if (
+              obj.delta?.type === 'input_json_delta' &&
+              obj.delta.partial_json
+            ) {
+              entry.inputJson = (entry.inputJson ?? '') + obj.delta.partial_json;
+              if (entry.id) {
+                yield {
+                  kind: 'tool_use_input_delta',
+                  id: entry.id,
+                  delta: obj.delta.partial_json,
+                };
+              }
+            }
+          } else if (obj.type === 'content_block_stop') {
+            // No-op — block is complete, content já está acumulado
+          } else if (obj.type === 'message_delta') {
+            const sr = obj.delta?.stop_reason;
+            if (sr === 'tool_use') stopReason = 'tool_use';
+            else if (sr === 'end_turn') stopReason = 'end_turn';
+            else if (sr === 'max_tokens') stopReason = 'max_tokens';
+            if (obj.usage) tokensOutput = obj.usage.output_tokens ?? tokensOutput;
+          } else if (obj.type === 'message_stop') {
+            // sinaliza fim
+          }
+        }
+      }
+    } catch (e) {
+      yield {
+        kind: 'error',
+        message: e instanceof Error ? e.message : String(e),
+      };
+      return;
+    }
+
+    // Compila os content blocks finais por ordem de index
+    const finalContent: AnthropicContentBlock[] = [];
+    const indices = Array.from(blocks.keys()).sort((a, b) => a - b);
+    for (const i of indices) {
+      const b = blocks.get(i)!;
+      if (b.type === 'text' && b.text) {
+        finalContent.push({ type: 'text', text: b.text });
+      } else if (b.type === 'tool_use' && b.id && b.name) {
+        let input: Record<string, unknown> = {};
+        if (b.inputJson) {
+          try {
+            input = JSON.parse(b.inputJson) as Record<string, unknown>;
+          } catch {
+            // input parcialmente recebido — mantém vazio. Tool layer
+            // detectará via Zod e devolverá INVALID_ARGS, Claude
+            // recupera no próximo turn.
+          }
+        }
+        finalContent.push({
+          type: 'tool_use',
+          id: b.id,
+          name: b.name,
+          input,
+        });
+      }
+    }
+
+    yield {
+      kind: 'turn_end',
+      stopReason,
+      content: finalContent,
+      modelo,
+      tokensInput,
+      tokensOutput,
+    };
   }
 }
