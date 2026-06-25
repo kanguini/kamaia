@@ -188,7 +188,7 @@ export function SaveClausulaDrawer({
             {tipos.length === 0 && (
               <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginBottom: 6, lineHeight: 1.5 }}>
                 Catálogo vazio.{' '}
-                <a href="/configuracoes/tipos-contrato" style={{ color: 'var(--k2-text)', textDecoration: 'underline' }}>
+                <a href="/biblioteca/tipos" style={{ color: 'var(--k2-text)', textDecoration: 'underline' }}>
                   Cria o primeiro tipo
                 </a>
                 . Cláusulas sem tipos ficam transversais.

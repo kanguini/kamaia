@@ -480,7 +480,7 @@ export function NovoContratoFlow({
                     <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginTop: 6, lineHeight: 1.5 }}>
                       O catálogo está vazio.{' '}
                       <a
-                        href="/configuracoes/tipos-contrato"
+                        href="/biblioteca/tipos"
                         style={{ color: 'var(--k2-text)', textDecoration: 'underline' }}
                       >
                         Cria o primeiro tipo

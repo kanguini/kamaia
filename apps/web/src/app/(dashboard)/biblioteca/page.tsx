@@ -37,16 +37,16 @@ const CARDS: CatalogoCard[] = [
     hint: 'Biblioteca de cláusulas pré-aprovadas (foro, lei aplicável, confidencialidade, força maior). Inserir no editor com 1 clique.',
   },
   {
-    href: '/configuracoes/tipos-contrato',
+    href: '/biblioteca/tipos',
     icon: Tag,
     title: 'Tipos de contrato',
     hint: 'Catálogo de tipos (NDA, Arrendamento, Agência, Vendor, etc.) com gatilhos regulatórios padrão e custom fields per-tipo.',
   },
   {
-    href: '/configuracoes/tipos-contrato',
+    href: '/biblioteca/tipos',
     icon: Sparkles,
     title: 'Custom fields',
-    hint: 'Campos extra definidos por tipo de contrato. Editar via tipo correspondente.',
+    hint: 'Campos extra definidos por tipo de contrato. Editáveis via cada tipo.',
     status: 'novo',
   },
 ]

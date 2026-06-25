@@ -8,7 +8,7 @@ import { TenantPlan } from '@kamaia/shared-types'
 const TABS: Array<{ href: string; label: string; agencyOnly?: boolean }> = [
   { href: '/configuracoes/organizacao', label: 'Organização' },
   { href: '/configuracoes/equipa', label: 'Equipa' },
-  { href: '/configuracoes/tipos-contrato', label: 'Tipos de contrato' },
+  // Tipos de contrato mudou para /biblioteca/tipos na Sprint 3.2.
   { href: '/configuracoes/webhooks', label: 'Webhooks' },
   { href: '/configuracoes/backup', label: 'Backup' },
   { href: '/configuracoes/sub-tenants', label: 'Sub-tenants', agencyOnly: true },
