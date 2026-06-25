@@ -32,6 +32,7 @@ import {
   Command,
 } from 'lucide-react'
 import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
+import { FirstRunBanner } from '@/components/onboarding/first-run-banner'
 
 interface Chip {
   icon: React.ElementType
@@ -147,6 +148,8 @@ export default function KamaiaAIHomePage() {
             </button>
           ))}
         </div>
+
+        <FirstRunBanner />
 
         <div className="kai-home-secondary">
           <span className="kai-home-hint">

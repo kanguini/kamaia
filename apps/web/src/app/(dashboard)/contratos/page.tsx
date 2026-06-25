@@ -82,8 +82,15 @@ function ContratosListInner() {
 
   // Auto-abre modal quando vier de /contratos/novo (que faz redirect)
   // ou de qualquer link com `?novo=1`. Limpa query string a seguir.
+  // `?onboard=import` (Sprint 4.3, vindo do FirstRunBanner) abre
+  // directo no caminho de "registar contrato existente" — a
+  // primeira jornada típica de quem traz carteira herdada.
   useEffect(() => {
     if (searchParams.get('novo') === '1') {
+      setNovoOpen(true)
+      router.replace('/contratos')
+    } else if (searchParams.get('onboard') === 'import') {
+      setImportarMode(true)
       setNovoOpen(true)
       router.replace('/contratos')
     }
