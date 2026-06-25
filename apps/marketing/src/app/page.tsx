@@ -4,6 +4,7 @@ import { Footer } from '@/components/Footer'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
 import { HeroFloatingCards } from '@/components/HeroFloatingCards'
 import { Reveal } from '@/components/Reveal'
+import { Pricing } from '@/components/Pricing'
 import { appUrl } from '@/lib/utm'
 
 // FAQ mantido sincronizado com o componente Faq() para o rich result do Google.
@@ -62,6 +63,7 @@ export default function HomePage() {
         <Pillars />
         <Features />
         <ComplianceCallout />
+        <Pricing />
         <Faq />
         <CTAFinal />
       </main>
@@ -99,7 +101,7 @@ function Hero() {
       <div className="relative z-10 flex flex-col items-center text-center px-4 pt-[clamp(80px,12vh,130px)] pb-10">
         <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/65 backdrop-blur-sm">
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#6be49a' }} />
-          Contract Lifecycle Management para Angola · Early access
+          O agente de IA que gere os teus contratos · Localizado para Angola
         </span>
 
         <h1 className="mt-7 mx-auto max-w-[960px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
@@ -111,9 +113,9 @@ function Hero() {
         </h1>
 
         <p className="mt-6 max-w-[680px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
-          Gere o ciclo de vida completo de cada contrato — da solicitação ao arquivo —
-          com Imposto de Selo, registos públicos, BNA e AGT calculados automaticamente.
-          Multi-sector, alto volume, localizado para Angola.
+          A Kamaia AI pesquisa, cria e monitoriza contratos por ti, em
+          linguagem natural. Compliance angolano (Imposto de Selo, BNA, AGT,
+          registos) calculado automaticamente. Multi-sector, alto volume.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
