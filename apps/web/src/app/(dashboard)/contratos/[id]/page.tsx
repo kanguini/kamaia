@@ -45,8 +45,16 @@ import {
 } from 'lucide-react'
 import { useApi } from '@/hooks/use-api'
 import { Badge } from '@/components/ui/badge'
-import { ContratoEstado } from '@kamaia/shared-types'
-import { estadoBadgeVariant, estadoLabel } from '@/lib/clm-format'
+import {
+  ContratoEstado,
+  contratoModo,
+  contratoFlags,
+  CONTRATO_FLAG_LABELS,
+  userVisibleEstado,
+  CONTRATO_ESTADO_VISIVEL_LABELS,
+  type ContratoModo,
+} from '@kamaia/shared-types'
+import { estadoBadgeVariant } from '@/lib/clm-format'
 import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
 import { PdfPreview } from '@/components/contratos/v2/pdf-preview'
 import {
@@ -105,22 +113,98 @@ const TABS: TabDef[] = [
 
 export default function ContratoDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const [tab, setTab] = useState<TabKey>('resumo')
   const { data: contrato, loading, error } = useApi<Contrato>(`/contratos/${id}`)
   const { setOpen: setAiOpen, send: aiSend } = useKamaiaAI()
 
-  // Declara o pageContext para o agente saber em que contrato estamos
-  useKamaiaPageContext({
-    type: 'contratos.detail',
-    contratoId: id,
-    numeroInterno: contrato?.numero ?? undefined,
-  })
+  // Modo derivado do estado — decide tab default e banner contextual
+  const modo: ContratoModo = contrato ? contratoModo(contrato.estado) : 'REPOSITORY'
 
+  // Tab default depende do modo:
+  //  - DRAFTING/SIGNATURE: utilizador está provavelmente a redigir/assinar
+  //    → Editor (tab Termos) é o que ele precisa primeiro
+  //  - REPOSITORY/CLOSED: utilizador está a consultar/monitorizar
+  //    → Resumo é o que dá a visão geral
+  const defaultTab: TabKey =
+    modo === 'DRAFTING' || modo === 'SIGNATURE' ? 'termos' : 'resumo'
+
+  // useState fica fora do return; reinicializa quando o modo muda
+  // via key remount no <Inner />
+  return contrato ? (
+    <Inner
+      contrato={contrato}
+      modo={modo}
+      defaultTab={defaultTab}
+      onAiAnalysis={() => {
+        setAiOpen(true)
+        void aiSend(
+          `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
+        )
+      }}
+    />
+  ) : (
+    <DetailShell
+      idForContext={id}
+      loading={loading}
+      error={error}
+    />
+  )
+}
+
+function DetailShell({
+  idForContext,
+  loading,
+  error,
+}: {
+  idForContext: string
+  loading: boolean
+  error: string | null
+}) {
+  useKamaiaPageContext({ type: 'contratos.detail', contratoId: idForContext })
   if (error) {
     return <div style={{ color: 'var(--k2-bad)' }}>{error}</div>
   }
+  return (
+    <div className="cd-page">
+      <div className="cd-loading">{loading ? 'A carregar…' : 'Contrato não encontrado.'}</div>
+      <style jsx>{`
+        .cd-page {
+          min-height: 40vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .cd-loading {
+          color: var(--k2-text-mute);
+          font-size: 13px;
+        }
+      `}</style>
+    </div>
+  )
+}
 
-  const proximaAccao = contrato ? proximaAccaoHint(contrato) : null
+function Inner({
+  contrato,
+  modo,
+  defaultTab,
+  onAiAnalysis,
+}: {
+  contrato: Contrato
+  modo: ContratoModo
+  defaultTab: TabKey
+  onAiAnalysis: () => void
+}) {
+  const [tab, setTab] = useState<TabKey>(defaultTab)
+
+  useKamaiaPageContext({
+    type: 'contratos.detail',
+    contratoId: contrato.id,
+    numeroInterno: contrato.numero ?? undefined,
+  })
+
+  const proximaAccao = proximaAccaoHint(contrato)
+  const flags = contratoFlags(contrato.estado)
+  const visivel = userVisibleEstado(contrato.estado)
+  const readonly = modo === 'CLOSED'
 
   return (
     <div className="cd-page">
@@ -131,19 +215,18 @@ export default function ContratoDetailPage() {
         </Link>
         <div className="cd-hero-row">
           <div className="cd-hero-title">
-            <h1 className="cd-h1">
-              {loading ? '…' : contrato?.titulo ?? 'Contrato'}
-            </h1>
+            <h1 className="cd-h1">{contrato.titulo}</h1>
             <div className="cd-hero-meta">
-              {contrato?.numero && <span className="cd-numero">{contrato.numero}</span>}
-              {contrato && (
-                <>
-                  <span className="cd-dot">·</span>
-                  <Badge variant={estadoBadgeVariant(contrato.estado)}>
-                    {estadoLabel(contrato.estado)}
-                  </Badge>
-                </>
-              )}
+              {contrato.numero && <span className="cd-numero">{contrato.numero}</span>}
+              <span className="cd-dot">·</span>
+              <Badge variant={estadoBadgeVariant(contrato.estado)}>
+                {CONTRATO_ESTADO_VISIVEL_LABELS[visivel]}
+              </Badge>
+              {flags.map((f) => (
+                <Badge key={f} variant="warning">
+                  {CONTRATO_FLAG_LABELS[f]}
+                </Badge>
+              ))}
               {proximaAccao && (
                 <>
                   <span className="cd-dot">·</span>
@@ -155,33 +238,53 @@ export default function ContratoDetailPage() {
               )}
             </div>
           </div>
-          {contrato && (
-            <div className="cd-hero-actions">
-              <button
-                type="button"
-                className="cd-btn cd-btn-soft"
-                onClick={() => {
-                  setAiOpen(true)
-                  void aiSend(
-                    `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
-                  )
-                }}
-              >
-                <Sparkles size={13} /> Análise IA
-              </button>
+          <div className="cd-hero-actions">
+            <button
+              type="button"
+              className="cd-btn cd-btn-soft"
+              onClick={onAiAnalysis}
+            >
+              <Sparkles size={13} /> Análise IA
+            </button>
+            {!readonly && (
               <button type="button" className="cd-btn cd-btn-primary">
-                <Edit2 size={12} /> Editar
+                <Edit2 size={12} />
+                {modo === 'SIGNATURE'
+                  ? 'Enviar para assinar'
+                  : modo === 'DRAFTING'
+                    ? 'Editor'
+                    : 'Editar'}
               </button>
-              <button
-                type="button"
-                className="cd-btn cd-btn-soft cd-btn-icon"
-                aria-label="Mais acções"
-              >
-                <MoreHorizontal size={14} />
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              className="cd-btn cd-btn-soft cd-btn-icon"
+              aria-label="Mais acções"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </div>
         </div>
+
+        {/* Banner de modo — explica o que está em foco neste estado */}
+        {modo === 'DRAFTING' && (
+          <ModeBanner
+            tone="info"
+            text={`Em ${CONTRATO_ESTADO_VISIVEL_LABELS[visivel].toLowerCase()}. O editor de cláusulas é a vista principal.`}
+          />
+        )}
+        {modo === 'SIGNATURE' && (
+          <ModeBanner
+            tone="action"
+            text="Pronto para assinatura. Verifica signatários e posiciona campos antes de enviar."
+          />
+        )}
+        {modo === 'CLOSED' && (
+          <ModeBanner
+            tone="muted"
+            text={`Contrato ${CONTRATO_ESTADO_VISIVEL_LABELS[visivel].toLowerCase()} — vista read-only.`}
+          />
+        )}
       </header>
 
       {/* Tabs icon-only */}
@@ -208,9 +311,7 @@ export default function ContratoDetailPage() {
       {/* Split-pane: content + PDF */}
       <div className="cd-split">
         <div className="cd-content">
-          {!contrato && loading && <div className="cd-loading">A carregar…</div>}
-
-          {contrato && tab === 'resumo' && (
+          {tab === 'resumo' && (
             <div className="cd-stack">
               <ResumoIdentificacao contrato={contrato} />
               <ResumoPartes contratoId={contrato.id} />
@@ -220,27 +321,27 @@ export default function ContratoDetailPage() {
             </div>
           )}
 
-          {contrato && tab === 'termos' && (
+          {tab === 'termos' && (
             <div className="cd-stack">
               <EditorTab contratoId={contrato.id} />
             </div>
           )}
 
-          {contrato && tab === 'eventos' && (
+          {tab === 'eventos' && (
             <div className="cd-stack">
               <ObrigacoesTab contratoId={contrato.id} />
               <ComplianceTab contratoId={contrato.id} />
             </div>
           )}
 
-          {contrato && tab === 'documentos' && (
+          {tab === 'documentos' && (
             <div className="cd-stack">
               <VersoesTab contratoId={contrato.id} />
               <DocumentosTab contratoId={contrato.id} />
             </div>
           )}
 
-          {contrato && tab === 'conversa' && (
+          {tab === 'conversa' && (
             <div className="cd-stack">
               <Placeholder
                 title="Conversa & histórico"
@@ -251,7 +352,7 @@ export default function ContratoDetailPage() {
         </div>
 
         <aside className="cd-pdf">
-          {contrato && <PdfPreview contratoId={contrato.id} />}
+          <PdfPreview contratoId={contrato.id} />
         </aside>
       </div>
 
@@ -460,6 +561,54 @@ function proximaAccaoHint(c: Contrato): { text: string; urgent: boolean } | null
     return { text: 'Em redacção', urgent: false }
   }
   return null
+}
+
+/**
+ * Banner do modo — uma linha contextual que comunica em prosa em que
+ * modo o utilizador está e o que pode esperar.
+ *
+ * 3 tons:
+ *   - info: tom calmo, descritivo (DRAFTING)
+ *   - action: chama à acção (SIGNATURE)
+ *   - muted: read-only, sem chamada (CLOSED)
+ */
+function ModeBanner({
+  tone,
+  text,
+}: {
+  tone: 'info' | 'action' | 'muted'
+  text: string
+}) {
+  return (
+    <div className={`mb mb-${tone}`}>
+      {text}
+      <style jsx>{`
+        .mb {
+          margin-top: 10px;
+          padding: 8px 12px;
+          border-radius: var(--k2-radius-sm);
+          border: 1px solid var(--k2-border);
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .mb-info {
+          background: var(--k2-bg-elev);
+          color: var(--k2-text-dim);
+        }
+        .mb-action {
+          background: var(--k2-bg-elev-2);
+          color: var(--k2-text);
+          border-color: var(--k2-border-strong);
+          font-weight: 500;
+        }
+        .mb-muted {
+          background: transparent;
+          color: var(--k2-text-mute);
+          border-style: dashed;
+        }
+      `}</style>
+    </div>
+  )
 }
 
 function Placeholder({ title, hint }: { title: string; hint: string }) {

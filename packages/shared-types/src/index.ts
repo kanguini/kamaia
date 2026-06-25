@@ -137,6 +137,116 @@ export const CONTRATO_ESTADO_LABELS: Record<ContratoEstado, string> = {
   [ContratoEstado.CANCELADO]: 'Cancelado',
 };
 
+// ─── CONTRATO — Estado visível ao utilizador (colapso) ────
+//
+// 14 estados técnicos é demasiado para o utilizador raciocinar.
+// Colapso para 6 estados visíveis. O estado técnico mantém-se na DB
+// e no audit log; a UI traduz para o que faz sentido humano.
+//
+// Sprint 2.3 da Fase 2.
+
+export type ContratoEstadoVisivel =
+  | 'RASCUNHO'
+  | 'EM_REVISAO'
+  | 'APROVACAO'
+  | 'A_ASSINAR'
+  | 'ACTIVO'
+  | 'ENCERRADO';
+
+export function userVisibleEstado(
+  estado: ContratoEstado,
+): ContratoEstadoVisivel {
+  switch (estado) {
+    case ContratoEstado.INTAKE:
+    case ContratoEstado.DRAFTING:
+    case ContratoEstado.REV_INTERNA:
+      return 'RASCUNHO';
+    case ContratoEstado.REV_CLIENTE:
+    case ContratoEstado.EM_NEGOCIACAO:
+      return 'EM_REVISAO';
+    case ContratoEstado.APROVACAO:
+      return 'APROVACAO';
+    case ContratoEstado.PRONTO_ASSINATURA:
+      return 'A_ASSINAR';
+    case ContratoEstado.ASSINADO:
+    case ContratoEstado.POS_ASSINATURA:
+    case ContratoEstado.ACTIVO:
+    case ContratoEstado.REPOSITORIO:
+    case ContratoEstado.EM_DISPUTA:
+    case ContratoEstado.EM_ADENDA:
+    case ContratoEstado.EM_TERMINACAO:
+      return 'ACTIVO';
+    case ContratoEstado.TERMINADO:
+    case ContratoEstado.ARQUIVADO:
+    case ContratoEstado.CANCELADO:
+      return 'ENCERRADO';
+  }
+}
+
+export const CONTRATO_ESTADO_VISIVEL_LABELS: Record<
+  ContratoEstadoVisivel,
+  string
+> = {
+  RASCUNHO: 'Rascunho',
+  EM_REVISAO: 'Em revisão',
+  APROVACAO: 'Aprovação',
+  A_ASSINAR: 'A assinar',
+  ACTIVO: 'Activo',
+  ENCERRADO: 'Encerrado',
+};
+
+// ─── CONTRATO — Modo de vista (state-driven UI) ───────────
+//
+// O detail page renderiza modo diferente conforme o estado:
+//  - DRAFTING: editor é a vista principal
+//  - SIGNATURE: wizard sequencial de assinatura
+//  - REPOSITORY: vista de monitorização (resumo + PDF)
+//  - CLOSED: arquivo read-only
+//
+// Sprint 2.3 da Fase 2.
+
+export type ContratoModo = 'DRAFTING' | 'SIGNATURE' | 'REPOSITORY' | 'CLOSED';
+
+export function contratoModo(estado: ContratoEstado): ContratoModo {
+  const visivel = userVisibleEstado(estado);
+  switch (visivel) {
+    case 'RASCUNHO':
+    case 'EM_REVISAO':
+    case 'APROVACAO':
+      return 'DRAFTING';
+    case 'A_ASSINAR':
+      return 'SIGNATURE';
+    case 'ACTIVO':
+      return 'REPOSITORY';
+    case 'ENCERRADO':
+      return 'CLOSED';
+  }
+}
+
+// ─── CONTRATO — Flags transversais (sobrepõem-se ao estado) ────
+//
+// EM_DISPUTA, EM_ADENDA, EM_TERMINACAO não são estados primários
+// — são situações temporárias sobrepostas ao ACTIVO. A UI mostra
+// como badges adicionais.
+
+export type ContratoFlag = 'EM_DISPUTA' | 'EM_ADENDA' | 'EM_TERMINACAO' | 'REPOSITORIO';
+
+export function contratoFlags(estado: ContratoEstado): ContratoFlag[] {
+  const flags: ContratoFlag[] = [];
+  if (estado === ContratoEstado.EM_DISPUTA) flags.push('EM_DISPUTA');
+  if (estado === ContratoEstado.EM_ADENDA) flags.push('EM_ADENDA');
+  if (estado === ContratoEstado.EM_TERMINACAO) flags.push('EM_TERMINACAO');
+  if (estado === ContratoEstado.REPOSITORIO) flags.push('REPOSITORIO');
+  return flags;
+}
+
+export const CONTRATO_FLAG_LABELS: Record<ContratoFlag, string> = {
+  EM_DISPUTA: 'Em disputa',
+  EM_ADENDA: 'Em adenda',
+  EM_TERMINACAO: 'Em terminação',
+  REPOSITORIO: 'Importado',
+};
+
 export enum ContratoOrigem {
   CRIADO_INTERNAMENTE = 'CRIADO_INTERNAMENTE',
   IMPORTADO_REPOSITORIO = 'IMPORTADO_REPOSITORIO',
