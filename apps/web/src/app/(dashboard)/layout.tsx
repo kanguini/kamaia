@@ -18,11 +18,8 @@ import {
   LayoutDashboard,
   FileText,
   Building2,
-  Briefcase,
   ShieldCheck,
-  Bot,
   BookOpen,
-  ScrollText,
   Bell,
   Settings,
   Sun,
@@ -56,25 +53,24 @@ interface NavItem {
   match?: (pathname: string) => boolean
 }
 
+// Sprint 3.1: navegação consolidada de 11 → 7 items.
+// - Carteiras desce para /configuracoes (admin)
+// - Alertas + Compliance fundem-se em Calendário/Análise
+// - Templates + Cláusulas + Tipos fundem-se em /biblioteca
+// - IA full-page legacy fica acessível mas fora do menu primário
+
 const WORK_NAV: NavItem[] = [
-  // Kamaia AI é agora a homepage. Mantém Dashboard como link
-  // secundário para utilizadores que prefiram a vista estatística.
   { label: 'Kamaia AI', href: '/', icon: Sparkles, match: (p) => p === '/' },
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
-  { label: 'Carteiras', href: '/carteiras', icon: Briefcase },
-  { label: 'Alertas', href: '/alertas', icon: Bell },
-  { label: 'Compliance', href: '/compliance', icon: ShieldCheck },
+  { label: 'Calendário', href: '/alertas', icon: Bell },
+  { label: 'Análise', href: '/compliance', icon: ShieldCheck },
 ]
 
 const TOOLS_NAV: NavItem[] = [
-  // /ia (chat full-page legacy) continua acessível como ferramenta
-  // — útil para quem prefere a interface ampla em vez do side panel.
-  { label: 'IA — full', href: '/ia', icon: Bot },
-  { label: 'Templates', href: '/biblioteca/templates', icon: BookOpen },
-  { label: 'Cláusulas', href: '/biblioteca/clausulas', icon: ScrollText },
-  { label: 'Configurações', href: '/configuracoes/organizacao', icon: Settings, match: (p) => p.startsWith('/configuracoes') },
+  { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, match: (p) => p.startsWith('/biblioteca') },
+  { label: 'Configurações', href: '/configuracoes/organizacao', icon: Settings, match: (p) => p.startsWith('/configuracoes') || p.startsWith('/carteiras') },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
