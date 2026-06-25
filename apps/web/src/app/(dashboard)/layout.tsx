@@ -35,6 +35,7 @@ import {
   Search,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/hooks/use-theme'
@@ -42,6 +43,11 @@ import { useTenants } from '@/hooks/use-tenants'
 import { ToastProvider } from '@/components/ui/toast'
 import { Logo } from '@/components/ui/logo'
 import { TenantPlan } from '@kamaia/shared-types'
+import {
+  KamaiaAIProvider,
+  useKamaiaAI,
+} from '@/components/kamaia-ai/kamaia-ai-provider'
+import { KamaiaAIPanel } from '@/components/kamaia-ai/kamaia-ai-panel'
 
 interface NavItem {
   label: string
@@ -93,23 +99,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ToastProvider>
-      <div className={cn('k2-shell', collapsed && 'collapsed')}>
-        <Sidebar
-          pathname={pathname}
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-        />
-
-        <div className="k2-main">
-          <Topbar
-            user={session?.user}
-            onBurger={() => setMobileOpen(true)}
+      <KamaiaAIProvider>
+        <div className={cn('k2-shell', collapsed && 'collapsed')}>
+          <Sidebar
+            pathname={pathname}
+            open={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
           />
-          <div style={{ padding: '1.25rem 1.5rem 2rem' }}>{children}</div>
+
+          <div className="k2-main">
+            <Topbar
+              user={session?.user}
+              onBurger={() => setMobileOpen(true)}
+            />
+            <div style={{ padding: '1.25rem 1.5rem 2rem' }}>{children}</div>
+          </div>
+
+          {/* Side panel persistente da Kamaia AI — montado uma vez,
+              acessível em qualquer página via ⌘+J ou botão no topbar. */}
+          <KamaiaAIPanel />
         </div>
-      </div>
+      </KamaiaAIProvider>
     </ToastProvider>
   )
 }
@@ -225,6 +237,7 @@ function Topbar({
 
       <div className="k2-topbar-actions">
         <GlobalSearch />
+        <KamaiaAIToggle />
         <button
           className="k2-icon-btn"
           onClick={toggleTheme}
@@ -236,6 +249,26 @@ function Topbar({
         <UserMenu user={user} initials={initials} />
       </div>
     </header>
+  )
+}
+
+/**
+ * Botão ✨ no topbar — abre/fecha o Kamaia AI side panel.
+ * O atalho ⌘+J / Ctrl+J está ligado globalmente pelo provider.
+ */
+function KamaiaAIToggle() {
+  const { open, toggle } = useKamaiaAI()
+  return (
+    <button
+      className={cn('k2-icon-btn', open && 'active')}
+      onClick={toggle}
+      aria-label={open ? 'Fechar Kamaia AI' : 'Abrir Kamaia AI'}
+      aria-pressed={open}
+      title={open ? 'Fechar Kamaia AI (⌘+J)' : 'Abrir Kamaia AI (⌘+J)'}
+      style={open ? { color: 'var(--k2-text)' } : undefined}
+    >
+      <Sparkles size={16} />
+    </button>
   )
 }
 
