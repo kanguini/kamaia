@@ -65,6 +65,7 @@ import {
   ResumoCustomFields,
 } from '@/components/contratos/v2/resumo-blocks'
 import { AssinarWizard } from '@/components/contratos/v2/assinar-wizard'
+import { TermosDrawer } from '@/components/contratos/v2/termos-drawer'
 import {
   EditorTab,
 } from '@/components/contratos/editor-tab'
@@ -196,6 +197,7 @@ function Inner({
 }) {
   const [tab, setTab] = useState<TabKey>(defaultTab)
   const [signWizardOpen, setSignWizardOpen] = useState(false)
+  const [termosOpen, setTermosOpen] = useState(false)
 
   useKamaiaPageContext({
     type: 'contratos.detail',
@@ -254,6 +256,7 @@ function Inner({
                 className="cd-btn cd-btn-primary"
                 onClick={() => {
                   if (modo === 'SIGNATURE') setSignWizardOpen(true)
+                  else if (modo === 'REPOSITORY') setTermosOpen(true)
                 }}
               >
                 <Edit2 size={12} />
@@ -368,6 +371,22 @@ function Inner({
         open={signWizardOpen}
         onClose={() => setSignWizardOpen(false)}
         contratoId={contrato.id}
+      />
+
+      <TermosDrawer
+        open={termosOpen}
+        onClose={() => setTermosOpen(false)}
+        contratoId={contrato.id}
+        initial={{
+          dataTermo: contrato.dataTermo,
+          renovacaoAutomatica: contrato.renovacaoAutomatica,
+          prazoRenovacaoMeses: contrato.prazoRenovacaoMeses,
+          janelaDenunciaDias: contrato.janelaDenunciaDias,
+        }}
+        onSaved={() => {
+          // Recarrega a página para reflectir mudanças no Resumo
+          if (typeof window !== 'undefined') window.location.reload()
+        }}
       />
 
       <style jsx>{`
