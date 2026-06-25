@@ -64,6 +64,7 @@ import {
   ResumoProximosEventos,
   ResumoCustomFields,
 } from '@/components/contratos/v2/resumo-blocks'
+import { AssinarWizard } from '@/components/contratos/v2/assinar-wizard'
 import {
   EditorTab,
 } from '@/components/contratos/editor-tab'
@@ -194,6 +195,7 @@ function Inner({
   onAiAnalysis: () => void
 }) {
   const [tab, setTab] = useState<TabKey>(defaultTab)
+  const [signWizardOpen, setSignWizardOpen] = useState(false)
 
   useKamaiaPageContext({
     type: 'contratos.detail',
@@ -247,7 +249,13 @@ function Inner({
               <Sparkles size={13} /> Análise IA
             </button>
             {!readonly && (
-              <button type="button" className="cd-btn cd-btn-primary">
+              <button
+                type="button"
+                className="cd-btn cd-btn-primary"
+                onClick={() => {
+                  if (modo === 'SIGNATURE') setSignWizardOpen(true)
+                }}
+              >
                 <Edit2 size={12} />
                 {modo === 'SIGNATURE'
                   ? 'Enviar para assinar'
@@ -355,6 +363,12 @@ function Inner({
           <PdfPreview contratoId={contrato.id} />
         </aside>
       </div>
+
+      <AssinarWizard
+        open={signWizardOpen}
+        onClose={() => setSignWizardOpen(false)}
+        contratoId={contrato.id}
+      />
 
       <style jsx>{`
         .cd-page {
