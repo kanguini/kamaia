@@ -24,6 +24,7 @@ import {
   useState,
 } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { api, apiUrl, getActiveTenantId } from '@/lib/api'
 import type {
   Citation,
@@ -107,6 +108,7 @@ interface ProviderProps {
 
 export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps) {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pageContext, setPageContext] = useState<PageContext>({
     type: 'other',
@@ -365,6 +367,23 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               }
               toolCalls.set(entry.id, entry)
               updateToolCalls()
+
+              // Auto-navigate quando a tool é open_contrato (single
+              // result): o utilizador pediu para abrir, fazemos. Não
+              // fechamos o panel — utilizador continua a poder pedir
+              // mais coisas.
+              if (
+                !data.isError &&
+                hint === 'navigate' &&
+                data.result &&
+                typeof data.result === 'object' &&
+                'target' in (data.result as object)
+              ) {
+                const target = (data.result as { target: unknown }).target
+                if (typeof target === 'string' && target.startsWith('/')) {
+                  router.push(target)
+                }
+              }
             } else if (kind === 'done') {
               setMessages((prev) =>
                 prev.map((m) =>

@@ -9,6 +9,10 @@ import { IaDraftingService } from './ia-drafting.service';
 import { AgentService } from './agent/agent.service';
 import { ToolRegistry } from './agent/tool-registry';
 import { buildFindContratosTool } from './agent/tools/find-contratos.tool';
+import { buildFindEntidadesTool } from './agent/tools/find-entidades.tool';
+import { buildOpenContratoTool } from './agent/tools/open-contrato.tool';
+import { buildListDatasChaveTool } from './agent/tools/list-datas-chave.tool';
+import { buildListObrigacoesTool } from './agent/tools/list-obrigacoes.tool';
 
 @Module({
   imports: [RagModule, AuditModule],
@@ -36,6 +40,11 @@ export class IaModule implements OnModuleInit {
    * que capacidades estão expostas ao LLM.
    */
   onModuleInit() {
+    // Tools de leitura (Sprint 1.2 + 1.3)
     this.registry.register(buildFindContratosTool(this.prisma));
+    this.registry.register(buildFindEntidadesTool(this.prisma));
+    this.registry.register(buildOpenContratoTool(this.prisma));
+    this.registry.register(buildListDatasChaveTool(this.prisma));
+    this.registry.register(buildListObrigacoesTool(this.prisma));
   }
 }
