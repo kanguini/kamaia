@@ -418,12 +418,36 @@ export class CustomFieldsService {
       }
 
       case 'MONEY': {
+        // Onda A.3: MONEY guarda `v` em **centavos integers** para
+        // respeitar a regra CLM "nunca floats para valores
+        // monetários". A UI (drawer) multiplica por 100 antes de
+        // enviar; rende dividindo por 100. Negativos são rejeitados.
         if (typeof raw !== 'object' || raw === null) {
-          return { ok: false, reason: 'esperava { v: number, moeda: string }' };
+          return {
+            ok: false,
+            reason: 'esperava { v: number_em_centavos, moeda: ISO }',
+          };
         }
         const obj = raw as { v?: unknown; moeda?: unknown };
         if (typeof obj.v !== 'number' || !Number.isFinite(obj.v)) {
-          return { ok: false, reason: 'v deve ser número finito' };
+          return { ok: false, reason: 'v deve ser número finito (centavos)' };
+        }
+        if (!Number.isInteger(obj.v)) {
+          return {
+            ok: false,
+            reason:
+              'v deve ser integer (centavos). Multiplica o valor em unidades por 100 antes de enviar.',
+          };
+        }
+        if (obj.v < 0) {
+          return { ok: false, reason: 'valor monetário não pode ser negativo' };
+        }
+        if (!Number.isSafeInteger(obj.v)) {
+          return {
+            ok: false,
+            reason:
+              'v ultrapassa Number.MAX_SAFE_INTEGER. Valores acima de ~90T AKZ requerem BigInt.',
+          };
         }
         if (typeof obj.moeda !== 'string' || obj.moeda.length !== 3) {
           return {

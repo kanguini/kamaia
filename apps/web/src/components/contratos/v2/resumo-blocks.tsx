@@ -861,9 +861,14 @@ function renderCustomValue(
     return [addr.rua, addr.cidade, addr.provincia].filter(Boolean).join(', ')
   }
   if (type === 'MONEY') {
+    // Onda A.3: `v` é guardado em centavos integers no backend.
+    // fmtMoney espera STRING centavos (faz / 100 internamente),
+    // por isso passamos o integer convertido para string sem
+    // tocar no valor — `1500050` → "1500050" → fmtMoney mostra
+    // "15 000,50 AOA".
     const m = raw as { v?: number; moeda?: string }
     if (typeof m.v !== 'number') return '—'
-    return fmtMoney(m.v.toString(), m.moeda ?? null)
+    return fmtMoney(Math.round(m.v).toString(), m.moeda ?? null)
   }
   const v = (raw as { v?: unknown }).v
   if (type === 'BOOLEAN') {

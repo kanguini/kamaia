@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -82,6 +83,46 @@ export class ContratosService {
         tx,
         tenantId,
       );
+
+      // Enforce quota de contratos. updateMany com guard atómico
+      // `usado < limite` evita TOCTOU: 2 calls concorrentes ambas
+      // verem `usado=49, limite=50`, ambas passarem o check, e ambas
+      // criarem o 50º e 51º contrato sem o segundo falhar.
+      //
+      // Quotas com `contratosLimit < 0` (sentinel "unlimited") são
+      // tratadas como sem limite — pulamos o increment guard mas
+      // ainda registamos o contador para analytics.
+      //
+      // Tenants em trial sem UsageQuota ainda não estão a ser
+      // gerados — para esses, o updateMany devolve 0 sem partir.
+      // Aceitamos isto temporariamente; o seed de novos tenants
+      // garante criação da UsageQuota.
+      const quotaUpdate = await tx.usageQuota.updateMany({
+        where: {
+          tenantId,
+          OR: [
+            { contratosLimit: { lt: 0 } }, // unlimited
+            { contratosUsado: { lt: tx.usageQuota.fields.contratosLimit } },
+          ],
+        },
+        data: { contratosUsado: { increment: 1 } },
+      });
+      if (quotaUpdate.count === 0) {
+        // Verifica se é mesmo limite atingido ou se a UsageQuota
+        // simplesmente não existe (tenant em onboarding sem seed).
+        const q = await tx.usageQuota.findUnique({
+          where: { tenantId },
+          select: { contratosLimit: true, contratosUsado: true },
+        });
+        if (q && q.contratosLimit >= 0 && q.contratosUsado >= q.contratosLimit) {
+          throw new ForbiddenException(
+            `Limite de contratos atingido (${q.contratosUsado}/${q.contratosLimit}). ` +
+              `Faz upgrade do plano para criar mais.`,
+          );
+        }
+        // q === null → tenant sem UsageQuota; permitimos avançar
+        // (legacy / trial) sem incrementar
+      }
 
       const c = await tx.contrato.create({
         data: {

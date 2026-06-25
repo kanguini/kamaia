@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { TenantPlan } from '@kamaia/shared-types';
+import { TenantPlan, PLAN_LIMITS, PLAN_AI_CREDITS } from '@kamaia/shared-types';
 import { BillingService } from './billing.service';
 import { PLANS } from './plans.config';
 
@@ -116,10 +116,27 @@ describe('BillingService', () => {
 
 describe('PLANS config', () => {
   it('todos os 5 planos definidos têm quotas', () => {
+    // Onda A.2: `-1` é sentinel "unlimited" canónico em shared-types.
+    // Aceitamos qualquer valor não-zero positivo OU -1.
+    const isValidLimit = (v: number) => v === -1 || v > 0;
     for (const plan of Object.values(TenantPlan)) {
       expect(PLANS[plan].quotas).toBeDefined();
-      expect(PLANS[plan].quotas.contratosLimit).toBeGreaterThan(0);
+      expect(isValidLimit(PLANS[plan].quotas.contratosLimit)).toBe(true);
       expect(PLANS[plan].quotas.aiCreditsLimit).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('PLANS.quotas deriva de PLAN_LIMITS (single source of truth)', () => {
+    // Onda A.2: garantir que ninguém pode acidentalmente atribuir
+    // um valor inconsistente em PLANS sem actualizar shared-types.
+    for (const plan of Object.values(TenantPlan)) {
+      const limits = PLAN_LIMITS[plan];
+      const ai = PLAN_AI_CREDITS[plan];
+      expect(PLANS[plan].quotas.contratosLimit).toBe(limits.contratos);
+      expect(PLANS[plan].quotas.utilizadoresLimit).toBe(limits.utilizadores);
+      expect(PLANS[plan].quotas.storageGBLimit).toBe(limits.storageGB);
+      expect(PLANS[plan].quotas.iaMessagesLimit).toBe(limits.iaMessages);
+      expect(PLANS[plan].quotas.aiCreditsLimit).toBe(ai);
     }
   });
 

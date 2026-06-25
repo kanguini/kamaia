@@ -21,6 +21,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useSession } from 'next-auth/react'
@@ -172,21 +173,50 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
     setConversationId(id)
   }, [])
 
-  const newConversation = useCallback(async () => {
-    if (!session?.accessToken) return
-    try {
-      const conv = await api<Conversation>('/ia/conversations', {
+  // Onda A.5: shared in-flight ref para criação de conversação.
+  // Sem isto, click "+" + send rápido criavam 2 conversações em
+  // paralelo (a 1ª ficava órfã no servidor). Agora ambos caminhos
+  // partilham a mesma promise se houver criação em curso.
+  const creatingConvRef = useRef<Promise<Conversation> | null>(null)
+
+  const createConversationShared = useCallback(
+    async (token: string): Promise<Conversation | null> => {
+      if (creatingConvRef.current) {
+        return creatingConvRef.current
+      }
+      const p = api<Conversation>('/ia/conversations', {
         method: 'POST',
-        token: session.accessToken,
+        token,
         body: JSON.stringify({}),
       })
-      setConversations((prev) => [conv, ...prev])
+        .then((conv) => {
+          // Push para o início da lista e set como activa.
+          // Note: race-safe porque apenas 1 promise existe a qualquer
+          // momento — qualquer chamada subsequente espera por esta.
+          setConversations((prev) => [conv, ...prev])
+          return conv
+        })
+        .finally(() => {
+          creatingConvRef.current = null
+        })
+      creatingConvRef.current = p
+      try {
+        return await p
+      } catch {
+        return null
+      }
+    },
+    [],
+  )
+
+  const newConversation = useCallback(async () => {
+    if (!session?.accessToken) return
+    const conv = await createConversationShared(session.accessToken)
+    if (conv) {
       setConversationId(conv.id)
       setMessages([])
-    } catch {
-      // silently ignore — toast vem em sprint posterior
     }
-  }, [session?.accessToken])
+  }, [session?.accessToken, createConversationShared])
 
   const deleteConversation = useCallback(
     async (id: string) => {
@@ -221,25 +251,32 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
     async (text: string) => {
       if (!text.trim() || !session?.accessToken) return
 
-      // Cria conversa on-demand se nenhuma estiver activa
+      // Cria conversa on-demand se nenhuma estiver activa. Usa o
+      // shared in-flight ref (Onda A.5) para coordenar com
+      // newConversation() — se utilizador clicar + escrever rápido,
+      // apenas 1 POST é feito ao servidor.
       let activeId = conversationId
       if (!activeId) {
-        try {
-          const conv = await api<Conversation>('/ia/conversations', {
-            method: 'POST',
-            token: session.accessToken,
-            body: JSON.stringify({}),
-          })
-          setConversations((prev) => [conv, ...prev])
-          setConversationId(conv.id)
-          activeId = conv.id
-        } catch {
-          return
-        }
+        const conv = await createConversationShared(session.accessToken)
+        if (!conv) return
+        setConversationId(conv.id)
+        activeId = conv.id
       }
 
-      const tempUserId = `tmp-u-${Date.now()}`
-      const tempAssistantId = `tmp-a-${Date.now()}`
+      // Onda A.4: usar randomUUID em vez de Date.now() para evitar
+      // colisão quando 2 sends ocorrem no mesmo milissegundo (e.g.
+      // click num chip + Enter rápido). crypto.randomUUID() é
+      // suportado em todos os browsers modernos (>=Chrome 92, FF 95,
+      // Safari 15.4) e Node 19+. Fallback para timestamp+rand caso
+      // execute num runtime sem crypto.randomUUID (SSR antigo).
+      const newId = (prefix: string): string => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+          return `${prefix}${crypto.randomUUID()}`
+        }
+        return `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      }
+      const tempUserId = newId('tmp-u-')
+      const tempAssistantId = newId('tmp-a-')
 
       setMessages((prev) => [
         ...prev,
@@ -432,7 +469,14 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
         setSending(false)
       }
     },
-    [conversationId, pageContext, reloadConversations, session?.accessToken],
+    [
+      conversationId,
+      createConversationShared,
+      pageContext,
+      reloadConversations,
+      router,
+      session?.accessToken,
+    ],
   )
 
   const value = useMemo<KamaiaAIContextValue>(

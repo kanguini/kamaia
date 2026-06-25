@@ -67,8 +67,12 @@ export function CustomFieldsDrawer({ open, onClose, contratoId, onSaved }: Props
           if (!r.value) continue
           if (r.definition.type === 'ADDRESS') continue // não editamos por agora
           if (r.definition.type === 'MONEY') {
+            // Onda A.3: backend guarda v em centavos integers. Dividir
+            // por 100 para mostrar em unidades no input do utilizador.
             const m = r.value as { v?: number; moeda?: string }
-            initial[r.definition.key] = { v: m.v, moeda: m.moeda }
+            const vUnidades =
+              typeof m.v === 'number' ? m.v / 100 : undefined
+            initial[r.definition.key] = { v: vUnidades, moeda: m.moeda }
           } else {
             const v = (r.value as { v?: unknown }).v
             initial[r.definition.key] = v
@@ -86,11 +90,24 @@ export function CustomFieldsDrawer({ open, onClose, contratoId, onSaved }: Props
     setSubmitting(true)
     setErr(null)
     try {
-      // Remove keys com valor undefined/null/empty para não tentar gravar
+      // Remove keys com valor undefined/null/empty para não tentar gravar.
+      // MONEY converte unidades → centavos integers (Onda A.3, regra
+      // CLM "nunca floats para monetário").
       const cleaned: Record<string, unknown> = {}
+      const itemsByKey = new Map(items?.map((i) => [i.definition.key, i.definition]) ?? [])
       for (const [k, v] of Object.entries(values)) {
         if (v === undefined || v === null || v === '') continue
-        cleaned[k] = v
+        const def = itemsByKey.get(k)
+        if (def?.type === 'MONEY' && typeof v === 'object' && v !== null) {
+          const m = v as { v?: number; moeda?: string }
+          if (typeof m.v !== 'number' || !Number.isFinite(m.v)) continue
+          cleaned[k] = {
+            v: Math.round(m.v * 100),
+            moeda: m.moeda ?? 'AOA',
+          }
+        } else {
+          cleaned[k] = v
+        }
       }
       await api(`/custom-fields/by-contrato/${contratoId}`, {
         method: 'PATCH',

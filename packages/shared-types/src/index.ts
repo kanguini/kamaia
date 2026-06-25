@@ -705,52 +705,84 @@ export interface PlanLimits {
   subTenantsMax: number; // for AGENCY plan
 }
 
+/**
+ * Limites canónicos por plano. SOURCE OF TRUTH único.
+ *
+ * Convenções:
+ *   -1 = ilimitado (UI deve mostrar "Sem limite", quota guards
+ *        devem permitir indefinidamente)
+ *   0  = não disponível (e.g. STARTER.webhooksMax = 0 → feature
+ *        bloqueada)
+ *
+ * Os valores aqui DEVEM bater com o `precoMensalCentavos` definido
+ * em `apps/api/src/modules/billing/plans.config.ts` (que adiciona
+ * UI metadata: label, tagline, highlights). Esse ficheiro importa
+ * estes limites — nunca os duplica.
+ *
+ * Se mudares valores aqui, considera:
+ *   - Marketing site (Pricing.tsx) vai sincronizar via endpoint
+ *   - Páginas /configuracoes/billing reflectem automaticamente
+ *   - Quota enforcement no backend (Onda A.1) usa estes números
+ */
 export const PLAN_LIMITS: Record<TenantPlan, PlanLimits> = {
   [TenantPlan.STARTER]: {
-    contratos: 200,
+    contratos: 50,
     utilizadores: 3,
-    storageGB: 5,
+    storageGB: 1,
     iaMessages: 100,
     apiAccess: false,
     webhooksMax: 0,
     subTenantsMax: 0,
   },
   [TenantPlan.GROWTH]: {
-    contratos: 2_000,
-    utilizadores: 10,
-    storageGB: 50,
-    iaMessages: 1_000,
+    contratos: 150,
+    utilizadores: 6,
+    storageGB: 5,
+    iaMessages: 300,
     apiAccess: false,
     webhooksMax: 3,
     subTenantsMax: 0,
   },
   [TenantPlan.SCALE]: {
-    contratos: 20_000,
-    utilizadores: 30,
-    storageGB: 500,
-    iaMessages: 10_000,
+    contratos: 500,
+    utilizadores: 15,
+    storageGB: 20,
+    iaMessages: 1_000,
     apiAccess: true,
-    webhooksMax: 20,
+    webhooksMax: 10,
     subTenantsMax: 0,
   },
   [TenantPlan.ENTERPRISE]: {
-    contratos: -1,
+    contratos: 2_000,
+    utilizadores: 40,
+    storageGB: 100,
+    iaMessages: 3_000,
+    apiAccess: true,
+    webhooksMax: 50,
+    subTenantsMax: 0,
+  },
+  [TenantPlan.AGENCY]: {
+    contratos: -1, // unlimited
     utilizadores: -1,
-    storageGB: -1,
-    iaMessages: -1,
+    storageGB: 500,
+    iaMessages: 10_000,
     apiAccess: true,
     webhooksMax: -1,
     subTenantsMax: -1,
   },
-  [TenantPlan.AGENCY]: {
-    contratos: -1,
-    utilizadores: 50,
-    storageGB: 200,
-    iaMessages: 5_000,
-    apiAccess: true,
-    webhooksMax: 10,
-    subTenantsMax: 50,
-  },
+};
+
+/**
+ * AI credits adicional (não estava em PlanLimits). Aplicado
+ * separadamente em `apps/api/.../billing/plans.config.ts`. Limites
+ * abaixo são consistentes com o que esse ficheiro expõe.
+ */
+export const PLAN_AI_CREDITS: Record<TenantPlan, number> = {
+  [TenantPlan.STARTER]: 100,
+  [TenantPlan.GROWTH]: 300,
+  [TenantPlan.SCALE]: 1_000,
+  [TenantPlan.ENTERPRISE]: 3_000,
+  [TenantPlan.AGENCY]: 10_000,
 };
 
 // ─── Result Type ──────────────────────────────────────────

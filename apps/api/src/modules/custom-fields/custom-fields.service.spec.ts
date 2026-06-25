@@ -295,6 +295,100 @@ describe('CustomFieldsService — upsertValores', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('MONEY: rejeita float (não-integer centavos)', async () => {
+    // Onda A.3: MONEY guarda em centavos. Floats são bug — utilizador
+    // que envia v=1500.50 deveria ter multiplicado por 100 (= 150050).
+    const audit = makeAudit();
+    const prisma = makePrisma({
+      contrato: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'ct-1', tipoId: 'tipo-1' }),
+      },
+      customFieldDefinition: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'def-renda',
+            key: 'renda',
+            type: CustomFieldType.MONEY,
+            options: null,
+          },
+        ]),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    });
+    const svc = new CustomFieldsService(prisma as never, audit as never);
+    await expect(
+      svc.upsertValores('ct-1', TENANT, USER, {
+        values: { renda: { v: 1500.5, moeda: 'AOA' } },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('MONEY: rejeita valores negativos', async () => {
+    const audit = makeAudit();
+    const prisma = makePrisma({
+      contrato: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'ct-1', tipoId: 'tipo-1' }),
+      },
+      customFieldDefinition: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'def-renda',
+            key: 'renda',
+            type: CustomFieldType.MONEY,
+            options: null,
+          },
+        ]),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    });
+    const svc = new CustomFieldsService(prisma as never, audit as never);
+    await expect(
+      svc.upsertValores('ct-1', TENANT, USER, {
+        values: { renda: { v: -100, moeda: 'AOA' } },
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('MONEY: aceita centavos integer positivos + normaliza moeda', async () => {
+    const audit = makeAudit();
+    const prisma = makePrisma({
+      contrato: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'ct-1', tipoId: 'tipo-1' }),
+      },
+      customFieldDefinition: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'def-renda',
+            key: 'renda',
+            type: CustomFieldType.MONEY,
+            options: null,
+          },
+        ]),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+    });
+    const svc = new CustomFieldsService(prisma as never, audit as never);
+    await svc.upsertValores('ct-1', TENANT, USER, {
+      values: { renda: { v: 250_000_00, moeda: 'aoa' } }, // 250 000 AKZ em centavos
+    });
+    // Verifica que o upsert foi chamado com integer + uppercase
+    const call = (prisma.contratoCustomFieldValue.upsert as jest.Mock).mock
+      .calls[0][0];
+    expect(call.create.value).toEqual({ v: 25_000_000, moeda: 'AOA' });
+  });
+
   it('aceita valores válidos e chama upsert por cada', async () => {
     const { svc, prisma } = makeServiceWithDefs();
     await svc.upsertValores('ct-1', TENANT, USER, {

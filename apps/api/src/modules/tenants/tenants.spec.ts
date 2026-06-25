@@ -141,14 +141,25 @@ describe('TenantsService.createSubTenant', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('respeita subTenantsMax do plano AGENCY', async () => {
+  it('respeita subTenantsMax do plano AGENCY (-1 = unlimited)', async () => {
+    // Onda A.2: PLAN_LIMITS foi consolidado em shared-types e
+    // AGENCY tem subTenantsMax = -1 (unlimited). Verifica-se que
+    // o service trata o sentinel correctamente: 1000 sub-tenants
+    // não dispara o limite.
     const t = agencyTenant();
-    const max = PLAN_LIMITS[TenantPlan.AGENCY].subTenantsMax;
-    // Saturado no limite
-    const { svc } = makeSvc([t], { [t.id]: max });
+    expect(PLAN_LIMITS[TenantPlan.AGENCY].subTenantsMax).toBe(-1);
+    const { svc, prisma } = makeSvc([t], { [t.id]: 1000 });
+    (prisma.tenant.create as jest.Mock).mockResolvedValue({
+      id: 'sub-new',
+      nome: 'Sub',
+      slug: 'sub-x',
+      parentTenantId: t.id,
+      plan: 'STARTER',
+      status: 'ACTIVE',
+    });
     await expect(
       svc.createSubTenant(t.id, 'u-1', { nome: 'Sub' }),
-    ).rejects.toThrow(/máximo/);
+    ).resolves.toBeDefined();
   });
 
   it('permite criar quando dentro do limite', async () => {

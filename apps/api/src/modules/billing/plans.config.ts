@@ -1,4 +1,4 @@
-import { TenantPlan } from '@kamaia/shared-types';
+import { TenantPlan, PLAN_LIMITS, PLAN_AI_CREDITS } from '@kamaia/shared-types';
 
 /**
  * Catálogo canónico dos planos do Kamaia.
@@ -44,6 +44,26 @@ export interface PlanConfig {
   isPublic: boolean;
 }
 
+/**
+ * Helper: deriva `PlanQuotas` (formato da DB) a partir dos limites
+ * canónicos em shared-types. Mantém um único source of truth para
+ * os números — ANY mudança nos limites obriga a alterar UM
+ * ficheiro só (`packages/shared-types/src/index.ts`).
+ *
+ * `-1` é preservado: quota guards no backend tratam `< 0` como
+ * unlimited; UI traduz para "Sem limite".
+ */
+function quotasFromLimits(plan: TenantPlan): PlanQuotas {
+  const l = PLAN_LIMITS[plan];
+  return {
+    contratosLimit: l.contratos,
+    utilizadoresLimit: l.utilizadores,
+    storageGBLimit: l.storageGB,
+    iaMessagesLimit: l.iaMessages,
+    aiCreditsLimit: PLAN_AI_CREDITS[plan],
+  };
+}
+
 export const PLANS: Record<TenantPlan, PlanConfig> = {
   [TenantPlan.STARTER]: {
     plan: TenantPlan.STARTER,
@@ -59,13 +79,7 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'Compliance angolano completo',
       '1 GB de armazenamento',
     ],
-    quotas: {
-      contratosLimit: 50,
-      utilizadoresLimit: 3,
-      storageGBLimit: 1,
-      iaMessagesLimit: 100,
-      aiCreditsLimit: 100,
-    },
+    quotas: quotasFromLimits(TenantPlan.STARTER),
     isPublic: true,
   },
 
@@ -83,13 +97,7 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'Webhooks + integrações básicas',
       '5 GB de armazenamento',
     ],
-    quotas: {
-      contratosLimit: 150,
-      utilizadoresLimit: 6,
-      storageGBLimit: 5,
-      iaMessagesLimit: 300,
-      aiCreditsLimit: 300,
-    },
+    quotas: quotasFromLimits(TenantPlan.GROWTH),
     isPublic: true,
   },
 
@@ -108,13 +116,7 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'Audit log com retenção 5 anos',
       '20 GB de armazenamento',
     ],
-    quotas: {
-      contratosLimit: 500,
-      utilizadoresLimit: 15,
-      storageGBLimit: 20,
-      iaMessagesLimit: 1_000,
-      aiCreditsLimit: 1_000,
-    },
+    quotas: quotasFromLimits(TenantPlan.SCALE),
     isPublic: true,
   },
 
@@ -134,13 +136,7 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'Account manager dedicado',
       '100 GB de armazenamento',
     ],
-    quotas: {
-      contratosLimit: 2_000,
-      utilizadoresLimit: 40,
-      storageGBLimit: 100,
-      iaMessagesLimit: 3_000,
-      aiCreditsLimit: 3_000,
-    },
+    quotas: quotasFromLimits(TenantPlan.ENTERPRISE),
     isPublic: true,
   },
 
@@ -158,13 +154,10 @@ export const PLANS: Record<TenantPlan, PlanConfig> = {
       'AI credits agregados, partilhados entre clientes',
       'Sob proposta',
     ],
-    quotas: {
-      contratosLimit: 999_999,
-      utilizadoresLimit: 999,
-      storageGBLimit: 500,
-      iaMessagesLimit: 10_000,
-      aiCreditsLimit: 10_000,
-    },
+    quotas: quotasFromLimits(TenantPlan.AGENCY),
+    // AGENCY pricing é sob proposta. Mantemos isPublic=true para
+    // aparecer na tabela do marketing como opção, mas o card mostra
+    // "Sob proposta" + CTA para /contacto em vez de checkout.
     isPublic: true,
   },
 };
