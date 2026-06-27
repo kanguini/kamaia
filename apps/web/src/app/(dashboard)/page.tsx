@@ -91,6 +91,7 @@ export default function KamaiaAIHomePage() {
 
   const hasThread = messages.length > 0
   const threadRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-scroll para a última mensagem enquanto chega conteúdo.
   useEffect(() => {
@@ -98,6 +99,14 @@ export default function KamaiaAIHomePage() {
     const el = threadRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, hasThread])
+
+  // Auto-grow do composer conforme o conteúdo (até max-height do CSS).
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
+  }, [input])
 
   const firstName = session?.user?.firstName ?? 'Olá'
   const hour = new Date().getHours()
@@ -110,44 +119,60 @@ export default function KamaiaAIHomePage() {
     await send(text.trim())
   }
 
+  // Enter envia, Shift+Enter quebra linha.
+  const onInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      void submit(input)
+    }
+  }
+
+  // Composer estilo Claude/ChatGPT: contentor largo, input por cima,
+  // acções dentro em baixo à direita (layout em coluna — robusto, não
+  // colapsa como o flex-row anterior).
   const inputForm = (
     <form
-      className="kai-home-form"
+      className="kai-composer"
       onSubmit={(e) => {
         e.preventDefault()
         void submit(input)
       }}
     >
-      <input
-        className="kai-home-input"
+      <textarea
+        ref={inputRef}
+        className="kai-composer-input"
         placeholder="Pergunta ao Dr. Kamaia…"
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={onInputKeyDown}
         disabled={sending}
+        rows={1}
         autoFocus
         aria-label="Pergunta ao Dr. Kamaia"
       />
-      {sending ? (
-        <button
-          type="button"
-          className="kai-home-send kai-home-stop"
-          onClick={stop}
-          aria-label="Parar resposta"
-          title="Parar"
-        >
-          <Square size={15} fill="currentColor" />
-        </button>
-      ) : (
-        <button
-          type="submit"
-          className="kai-home-send"
-          disabled={!input.trim()}
-          aria-label="Enviar"
-          title="Enviar (Enter)"
-        >
-          <Send size={16} />
-        </button>
-      )}
+      <div className="kai-composer-actions">
+        {sending ? (
+          <button
+            type="button"
+            className="kai-composer-btn stop"
+            onClick={stop}
+            aria-label="Parar resposta"
+            title="Parar"
+          >
+            <Square size={15} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className="kai-composer-btn"
+            disabled={!input.trim()}
+            aria-label="Enviar"
+            title="Enviar (Enter)"
+          >
+            <Send size={16} />
+          </button>
+        )}
+      </div>
     </form>
   )
 
@@ -301,7 +326,7 @@ export default function KamaiaAIHomePage() {
           border-top: 1px solid var(--k2-border);
           background: var(--k2-bg);
         }
-        .kai-conv-foot .kai-home-form {
+        .kai-conv-foot .kai-composer {
           margin-top: 8px;
         }
         .kai-conv-hint {
@@ -347,42 +372,56 @@ export default function KamaiaAIHomePage() {
           max-width: 480px;
         }
 
-        .kai-home-form {
+        /* Composer estilo Claude/ChatGPT: contentor largo em coluna —
+           input por cima a 100% de largura, acções por baixo à direita.
+           O layout em coluna evita o colapso de largura do flex-row. */
+        .kai-composer {
           display: flex;
+          flex-direction: column;
           width: 100%;
           box-sizing: border-box;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 8px 8px 20px;
+          gap: 6px;
+          padding: 12px 14px;
           background: var(--k2-bg-elev);
           border: 1px solid var(--k2-border-strong);
-          border-radius: 14px;
-          box-shadow: 0 4px 14px -8px rgba(0, 0, 0, 0.08);
+          border-radius: 16px;
+          box-shadow: 0 4px 16px -10px rgba(0, 0, 0, 0.12);
           transition: border-color 120ms ease, box-shadow 120ms ease;
         }
-        .kai-home-form:focus-within {
+        .kai-composer:focus-within {
           border-color: var(--k2-text);
-          box-shadow: 0 4px 18px -6px rgba(0, 0, 0, 0.14);
+          box-shadow: 0 6px 22px -10px rgba(0, 0, 0, 0.18);
         }
-        .kai-home-input {
-          flex: 1;
-          min-width: 0;
+        .kai-composer-input {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
           background: transparent;
           border: none;
           outline: none;
+          resize: none;
           color: var(--k2-text);
           font-family: inherit;
           font-size: 15px;
-          padding: 12px 0;
+          line-height: 1.5;
+          padding: 4px 2px;
+          min-height: 28px;
+          max-height: 200px;
+          overflow-y: auto;
         }
-        .kai-home-input::placeholder {
+        .kai-composer-input::placeholder {
           color: var(--k2-text-mute);
         }
-        .kai-home-send {
+        .kai-composer-actions {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+        }
+        .kai-composer-btn {
           display: inline-grid;
           place-items: center;
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
           background: var(--k2-accent);
           color: var(--k2-accent-fg);
           border: none;
@@ -390,14 +429,14 @@ export default function KamaiaAIHomePage() {
           cursor: pointer;
           transition: opacity 120ms ease;
         }
-        .kai-home-send:hover:not(:disabled) {
+        .kai-composer-btn:hover:not(:disabled) {
           opacity: 0.85;
         }
-        .kai-home-send:disabled {
+        .kai-composer-btn:disabled {
           opacity: 0.4;
           cursor: not-allowed;
         }
-        .kai-home-stop {
+        .kai-composer-btn.stop {
           background: var(--k2-bg-elev-2);
           color: var(--k2-text);
           border: 1px solid var(--k2-border-strong);
