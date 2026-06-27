@@ -65,6 +65,8 @@ describe('AUDIT.2 — assinaturas.get cross-check contrato↔tenant', () => {
     const prisma = makePrisma() as { contratoAssinatura: { findFirst: jest.Mock } };
     const svc = new ContratoAssinaturasService(
       prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+      { avaliarContrato: jest.fn() } as unknown as never,
       { enqueueEvent: jest.fn() } as unknown as never,
     );
     await svc.get('a1', 'c1', 't1');
@@ -82,6 +84,8 @@ describe('AUDIT.2 — assinaturas.get cross-check contrato↔tenant', () => {
     }) as unknown;
     const svc = new ContratoAssinaturasService(
       prisma as never,
+      { log: jest.fn() } as unknown as never,
+      { avaliarContrato: jest.fn() } as unknown as never,
       { enqueueEvent: jest.fn() } as unknown as never,
     );
     await expect(svc.get('a-de-outro-tenant', 'c1', 't1')).rejects.toThrow(
@@ -95,6 +99,8 @@ describe('AUDIT.3 — assinaturas.list aceita tenantId (defense in depth)', () =
     const prisma = makePrisma() as { contratoAssinatura: { findMany: jest.Mock } };
     const svc = new ContratoAssinaturasService(
       prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+      { avaliarContrato: jest.fn() } as unknown as never,
       { enqueueEvent: jest.fn() } as unknown as never,
     );
     await svc.list('c1', 't1');
@@ -109,6 +115,8 @@ describe('AUDIT.3 — assinaturas.list aceita tenantId (defense in depth)', () =
     const prisma = makePrisma() as { contratoAssinatura: { findMany: jest.Mock } };
     const svc = new ContratoAssinaturasService(
       prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+      { avaliarContrato: jest.fn() } as unknown as never,
       { enqueueEvent: jest.fn() } as unknown as never,
     );
     await svc.list('c1');

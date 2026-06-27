@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -525,13 +526,18 @@ export class ContratosService {
       );
     }
 
-    // AUDIT.11: updateMany com filtro composto tenantId+deletedAt
+    // AUDIT.11: updateMany com filtro composto tenantId+deletedAt.
+    // M1: inclui `estado` actual no where (concorrência otimista) — se
+    // outra transição alterou o estado entretanto, count===0 e abortamos
+    // em vez de sobrepor com um evento contraditório.
     const r = await this.prisma.contrato.updateMany({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId, deletedAt: null, estado: contrato.estado },
       data: { estado: para },
     });
     if (r.count === 0) {
-      throw new NotFoundException('Contrato not found (race or deleted)');
+      throw new ConflictException(
+        'O estado do contrato mudou entretanto. Recarrega e tenta de novo.',
+      );
     }
     const updated = await this.prisma.contrato.findUniqueOrThrow({ where: { id } });
 
@@ -596,12 +602,25 @@ export class ContratosService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+    // M2: deixa rasto na timeline — um ACTIVO/ASSINADO não deve
+    // desaparecer das listas sem registo no histórico do contrato.
+    await this.prisma.contratoEvento.create({
+      data: {
+        contratoId: id,
+        tipo: ContratoEventoTipo.ARQUIVADO,
+        resumo: `Contrato removido (estado à remoção: ${c.estado})`,
+        payload: { estado: c.estado } as object,
+        actorUserId,
+        actorTipo: 'USER',
+      },
+    });
     await this.audit.log({
       tenantId,
       actorUserId,
       action: AuditAction.DELETE,
       entityType: EntityType.CONTRATO,
       entityId: id,
+      beforeData: { estado: c.estado },
     });
     return { ok: true };
   }

@@ -71,11 +71,16 @@ export class RenovacaoEngineService {
     }
   }
 
-  /** Manualmente disparar via endpoint admin. */
-  async runOnce(): Promise<{ renovados: number; falhas: number }> {
+  /**
+   * Processa renovações. Sem `tenantId` corre globalmente (uso do cron
+   * SYSTEM); com `tenantId` fica restrito a esse tenant — o endpoint
+   * admin DEVE passá-lo para não disparar renovações de outros tenants.
+   */
+  async runOnce(tenantId?: string): Promise<{ renovados: number; falhas: number }> {
     const hoje = this.hoje();
     const candidatos = await this.prisma.contrato.findMany({
       where: {
+        ...(tenantId ? { tenantId } : {}),
         renovacaoAutomatica: true,
         denunciaEm: null,
         estado: ContratoEstado.ACTIVO,

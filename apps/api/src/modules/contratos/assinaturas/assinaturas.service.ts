@@ -2,11 +2,15 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import {
   AssinaturaEstado,
   AssinaturaMetodo,
+  AuditAction,
   canTransition,
   ContratoEstado,
   ContratoEventoTipo,
+  EntityType,
 } from '@kamaia/shared-types';
 import { createHash } from 'crypto';
+import { AuditService } from '../../audit/audit.service';
+import { ComplianceService } from '../../compliance/compliance.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../../webhooks/webhooks.service';
 
@@ -14,6 +18,8 @@ import { WebhooksService } from '../../webhooks/webhooks.service';
 export class ContratoAssinaturasService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly compliance: ComplianceService,
     private readonly webhooks: WebhooksService,
   ) {}
 
@@ -107,6 +113,30 @@ export class ContratoAssinaturasService {
         'Versão não tem conteúdo editável — assinar implica snapshot do corpo.',
       );
     }
+
+    // H5: impede re-assinatura/spam — uma assinatura ASSINADA por
+    // signatário (parte interna ou colaborador externo) por contrato.
+    const identCond = params.parteId
+      ? { parteId: params.parteId }
+      : params.colaboradorId
+        ? { colaboradorId: params.colaboradorId }
+        : null;
+    if (identCond) {
+      const jaAssinou = await this.prisma.contratoAssinatura.findFirst({
+        where: {
+          contratoId: params.contratoId,
+          estado: AssinaturaEstado.ASSINADA,
+          ...identCond,
+        },
+        select: { id: true },
+      });
+      if (jaAssinou) {
+        throw new BadRequestException(
+          'Já existe uma assinatura registada para este signatário neste contrato.',
+        );
+      }
+    }
+
     const hash = createHash('sha256').update(versao.corpoMarkdown).digest('hex');
 
     const a = await this.prisma.contratoAssinatura.create({
@@ -141,6 +171,29 @@ export class ContratoAssinaturasService {
         payload: { assinaturaId: a.id, metodo: a.metodo } as object,
         actorTipo: params.colaboradorId ? 'EXTERNAL' : 'USER',
       },
+    });
+
+    // H6: trilha de auditoria canónica do ato (mais sensível do sistema),
+    // incluindo identidade externa + IP/UA para assinaturas por convite.
+    await this.audit.log({
+      tenantId: params.tenantId,
+      action: AuditAction.CREATE,
+      entityType: EntityType.CONTRATO,
+      entityId: params.contratoId,
+      afterData: {
+        evento: 'ASSINATURA',
+        assinaturaId: a.id,
+        versaoId: params.versaoId,
+        externo: !!params.colaboradorId,
+        colaboradorId: params.colaboradorId,
+        parteId: params.parteId,
+        signatarioNome: params.signatarioNome,
+        signatarioEmail: params.signatarioEmail,
+        metodo: params.metodo,
+        hashContratoSnapshot: a.hashContratoSnapshot,
+      },
+      ip: params.ip,
+      userAgent: params.userAgent,
     });
 
     await this.webhooks.enqueueEvent(params.tenantId, 'contrato.assinatura_recebida', {
@@ -201,9 +254,62 @@ export class ContratoAssinaturasService {
         actorTipo: 'SYSTEM',
       },
     });
+
+    // H3: este é o caminho REAL de assinatura — tem de auditar e correr
+    // o motor de compliance (TGIS/registos/AGT despoletados pela
+    // assinatura). Antes só o transitar() manual o fazia.
+    await this.audit.log({
+      tenantId,
+      action: AuditAction.STATE_TRANSITION,
+      entityType: EntityType.CONTRATO,
+      entityId: contratoId,
+      beforeData: { estado: ContratoEstado.PRONTO_ASSINATURA },
+      afterData: { estado: ContratoEstado.ASSINADO, via: 'all-parties-signed' },
+    });
+
     await this.webhooks.enqueueEvent(tenantId, 'contrato.assinado', {
       contratoId,
       via: 'all-parties-signed',
     });
+
+    // H4: se este contrato é uma adenda, devolve o pai EM_ADENDA → ACTIVO
+    // (o sub-ciclo fecha-se ao assinar a adenda). Sem isto o pai ficava
+    // preso em EM_ADENDA para sempre.
+    if (contrato.parentContratoId) {
+      const pai = await this.prisma.contrato.findUnique({
+        where: { id: contrato.parentContratoId },
+        select: { id: true, estado: true, tenantId: true },
+      });
+      if (
+        pai &&
+        pai.estado === ContratoEstado.EM_ADENDA &&
+        canTransition(ContratoEstado.EM_ADENDA, ContratoEstado.ACTIVO)
+      ) {
+        await this.prisma.contrato.update({
+          where: { id: pai.id },
+          data: { estado: ContratoEstado.ACTIVO },
+        });
+        await this.prisma.contratoEvento.create({
+          data: {
+            contratoId: pai.id,
+            tipo: ContratoEventoTipo.ESTADO_ALTERADO,
+            resumo: `EM_ADENDA → ACTIVO (adenda ${contrato.numeroInterno} assinada)`,
+            payload: { de: ContratoEstado.EM_ADENDA, para: ContratoEstado.ACTIVO } as object,
+            actorTipo: 'SYSTEM',
+          },
+        });
+        await this.audit.log({
+          tenantId: pai.tenantId,
+          action: AuditAction.STATE_TRANSITION,
+          entityType: EntityType.CONTRATO,
+          entityId: pai.id,
+          beforeData: { estado: ContratoEstado.EM_ADENDA },
+          afterData: { estado: ContratoEstado.ACTIVO },
+        });
+      }
+    }
+
+    // Compliance corre por último — não deve bloquear a transição.
+    await this.compliance.avaliarContrato(contratoId, tenantId);
   }
 }

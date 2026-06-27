@@ -52,10 +52,12 @@ export class RenovacaoController {
   /**
    * Disparo manual do motor de renovação para o tenant actual.
    * Útil para testar fluxos sem esperar pelo cron. Apenas ADMIN.
+   * Restrito ao tenant do caller — NUNCA corre globalmente a pedido de
+   * um tenant (isolamento). O cron SYSTEM é o único que corre global.
    */
   @Post('renovacao/run')
   @Roles(Role.ADMIN)
-  async runOnce() {
-    return this.renovacao.runOnce();
+  async runOnce(@Tenant() tenant: TenantContext) {
+    return this.renovacao.runOnce(tenant.tenantId);
   }
 }
