@@ -44,9 +44,6 @@ export default function ImportacaoPage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Importação</h1>
-          <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-            Importação em massa de contratos pré-existentes para o repositório.
-          </p>
         </div>
         <Button leftIcon={<Plus size={14} />} onClick={() => setShowCreate(true)}>Novo lote</Button>
       </header>

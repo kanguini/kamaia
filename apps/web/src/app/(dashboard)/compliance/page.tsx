@@ -54,9 +54,6 @@ export default function CompliancePage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
         <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Compliance</h1>
-        <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-          Actos regulatórios pendentes detectados pelo motor de compliance angolano.
-        </p>
       </header>
 
       <div style={{ background: 'var(--k2-bg-elev-2)', borderRadius: 'var(--k2-radius-sm)', padding: '10px 14px', fontSize: 12, color: 'var(--k2-text-dim)' }}>

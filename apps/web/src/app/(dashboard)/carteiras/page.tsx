@@ -32,9 +32,6 @@ export default function CarteirasPage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Carteiras</h1>
-          <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-            Containers opcionais para agrupar contratos relacionados.
-          </p>
         </div>
         <Button leftIcon={<Plus size={14} />} onClick={() => setShowCreate(true)}>Nova carteira</Button>
       </header>

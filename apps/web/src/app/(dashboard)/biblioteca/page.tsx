@@ -56,10 +56,6 @@ export default function BibliotecaLandingPage() {
     <div className="bib">
       <header className="bib-head">
         <h1 className="bib-h1">Biblioteca</h1>
-        <p className="bib-sub">
-          Tudo o que a tua organização reutiliza: templates, cláusulas,
-          tipos de contrato e custom fields.
-        </p>
       </header>
 
       <div className="bib-grid">

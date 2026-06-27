@@ -24,7 +24,6 @@ import {
   CalendarDays,
   Settings,
   LogOut,
-  ChevronDown,
   Check,
   CheckCheck,
   Menu,
@@ -624,10 +623,10 @@ function TenantSwitcher({ direction = 'down' }: { direction?: 'up' | 'down' }) {
           alignItems: 'center',
           gap: 8,
           width: '100%',
-          padding: '6px 10px',
+          padding: '6px 8px',
           borderRadius: 'var(--k2-radius-sm)',
-          background: 'var(--k2-bg-elev)',
-          border: '1px solid var(--k2-border)',
+          background: 'transparent',
+          border: 'none',
           color: 'var(--k2-text)',
           fontSize: 13,
           cursor: 'pointer',
@@ -642,7 +641,6 @@ function TenantSwitcher({ direction = 'down' }: { direction?: 'up' | 'down' }) {
         {active?.plan === TenantPlan.AGENCY && (
           <span style={{ fontSize: 10, color: 'var(--k2-accent)', letterSpacing: '0.06em', flexShrink: 0 }}>AGENCY</span>
         )}
-        <ChevronDown size={13} style={{ flexShrink: 0 }} />
       </button>
       {open && (
         <div

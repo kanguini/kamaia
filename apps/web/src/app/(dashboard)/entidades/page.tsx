@@ -85,9 +85,6 @@ export default function EntidadesPage() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Entidades</h1>
-          <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-            Pessoas singulares e colectivas que entram nos teus contratos.
-          </p>
         </div>
         <div style={{ display: 'inline-flex', gap: 8 }}>
           <Button variant="secondary" onClick={() => setShowBulkImport(true)}>

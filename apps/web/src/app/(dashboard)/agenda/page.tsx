@@ -122,6 +122,23 @@ export default function AgendaPage() {
         ? rotuloSemana(cursor)
         : `${MESES[cursor.getMonth()]} ${cursor.getFullYear()}`
 
+  // Coluna lateral: próximos eventos/tarefas (de hoje em diante),
+  // ordenados por data. Independente da vista do calendário.
+  const proximos = useMemo(() => {
+    const inicioHoje = new Date()
+    inicioHoje.setHours(0, 0, 0, 0)
+    const t0 = inicioHoje.getTime()
+    return items
+      .filter((it) => new Date(it.inicio).getTime() >= t0)
+      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
+      .slice(0, 12)
+  }, [items])
+
+  const fmtDataCurta = (iso: string) => {
+    const d = new Date(iso)
+    return `${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)}`
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1200 }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -129,10 +146,6 @@ export default function AgendaPage() {
           <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
             <CalendarDays size={22} /> Agenda
           </h1>
-          <p style={{ color: 'var(--k2-text-mute)', fontSize: 13, margin: '4px 0 0' }}>
-            Eventos próprios + datas da carteira (contratos, compliance,
-            obrigações) num só calendário.
-          </p>
         </div>
         <button className="ag-novo" onClick={() => abrirNovo()}>
           <Plus size={15} /> Novo evento
@@ -175,32 +188,60 @@ export default function AgendaPage() {
         <Leg cor="#7c3aed" txt="Obrigações" />
       </div>
 
-      {vista === 'mes' && (
-        <MonthView
-          cursor={cursor}
-          items={items}
-          onClickDia={(d) => abrirNovo(d)}
-          onClickEvento={abrirEvento}
-        />
-      )}
-      {vista === 'semana' && (
-        <WeekView
-          dias={weekDays(cursor)}
-          items={items}
-          onClickEvento={abrirEvento}
-          onClickSlot={(d) => abrirNovo(d)}
-        />
-      )}
-      {vista === 'ano' && (
-        <YearView
-          ano={cursor.getFullYear()}
-          items={items}
-          onClickDia={(d) => {
-            setCursor(d)
-            setVista('mes')
-          }}
-        />
-      )}
+      <div className="ag-layout">
+        <div className="ag-cal">
+          {vista === 'mes' && (
+            <MonthView
+              cursor={cursor}
+              items={items}
+              onClickDia={(d) => abrirNovo(d)}
+              onClickEvento={abrirEvento}
+            />
+          )}
+          {vista === 'semana' && (
+            <WeekView
+              dias={weekDays(cursor)}
+              items={items}
+              onClickEvento={abrirEvento}
+              onClickSlot={(d) => abrirNovo(d)}
+            />
+          )}
+          {vista === 'ano' && (
+            <YearView
+              ano={cursor.getFullYear()}
+              items={items}
+              onClickDia={(d) => {
+                setCursor(d)
+                setVista('mes')
+              }}
+            />
+          )}
+        </div>
+
+        {/* Coluna de próximos eventos/tarefas */}
+        <aside className="ag-side">
+          <div className="ag-side-h">Próximos</div>
+          {proximos.length === 0 && (
+            <div className="ag-side-empty">Sem eventos futuros.</div>
+          )}
+          {proximos.map((it) => (
+            <button
+              key={`${it.id}-${it.inicio}`}
+              className="ag-side-item"
+              onClick={() => abrirEvento(it)}
+            >
+              <span className="ag-side-dot" style={{ background: corDoItem(it) }} />
+              <span className="ag-side-body">
+                <span className="ag-side-when">
+                  {fmtDataCurta(it.inicio)}
+                  {!it.diaInteiro && ` · ${fmtHora(it.inicio)}`}
+                </span>
+                <span className="ag-side-title">{it.titulo}</span>
+              </span>
+            </button>
+          ))}
+        </aside>
+      </div>
 
       <EventoModal
         open={modalOpen}
@@ -211,6 +252,81 @@ export default function AgendaPage() {
       />
 
       <style jsx>{`
+        .ag-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 300px;
+          gap: 16px;
+          align-items: start;
+        }
+        .ag-cal {
+          min-width: 0;
+        }
+        .ag-side {
+          display: flex;
+          flex-direction: column;
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius);
+          background: var(--k2-bg-elev);
+          overflow: hidden;
+        }
+        .ag-side-h {
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--k2-text-dim);
+          padding: 14px 14px 8px;
+        }
+        .ag-side-empty {
+          padding: 4px 14px 16px;
+          font-size: 13px;
+          color: var(--k2-text-mute);
+        }
+        .ag-side-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          width: 100%;
+          text-align: left;
+          padding: 10px 14px;
+          background: transparent;
+          border: none;
+          border-top: 1px solid var(--k2-border);
+          cursor: pointer;
+          font-family: inherit;
+          color: var(--k2-text);
+        }
+        .ag-side-item:hover {
+          background: var(--k2-bg-hover);
+        }
+        .ag-side-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          margin-top: 5px;
+          flex-shrink: 0;
+        }
+        .ag-side-body {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .ag-side-when {
+          font-size: 11px;
+          color: var(--k2-text-mute);
+        }
+        .ag-side-title {
+          font-size: 13px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        @media (max-width: 900px) {
+          .ag-layout {
+            grid-template-columns: 1fr;
+          }
+        }
         .ag-novo {
           display: inline-flex;
           align-items: center;

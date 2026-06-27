@@ -111,9 +111,6 @@ export default function ClausulasPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
         <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Cláusulas</h1>
-        <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-          Biblioteca reutilizável. Cláusulas aprovadas entram no contexto da IA ao redigir contratos.
-        </p>
       </header>
 
       {/* Tabs */}

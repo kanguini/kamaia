@@ -26,9 +26,6 @@ export default function TemplatesPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
         <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Templates</h1>
-        <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-          Modelos contratuais reutilizáveis da tua biblioteca.
-        </p>
       </header>
 
       {loading && <div style={{ color: 'var(--k2-text-mute)' }}>A carregar…</div>}

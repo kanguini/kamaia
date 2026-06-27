@@ -119,9 +119,6 @@ export default function AlertasPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1200 }}>
       <header>
         <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Calendário</h1>
-        <p style={{ color: 'var(--k2-text-mute)', fontSize: 13, margin: '4px 0 0 0' }}>
-          A tua fila de acção — o que a carteira precisa de ti, por urgência.
-        </p>
       </header>
 
       {/* Command Center — fila priorizada de toda a carteira */}
