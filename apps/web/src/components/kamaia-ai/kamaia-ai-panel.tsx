@@ -80,10 +80,22 @@ export function KamaiaAIPanel() {
   // Foca o input quando o panel abre — Onda C.1.1.
   // setTimeout cleanup: se o panel toggle rapidamente, o focus
   // pendente roubava foco do destino seguinte.
+  // UX-2.4: guarda o elemento que tinha foco antes de abrir e restaura-o
+  // ao fechar (normalmente o botão ✨ do topbar) — WCAG 2.4.3.
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
-    if (!open) return
-    const handle = window.setTimeout(() => inputRef.current?.focus(), 50)
-    return () => window.clearTimeout(handle)
+    if (open) {
+      restoreFocusRef.current = document.activeElement as HTMLElement | null
+      const handle = window.setTimeout(() => inputRef.current?.focus(), 50)
+      return () => window.clearTimeout(handle)
+    }
+    // Ao fechar: devolve o foco ao gatilho, se ainda estiver no documento.
+    const prev = restoreFocusRef.current
+    if (prev && document.contains(prev)) {
+      prev.focus()
+    }
+    restoreFocusRef.current = null
+    return undefined
   }, [open])
 
   // ESC fecha (apenas quando foco está dentro do panel)
@@ -1003,11 +1015,13 @@ export function Message({ message: m }: { message: import('./types').Message }) 
           align-items: ${isUser ? 'flex-end' : 'flex-start'};
         }
         .kai-bubble {
-          max-width: 92%;
+          /* Cap absoluto para manter a linha legível (~65-75 caça) na
+             homepage larga, sem partir o painel estreito. */
+          max-width: min(92%, 640px);
           padding: 10px 13px;
           border-radius: 12px;
-          font-size: 13px;
-          line-height: 1.55;
+          font-size: 13.5px;
+          line-height: 1.6;
           word-wrap: break-word;
           ${isUser
             ? `
@@ -1016,8 +1030,9 @@ export function Message({ message: m }: { message: import('./types').Message }) 
               border-bottom-right-radius: 4px;
             `
             : `
-              background: var(--k2-bg-elev-2);
+              background: var(--k2-bg-elev);
               color: var(--k2-text);
+              border: 1px solid var(--k2-border);
               border-bottom-left-radius: 4px;
             `}
         }
@@ -1132,11 +1147,43 @@ export function Message({ message: m }: { message: import('./types').Message }) 
         .kai-bubble-md :global(li) {
           margin-bottom: 2px;
         }
+        /* Hierarquia explícita — antes h2/h3 ficavam = corpo e h1/h4-6
+           herdavam o default do browser (escala partida na bolha). */
+        .kai-bubble-md :global(h1),
         .kai-bubble-md :global(h2),
+        .kai-bubble-md :global(h3),
+        .kai-bubble-md :global(h4),
+        .kai-bubble-md :global(h5),
+        .kai-bubble-md :global(h6) {
+          margin: 14px 0 5px;
+          font-weight: 700;
+          line-height: 1.3;
+        }
+        .kai-bubble-md :global(h1) {
+          font-size: 17px;
+        }
+        .kai-bubble-md :global(h2) {
+          font-size: 15px;
+        }
         .kai-bubble-md :global(h3) {
+          font-size: 13.5px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          color: var(--k2-text-dim);
+        }
+        .kai-bubble-md :global(h4),
+        .kai-bubble-md :global(h5),
+        .kai-bubble-md :global(h6) {
           font-size: 13px;
-          margin: 8px 0 4px;
-          font-weight: 600;
+        }
+        .kai-bubble-md :global(:first-child) {
+          margin-top: 0;
+        }
+        .kai-bubble-md :global(blockquote) {
+          margin: 0 0 8px 0;
+          padding-left: 10px;
+          border-left: 2px solid var(--k2-border-strong);
+          color: var(--k2-text-dim);
         }
         .kai-bubble-md :global(code) {
           background: var(--k2-bg);

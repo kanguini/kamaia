@@ -648,10 +648,16 @@ export class IaService {
 
     // Persiste assistant message (apenas texto final; tool calls
     // só ficam no SSE — sem persistência em Sprint 1.2)
-    const finalContent =
-      respostaText.trim().length > 0
-        ? respostaText
-        : '⚠ A IA executou tools mas não devolveu texto final.';
+    const temTexto = respostaText.trim().length > 0;
+    const finalContent = temTexto
+      ? respostaText + DISCLAIMER_FINAL
+      : '⚠ O Dr. Kamaia executou ferramentas mas não devolveu texto final.';
+
+    // Disclaimer jurídico também no caminho do agente (era só no Q&A).
+    // Emite-o como último chunk visível antes do `done`.
+    if (temTexto) {
+      yield { kind: 'text', delta: DISCLAIMER_FINAL };
+    }
 
     const assistantMsg = await this.prisma.aIMessage.create({
       data: {

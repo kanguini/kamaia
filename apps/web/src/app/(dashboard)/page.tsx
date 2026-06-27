@@ -91,6 +91,7 @@ export default function KamaiaAIHomePage() {
 
   const hasThread = messages.length > 0
   const threadRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-scroll para a última mensagem enquanto chega conteúdo.
   useEffect(() => {
@@ -98,6 +99,14 @@ export default function KamaiaAIHomePage() {
     const el = threadRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, hasThread])
+
+  // Auto-grow do textarea conforme o conteúdo (até max-height do CSS).
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [input])
 
   const firstName = session?.user?.firstName ?? 'Olá'
   const hour = new Date().getHours()
@@ -110,6 +119,14 @@ export default function KamaiaAIHomePage() {
     await send(text.trim())
   }
 
+  // Enter envia, Shift+Enter quebra linha (paridade com o painel).
+  const onInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      void submit(input)
+    }
+  }
+
   const inputForm = (
     <form
       className="kai-home-form"
@@ -118,12 +135,15 @@ export default function KamaiaAIHomePage() {
         void submit(input)
       }}
     >
-      <input
+      <textarea
+        ref={inputRef}
         className="kai-home-input"
         placeholder="Pergunta ao Dr. Kamaia…"
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={onInputKeyDown}
         disabled={sending}
+        rows={1}
         autoFocus
         aria-label="Pergunta ao Dr. Kamaia"
       />
@@ -194,7 +214,7 @@ export default function KamaiaAIHomePage() {
             </h1>
             <p className="kai-home-sub">
               Pergunta sobre contratos, datas, compliance angolano — ou pede
-              para criar, abrir, atualizar. Eu trato do resto.
+              para criar, abrir, actualizar. Eu trato do resto.
             </p>
           </div>
 
@@ -347,7 +367,7 @@ export default function KamaiaAIHomePage() {
 
         .kai-home-form {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           gap: 8px;
           padding: 8px 8px 8px 20px;
           background: var(--k2-bg-elev);
@@ -368,7 +388,11 @@ export default function KamaiaAIHomePage() {
           color: var(--k2-text);
           font-family: inherit;
           font-size: 15px;
+          line-height: 1.5;
           padding: 12px 0;
+          resize: none;
+          max-height: 160px;
+          overflow-y: auto;
         }
         .kai-home-input::placeholder {
           color: var(--k2-text-mute);
