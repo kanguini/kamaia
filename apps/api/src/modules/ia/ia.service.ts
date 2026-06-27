@@ -131,6 +131,7 @@ export class IaService {
     const where: Prisma.AIConversationWhereInput = {
       tenantId,
       userId,
+      deletedAt: null,
       ...(q.q && { titulo: { contains: q.q, mode: 'insensitive' } }),
     };
     const limit = q.limit ?? 50;
@@ -151,11 +152,34 @@ export class IaService {
 
   async get(tenantId: string, userId: string, id: string) {
     const conv = await this.prisma.aIConversation.findFirst({
-      where: { id, tenantId, userId },
+      where: { id, tenantId, userId, deletedAt: null },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) throw new NotFoundException('Conversation not found');
     return conv;
+  }
+
+  /**
+   * Soft delete de uma conversa (nunca DELETE físico — regra do
+   * projecto). Scoped a {id, tenantId, userId} para evitar IDOR. As
+   * mensagens permanecem na BD mas ficam inacessíveis (filtradas pela
+   * conversa).
+   */
+  async deleteConversation(tenantId: string, userId: string, id: string) {
+    const { count } = await this.prisma.aIConversation.updateMany({
+      where: { id, tenantId, userId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (count === 0) throw new NotFoundException('Conversation not found');
+
+    await this.audit.log({
+      tenantId,
+      actorUserId: userId,
+      action: AuditAction.DELETE,
+      entityType: EntityType.AI_CONVERSATION,
+      entityId: id,
+    });
+    return { ok: true };
   }
 
   async sendMessage(
@@ -165,7 +189,7 @@ export class IaService {
     dto: SendMessageDto,
   ) {
     const conv = await this.prisma.aIConversation.findFirst({
-      where: { id: conversationId, tenantId, userId },
+      where: { id: conversationId, tenantId, userId, deletedAt: null },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) throw new NotFoundException('Conversation not found');
@@ -327,7 +351,7 @@ export class IaService {
   > {
     // Quota check
     const conv = await this.prisma.aIConversation.findFirst({
-      where: { id: conversationId, tenantId, userId },
+      where: { id: conversationId, tenantId, userId, deletedAt: null },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) {
@@ -533,7 +557,7 @@ export class IaService {
     | { kind: 'error'; message: string }
   > {
     const conv = await this.prisma.aIConversation.findFirst({
-      where: { id: conversationId, tenantId, userId },
+      where: { id: conversationId, tenantId, userId, deletedAt: null },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) {

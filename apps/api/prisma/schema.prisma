@@ -1185,6 +1185,7 @@ model AIConversation {
 
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?   @map("deleted_at") @db.Timestamptz
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id])
