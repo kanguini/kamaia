@@ -197,7 +197,7 @@ export class IaService {
     // Reserva atómica de quota ANTES de chamar Claude (fail-closed).
     if (!(await this.reserveIaQuota(tenantId))) {
       throw new ForbiddenException(
-        'Quota de IA esgotada ou não provisionada. Renova o plano ou contacta o suporte.',
+        'Esgotaste as mensagens de IA do teu plano. Renova o plano ou fala com o suporte.',
       );
     }
 
@@ -363,7 +363,7 @@ export class IaService {
     if (!(await this.reserveIaQuota(tenantId))) {
       yield {
         kind: 'error',
-        message: 'Quota de IA esgotada ou não provisionada.',
+        message: 'Esgotaste as mensagens de IA do teu plano. Renova o plano ou fala com o suporte.',
       };
       return;
     }
@@ -569,7 +569,7 @@ export class IaService {
     if (!(await this.reserveIaQuota(tenantId))) {
       yield {
         kind: 'error',
-        message: 'Quota de IA esgotada ou não provisionada.',
+        message: 'Esgotaste as mensagens de IA do teu plano. Renova o plano ou fala com o suporte.',
       };
       return;
     }

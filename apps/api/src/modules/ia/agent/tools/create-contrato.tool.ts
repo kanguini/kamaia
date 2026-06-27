@@ -144,6 +144,19 @@ type CreateContratoResult =
       detail?: unknown;
     };
 
+/**
+ * Converte um valor monetário (number) para centavos (BigInt) sem
+ * multiplicação em float. Formata a 2 casas e extrai os dígitos como
+ * string — evita o erro de representação IEEE-754 de `valor * 100`.
+ */
+function toCentavos(valor: number): bigint {
+  const fixed = valor.toFixed(2); // ex.: "1234567.89" / "-50.00"
+  const neg = fixed.startsWith('-');
+  const [intPart, decPart = '00'] = fixed.replace('-', '').split('.');
+  const cents = `${intPart}${decPart.padEnd(2, '0').slice(0, 2)}`;
+  return BigInt((neg ? '-' : '') + cents);
+}
+
 export function buildCreateContratoTool(
   prisma: PrismaService,
   contratosService: ContratosService,
@@ -308,7 +321,12 @@ Estados iniciais permitidos:
         tipoId: tipo.id,
         carteiraId: args.carteiraId,
         origem: ContratoOrigem.CRIADO_INTERNAMENTE,
-        valor: args.valor !== undefined ? BigInt(Math.round(args.valor * 100)) : undefined,
+        // Converte para centavos via STRING (sem float intermédio): o
+        // valor chega como number, mas formatamo-lo a 2 casas e parseamos
+        // os dígitos para BigInt — evita erros de representação IEEE-754
+        // para montantes grandes em AOA (regra: dinheiro nunca em float).
+        valor:
+          args.valor !== undefined ? toCentavos(args.valor) : undefined,
         moeda: args.moeda,
         dataInicioVigencia: args.dataInicioVigencia
           ? new Date(args.dataInicioVigencia)

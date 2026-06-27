@@ -43,6 +43,10 @@ const DEFAULT_MAX_TOKENS = 3000;
 //     fechar streams legítimos.
 const MAX_TOTAL_OUTPUT_TOKENS = 12_000;
 const MAX_WALL_CLOCK_MS = 60_000;
+// Cap cumulativo de INPUT tokens — o input cresce a cada turn (histórico
+// + tool results). Sem caching seria a maior fatia de custo; com caching
+// é barato, mas mantemos um tecto de sanidade contra runaway.
+const MAX_TOTAL_INPUT_TOKENS = 200_000;
 
 /**
  * System prompt do agente — mais directivo que o Q&A, com instruções
@@ -123,7 +127,7 @@ export class AgentService {
         );
         yield {
           kind: 'error',
-          message: `Limite de output tokens atingido (${totalTokensOutput}/${MAX_TOTAL_OUTPUT_TOKENS}). Reformula a pergunta para ser mais directa.`,
+          message: `A resposta ficou demasiado longa para concluir. Tenta dividir o pedido em passos mais pequenos.`,
         };
         return;
       }
@@ -133,7 +137,17 @@ export class AgentService {
         );
         yield {
           kind: 'error',
-          message: `Conversação ultrapassou ${MAX_WALL_CLOCK_MS / 1000}s. Reformula para algo mais directo.`,
+          message: `A resposta demorou demasiado tempo. Tenta uma pergunta mais directa.`,
+        };
+        return;
+      }
+      if (totalTokensInput >= MAX_TOTAL_INPUT_TOKENS) {
+        this.logger.warn(
+          `Agent hit MAX_TOTAL_INPUT_TOKENS=${MAX_TOTAL_INPUT_TOKENS} para conv ${opts.ctx.conversationId}`,
+        );
+        yield {
+          kind: 'error',
+          message: `A conversa ficou demasiado longa. Começa uma nova para continuar.`,
         };
         return;
       }
@@ -144,11 +158,18 @@ export class AgentService {
       let turnEnd: Extract<ClaudeStreamEvent, { kind: 'turn_end' }> | null = null;
       let errored = false;
 
+      // max_tokens dinâmico: nunca deixar um turn ultrapassar o budget
+      // cumulativo restante (antes era fixo a 3000, permitindo exceder o
+      // cap nominal ~25%). Mínimo de 256 para uma resposta útil.
+      const remainingOutput = Math.max(
+        256,
+        Math.min(DEFAULT_MAX_TOKENS, MAX_TOTAL_OUTPUT_TOKENS - totalTokensOutput),
+      );
       for await (const ev of this.claude.streamWithTools(
         workingMessages,
         tools,
         systemPrompt,
-        DEFAULT_MAX_TOKENS,
+        remainingOutput,
         signal,
       )) {
         if (ev.kind === 'text') {
@@ -272,7 +293,7 @@ export class AgentService {
     );
     yield {
       kind: 'error',
-      message: `Conversação atingiu o limite de ${MAX_TURNS} turnos com tools. Reformula a pergunta para ser mais directa.`,
+      message: `Este pedido exigiu demasiados passos. Tenta dividi-lo em pedidos mais simples.`,
     };
   }
 

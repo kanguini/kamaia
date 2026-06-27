@@ -185,9 +185,17 @@ export class ToolRegistry {
     // no LLM "perguntar antes" via prompt. Devolve sem executar; o
     // agente surface-a como pedido de confirmação e o frontend mostra
     // Confirmar/Cancelar. Ao confirmar, o turn corre com allowMutations.
-    const needsConfirm = tool.needsConfirmation
-      ? tool.needsConfirmation(parsed.data)
-      : tool.mutates;
+    // O predicado é fornecido por cada tool — protege a invariante
+    // "execute() nunca lança": se rebentar, fail-closed (exige
+    // confirmação) em vez de propagar e partir o stream.
+    let needsConfirm: boolean;
+    try {
+      needsConfirm = tool.needsConfirmation
+        ? tool.needsConfirmation(parsed.data)
+        : tool.mutates;
+    } catch {
+      needsConfirm = true;
+    }
     if (needsConfirm && !ctx.allowMutations) {
       return {
         error: {

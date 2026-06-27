@@ -81,6 +81,38 @@ export class IaDraftingService {
     private readonly claude: ClaudeProvider,
   ) {}
 
+  /** Reserva atómica de 1 unidade de quota IA (fail-closed). Mesma
+   * lógica do IaService — o drafting partilha o contador iaMessages. */
+  private async reserveIaQuota(tenantId: string): Promise<boolean> {
+    try {
+      const { count } = await this.prisma.usageQuota.updateMany({
+        where: {
+          tenantId,
+          OR: [
+            { iaMessagesLimit: { lt: 0 } },
+            { iaMessagesUsado: { lt: this.prisma.usageQuota.fields.iaMessagesLimit } },
+          ],
+        },
+        data: { iaMessagesUsado: { increment: 1 } },
+      });
+      return count > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Estorna uma reserva (best-effort) quando o drafting falha. */
+  private async refundIaQuota(tenantId: string): Promise<void> {
+    try {
+      await this.prisma.usageQuota.updateMany({
+        where: { tenantId, iaMessagesUsado: { gt: 0 } },
+        data: { iaMessagesUsado: { decrement: 1 } },
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+
   async draftContrato(
     tenantId: string,
     userId: string,
@@ -198,6 +230,15 @@ export class IaDraftingService {
       };
     }
 
+    // Reserva atómica de quota (fail-closed) ANTES de chamar Claude.
+    // O drafting é a operação de IA mais cara (até 6000 tokens); antes
+    // gastava tokens completamente fora da contabilidade de quota.
+    if (!(await this.reserveIaQuota(tenantId))) {
+      throw new ForbiddenException(
+        'Esgotaste as mensagens de IA do teu plano. Renova o plano ou fala com o suporte.',
+      );
+    }
+
     let resp;
     try {
       resp = await this.claude.complete(
@@ -210,12 +251,14 @@ export class IaDraftingService {
       this.logger.error(
         `Claude drafting falhou: ${e instanceof Error ? e.message : e}`,
       );
+      await this.refundIaQuota(tenantId);
       throw new BadRequestException(
         'Não foi possível gerar o draft. Tenta novamente em instantes.',
       );
     }
 
     if (!resp) {
+      await this.refundIaQuota(tenantId);
       throw new BadRequestException('IA indisponível.');
     }
 

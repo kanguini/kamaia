@@ -329,10 +329,10 @@ export class ClaudeProvider {
       res = await this.fetchAnthropic(body, signal);
     } catch (e) {
       if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
-      yield {
-        kind: 'error',
-        message: `Falha de rede: ${e instanceof Error ? e.message : String(e)}`,
-      };
+      this.logger.error(
+        `completeStream rede: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      yield { kind: 'error', message: 'Falha de rede ao consultar a IA.' };
       return;
     }
 
@@ -400,10 +400,10 @@ export class ClaudeProvider {
       }
     } catch (e) {
       if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
-      yield {
-        kind: 'error',
-        message: e instanceof Error ? e.message : String(e),
-      };
+      this.logger.error(
+        `completeStream read: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      yield { kind: 'error', message: 'Erro ao processar a resposta da IA.' };
       return;
     }
 
@@ -443,13 +443,34 @@ export class ClaudeProvider {
       return;
     }
 
+    // Prompt caching: o system prompt e as tool specs são estáveis ao
+    // longo dos até 6 turns da MESMA conversa. Marcá-los com
+    // cache_control ephemeral faz a Anthropic reler do cache (~10% do
+    // custo) em vez de reprocessar tudo a preço cheio em cada turn —
+    // corta a maior fatia do custo de input do loop agêntico.
+    const systemBlocks = [
+      {
+        type: 'text' as const,
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' as const },
+      },
+    ];
+    const cachedTools =
+      tools.length > 0
+        ? tools.map((t, i) =>
+            i === tools.length - 1
+              ? { ...t, cache_control: { type: 'ephemeral' as const } }
+              : t,
+          )
+        : [];
+
     const body = {
       model: this.model,
       max_tokens: maxTokens ?? this.maxTokens,
       stream: true,
-      system: systemPrompt,
+      system: systemBlocks,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      ...(tools.length > 0 ? { tools } : {}),
+      ...(cachedTools.length > 0 ? { tools: cachedTools } : {}),
     };
 
     let res: Response;
@@ -457,10 +478,10 @@ export class ClaudeProvider {
       res = await this.fetchAnthropic(body, signal);
     } catch (e) {
       if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
-      yield {
-        kind: 'error',
-        message: `Falha de rede: ${e instanceof Error ? e.message : String(e)}`,
-      };
+      this.logger.error(
+        `streamWithTools rede: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      yield { kind: 'error', message: 'Falha de rede ao consultar a IA.' };
       return;
     }
 
@@ -599,10 +620,11 @@ export class ClaudeProvider {
         }
       }
     } catch (e) {
-      yield {
-        kind: 'error',
-        message: e instanceof Error ? e.message : String(e),
-      };
+      if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
+      this.logger.error(
+        `streamWithTools read: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      yield { kind: 'error', message: 'Erro ao processar a resposta da IA.' };
       return;
     }
 
