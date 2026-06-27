@@ -37,12 +37,17 @@ interface Categoria {
   vazioNota: string
 }
 
+// Os `tipos` têm de bater EXACTAMENTE com o enum ActoRegulatorioTipo
+// de shared-types (IMPOSTO_SELO, REGISTO_IP_IAPI, BNA_AUTORIZACAO,
+// BNA_REGISTO, AGT_RETENCAO_IRT, AGT_OUTRO, TRADUCAO_JURAMENTADA,
+// SECTORIAL_OUTRO) — senão as categorias mostram "vazio" mesmo com
+// actos detectados.
 const CATEGORIAS: Categoria[] = [
   {
     key: 'tgis',
     label: 'Imposto de Selo',
     icon: Stamp,
-    tipos: ['IMPOSTO_DE_SELO'],
+    tipos: ['IMPOSTO_SELO'],
     vazioNota: 'Sem incidência detectada para este tipo/valor.',
   },
   {
@@ -53,7 +58,7 @@ const CATEGORIAS: Categoria[] = [
       'REGISTO_PREDIAL',
       'REGISTO_COMERCIAL',
       'REGISTO_AUTOMOVEL',
-      'REGISTO_IAPI',
+      'REGISTO_IP_IAPI',
     ],
     vazioNota: 'Não exigido para este tipo de contrato.',
   },
@@ -61,21 +66,21 @@ const CATEGORIAS: Categoria[] = [
     key: 'bna',
     label: 'BNA / Lei Cambial',
     icon: Banknote,
-    tipos: ['BNA_LICENCIAMENTO', 'BNA_RJOC'],
+    tipos: ['BNA_AUTORIZACAO', 'BNA_REGISTO'],
     vazioNota: 'Partes residentes — sem operação cambial regulada.',
   },
   {
     key: 'agt',
     label: 'AGT — Retenção IRT',
     icon: Receipt,
-    tipos: ['AGT_RETENCAO_IRT'],
+    tipos: ['AGT_RETENCAO_IRT', 'AGT_OUTRO'],
     vazioNota: 'Sem retenção na fonte aplicável.',
   },
   {
     key: 'notario',
-    label: 'Reconhecimento notarial',
+    label: 'Notário & traduções',
     icon: FileSignature,
-    tipos: ['RECONHECIMENTO_NOTARIAL'],
+    tipos: ['RECONHECIMENTO_NOTARIAL', 'TRADUCAO_JURAMENTADA'],
     vazioNota: 'Não obrigatório por lei para este contrato.',
   },
 ]
@@ -89,9 +94,13 @@ function estadoLabel(estado: string): { label: string; tone: string } {
     case 'CONCLUIDO':
       return { label: 'Concluído', tone: 'good' }
     case 'NAO_APLICAVEL':
+      return { label: 'Não aplicável', tone: 'mute' }
+    case 'DISPENSADO':
       return { label: 'Dispensado', tone: 'mute' }
-    case 'BLOQUEADO':
-      return { label: 'Bloqueado', tone: 'bad' }
+    case 'FALHOU':
+      return { label: 'Falhou', tone: 'bad' }
+    case 'EXPIRADO':
+      return { label: 'Prazo expirado', tone: 'bad' }
     default:
       return { label: estado, tone: 'mute' }
   }
@@ -109,7 +118,11 @@ function fmtMoneyShort(centavosStr: string | null, moeda: string | null): string
 export function ComplianceSpine({ actos }: { actos: ActoInput[] }) {
   // Conta actos activos (não dispensados nem concluídos) para o badge
   const activos = actos.filter(
-    (a) => a.estado === 'PENDENTE' || a.estado === 'EM_CURSO' || a.estado === 'BLOQUEADO',
+    (a) =>
+      a.estado === 'PENDENTE' ||
+      a.estado === 'EM_CURSO' ||
+      a.estado === 'FALHOU' ||
+      a.estado === 'EXPIRADO',
   ).length
 
   return (

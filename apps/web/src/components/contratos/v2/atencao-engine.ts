@@ -17,6 +17,8 @@
  * carregados e devolve items ordenados por urgência. Testável.
  */
 
+import { ACTO_REGULATORIO_LABELS, ActoRegulatorioTipo } from '@kamaia/shared-types'
+
 export type AtencaoSeveridade = 'critico' | 'aviso' | 'info'
 
 export type AtencaoCategoria =
@@ -65,7 +67,7 @@ export interface AtencaoItem {
 export interface ActoInput {
   id: string
   tipo: string
-  estado: string // PENDENTE | EM_CURSO | CONCLUIDO | NAO_APLICAVEL | BLOQUEADO
+  estado: string // PENDENTE|EM_CURSO|CONCLUIDO|NAO_APLICAVEL|DISPENSADO|FALHOU|EXPIRADO
   tgisVerbaNumero: string | null
   valorLiquidar: string | null
   baseMoeda: string | null
@@ -107,19 +109,9 @@ function diasAte(iso: string, now: Date): number {
 }
 
 function prettyTipoActo(t: string): string {
-  const map: Record<string, string> = {
-    IMPOSTO_DE_SELO: 'Imposto de Selo',
-    REGISTO_PREDIAL: 'Registo Predial',
-    REGISTO_COMERCIAL: 'Registo Comercial',
-    REGISTO_AUTOMOVEL: 'Registo Automóvel',
-    REGISTO_IAPI: 'Registo IAPI',
-    BNA_LICENCIAMENTO: 'Licenciamento BNA',
-    BNA_RJOC: 'BNA — RJOC',
-    AGT_RETENCAO_IRT: 'Retenção IRT (AGT)',
-    RECONHECIMENTO_NOTARIAL: 'Reconhecimento notarial',
-    OUTRO: 'Acto regulatório',
-  }
-  return map[t] ?? t
+  // Catálogo canónico de shared-types — evita drift de enum (valores
+  // reais: IMPOSTO_SELO, REGISTO_IP_IAPI, BNA_AUTORIZACAO, ...).
+  return ACTO_REGULATORIO_LABELS[t as ActoRegulatorioTipo] ?? t
 }
 
 function fmtMoneyShort(centavosStr: string | null, moeda: string | null): string {
@@ -151,14 +143,21 @@ export function computarAtencao(opts: {
   const now = opts.now ?? new Date()
   const items: AtencaoItem[] = []
 
-  // ── 1. Actos regulatórios pendentes / em curso ──
+  // ── 1. Actos regulatórios pendentes / em curso / falhados ──
+  // Estados resolvidos (não pedem acção): CONCLUIDO, NAO_APLICAVEL,
+  // DISPENSADO. Estados-problema (crítico): FALHOU, EXPIRADO.
   for (const acto of opts.actos) {
-    if (acto.estado === 'CONCLUIDO' || acto.estado === 'NAO_APLICAVEL') continue
+    if (
+      acto.estado === 'CONCLUIDO' ||
+      acto.estado === 'NAO_APLICAVEL' ||
+      acto.estado === 'DISPENSADO'
+    )
+      continue
 
     const dias = acto.prazoLimite ? diasAte(acto.prazoLimite, now) : null
-    const bloqueado = acto.estado === 'BLOQUEADO'
-    // Severidade: bloqueado ou prazo passado/iminente = crítico
-    const severidade: AtencaoSeveridade = bloqueado
+    const problema = acto.estado === 'FALHOU' || acto.estado === 'EXPIRADO'
+    // Severidade: problema (falhou/expirou) ou prazo iminente = crítico
+    const severidade: AtencaoSeveridade = problema
       ? 'critico'
       : dias !== null && dias <= 7
         ? 'critico'
@@ -173,14 +172,18 @@ export function computarAtencao(opts: {
     ].filter(Boolean)
 
     // Score: crítico=1000 base, + urgência do prazo (quanto menos
-    // dias, maior). Bloqueado tem prioridade máxima.
+    // dias, maior). Problema (falhou/expirou) tem prioridade máxima.
     const score =
-      (bloqueado ? 2000 : severidade === 'critico' ? 1000 : 500) +
+      (problema ? 2000 : severidade === 'critico' ? 1000 : 500) +
       (dias !== null ? Math.max(0, 100 - dias) : 0)
 
-    const titulo = bloqueado
-      ? `${prettyTipoActo(acto.tipo)} — BLOQUEADO`
-      : `${prettyTipoActo(acto.tipo)}${acto.tgisVerbaNumero ? ` Verba ${acto.tgisVerbaNumero}` : ''} pendente`
+    const estadoSuffix =
+      acto.estado === 'FALHOU'
+        ? ' — FALHOU'
+        : acto.estado === 'EXPIRADO'
+          ? ' — PRAZO EXPIRADO'
+          : ' pendente'
+    const titulo = `${prettyTipoActo(acto.tipo)}${acto.tgisVerbaNumero ? ` Verba ${acto.tgisVerbaNumero}` : ''}${estadoSuffix}`
 
     items.push({
       id: `acto-${acto.id}`,

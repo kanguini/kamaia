@@ -30,6 +30,8 @@ import {
   FileText,
   Hourglass,
 } from 'lucide-react'
+import { CommandCenter } from './command-center'
+import type { PortfolioContrato } from './portfolio-engine'
 
 interface DashboardData {
   total: number
@@ -71,7 +73,28 @@ export default function AlertasPage() {
   const { data: dashboard } = useApi<DashboardData>('/contratos/dashboard')
   const { data: expira30 } = useApi<ContratosList>('/contratos?expiraEm=30&limit=20')
   const { data: expira90 } = useApi<ContratosList>('/contratos?expiraEm=90&limit=20')
-  const { data: actosPendentes } = useApi<PendingActo[]>('/compliance/pendentes?dias=30')
+  const { data: actosPendentes, refetch: refetchActos } = useApi<PendingActo[]>(
+    '/compliance/pendentes?dias=30',
+  )
+
+  // Contratos a expirar (30+90, deduplicados) para o Command Center.
+  const contratosExpirar: PortfolioContrato[] = (() => {
+    const all = [...(expira30?.data ?? []), ...(expira90?.data ?? [])]
+    const seen = new Set<string>()
+    const out: PortfolioContrato[] = []
+    for (const c of all) {
+      if (seen.has(c.id)) continue
+      seen.add(c.id)
+      out.push({
+        id: c.id,
+        numeroInterno: c.numeroInterno,
+        titulo: c.titulo,
+        dataTermo: c.dataTermo,
+        renovacaoAutomatica: c.renovacaoAutomatica,
+      })
+    }
+    return out
+  })()
 
   const expira30List = expira30?.data ?? []
   const expira90Only = (expira90?.data ?? []).filter(
@@ -95,11 +118,18 @@ export default function AlertasPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1200 }}>
       <header>
-        <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Alertas</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Calendário</h1>
         <p style={{ color: 'var(--k2-text-mute)', fontSize: 13, margin: '4px 0 0 0' }}>
-          O que precisa de atenção nos próximos 30 dias.
+          A tua fila de acção — o que a carteira precisa de ti, por urgência.
         </p>
       </header>
+
+      {/* Command Center — fila priorizada de toda a carteira */}
+      <CommandCenter
+        actos={actosPendentes ?? []}
+        contratos={contratosExpirar}
+        onResolved={() => void refetchActos()}
+      />
 
       {/* KPIs */}
       <div
