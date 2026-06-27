@@ -19,7 +19,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  CalendarDays,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { EventoModal } from './evento-modal'
@@ -143,9 +142,7 @@ export default function AgendaPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1200 }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
-            <CalendarDays size={22} /> Agenda
-          </h1>
+          <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Agenda</h1>
         </div>
         <button className="ag-novo" onClick={() => abrirNovo()}>
           <Plus size={15} /> Novo evento
