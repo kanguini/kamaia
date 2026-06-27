@@ -18,6 +18,7 @@
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useCallback, useEffect, useState } from 'react'
+import { ACTO_REGULATORIO_LABELS, type ActoRegulatorioTipo } from '@kamaia/shared-types'
 import {
   Users,
   ShieldCheck,
@@ -554,19 +555,9 @@ function ActoRow({
 }
 
 function prettyTipoActo(t: string): string {
-  const map: Record<string, string> = {
-    IMPOSTO_DE_SELO: 'Imposto de Selo (TGIS)',
-    REGISTO_PREDIAL: 'Registo Predial',
-    REGISTO_COMERCIAL: 'Registo Comercial',
-    REGISTO_AUTOMOVEL: 'Registo Automóvel',
-    REGISTO_IAPI: 'Registo IAPI',
-    BNA_LICENCIAMENTO: 'BNA — Licenciamento cambial',
-    BNA_RJOC: 'BNA — RJOC (não-residentes)',
-    AGT_RETENCAO_IRT: 'AGT — Retenção IRT na fonte',
-    RECONHECIMENTO_NOTARIAL: 'Reconhecimento notarial',
-    OUTRO: 'Outro acto regulatório',
-  }
-  return map[t] ?? t
+  // Fonte única: rótulos de shared-types (evita drift de chaves com o
+  // enum ActoRegulatorioTipo, que já tinha divergido aqui).
+  return ACTO_REGULATORIO_LABELS[t as ActoRegulatorioTipo] ?? t
 }
 
 // ─── Próximos eventos ────────────────────────────────────────────

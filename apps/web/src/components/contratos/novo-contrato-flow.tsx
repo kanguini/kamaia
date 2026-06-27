@@ -299,6 +299,19 @@ export function NovoContratoFlow({
           ordem: i,
         }))
 
+      // Sanidade de datas: o termo não pode ser anterior ao início da
+      // vigência nem à assinatura (evita renovação/alertas sem sentido).
+      if (dataInicioVigencia && dataTermo && dataInicioVigencia > dataTermo) {
+        setErr('A data de termo não pode ser anterior ao início da vigência.')
+        setSubmitting(false)
+        return
+      }
+      if (dataAssinatura && dataTermo && dataAssinatura > dataTermo) {
+        setErr('A data de termo não pode ser anterior à assinatura.')
+        setSubmitting(false)
+        return
+      }
+
       const sharedBody = {
         titulo: titulo.trim(),
         tipoId,

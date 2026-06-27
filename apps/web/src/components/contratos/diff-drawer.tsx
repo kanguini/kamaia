@@ -325,17 +325,21 @@ function SplitView({ lines }: { lines: DiffLine[] }) {
 function SplitCell({ line }: { side: 'L' | 'R'; line: DiffLine | null }) {
   if (!line) return <span style={{ background: 'rgba(0,0,0,0.02)' }}>&nbsp;</span>
   const colors = colorsFor(line.op)
+  // Marcador textual (+/−) além da cor — add vs remove distinguível
+  // sem depender só de verde/vermelho (WCAG, daltonismo).
+  const sym = line.op === 'add' ? '+' : line.op === 'remove' ? '−' : ' '
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '36px 1fr',
+        gridTemplateColumns: '36px 14px 1fr',
         background: colors.bg,
         color: colors.fg,
         borderRight: '1px solid rgba(0,0,0,0.06)',
       }}
     >
       <span style={lineNumCellStyle}>{line.oldLine ?? line.newLine ?? ''}</span>
+      <span aria-hidden="true" style={{ textAlign: 'center', userSelect: 'none', opacity: 0.8 }}>{sym}</span>
       <span style={{ padding: '0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         <InlineText line={line} />
       </span>

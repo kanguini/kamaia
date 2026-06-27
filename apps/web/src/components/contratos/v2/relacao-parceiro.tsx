@@ -47,10 +47,12 @@ interface AggParceiro {
   estadosActivos: number
 }
 
-function valorEmAKZ(valor: string | null): number {
+/** Centavos (inteiro) de um valor; somar em centavos e dividir uma só
+ *  vez evita acumular erro de float ao agregar a exposição total. */
+function centavosDe(valor: string | null): number {
   if (!valor) return 0
   const n = Number(valor)
-  return Number.isFinite(n) ? n / 100 : 0
+  return Number.isFinite(n) ? Math.round(n) : 0
 }
 
 export function RelacaoParceiro({
@@ -79,8 +81,8 @@ export function RelacaoParceiro({
             { token },
           )
           const list = Array.isArray(rows) ? rows : []
-          const valorTotal = list.reduce(
-            (acc, r) => acc + valorEmAKZ(r.contrato.valor),
+          const valorTotalCentavos = list.reduce(
+            (acc, r) => acc + centavosDe(r.contrato.valor),
             0,
           )
           const activos = list.filter((r) =>
@@ -93,7 +95,7 @@ export function RelacaoParceiro({
             nome: p.entidade.nome,
             papel: p.papel,
             totalContratos: list.length,
-            valorTotalAKZ: valorTotal,
+            valorTotalAKZ: valorTotalCentavos / 100,
             estadosActivos: activos,
           } as AggParceiro
         } catch {
@@ -114,7 +116,11 @@ export function RelacaoParceiro({
     return () => {
       cancelled = true
     }
-  }, [contratoId, partes, session?.accessToken])
+    // Depende de uma chave derivada (ids das partes) e não da referência
+    // do array — `partes` é recriado a cada refetch, o que provocava N
+    // pedidos redundantes a cada resolução de acto/termo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratoId, partes.map((p) => p.entidade.id).join(','), session?.accessToken])
 
   if (aggs === null) {
     return (
