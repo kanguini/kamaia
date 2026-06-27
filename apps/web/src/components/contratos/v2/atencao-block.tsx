@@ -64,6 +64,7 @@ export function AtencaoBlock({
   const router = useRouter()
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<string | null>(null)
+  const [erro, setErro] = useState<{ id: string; msg: string } | null>(null)
   const [motivoFor, setMotivoFor] = useState<AtencaoItem | null>(null)
   const [motivo, setMotivo] = useState('')
 
@@ -106,6 +107,7 @@ export function AtencaoBlock({
     }
 
     setBusy(item.id)
+    setErro(null)
     try {
       if (accao.kind === 'acto.concluir' && item.ref?.actoId) {
         await api(`/compliance/actos/${item.ref.actoId}/concluir`, {
@@ -139,8 +141,13 @@ export function AtencaoBlock({
         return
       }
       onResolved()
-    } catch {
-      // toast vem em sprint posterior; por agora não dismiss
+    } catch (e) {
+      // Mostra o motivo ao utilizador (ex.: 400 já-denunciado, 409
+      // conflito de estado) em vez de falhar em silêncio. Item fica.
+      const msg =
+        (e as { error?: string })?.error ??
+        'Não foi possível concluir a acção. Recarrega e tenta de novo.'
+      setErro({ id: item.id, msg })
     } finally {
       setBusy(null)
     }
@@ -199,6 +206,11 @@ export function AtencaoBlock({
                     </button>
                   ))}
                 </div>
+                {erro?.id === item.id && (
+                  <div className="atc-item-erro" role="alert">
+                    {erro.msg}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
@@ -333,6 +345,12 @@ const mainCss = `
     font-size: 11.5px;
     color: var(--k2-text-mute);
     margin-top: 2px;
+    line-height: 1.45;
+  }
+  .atc-item-erro {
+    font-size: 11.5px;
+    color: var(--k2-bad);
+    margin-top: 6px;
     line-height: 1.45;
   }
   .atc-item-accoes {

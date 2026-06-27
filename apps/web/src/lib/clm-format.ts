@@ -5,24 +5,36 @@
 
 import { ContratoEstado, CONTRATO_ESTADO_LABELS } from '@kamaia/shared-types'
 
-/** Format centavos (string|number|bigint) → "1.234,56 AOA". */
+/**
+ * Format centavos (string|number|bigint) → "1.234.567,89 AOA".
+ *
+ * Aritmética inteira em BigInt — nunca `Number(bigint)/100` (perderia
+ * precisão acima de 2^53 centavos e reintroduz erro de float no produto
+ * fiscal). A parte inteira é agrupada via BigInt.toLocaleString; os
+ * centavos são os 2 últimos dígitos, exatos.
+ */
 export function fmtMoney(
   value: string | number | bigint | null | undefined,
   moeda: string | null | undefined = 'AOA',
 ): string {
   if (value == null) return '—'
-  let centavos: number
+  let centavos: bigint
   try {
-    centavos = typeof value === 'bigint' ? Number(value) : Number(value)
+    centavos =
+      typeof value === 'bigint'
+        ? value
+        : typeof value === 'number'
+          ? BigInt(Math.round(value))
+          : BigInt(value.trim())
   } catch {
-    return String(value)
+    return '—'
   }
-  if (!Number.isFinite(centavos)) return '—'
-  const formatted = (centavos / 100).toLocaleString('pt-AO', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  return `${formatted} ${moeda ?? 'AOA'}`
+  const HUNDRED = BigInt(100)
+  const neg = centavos < BigInt(0)
+  const abs = neg ? -centavos : centavos
+  const inteiro = (abs / HUNDRED).toLocaleString('pt-AO')
+  const frac = (abs % HUNDRED).toString().padStart(2, '0')
+  return `${neg ? '-' : ''}${inteiro},${frac} ${moeda ?? 'AOA'}`
 }
 
 /** Format ISO UTC date → "23/06/2026" in WAT (UTC+1). */

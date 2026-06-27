@@ -213,6 +213,7 @@ export function NovoContratoFlow({
     setDataTermo('')
     setRenovacaoAutomatica(false)
     setJanelaDenunciaDias('')
+    setPrazoRenovacaoMeses('')
     setResponsavelId('')
     setDocInicial(null)
     setEstadoInicial(ContratoEstado.REPOSITORIO)
@@ -272,13 +273,19 @@ export function NovoContratoFlow({
     setErr(null)
     setErrDetails([])
     try {
-      // Converte valor para centavos BigInt (string)
+      // Converte valor para centavos BigInt (string). O input é
+      // type=number → valor já vem em formato canónico (ponto decimal,
+      // sem separadores de milhar). Se for inválido/negativo, NÃO
+      // descartamos em silêncio — abortamos com erro visível.
       let valorCentavos: string | undefined
-      if (valor) {
-        const parsed = Number(valor.replace(',', '.'))
-        if (Number.isFinite(parsed)) {
-          valorCentavos = String(Math.round(parsed * 100))
+      if (valor.trim()) {
+        const parsed = Number(valor)
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          setErr('Valor inválido — usa um número não-negativo (ex.: 150000.50).')
+          setSubmitting(false)
+          return
         }
+        valorCentavos = String(Math.round(parsed * 100))
       }
 
       const partesPayload = partes
@@ -537,7 +544,7 @@ export function NovoContratoFlow({
             <Section title="Valores e datas (opcional)">
               <Row cols="2fr 1fr">
                 <Field label="Valor (em kwanzas, ex.: 150000.50)">
-                  <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" />
+                  <Input type="number" min={0} step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" />
                 </Field>
                 <Field label="Moeda">
                   <Select value={moeda} onChange={(e) => setMoeda(e.target.value)}>

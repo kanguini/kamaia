@@ -282,6 +282,7 @@ function Inner({
                 onClick={() => {
                   if (modo === 'SIGNATURE') setSignWizardOpen(true)
                   else if (modo === 'REPOSITORY') setTermosOpen(true)
+                  else setDetalhesTab('termos')
                 }}
               >
                 <Edit2 size={12} />

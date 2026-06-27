@@ -207,7 +207,8 @@ export function computarAtencao(opts: {
     const ativo =
       opts.contrato.estado === 'ACTIVO' ||
       opts.contrato.estado === 'REPOSITORIO' ||
-      opts.contrato.estado === 'POS_ASSINATURA'
+      opts.contrato.estado === 'POS_ASSINATURA' ||
+      opts.contrato.estado === 'ASSINADO'
 
     if (ativo && dias <= 60) {
       const renova = opts.contrato.renovacaoAutomatica && !opts.contrato.denunciaEm

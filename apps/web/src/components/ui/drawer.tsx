@@ -12,8 +12,9 @@
  * is exported for consistent typography.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 
 export function Drawer({
   open,
@@ -36,7 +37,10 @@ export function Drawer({
    */
   position?: 'right' | 'center'
 }) {
-  const ref = useRef<HTMLDivElement>(null)
+  // Focus trap + restore (a11y): mantém o foco dentro do painel
+  // enquanto aberto e devolve-o ao gatilho ao fechar. Cobre todos os
+  // overlays que usam este Drawer (assinar, diff, custom-fields, etc.).
+  const ref = useFocusTrap<HTMLDivElement>(open)
 
   // Close on ESC
   useEffect(() => {
@@ -147,14 +151,14 @@ export function Drawer({
           </div>
         </div>
       ) : (
-        <aside
+        <div
           ref={ref}
           className={`drawer ${open ? 'open' : ''}`}
           role="dialog"
           aria-modal="true"
         >
           {children}
-        </aside>
+        </div>
       )}
     </>
   )
