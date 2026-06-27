@@ -20,7 +20,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
 import {
   Sparkles,
   Send,
@@ -28,8 +27,6 @@ import {
   TrendingUp,
   Bell,
   FilePlus,
-  LayoutDashboard,
-  Command,
   Plus,
   Square,
 } from 'lucide-react'
@@ -172,15 +169,6 @@ export default function KamaiaAIHomePage() {
           </div>
 
           <FirstRunBanner />
-
-          <div className="kai-home-secondary">
-            <span className="kai-home-hint">
-              <Command size={11} /> +J abre o painel em qualquer página
-            </span>
-            <Link href="/dashboard" className="kai-home-link">
-              <LayoutDashboard size={12} /> Dashboard clássico
-            </Link>
-          </div>
         </div>
       )}
 
@@ -337,31 +325,6 @@ export default function KamaiaAIHomePage() {
         }
         .kai-home-chip span {
           flex: 1;
-        }
-
-        .kai-home-secondary {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 11px;
-          color: var(--k2-text-mute);
-          padding-top: 8px;
-        }
-        .kai-home-hint {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .kai-home-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          color: var(--k2-text-mute);
-          text-decoration: none;
-          transition: color 120ms ease;
-        }
-        .kai-home-link:hover {
-          color: var(--k2-text);
         }
       `}</style>
     </div>
