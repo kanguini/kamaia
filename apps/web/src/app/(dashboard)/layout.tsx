@@ -68,7 +68,6 @@ const WORK_NAV: NavItem[] = [
 
 const TOOLS_NAV: NavItem[] = [
   { label: 'Biblioteca', href: '/biblioteca', icon: BookOpen, match: (p) => p.startsWith('/biblioteca') },
-  { label: 'Configurações', href: '/configuracoes/organizacao', icon: Settings, match: (p) => p.startsWith('/configuracoes') || p.startsWith('/carteiras') },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -634,7 +633,6 @@ function TenantSwitcher({ direction = 'down' }: { direction?: 'up' | 'down' }) {
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <Building2 size={14} style={{ flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {active?.nome ?? 'Selecciona organização'}
         </span>

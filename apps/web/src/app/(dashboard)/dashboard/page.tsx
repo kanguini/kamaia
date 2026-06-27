@@ -22,7 +22,6 @@ import {
 } from '@kamaia/shared-types'
 import {
   FileText,
-  Clock,
   Plus,
   ArrowUpRight,
   ArrowDownRight,
@@ -126,7 +125,6 @@ export default function ExecutiveOverviewPage() {
               deltaLabel="este trimestre"
               loading={loading}
               href="/contratos?estado=ACTIVO"
-              icon={FileText}
             />
             <MetricCard
               label="Expiram em 30 dias"
@@ -134,8 +132,6 @@ export default function ExecutiveOverviewPage() {
               riscoCentavos={data?.expiraEm30RiscoCentavos}
               loading={loading}
               href="/contratos?expiraEmDias=30"
-              icon={Clock}
-              tone="warning"
             />
           </div>
         </div>
@@ -403,8 +399,6 @@ function MetricCard({
   riscoCentavos,
   loading,
   href,
-  icon: Icon,
-  tone = 'default',
 }: {
   label: string
   value: number
@@ -413,8 +407,6 @@ function MetricCard({
   riscoCentavos?: string
   loading?: boolean
   href: string
-  icon: React.ElementType
-  tone?: 'default' | 'warning'
 }) {
   const showDelta = delta !== undefined && delta !== 0
   const positive = (delta ?? 0) >= 0
@@ -443,20 +435,6 @@ function MetricCard({
         }}
       >
         <div style={labelStyle}>{label.toUpperCase()}</div>
-        <div
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 6,
-            background: T.surfaceMuted,
-            border: `1px solid ${T.borderSoft}`,
-            display: 'grid',
-            placeItems: 'center',
-            color: tone === 'warning' ? T.warn : T.inkDim,
-          }}
-        >
-          <Icon size={13} />
-        </div>
       </div>
 
       <div
