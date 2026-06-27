@@ -30,6 +30,9 @@ import {
   History,
   Wrench,
   ChevronRight,
+  RotateCcw,
+  AlertTriangle,
+  Square,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useKamaiaAI } from './kamaia-ai-provider'
@@ -51,6 +54,7 @@ export function KamaiaAIPanel() {
     messages,
     send,
     sending,
+    stop,
   } = useKamaiaAI()
 
   const [input, setInput] = useState('')
@@ -235,14 +239,19 @@ export function KamaiaAIPanel() {
         )}
 
         {/* Body — messages list */}
-        <div ref={listRef} className="kai-body">
+        <div
+          ref={listRef}
+          className="kai-body"
+          aria-live="polite"
+          aria-atomic="false"
+        >
           {messages.length === 0 && !showHistory && (
             <div className="kai-empty">
               <Sparkles size={24} className="kai-empty-icon" />
               <div className="kai-empty-title">Como posso ajudar?</div>
               <div className="kai-empty-sub">
-                Pergunta sobre contratos, legislação angolana, ou pede para
-                executar uma acção (em breve).
+                Pergunta sobre contratos e legislação angolana, ou pede para
+                criar, abrir ou actualizar contratos.
               </div>
             </div>
           )}
@@ -271,15 +280,27 @@ export function KamaiaAIPanel() {
             disabled={sending}
             aria-label="Escreve uma mensagem"
           />
-          <button
-            type="submit"
-            className="kai-send"
-            disabled={!input.trim() || sending}
-            aria-label="Enviar"
-            title="Enviar (Enter)"
-          >
-            <Send size={14} />
-          </button>
+          {sending ? (
+            <button
+              type="button"
+              className="kai-send kai-stop"
+              onClick={stop}
+              aria-label="Parar resposta"
+              title="Parar"
+            >
+              <Square size={13} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="kai-send"
+              disabled={!input.trim()}
+              aria-label="Enviar"
+              title="Enviar (Enter)"
+            >
+              <Send size={14} />
+            </button>
+          )}
         </form>
         <div className="kai-foot-hint">
           Kamaia AI pode cometer erros. Verifica informação crítica.
@@ -526,6 +547,11 @@ export function KamaiaAIPanel() {
           opacity: 0.4;
           cursor: not-allowed;
         }
+        .kai-stop {
+          background: var(--k2-bg-elev-2);
+          color: var(--k2-text);
+          border: 1px solid var(--k2-border-strong);
+        }
         .kai-foot-hint {
           padding: 0 14px 10px;
           font-size: 10px;
@@ -576,9 +602,13 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
         </span>
       </div>
       {isConfirmation && (
-        <div className="kai-tool-confirm">
-          <div className="kai-tool-confirm-msg">
-            Esta acção altera dados. Confirmas?
+        <div className="kai-tool-confirm" role="group" aria-label="Confirmar acção">
+          <div className="kai-tool-confirm-head">
+            <AlertTriangle size={13} className="kai-tool-confirm-icon" />
+            <span>Confirmar acção</span>
+          </div>
+          <div className="kai-tool-confirm-summary">
+            {confirmSummary(trace.uiPayload)}
           </div>
           {acted === null ? (
             <div className="kai-tool-confirm-actions">
@@ -599,15 +629,19 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
                 disabled={sending}
                 onClick={() => {
                   setActed('cancel')
-                  void send('Não, cancela essa acção.')
+                  void send('Cancela, por favor.')
                 }}
               >
                 Cancelar
               </button>
             </div>
           ) : (
-            <div className="kai-tool-confirm-done">
-              {acted === 'confirm' ? 'Confirmado ✓' : 'Cancelado'}
+            <div className="kai-tool-confirm-done" role="status">
+              {acted === 'cancel'
+                ? 'Cancelado.'
+                : sending
+                  ? 'A confirmar…'
+                  : 'Confirmação enviada.'}
             </div>
           )}
         </div>
@@ -655,15 +689,57 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
         }
         .kai-tool.confirm {
           border-color: var(--k2-warn);
-          background: var(--k2-bg-elev-2);
+          border-width: 1.5px;
+          background: color-mix(in srgb, var(--k2-warn) 8%, var(--k2-bg-elev));
         }
         .kai-tool-confirm {
-          margin-top: 7px;
+          margin-top: 8px;
         }
-        .kai-tool-confirm-msg {
+        .kai-tool-confirm-head {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--k2-warn);
+          margin-bottom: 7px;
+        }
+        .kai-tool-confirm-icon {
+          flex-shrink: 0;
+        }
+        .kai-tool-confirm-summary {
+          margin-bottom: 9px;
+        }
+        .kai-confirm-action {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--k2-text);
+          margin-bottom: 5px;
+        }
+        .kai-confirm-fields {
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .kai-confirm-field {
+          display: flex;
+          gap: 8px;
+          font-size: 11.5px;
+        }
+        .kai-confirm-field dt {
+          color: var(--k2-text-mute);
+          min-width: 78px;
+          flex-shrink: 0;
+        }
+        .kai-confirm-field dd {
+          margin: 0;
+          color: var(--k2-text);
+          font-weight: 500;
+        }
+        .kai-confirm-note {
           font-size: 12px;
           color: var(--k2-text);
-          margin-bottom: 7px;
         }
         .kai-tool-confirm-actions {
           display: flex;
@@ -782,12 +858,86 @@ function prettyToolName(name: string): string {
   return map[name] ?? name
 }
 
+// Rótulos amigáveis para os argumentos da acção proposta no card de
+// confirmação. Só mostramos campos legíveis e ignoramos UUIDs/ruído.
+const ARG_LABELS: Record<string, string> = {
+  titulo: 'Título',
+  nome: 'Nome',
+  query: 'Nome',
+  valor: 'Valor',
+  moeda: 'Moeda',
+  leiAplicavel: 'Lei aplicável',
+  foro: 'Foro',
+  dataInicioVigencia: 'Início',
+  dataTermo: 'Termo',
+  descricao: 'Descrição',
+}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Resumo legível da acção que vai ser executada, a partir do uiPayload
+ * { toolName, args } que o backend envia no CONFIRMATION_REQUIRED. Sem
+ * isto, o utilizador confirmava às cegas.
+ */
+function confirmSummary(uiPayload: ToolCallTrace['uiPayload']): React.ReactNode {
+  const toolName = uiPayload?.toolName
+  const args = uiPayload?.args ?? {}
+  const titulo = prettyToolName(toolName ?? '').replace(/^A /, '')
+  const linhas: Array<{ k: string; v: string }> = []
+  for (const [key, label] of Object.entries(ARG_LABELS)) {
+    const raw = (args as Record<string, unknown>)[key]
+    if (raw === undefined || raw === null || raw === '') continue
+    if (typeof raw === 'string' && UUID_RE.test(raw)) continue
+    let v: string
+    if (key === 'valor' && (typeof raw === 'number' || typeof raw === 'string')) {
+      const n = Number(raw)
+      v = Number.isFinite(n) ? `${n.toLocaleString('pt-PT')} ${String((args as Record<string, unknown>).moeda ?? 'AOA')}` : String(raw)
+      if (key === 'valor') linhas.push({ k: label, v })
+      continue
+    }
+    if (key === 'moeda') continue // já incluída no valor
+    v = String(raw)
+    if (v.length > 80) v = v.slice(0, 80) + '…'
+    linhas.push({ k: label, v })
+  }
+  const partes = (args as Record<string, unknown>).partes
+  if (Array.isArray(partes) && partes.length > 0) {
+    linhas.push({ k: 'Partes', v: `${partes.length}` })
+  }
+  return (
+    <>
+      <div className="kai-confirm-action">
+        {titulo ? titulo.charAt(0).toUpperCase() + titulo.slice(1) : 'Acção'}
+      </div>
+      {linhas.length > 0 ? (
+        <dl className="kai-confirm-fields">
+          {linhas.map((l) => (
+            <div key={l.k} className="kai-confirm-field">
+              <dt>{l.k}</dt>
+              <dd>{l.v}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <div className="kai-confirm-note">Esta acção altera dados.</div>
+      )}
+    </>
+  )
+}
+
 export function Message({ message: m }: { message: import('./types').Message }) {
+  const { retry, sending } = useKamaiaAI()
   const isUser = m.role === 'user'
   // Render assistant content as markdown; user fica como plain text para
   // preservar a forma como ele escreveu (incluindo erros tipográficos).
   const html = !isUser && m.content ? renderMarkdownPreview(m.content) : null
   const hasToolCalls = !isUser && m.toolCalls && m.toolCalls.length > 0
+  // "A pensar" só enquanto não há texto NEM tools a correr (essas já
+  // comunicam actividade pelo próprio chip).
+  const showThinking = m.streaming && !isUser && !m.content && !hasToolCalls
+  // Bolha vazia settled (sem conteúdo, sem tools, terminou) não deve
+  // renderizar — colapsa.
+  const showBubble = isUser || html || showThinking
 
   return (
     <div className={`kai-msg ${isUser ? 'user' : 'assistant'}`}>
@@ -798,25 +948,33 @@ export function Message({ message: m }: { message: import('./types').Message }) 
           ))}
         </div>
       )}
-      <div className="kai-bubble">
-        {isUser ? (
-          <span className="kai-bubble-text">{m.content}</span>
-        ) : html ? (
-          <div
-            className="kai-bubble-md"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        ) : (
-          // Onda C.1.2: settled (não-streaming) message sem conteúdo
-          // e sem tool calls não pode parecer streaming. Antes: '…'.
-          // Agora: ficar vazio para a bolha colapsar, ou mostrar
-          // marcador discreto se errored.
-          <span className="kai-bubble-pending">
-            {m.streaming ? '…' : m.errored ? '⚠' : ''}
-          </span>
-        )}
-        {m.streaming && !isUser && m.content && <span className="kai-caret" />}
-      </div>
+      {showBubble && (
+        <div className={`kai-bubble ${m.errored ? 'errored' : ''}`}>
+          {isUser ? (
+            <span className="kai-bubble-text">{m.content}</span>
+          ) : html ? (
+            <div
+              className="kai-bubble-md"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          ) : (
+            <span className="kai-thinking" aria-label="Kamaia a pensar">
+              Kamaia a pensar<span className="kai-dots" aria-hidden="true" />
+            </span>
+          )}
+          {m.streaming && !isUser && m.content && <span className="kai-caret" />}
+        </div>
+      )}
+      {m.errored && !isUser && (
+        <button
+          type="button"
+          className="kai-retry"
+          disabled={sending}
+          onClick={() => retry()}
+        >
+          <RotateCcw size={12} /> Repetir
+        </button>
+      )}
       {!isUser && m.citacoes && m.citacoes.length > 0 && (
         <div className="kai-citations">
           <div className="kai-citations-head">
@@ -866,8 +1024,45 @@ export function Message({ message: m }: { message: import('./types').Message }) 
         .kai-bubble-text {
           white-space: pre-wrap;
         }
-        .kai-bubble-pending {
+        .kai-bubble.errored {
+          border: 1px solid var(--k2-bad);
+        }
+        .kai-thinking {
           color: var(--k2-text-mute);
+          font-size: 13px;
+        }
+        .kai-dots::after {
+          content: '…';
+          animation: kai-thinking-dots 1.4s steps(4, end) infinite;
+        }
+        @keyframes kai-thinking-dots {
+          0% { content: ''; }
+          25% { content: '.'; }
+          50% { content: '..'; }
+          75% { content: '…'; }
+        }
+        .kai-retry {
+          align-self: flex-start;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-family: inherit;
+          font-size: 12px;
+          color: var(--k2-text-dim);
+          background: transparent;
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius-sm);
+          padding: 5px 10px;
+          margin-top: 6px;
+          cursor: pointer;
+        }
+        .kai-retry:hover:not(:disabled) {
+          color: var(--k2-text);
+          border-color: var(--k2-border-strong);
+        }
+        .kai-retry:disabled {
+          opacity: 0.5;
+          cursor: default;
         }
         .kai-caret {
           display: inline-block;

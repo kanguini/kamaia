@@ -65,6 +65,10 @@ interface KamaiaAIContextValue {
   messages: Message[]
   send: (text: string, opts?: { allowMutations?: boolean }) => Promise<void>
   sending: boolean
+  /** Pára o stream em curso. */
+  stop: () => void
+  /** Reenvia o último prompt do utilizador (recuperação de erro). */
+  retry: () => void
 }
 
 const KamaiaAIContext = createContext<KamaiaAIContextValue | null>(null)
@@ -105,6 +109,34 @@ interface ProviderProps {
   children: React.ReactNode
   /** Atalho de teclado para abrir/fechar. Default: ⌘+J / Ctrl+J */
   shortcutKey?: string
+}
+
+/**
+ * Converte mensagens de erro técnicas (códigos HTTP, "tokens", jargão
+ * de quota) em texto accionável e em pt-AO para o utilizador. O detalhe
+ * técnico fica nos logs do servidor, não na bolha.
+ */
+function humanizeError(raw: string): string {
+  const m = (raw || '').toLowerCase()
+  if (m.includes('529') || m.includes('503') || m.includes('sobrecarreg') || m.includes('overload')) {
+    return 'O serviço de IA está sobrecarregado neste momento. Tenta de novo dentro de instantes.'
+  }
+  if (m.includes('500') || m.includes('502') || m.includes('erro ia')) {
+    return 'Ocorreu um erro no serviço de IA. Tenta de novo dentro de instantes.'
+  }
+  if (m.includes('quota') || m.includes('esgotad') || m.includes('provision')) {
+    return 'Esgotaste as mensagens de IA do teu plano. Renova o plano ou fala com o suporte.'
+  }
+  if (m.includes('demasiadas')) {
+    return 'Tens demasiadas conversas em simultâneo. Aguarda uma terminar e tenta de novo.'
+  }
+  if (m.includes('token') || m.includes('turno') || m.includes('ultrapass') || m.includes('limite')) {
+    return 'A resposta ficou demasiado longa para concluir. Tenta dividir o pedido em passos mais pequenos.'
+  }
+  if (m.includes('ligaç') || m.includes('rede') || m.includes('network') || m.includes('failed to fetch') || m.includes('fetch')) {
+    return 'Não consegui ligar ao servidor. Verifica a tua ligação e tenta de novo.'
+  }
+  return 'Não foi possível completar o pedido. Tenta de novo dentro de instantes.'
 }
 
 export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps) {
@@ -214,6 +246,8 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
   // partilhado: se nova send começa antes da anterior terminar, ou
   // se a conversa muda, abortamos a anterior.
   const sendAbortRef = useRef<AbortController | null>(null)
+  // Último texto enviado pelo utilizador — usado pelo botão "Repetir".
+  const lastSentRef = useRef<{ text: string; opts?: { allowMutations?: boolean } } | null>(null)
 
   // Cancela ao desmontar o provider OU ao mudar de conversa
   useEffect(() => {
@@ -299,6 +333,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
   const send = useCallback(
     async (text: string, opts?: { allowMutations?: boolean }) => {
       if (!text.trim() || !session?.accessToken) return
+      lastSentRef.current = { text, opts }
 
       // Cria conversa on-demand se nenhuma estiver activa. Usa o
       // shared in-flight ref (Onda A.5) para coordenar com
@@ -515,7 +550,11 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
                   m.id === tempAssistantId
                     ? {
                         ...m,
-                        content: `⚠ ${String(data.message ?? 'Erro de IA')}`,
+                        // Anexa o erro ABAIXO do que já foi transmitido
+                        // (não apaga texto parcial já útil).
+                        content:
+                          (m.content ? m.content + '\n\n' : '') +
+                          `⚠ ${humanizeError(String(data.message ?? ''))}`,
                         streaming: false,
                         errored: true,
                       }
@@ -539,7 +578,9 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               m.id === tempAssistantId
                 ? {
                     ...m,
-                    content: `⚠ Erro de ligação: ${(e as Error).message}`,
+                    content:
+                      (m.content ? m.content + '\n\n' : '') +
+                      `⚠ ${humanizeError((e as Error).message)}`,
                     streaming: false,
                     errored: true,
                   }
@@ -564,6 +605,22 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
     ],
   )
 
+  // Pára o stream em curso (abort) e fecha a bolha que estava a
+  // transmitir. A infra de AbortController já existia — isto expõe-a.
+  const stop = useCallback(() => {
+    sendAbortRef.current?.abort()
+    setMessages((prev) =>
+      prev.map((m) => (m.streaming ? { ...m, streaming: false } : m)),
+    )
+    setSending(false)
+  }, [])
+
+  // Reenvia o último prompt do utilizador (botão "Repetir" em erro).
+  const retry = useCallback(() => {
+    const last = lastSentRef.current
+    if (last && !sending) void send(last.text, last.opts)
+  }, [send, sending])
+
   const value = useMemo<KamaiaAIContextValue>(
     () => ({
       open,
@@ -580,6 +637,8 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       messages,
       send,
       sending,
+      stop,
+      retry,
     }),
     [
       open,
@@ -593,6 +652,8 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       reloadConversations,
       messages,
       send,
+      stop,
+      retry,
       sending,
     ],
   )

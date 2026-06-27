@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   Command,
   Plus,
+  Square,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
@@ -82,7 +83,7 @@ export default function KamaiaAIHomePage() {
   // A conversa decorre INLINE nesta página — partilha o mesmo provider
   // que o painel lateral (⌘+J), mas aqui NÃO abrimos o painel: seria
   // redundante estar já na página dedicada da Kamaia AI.
-  const { send, sending, messages, newConversation } = useKamaiaAI()
+  const { send, sending, messages, newConversation, stop } = useKamaiaAI()
   const [input, setInput] = useState('')
 
   // Declara o contexto desta page para o agente
@@ -126,15 +127,27 @@ export default function KamaiaAIHomePage() {
         autoFocus
         aria-label="Pergunta à Kamaia AI"
       />
-      <button
-        type="submit"
-        className="kai-home-send"
-        disabled={!input.trim() || sending}
-        aria-label="Enviar"
-        title="Enviar (Enter)"
-      >
-        <Send size={16} />
-      </button>
+      {sending ? (
+        <button
+          type="button"
+          className="kai-home-send kai-home-stop"
+          onClick={stop}
+          aria-label="Parar resposta"
+          title="Parar"
+        >
+          <Square size={15} fill="currentColor" />
+        </button>
+      ) : (
+        <button
+          type="submit"
+          className="kai-home-send"
+          disabled={!input.trim()}
+          aria-label="Enviar"
+          title="Enviar (Enter)"
+        >
+          <Send size={16} />
+        </button>
+      )}
     </form>
   )
 
@@ -155,7 +168,12 @@ export default function KamaiaAIHomePage() {
               <Plus size={13} /> Nova conversa
             </button>
           </div>
-          <div className="kai-thread" ref={threadRef}>
+          <div
+            className="kai-thread"
+            ref={threadRef}
+            aria-live="polite"
+            aria-atomic="false"
+          >
             {messages.map((m) => (
               <Message key={m.id} message={m} />
             ))}
@@ -373,6 +391,11 @@ export default function KamaiaAIHomePage() {
         .kai-home-send:disabled {
           opacity: 0.4;
           cursor: not-allowed;
+        }
+        .kai-home-stop {
+          background: var(--k2-bg-elev-2);
+          color: var(--k2-text);
+          border: 1px solid var(--k2-border-strong);
         }
 
         .kai-home-chips {
