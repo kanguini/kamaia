@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { SessionProvider } from '@/components/providers/session-provider'
+import { StyledJsxRegistry } from '@/components/providers/styled-jsx-registry'
 import '@/styles/globals.css'
 
 const inter = Inter({
@@ -58,7 +59,9 @@ export default function RootLayout({
         {GEIST_FONT_LINK}
       </head>
       <body className={inter.variable} style={{ fontFamily: 'Geist, Inter, -apple-system, system-ui, sans-serif' }}>
-        <SessionProvider>{children}</SessionProvider>
+        <StyledJsxRegistry>
+          <SessionProvider>{children}</SessionProvider>
+        </StyledJsxRegistry>
       </body>
     </html>
   )

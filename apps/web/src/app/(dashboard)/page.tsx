@@ -32,9 +32,17 @@ import {
   Command,
   Plus,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
-import { Message } from '@/components/kamaia-ai/kamaia-ai-panel'
 import { FirstRunBanner } from '@/components/onboarding/first-run-banner'
+
+// O <Message> vive no painel (markdown, tool chips). Só é preciso
+// quando há conversa activa — carrega-o sob demanda para não pesar o
+// bundle inicial da homepage (hidratação rápida, sem FOUC visível).
+const Message = dynamic(
+  () => import('@/components/kamaia-ai/kamaia-ai-panel').then((m) => m.Message),
+  { ssr: false },
+)
 
 interface Chip {
   icon: React.ElementType
