@@ -172,9 +172,10 @@
   font-feature-settings: 'tnum', 'zero';
   letter-spacing: -0.005em;
 }
-/* Sidebar colapsada — 64px só icons. */
-.k2-shell.collapsed { grid-template-columns: 64px minmax(0, 1fr); }
-.k2-sidebar.collapsed { width: 64px; }
+/* Sidebar colapsada — só icons. Coluna mais larga para acomodar a
+   margem do cartão flutuante (a largura é dada pelo grid + margem, sem
+   width fixa que transbordaria). */
+.k2-shell.collapsed { grid-template-columns: 80px minmax(0, 1fr); }
 .k2-sidebar.collapsed .k2-nav-item { justify-content: center; padding: 10px 0; }
 .k2-sidebar.collapsed .k2-brand { justify-content: center; }
 .k2-sidebar.collapsed .k2-sb-head { padding: 14px 8px 12px; flex-direction: column; gap: 10px; }
@@ -182,18 +183,24 @@
 /* Sidebar — bg igualada ao main para unidade visual.
    Em vez de elev (#fff/#161616) usamos bg (#fafafa/#0a0a0a).
    A separação visual é dada pelo border-right subtil. */
+/* Sidebar FLUTUANTE — destacada das margens como um cartão, com cantos
+   arredondados, sombra e fundo elevado. Em mobile volta a drawer
+   full-height (ver media query). */
 .k2-sidebar {
-  background: var(--k2-bg);
-  border-right: 1px solid var(--k2-border);
+  background: var(--k2-bg-elev);
+  border: 1px solid var(--k2-border);
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 0;
+  top: 12px;
   align-self: start;
-  height: 100vh;
-  max-height: 100vh;
+  margin: 12px;
+  height: calc(100vh - 24px);
+  max-height: calc(100vh - 24px);
   overflow: hidden;
   z-index: 10;
+  box-shadow: 0 10px 32px -14px rgba(0, 0, 0, 0.22);
 }
 .k2-sb-head {
   padding: 18px 18px 14px;
@@ -242,10 +249,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: var(--k2-radius-sm);
   color: var(--k2-text);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   position: relative;
   width: 100%;
@@ -420,6 +427,14 @@
     position: fixed;
     inset: 0 auto 0 0;
     width: var(--k2-sidebar-w);
+    /* drawer full-height em mobile — desfaz o flutuante do desktop */
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--k2-border);
+    height: 100vh;
+    max-height: 100vh;
+    box-shadow: 0 0 50px -10px rgba(0, 0, 0, 0.45);
     z-index: 40;
     transform: translateX(-100%);
     transition: transform 200ms ease;
