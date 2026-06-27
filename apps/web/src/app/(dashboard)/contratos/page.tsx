@@ -7,7 +7,7 @@
  */
 
 import Link from 'next/link'
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
@@ -69,6 +69,10 @@ function ContratosListInner() {
 
   const [items, setItems] = useState<ContratoListItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
+  // Força refetch da página 1 (ex.: ao voltar à lista depois de criar).
+  const [refreshKey, setRefreshKey] = useState(0)
+  // Guard de corrida: descarta respostas tardias de páginas/filtros antigos.
+  const reqIdRef = useRef(0)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -129,33 +133,45 @@ function ContratosListInner() {
 
   useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return
-    let cancelled = false
+    const myId = ++reqIdRef.current
     setLoading(true)
     api<PaginatedResponse<ContratoListItem>>(`/contratos?${query}`, {
       token: session.accessToken,
     })
       .then((res) => {
-        if (cancelled) return
+        if (reqIdRef.current !== myId) return
+        // `cursor` na closure decide append vs replace; o guard de id
+        // garante que só a resposta mais recente aplica estado, por
+        // isso uma página antiga nunca contamina uma lista já reposta.
         setItems((prev) => (cursor ? [...prev, ...(res.data ?? [])] : res.data ?? []))
         setNextCursor(res.nextCursor)
         setError(null)
       })
       .catch((err: { error?: string }) => {
-        if (!cancelled) setError(err?.error ?? 'Erro ao carregar contratos')
+        if (reqIdRef.current !== myId) return
+        setError(err?.error ?? 'Erro ao carregar contratos')
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (reqIdRef.current === myId) setLoading(false)
       })
-    return () => {
-      cancelled = true
-    }
-  }, [query, session?.accessToken, status, cursor])
+  }, [query, session?.accessToken, status, cursor, refreshKey])
 
   // Reset cursor + items when filters change.
   useEffect(() => {
     setCursor(null)
     setItems([])
   }, [search, estado, tipoId, expiraEmDias])
+
+  // Refetch da página 1 quando a janela volta a ganhar foco — apanha
+  // contratos criados/alterados noutra vista sem reload manual.
+  useEffect(() => {
+    const onFocus = () => {
+      setCursor(null)
+      setRefreshKey((k) => k + 1)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -262,6 +278,13 @@ function ContratosListInner() {
             </tr>
           </thead>
           <tbody>
+            {items.length === 0 && loading && (
+              <tr>
+                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>
+                  A carregar…
+                </td>
+              </tr>
+            )}
             {items.length === 0 && !loading && (
               <tr>
                 <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>

@@ -539,12 +539,16 @@ function proximaAccaoHint(c: Contrato): { text: string; urgent: boolean } | null
   const now = new Date()
   if (c.dataTermo) {
     const termo = new Date(c.dataTermo)
-    const dias = Math.ceil((termo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    if (dias < 0) return { text: `Termo expirou há ${Math.abs(dias)} dias`, urgent: true }
-    if (dias === 0) return { text: `Termo hoje`, urgent: true }
-    if (dias <= 30) {
-      const tipoTermo = c.renovacaoAutomatica ? 'Renova' : 'Termina'
-      return { text: `${tipoTermo} em ${dias} dias`, urgent: dias <= 7 }
+    const ms = termo.getTime()
+    // Guard: data inválida não pode produzir "em NaN dias".
+    if (Number.isFinite(ms)) {
+      const dias = Math.ceil((ms - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (dias < 0) return { text: `Termo expirou há ${Math.abs(dias)} dias`, urgent: true }
+      if (dias === 0) return { text: `Termo hoje`, urgent: true }
+      if (dias <= 30) {
+        const tipoTermo = c.renovacaoAutomatica ? 'Renova' : 'Termina'
+        return { text: `${tipoTermo} em ${dias} dias`, urgent: dias <= 7 }
+      }
     }
   }
   if (c.estado === ContratoEstado.PRONTO_ASSINATURA) {

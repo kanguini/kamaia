@@ -374,9 +374,13 @@ function NovaObrigacaoDrawer({
     setErr(null)
     try {
       let valorCentavos: string | undefined
-      if (valor) {
-        const p = Number(valor.replace(',', '.'))
-        if (Number.isFinite(p)) valorCentavos = String(Math.round(p * 100))
+      if (valor.trim()) {
+        const p = Number(valor)
+        if (!Number.isFinite(p) || p < 0) {
+          setErr('Valor inválido — usa um número não-negativo.')
+          return
+        }
+        valorCentavos = String(Math.round(p * 100))
       }
       await api(`/contratos/${contratoId}/obrigacoes`, {
         method: 'POST',
@@ -453,7 +457,7 @@ function NovaObrigacaoDrawer({
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
             <FieldLabel label="Valor esperado (em kwanzas)">
-              <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" />
+              <Input type="number" min={0} step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" />
             </FieldLabel>
             <FieldLabel label="Moeda">
               <Select value={moeda} onChange={(e) => setMoeda(e.target.value)}>
@@ -505,9 +509,13 @@ function CumprirDrawer({
     setErr(null)
     try {
       let valorCentavos: string | undefined
-      if (valorReal) {
-        const p = Number(valorReal.replace(',', '.'))
-        if (Number.isFinite(p)) valorCentavos = String(Math.round(p * 100))
+      if (valorReal.trim()) {
+        const p = Number(valorReal)
+        if (!Number.isFinite(p) || p < 0) {
+          setErr('Valor inválido — usa um número não-negativo.')
+          return
+        }
+        valorCentavos = String(Math.round(p * 100))
       }
       await api(`/contratos/${contratoId}/obrigacoes/instancias/${ctx.instancia.id}/cumprir`, {
         method: 'PATCH',
@@ -545,7 +553,7 @@ function CumprirDrawer({
             <Input type="date" value={dataReal} onChange={(e) => setDataReal(e.target.value)} />
           </FieldLabel>
           <FieldLabel label={`Valor real (esperado: ${ctx.obrigacao.valorEsperado ? fmtMoney(ctx.obrigacao.valorEsperado, ctx.obrigacao.moeda ?? undefined) : 'n/a'})`}>
-            <Input value={valorReal} onChange={(e) => setValorReal(e.target.value)} placeholder="0.00" />
+            <Input type="number" min={0} step="0.01" value={valorReal} onChange={(e) => setValorReal(e.target.value)} placeholder="0.00" />
           </FieldLabel>
           <FieldLabel label="Comprovativo (PDF/imagem)">
             <DocumentDropzone

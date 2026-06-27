@@ -17,15 +17,21 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
   const [error, setError] = useState<string | null>(null)
   const depsRef = useRef(deps)
   depsRef.current = deps
+  // Guard de corrida: só o pedido mais recente aplica estado. Evita
+  // last-resolved-wins (navegar A→B mostrar o contrato A) e setState
+  // após unmount (o cleanup do efeito incrementa este contador).
+  const reqIdRef = useRef(0)
 
   const fetchData = useCallback(async () => {
     if (!endpoint || status !== 'authenticated' || !session?.accessToken) {
       if (status === 'unauthenticated') setLoading(false)
       return
     }
+    const myId = ++reqIdRef.current
     setLoading(true)
     try {
       const result = await api<Record<string, unknown>>(endpoint, { token: session.accessToken })
+      if (reqIdRef.current !== myId) return
       if (result && typeof result === 'object' && 'data' in result) {
         setData(result.data as T)
       } else {
@@ -33,6 +39,7 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
       }
       setError(null)
     } catch (err: unknown) {
+      if (reqIdRef.current !== myId) return
       // Log to console for diagnostics (browser DevTools)
       console.error(`[useApi] Failed to fetch ${endpoint}:`, err)
       const errorObj = err as { error?: string; code?: string; message?: string; status?: number }
@@ -49,13 +56,18 @@ export function useApi<T>(endpoint: string | null, deps: unknown[] = []) {
       const shortEndpoint = endpoint.split('?')[0]
       setError(backendMsg ? `${backendMsg} (${shortEndpoint})` : `Erro ao carregar ${shortEndpoint}`)
     } finally {
-      setLoading(false)
+      if (reqIdRef.current === myId) setLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endpoint, session?.accessToken, status])
 
   useEffect(() => {
     fetchData()
+    // Invalida pedidos em voo ao desmontar / mudar deps (descarta
+    // respostas tardias que escreveriam estado obsoleto).
+    return () => {
+      reqIdRef.current++
+    }
   }, [fetchData, ...deps])
 
   return { data, loading, error, refetch: fetchData }

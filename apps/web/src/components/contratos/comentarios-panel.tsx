@@ -52,6 +52,7 @@ export function ComentariosPanel({
   const [novoTexto, setNovoTexto] = useState('')
   const [novoCl, setNovoCl] = useState('Geral')
   const [submitting, setSubmitting] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
 
   const fetchAll = async () => {
     if (status !== 'authenticated' || !session?.accessToken) return
@@ -65,6 +66,10 @@ export function ComentariosPanel({
         { token: session.accessToken },
       )
       setItems(data ?? [])
+      setErro(null)
+    } catch (e) {
+      // Não engolir: distingue falha de carregamento de "sem comentários".
+      setErro((e as { error?: string })?.error ?? 'Erro ao carregar comentários.')
     } finally {
       setLoading(false)
     }
@@ -76,8 +81,9 @@ export function ComentariosPanel({
   }, [contratoId, versaoId, session?.accessToken, status])
 
   const submitNovo = async () => {
-    if (!novoTexto.trim() || !session?.accessToken) return
+    if (submitting || !novoTexto.trim() || !session?.accessToken) return
     setSubmitting(true)
+    setErro(null)
     try {
       await api(`/contratos/${contratoId}/comentarios`, {
         method: 'POST',
@@ -90,6 +96,9 @@ export function ComentariosPanel({
       })
       setNovoTexto('')
       void fetchAll()
+    } catch (e) {
+      // Mantém o texto e mostra o erro em vez de o perder em silêncio.
+      setErro((e as { error?: string })?.error ?? 'Erro ao publicar comentário.')
     } finally {
       setSubmitting(false)
     }
@@ -205,6 +214,11 @@ export function ComentariosPanel({
         >
           Comentar
         </Button>
+        {erro && (
+          <div role="alert" style={{ fontSize: 12, color: 'var(--k2-bad)' }}>
+            {erro}
+          </div>
+        )}
       </div>
     </section>
   )
