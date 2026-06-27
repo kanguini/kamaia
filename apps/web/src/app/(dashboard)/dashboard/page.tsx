@@ -26,7 +26,6 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownRight,
-  Search,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { estadoBadgeVariant } from '@/lib/clm-format'
@@ -97,8 +96,6 @@ export default function ExecutiveOverviewPage() {
       }}
     >
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <Toolbar />
-
         <Header />
 
         {error && (
@@ -146,60 +143,6 @@ export default function ExecutiveOverviewPage() {
         <RecentActivity data={data} loading={loading} />
 
         <DistribuicaoEstado data={data} loading={loading} />
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────
-// Toolbar (search + quick actions)
-// ─────────────────────────────────────
-
-function Toolbar() {
-  const [q, setQ] = useState('')
-  // AUDIT P2 #12: search agora liga ao endpoint real via navegação
-  // para /contratos?search=Q. Enter submete; clicar fora preserva
-  // o input (UX comum em busca global de SaaS).
-  const submit = () => {
-    if (q.trim()) window.location.href = `/contratos?search=${encodeURIComponent(q.trim())}`
-  }
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 24,
-      }}
-    >
-      <div style={{ position: 'relative', maxWidth: 480, flex: 1 }}>
-        <Search
-          size={14}
-          style={{
-            position: 'absolute',
-            left: 12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: T.inkMute,
-          }}
-        />
-        <input
-          placeholder="Procurar contratos…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          style={{
-            width: '100%',
-            padding: '8px 12px 8px 34px',
-            background: T.surface,
-            border: `1px solid ${T.borderSoft}`,
-            borderRadius: 6,
-            fontSize: 14,
-            color: T.ink,
-            outline: 'none',
-            fontFamily: 'inherit',
-          }}
-        />
       </div>
     </div>
   )
