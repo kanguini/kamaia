@@ -24,7 +24,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="k2-auth">
-      <style>{`
+      {/* dangerouslySetInnerHTML em vez de children: o browser
+          reformata o texto de <style> (CSSOM normaliza o data-URI com
+          %23/%25), o que provocava "Text content did not match" na
+          hidratação. Com innerHTML o React não compara o conteúdo. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         /* ── Root layout ── */
         .k2-auth {
           height: 100vh;
@@ -374,7 +380,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           }
           .k2-auth-brand::after { opacity: 0.5; }
         }
-      `}</style>
+      `,
+        }}
+      />
 
       {/* Brand panel — animated gradient + noise */}
       <aside className="k2-auth-brand">
