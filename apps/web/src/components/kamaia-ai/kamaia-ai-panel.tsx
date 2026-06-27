@@ -59,6 +59,8 @@ export function KamaiaAIPanel() {
 
   const [input, setInput] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+  // Conversa cujo apagar está a aguardar confirmação inline.
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -234,15 +236,37 @@ export function KamaiaAIPanel() {
                         {fmtDateTime(c.updatedAt)}
                       </div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteConversation(c.id)}
-                      className="kai-icon-btn kai-history-item-del"
-                      aria-label="Apagar conversa"
-                      title="Apagar"
-                    >
-                      <Trash2 size={11} />
-                    </button>
+                    {confirmDelete === c.id ? (
+                      <div className="kai-del-confirm">
+                        <button
+                          type="button"
+                          className="kai-del-yes"
+                          onClick={() => {
+                            setConfirmDelete(null)
+                            void deleteConversation(c.id)
+                          }}
+                        >
+                          Apagar
+                        </button>
+                        <button
+                          type="button"
+                          className="kai-del-no"
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          Não
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(c.id)}
+                        className="kai-icon-btn kai-history-item-del"
+                        aria-label="Apagar conversa"
+                        title="Apagar"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -334,7 +358,9 @@ export function KamaiaAIPanel() {
           transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
           display: flex;
           flex-direction: column;
-          z-index: 40;
+          /* Acima da sidebar mobile (z-index 40) para evitar stacking
+             ambíguo quando ambos abrem. */
+          z-index: 60;
           pointer-events: none;
         }
         .kai-panel.open {
@@ -377,6 +403,13 @@ export function KamaiaAIPanel() {
         .kai-icon-btn:hover {
           background: var(--k2-bg-hover);
           color: var(--k2-text);
+        }
+        /* Em ecrãs de toque, alvos maiores (WCAG 2.5.8 / iOS). */
+        @media (pointer: coarse) {
+          .kai-icon-btn {
+            width: 42px;
+            height: 42px;
+          }
         }
 
         .kai-conv-indicator {
@@ -476,6 +509,32 @@ export function KamaiaAIPanel() {
         .kai-history-item-del {
           width: 26px;
           margin: 4px;
+        }
+        .kai-del-confirm {
+          display: inline-flex;
+          gap: 4px;
+          align-items: center;
+          padding: 4px 6px;
+          flex-shrink: 0;
+        }
+        .kai-del-yes,
+        .kai-del-no {
+          font-family: inherit;
+          font-size: 11px;
+          font-weight: 500;
+          padding: 4px 8px;
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          border: 1px solid transparent;
+        }
+        .kai-del-yes {
+          background: var(--k2-bad);
+          color: #fff;
+        }
+        .kai-del-no {
+          background: transparent;
+          border-color: var(--k2-border-strong);
+          color: var(--k2-text-dim);
         }
 
         .kai-body {
@@ -1001,7 +1060,7 @@ export function Message({ message: m }: { message: import('./types').Message }) 
               </div>
               <div className="kai-citation-title">{c.titulo}</div>
               <div className="kai-citation-trecho">
-                &ldquo;{c.trecho.slice(0, 180)}…&rdquo;
+                &ldquo;{c.trecho.length > 180 ? `${c.trecho.slice(0, 180)}…` : c.trecho}&rdquo;
               </div>
             </div>
           ))}
@@ -1205,6 +1264,13 @@ export function Message({ message: m }: { message: import('./types').Message }) 
           text-decoration: underline;
         }
         .kai-bubble-md :global(strong) {
+          font-weight: 600;
+        }
+        .kai-bubble-md :global(.md-todo) {
+          background: color-mix(in srgb, var(--k2-warn) 18%, transparent);
+          color: var(--k2-warn);
+          padding: 1px 6px;
+          border-radius: 3px;
           font-weight: 600;
         }
       `}</style>

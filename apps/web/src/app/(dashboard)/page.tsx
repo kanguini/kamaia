@@ -253,7 +253,9 @@ export default function KamaiaAIHomePage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: calc(100vh - 120px);
+          /* dvh: viewport dinâmico — em mobile exclui a barra de URL do
+             browser, evitando que o input fixo fique atrás da chrome. */
+          min-height: calc(100dvh - 120px);
           padding: 40px 24px;
         }
         /* Modo conversa: thread ocupa a página, input fixo em baixo. */
@@ -262,7 +264,7 @@ export default function KamaiaAIHomePage() {
           justify-content: flex-start;
           padding: 0;
           min-height: 0;
-          height: calc(100vh - 116px);
+          height: calc(100dvh - 116px);
         }
         .kai-conv {
           width: 100%;

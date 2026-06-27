@@ -36,11 +36,11 @@ function renderInline(s: string): string {
       return `<a href="${safeUrl}" rel="noopener noreferrer" target="_blank">${text}</a>`;
     },
   )
-  // Destaque para placeholders [A COMPLETAR — ...] (audit L.4 / AUDIT.13)
+  // Destaque para placeholders [A COMPLETAR — ...] (audit L.4 / AUDIT.13).
+  // Classe (não estilo inline) para respeitar o tema dark/light.
   out = out.replace(
     /\[A COMPLETAR[^\]]*\]/g,
-    (match) =>
-      `<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:3px;font-weight:600;">${match}</span>`,
+    (match) => `<span class="md-todo">${match}</span>`,
   )
   return out
 }
