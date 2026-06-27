@@ -37,8 +37,11 @@ describe('ContratoVersoesService.editarCorpo guard', () => {
     });
     // Injectamos prisma directo (sem Nest container) — service só
     // depende de prismaService
-    const svc = new ContratoVersoesService(prisma as unknown as never);
-    await expect(svc.editarCorpo('t', 'c', 'v1', DTO)).resolves.toBeDefined();
+    const svc = new ContratoVersoesService(
+      prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
+    await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).resolves.toBeDefined();
     expect(prisma.contratoVersao.update).toHaveBeenCalled();
   });
 
@@ -49,11 +52,14 @@ describe('ContratoVersoesService.editarCorpo guard', () => {
         { id: 'a1', estado: 'ASSINADA', signatarioNome: 'Maria Sousa' },
       ],
     });
-    const svc = new ContratoVersoesService(prisma as unknown as never);
-    await expect(svc.editarCorpo('t', 'c', 'v1', DTO)).rejects.toThrow(
+    const svc = new ContratoVersoesService(
+      prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
+    await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).rejects.toThrow(
       BadRequestException,
     );
-    await expect(svc.editarCorpo('t', 'c', 'v1', DTO)).rejects.toThrow(
+    await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).rejects.toThrow(
       /Maria Sousa/,
     );
     expect(prisma.contratoVersao.update).not.toHaveBeenCalled();
@@ -66,8 +72,11 @@ describe('ContratoVersoesService.editarCorpo guard', () => {
         { id: 'a1', estado: 'PENDENTE', signatarioNome: 'João Pinto' },
       ],
     });
-    const svc = new ContratoVersoesService(prisma as unknown as never);
-    await expect(svc.editarCorpo('t', 'c', 'v1', DTO)).rejects.toThrow(
+    const svc = new ContratoVersoesService(
+      prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
+    await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).rejects.toThrow(
       /pendente/,
     );
     expect(prisma.contratoVersao.update).not.toHaveBeenCalled();
@@ -82,18 +91,24 @@ describe('ContratoVersoesService.editarCorpo guard', () => {
       id: 'v1',
       assinaturas: [{ id: 'a1', estado: 'PENDENTE', signatarioNome: 'Y' }],
     });
-    const svcA = new ContratoVersoesService(prismaAssinada as unknown as never);
-    const svcP = new ContratoVersoesService(prismaPendente as unknown as never);
+    const svcA = new ContratoVersoesService(
+      prismaAssinada as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
+    const svcP = new ContratoVersoesService(
+      prismaPendente as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
 
     let errA = '';
     let errP = '';
     try {
-      await svcA.editarCorpo('t', 'c', 'v1', DTO);
+      await svcA.editarCorpo('t', 'u', 'c', 'v1', DTO);
     } catch (e) {
       errA = (e as Error).message;
     }
     try {
-      await svcP.editarCorpo('t', 'c', 'v1', DTO);
+      await svcP.editarCorpo('t', 'u', 'c', 'v1', DTO);
     } catch (e) {
       errP = (e as Error).message;
     }

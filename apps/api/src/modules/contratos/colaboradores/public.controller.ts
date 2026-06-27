@@ -43,7 +43,8 @@ const AssinarPublicSchema = z.object({
   signatarioNome: z.string().min(2).max(200),
   signatarioBI: z.string().max(40).optional(),
   cargo: z.string().max(100).optional(),
-  imagemBase64: z.string().optional(),
+  // ~1.5 MB de imagem — tecto contra payloads gigantes (endpoint público).
+  imagemBase64: z.string().max(2_000_000).optional(),
 });
 
 @Controller('c/:token')

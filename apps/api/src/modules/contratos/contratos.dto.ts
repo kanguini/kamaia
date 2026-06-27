@@ -34,9 +34,9 @@ export const CreateContratoSchema = z.object({
   origem: z.nativeEnum(ContratoOrigem).default(ContratoOrigem.CRIADO_INTERNAMENTE),
   modoEngajamento: z.enum(['A', 'B', 'C', 'D']).optional(),
 
-  valor: z.coerce.bigint().optional(),
+  valor: z.coerce.bigint().refine((v) => v >= 0n, 'Valor não pode ser negativo').optional(),
   moeda: z.enum(MOEDAS_SUPORTADAS).optional(),
-  valorEmAKZ: z.coerce.bigint().optional(),
+  valorEmAKZ: z.coerce.bigint().refine((v) => v >= 0n, 'Valor não pode ser negativo').optional(),
   taxaCambio: z.coerce.number().positive().optional(),
 
   leiAplicavel: z.string().max(100).optional(),

@@ -65,6 +65,26 @@ export class ContratoComentariosService {
     });
     if (!c) throw new NotFoundException('Contrato not found');
 
+    // FK guard: versaoId / parentComentarioId têm de pertencer a ESTE
+    // contrato — impede referência cruzada (ex.: thread sob comentário
+    // de outro contrato/tenant).
+    if (params.versaoId) {
+      const v = await this.prisma.contratoVersao.findFirst({
+        where: { id: params.versaoId, contratoId: params.contratoId },
+        select: { id: true },
+      });
+      if (!v) throw new NotFoundException('Versão não pertence a este contrato');
+    }
+    if (params.parentComentarioId) {
+      const pai = await this.prisma.contratoComentario.findFirst({
+        where: { id: params.parentComentarioId, contratoId: params.contratoId },
+        select: { id: true },
+      });
+      if (!pai) {
+        throw new NotFoundException('Comentário pai não pertence a este contrato');
+      }
+    }
+
     const com = await this.prisma.contratoComentario.create({
       data: {
         contratoId: params.contratoId,

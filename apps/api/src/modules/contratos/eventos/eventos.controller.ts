@@ -20,6 +20,9 @@ import { ParseZodPipe } from '../../../common/pipes/parse-zod.pipe';
 import { ContratoEventosService } from './eventos.service';
 
 const ComentarSchema = z.object({ texto: z.string().min(1).max(5000) });
+const ListEventosQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
 
 @Controller('contratos/:contratoId/eventos')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -31,13 +34,10 @@ export class ContratoEventosController {
   async list(
     @Tenant() tenant: TenantContext,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
-    @Query('limit') limit?: string,
+    @Query(new ParseZodPipe(ListEventosQuerySchema))
+    query: z.infer<typeof ListEventosQuerySchema>,
   ) {
-    return this.eventos.list(
-      tenant.tenantId,
-      contratoId,
-      limit ? parseInt(limit, 10) : 100,
-    );
+    return this.eventos.list(tenant.tenantId, contratoId, query.limit);
   }
 
   @Post('comentar')

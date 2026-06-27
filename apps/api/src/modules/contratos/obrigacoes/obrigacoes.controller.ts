@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import {
   JwtPayload,
+  MOEDAS_SUPORTADAS,
   ObrigacaoPeriodicidade,
   ObrigacaoTipo,
   Role,
@@ -32,14 +33,14 @@ const CreateObrigacaoSchema = z.object({
   descricao: z.string().min(2).max(2000),
   periodicidade: z.nativeEnum(ObrigacaoPeriodicidade),
   proximaData: z.coerce.date().optional(),
-  valorEsperado: z.coerce.bigint().optional(),
-  moeda: z.string().length(3).optional(),
-  alertaDias: z.array(z.number().int().positive()).optional(),
+  valorEsperado: z.coerce.bigint().refine((v) => v >= 0n, 'Valor não pode ser negativo').optional(),
+  moeda: z.enum(MOEDAS_SUPORTADAS).optional(),
+  alertaDias: z.array(z.number().int().min(1).max(365)).max(10).optional(),
 });
 
 const CumprirInstanciaSchema = z.object({
   dataReal: z.coerce.date().optional(),
-  valorReal: z.coerce.bigint().optional(),
+  valorReal: z.coerce.bigint().refine((v) => v >= 0n, 'Valor não pode ser negativo').optional(),
   comprovativoId: z.string().uuid().optional(),
   observacoes: z.string().max(2000).optional(),
 });

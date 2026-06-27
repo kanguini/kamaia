@@ -34,6 +34,14 @@ export class ContratoNegociacaoService {
   ) {
     await this.assertContrato(tenantId, contratoId);
 
+    if (dto.versaoIntroduzidaId) {
+      const v = await this.prisma.contratoVersao.findFirst({
+        where: { id: dto.versaoIntroduzidaId, contratoId },
+        select: { id: true },
+      });
+      if (!v) throw new NotFoundException('Versão não pertence a este contrato');
+    }
+
     const ponto = await this.prisma.contratoNegociacaoPonto.create({
       data: {
         contratoId,
@@ -79,6 +87,14 @@ export class ContratoNegociacaoService {
       where: { id: pontoId, contratoId },
     });
     if (!before) throw new NotFoundException('Ponto not found');
+
+    if (dto.versaoResolvidaId) {
+      const v = await this.prisma.contratoVersao.findFirst({
+        where: { id: dto.versaoResolvidaId, contratoId },
+        select: { id: true },
+      });
+      if (!v) throw new NotFoundException('Versão não pertence a este contrato');
+    }
 
     const after = await this.prisma.contratoNegociacaoPonto.update({
       where: { id: pontoId },

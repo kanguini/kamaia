@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -33,6 +34,12 @@ const CreateComentarioSchema = z.object({
   parentComentarioId: z.string().uuid().optional(),
 });
 
+const ListComentariosQuerySchema = z.object({
+  versaoId: z.string().uuid().optional(),
+  clausulaRef: z.string().max(200).optional(),
+  includeResolved: z.enum(['true', 'false']).optional(),
+});
+
 @Controller('contratos/:contratoId/comentarios')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class ContratoComentariosController {
@@ -46,9 +53,8 @@ export class ContratoComentariosController {
   async list(
     @Tenant() tenant: TenantContext,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
-    @Query('versaoId') versaoId?: string,
-    @Query('clausulaRef') clausulaRef?: string,
-    @Query('includeResolved') includeResolved?: string,
+    @Query(new ParseZodPipe(ListComentariosQuerySchema))
+    query: z.infer<typeof ListComentariosQuerySchema>,
   ) {
     // Confirma posse
     const c = await this.prisma.contrato.findFirst({
@@ -58,9 +64,9 @@ export class ContratoComentariosController {
     if (!c) return [];
     return this.comentarios.list(contratoId, {
       tenantId: tenant.tenantId,
-      versaoId,
-      clausulaRef,
-      includeResolved: includeResolved === 'true',
+      versaoId: query.versaoId,
+      clausulaRef: query.clausulaRef,
+      includeResolved: query.includeResolved === 'true',
     });
   }
 
@@ -105,7 +111,7 @@ export class ContratoComentariosController {
       where: { id: contratoId, tenantId: tenant.tenantId, deletedAt: null },
       select: { id: true },
     });
-    if (!c) throw new Error('Contrato not found');
+    if (!c) throw new NotFoundException('Contrato not found');
     return this.comentarios.resolver(contratoId, id, user.sub);
   }
 }

@@ -37,8 +37,12 @@ const CreateVersaoSchema = z.object({
 type CreateVersaoDto = z.infer<typeof CreateVersaoSchema>;
 
 const EditarCorpoSchema = z.object({
-  corpoMarkdown: z.string().min(0).max(500_000),
+  corpoMarkdown: z.string().min(1).max(500_000),
   geradoPorIA: z.boolean().optional(),
+});
+
+const DiffQuerySchema = z.object({
+  against: z.string().uuid().optional(),
 });
 
 @Controller('contratos/:contratoId/versoes')
@@ -70,12 +74,13 @@ export class ContratoVersoesController {
   @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER)
   async editarCorpo(
     @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
     @Param('versaoId', new ParseUUIDPipe()) versaoId: string,
     @Body(new ParseZodPipe(EditarCorpoSchema))
     dto: z.infer<typeof EditarCorpoSchema>,
   ) {
-    return this.versoes.editarCorpo(tenant.tenantId, contratoId, versaoId, dto);
+    return this.versoes.editarCorpo(tenant.tenantId, user.sub, contratoId, versaoId, dto);
   }
 
   /**
@@ -89,8 +94,9 @@ export class ContratoVersoesController {
     @Tenant() tenant: TenantContext,
     @Param('contratoId', new ParseUUIDPipe()) contratoId: string,
     @Param('versaoId', new ParseUUIDPipe()) versaoId: string,
-    @Query('against') against?: string,
+    @Query(new ParseZodPipe(DiffQuerySchema))
+    query: z.infer<typeof DiffQuerySchema>,
   ) {
-    return this.versoes.diff(tenant.tenantId, contratoId, versaoId, against);
+    return this.versoes.diff(tenant.tenantId, contratoId, versaoId, query.against);
   }
 }

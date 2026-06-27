@@ -167,6 +167,15 @@ export class ContratoObrigacoesService {
       include: { obrigacao: true },
     });
     if (!instancia) throw new NotFoundException('Instância não encontrada');
+
+    if (dto.comprovativoId) {
+      const doc = await this.prisma.document.findFirst({
+        where: { id: dto.comprovativoId, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!doc) throw new NotFoundException('Documento not found');
+    }
+
     if (instancia.estado === ObrigacaoInstanciaEstado.CUMPRIDA) {
       // Idempotente — devolve estado actual
       return instancia;

@@ -7,7 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { JwtPayload, Role, TenantContext } from '@kamaia/shared-types';
+import { JwtPayload, MOEDAS_SUPORTADAS, Role, TenantContext } from '@kamaia/shared-types';
 import { z } from 'zod';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -22,8 +22,8 @@ const CriarAdendaSchema = z.object({
   titulo: z.string().min(2).max(300),
   descricao: z.string().max(5000).optional(),
   herdarPartes: z.boolean().default(true),
-  valor: z.coerce.bigint().optional(),
-  moeda: z.string().length(3).optional(),
+  valor: z.coerce.bigint().refine((v) => v >= 0n, 'Valor não pode ser negativo').optional(),
+  moeda: z.enum(MOEDAS_SUPORTADAS).optional(),
   dataTermo: z.coerce.date().optional(),
 });
 

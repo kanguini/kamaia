@@ -33,7 +33,7 @@ export class ContratoAssinaturasController {
       where: { id: contratoId, tenantId: tenant.tenantId, deletedAt: null },
       select: { id: true },
     });
-    if (!c) return [];
+    if (!c) throw new NotFoundException('Contrato not found');
     return this.assinaturas.list(contratoId, tenant.tenantId);
   }
 

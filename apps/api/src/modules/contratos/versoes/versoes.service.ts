@@ -1,15 +1,21 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AuditAction,
   ContratoEventoTipo,
+  EntityType,
   VersaoDireccao,
 } from '@kamaia/shared-types';
 import { renderMarkdownToHtml } from '../../../common/markdown';
 import { diffLines, type DiffResult } from '../../../common/text-diff';
+import { AuditService } from '../../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class ContratoVersoesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async list(tenantId: string, contratoId: string) {
     await this.assertContrato(tenantId, contratoId);
@@ -34,6 +40,16 @@ export class ContratoVersoesService {
     },
   ) {
     await this.assertContrato(tenantId, contratoId);
+
+    // FK guard: documentId tem de pertencer ao tenant (espelha o
+    // padrão de documentoInicialId em ContratosService.create).
+    if (dto.documentId) {
+      const doc = await this.prisma.document.findFirst({
+        where: { id: dto.documentId, tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!doc) throw new NotFoundException('Documento not found');
+    }
 
     const last = await this.prisma.contratoVersao.findFirst({
       where: { contratoId },
@@ -100,6 +116,7 @@ export class ContratoVersoesService {
    */
   async editarCorpo(
     tenantId: string,
+    actorUserId: string,
     contratoId: string,
     versaoId: string,
     dto: { corpoMarkdown: string; geradoPorIA?: boolean },
@@ -132,7 +149,7 @@ export class ContratoVersoesService {
       );
     }
 
-    return this.prisma.contratoVersao.update({
+    const atualizada = await this.prisma.contratoVersao.update({
       where: { id: versaoId },
       data: {
         corpoMarkdown: dto.corpoMarkdown,
@@ -140,6 +157,16 @@ export class ContratoVersoesService {
         geradoPorIA: dto.geradoPorIA ?? v.geradoPorIA,
       },
     });
+    // M3: edição de corpo (mesmo de draft) deixa rasto de auditoria.
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.UPDATE,
+      entityType: EntityType.CONTRATO_VERSAO,
+      entityId: versaoId,
+      afterData: { contratoId, geradoPorIA: atualizada.geradoPorIA },
+    });
+    return atualizada;
   }
 
   /**
