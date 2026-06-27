@@ -601,6 +601,24 @@ export enum NotificationStatus {
   READ = 'READ',
 }
 
+export enum AgendaEventoTipo {
+  GERAL = 'GERAL',
+  REUNIAO = 'REUNIAO',
+  PRAZO = 'PRAZO',
+  AUDIENCIA = 'AUDIENCIA',
+  LEMBRETE = 'LEMBRETE',
+  ASSINATURA = 'ASSINATURA',
+}
+
+export const AGENDA_EVENTO_TIPO_LABELS: Record<AgendaEventoTipo, string> = {
+  [AgendaEventoTipo.GERAL]: 'Geral',
+  [AgendaEventoTipo.REUNIAO]: 'Reunião',
+  [AgendaEventoTipo.PRAZO]: 'Prazo',
+  [AgendaEventoTipo.AUDIENCIA]: 'Audiência',
+  [AgendaEventoTipo.LEMBRETE]: 'Lembrete',
+  [AgendaEventoTipo.ASSINATURA]: 'Assinatura',
+};
+
 export enum NotificationType {
   CONTRATO_VENCIMENTO_PROXIMO = 'CONTRATO_VENCIMENTO_PROXIMO',
   JANELA_DENUNCIA_PROXIMA = 'JANELA_DENUNCIA_PROXIMA',
@@ -662,6 +680,7 @@ export enum EntityType {
   SUBSCRIPTION = 'SUBSCRIPTION',
   API_KEY = 'API_KEY',
   WEBHOOK = 'WEBHOOK',
+  AGENDA_EVENTO = 'AGENDA_EVENTO',
 }
 
 // ─── Contrato Evento types (taxonomia controlada) ─────────

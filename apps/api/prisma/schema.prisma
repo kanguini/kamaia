@@ -78,6 +78,7 @@ model Tenant {
   apiKeys         ApiKey[]
   webhooks        Webhook[]
   backupExports   BackupExport[]
+  agendaEventos   AgendaEvento[]
 
   @@index([parentTenantId])
   @@index([slug])
@@ -630,6 +631,7 @@ model Contrato {
   comentarios         ContratoComentario[]
   assinaturas         ContratoAssinatura[]
   customFieldValues   ContratoCustomFieldValue[]
+  agendaEventos       AgendaEvento[]
 
   @@unique([tenantId, numeroInterno])
   @@index([tenantId, estado])
@@ -1346,6 +1348,57 @@ model Notification {
   @@index([tenantId, userId, status])
   @@index([status, createdAt])
   @@map("notifications")
+}
+
+/// Evento de agenda criado pelo utilizador (reunião, prazo manual,
+/// lembrete, audiência). Distinto das datas-chave/actos/obrigações,
+/// que são derivadas de contratos — estes são entradas livres,
+/// opcionalmente vinculadas a um contrato ou entidade para navegação.
+model AgendaEvento {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @map("tenant_id") @db.Uuid
+
+  titulo      String           @db.VarChar(200)
+  descricao   String?          @db.Text
+  tipo        AgendaEventoTipo @default(GERAL)
+
+  /// Instante de início (UTC). Para eventos de dia inteiro, diaInteiro
+  /// = true e a componente horária deve ser ignorada na apresentação.
+  inicio      DateTime         @db.Timestamptz
+  /// Instante de fim (UTC), opcional. Quando ausente, o evento é
+  /// pontual (sem duração explícita).
+  fim         DateTime?        @db.Timestamptz
+  diaInteiro  Boolean          @default(false) @map("dia_inteiro")
+
+  local       String?          @db.VarChar(200)
+  cor         String?          @db.VarChar(20)
+
+  /// Vínculos opcionais para navegação contextual. entidadeId é um
+  /// campo escalar (sem relação inversa) para evitar carga no modelo
+  /// Entidade; contratoId tem relação para SetNull em soft delete.
+  contratoId  String?          @map("contrato_id") @db.Uuid
+  entidadeId  String?          @map("entidade_id") @db.Uuid
+
+  createdBy   String           @map("created_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?        @map("deleted_at") @db.Timestamptz
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato    Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, inicio])
+  @@index([tenantId, deletedAt])
+  @@map("agenda_eventos")
+}
+
+enum AgendaEventoTipo {
+  GERAL
+  REUNIAO
+  PRAZO
+  AUDIENCIA
+  LEMBRETE
+  ASSINATURA
 }
 
 model PushSubscription {

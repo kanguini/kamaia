@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   BookOpen,
   Bell,
+  CalendarDays,
   Settings,
   LogOut,
   ChevronDown,
@@ -63,7 +64,7 @@ const WORK_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
-  { label: 'Calendário', href: '/alertas', icon: Bell },
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays, match: (p) => p.startsWith('/agenda') || p.startsWith('/alertas') },
   { label: 'Análise', href: '/compliance', icon: ShieldCheck },
 ]
 
