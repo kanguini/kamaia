@@ -168,32 +168,43 @@ export class ContratoColaboradoresService {
         contrato: { select: { id: true, tenantId: true, numeroInterno: true, titulo: true } },
       },
     });
-    if (!col) throw new UnauthorizedException('Token inválido');
-    if (col.estado === 'REVOGADO') {
-      throw new UnauthorizedException('Acesso revogado pelo proprietário');
-    }
+    // Mensagem única para todos os casos — não distingue inválido vs
+    // revogado vs expirado (evita enumeração do estado do token numa
+    // superfície não autenticada).
+    const indisponivel = new UnauthorizedException('Acesso indisponível');
+    if (!col) throw indisponivel;
+    if (col.estado === 'REVOGADO') throw indisponivel;
     if (col.expiresAt < new Date()) {
-      // Marca como expirado se ainda não foi
+      // Marca como expirado se ainda não foi (side-effect interno).
       if (col.estado !== 'EXPIRADO') {
         await this.prisma.contratoColaborador.update({
           where: { id: col.id },
           data: { estado: 'EXPIRADO' },
         });
       }
-      throw new UnauthorizedException('Acesso expirado');
+      throw indisponivel;
     }
 
-    // Marca primeiro acesso e regista actividade
-    await this.prisma.contratoColaborador.update({
-      where: { id: col.id },
-      data: {
-        estado: col.estado === 'PENDENTE' ? 'ACTIVO' : col.estado,
-        aceitouEm: col.aceitouEm ?? new Date(),
-        ultimaActividade: new Date(),
-        ipAddress: ip ?? col.ipAddress,
-        userAgent: userAgent ?? col.userAgent,
-      },
-    });
+    // Regista actividade, mas com throttle — não escrever em cada GET
+    // (amplificação de escritas numa rota pública). Escreve no primeiro
+    // acesso (PENDENTE) ou quando a última actividade tem > 5 min.
+    const agora = new Date();
+    const precisaUpdate =
+      col.estado === 'PENDENTE' ||
+      !col.ultimaActividade ||
+      agora.getTime() - col.ultimaActividade.getTime() > 5 * 60_000;
+    if (precisaUpdate) {
+      await this.prisma.contratoColaborador.update({
+        where: { id: col.id },
+        data: {
+          estado: col.estado === 'PENDENTE' ? 'ACTIVO' : col.estado,
+          aceitouEm: col.aceitouEm ?? agora,
+          ultimaActividade: agora,
+          ipAddress: ip ?? col.ipAddress,
+          userAgent: userAgent ?? col.userAgent,
+        },
+      });
+    }
 
     return {
       colaboradorId: col.id,

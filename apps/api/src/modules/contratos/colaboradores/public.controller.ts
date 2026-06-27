@@ -175,6 +175,7 @@ export class ContratoPublicoController {
       contratoId: ctx.contratoId,
       tenantId: ctx.tenantId,
       versaoId: dto.versaoId,
+      exigirVersaoMaisRecente: true,
       colaboradorId: ctx.colaboradorId,
       signatarioNome: dto.signatarioNome,
       signatarioEmail: ctx.email,

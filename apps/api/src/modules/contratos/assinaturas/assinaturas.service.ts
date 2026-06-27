@@ -83,6 +83,8 @@ export class ContratoAssinaturasService {
     contratoId: string;
     tenantId: string;
     versaoId: string;
+    /** Trava na versão mais recente (assinatura externa via token). */
+    exigirVersaoMaisRecente?: boolean;
     parteId?: string;
     colaboradorId?: string;
     signatarioNome: string;
@@ -112,6 +114,21 @@ export class ContratoAssinaturasService {
       throw new BadRequestException(
         'Versão não tem conteúdo editável — assinar implica snapshot do corpo.',
       );
+    }
+
+    // Assinatura externa (token) só pode incidir sobre a versão mais
+    // recente — evita assinar uma versão antiga/superada à escolha.
+    if (params.exigirVersaoMaisRecente) {
+      const maisRecente = await this.prisma.contratoVersao.findFirst({
+        where: { contratoId: params.contratoId },
+        orderBy: { ordem: 'desc' },
+        select: { id: true },
+      });
+      if (maisRecente && maisRecente.id !== params.versaoId) {
+        throw new BadRequestException(
+          'Só pode assinar a versão mais recente do contrato.',
+        );
+      }
     }
 
     // H5: impede re-assinatura/spam — uma assinatura ASSINADA por
@@ -166,7 +183,7 @@ export class ContratoAssinaturasService {
     await this.prisma.contratoEvento.create({
       data: {
         contratoId: params.contratoId,
-        tipo: ContratoEventoTipo.COMENTARIO,
+        tipo: ContratoEventoTipo.ASSINATURA_RECEBIDA,
         resumo: `Assinatura recebida de ${params.signatarioNome}`,
         payload: { assinaturaId: a.id, metodo: a.metodo } as object,
         actorTipo: params.colaboradorId ? 'EXTERNAL' : 'USER',
