@@ -25,7 +25,7 @@ export const ContratoParteInlineSchema = z.object({
 });
 export type ContratoParteInline = z.infer<typeof ContratoParteInlineSchema>;
 
-export const CreateContratoSchema = z.object({
+const CreateContratoObject = z.object({
   titulo: z.string().min(2).max(300),
   descricao: z.string().max(5000).optional(),
   tipoId: z.string().uuid(),
@@ -82,6 +82,46 @@ export const CreateContratoSchema = z.object({
    */
   documentoInicialId: z.string().uuid().optional(),
 });
+
+/**
+ * Sanidade cruzada de datas — defesa-em-profundidade (o cliente também
+ * valida). O termo não pode ser anterior ao início da vigência nem à
+ * assinatura, senão a matemática de renovação/alertas fica sem sentido.
+ */
+function crossDateRefine(
+  data: {
+    dataInicioVigencia?: Date;
+    dataAssinatura?: Date;
+    dataTermo?: Date;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (
+    data.dataInicioVigencia &&
+    data.dataTermo &&
+    data.dataInicioVigencia > data.dataTermo
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dataTermo'],
+      message: 'A data de termo não pode ser anterior ao início da vigência.',
+    });
+  }
+  if (
+    data.dataAssinatura &&
+    data.dataTermo &&
+    data.dataAssinatura > data.dataTermo
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dataTermo'],
+      message: 'A data de termo não pode ser anterior à assinatura.',
+    });
+  }
+}
+
+export const CreateContratoSchema =
+  CreateContratoObject.superRefine(crossDateRefine);
 export type CreateContratoDto = z.infer<typeof CreateContratoSchema>;
 
 /**
@@ -92,16 +132,17 @@ export type CreateContratoDto = z.infer<typeof CreateContratoSchema>;
  * Aceita TODOS os campos de CreateContratoSchema + obrigatório
  * `templateId`.
  */
-export const CreateFromTemplateSchema = CreateContratoSchema.extend({
+export const CreateFromTemplateSchema = CreateContratoObject.extend({
   templateId: z.string().uuid(),
   /** Se false, persiste o template literal sem substituição (debug). */
   preencherPlaceholders: z.boolean().default(true),
   /** Instruções extras ao utilizador no draft inicial. */
   notaDrafting: z.string().max(2000).optional(),
-});
+}).superRefine(crossDateRefine);
 export type CreateFromTemplateDto = z.infer<typeof CreateFromTemplateSchema>;
 
-export const UpdateContratoSchema = CreateContratoSchema.partial();
+export const UpdateContratoSchema =
+  CreateContratoObject.partial().superRefine(crossDateRefine);
 export type UpdateContratoDto = z.infer<typeof UpdateContratoSchema>;
 
 export const TransicaoEstadoSchema = z.object({

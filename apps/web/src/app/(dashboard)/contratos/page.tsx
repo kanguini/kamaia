@@ -228,13 +228,14 @@ function ContratosListInner() {
         <div style={{ position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--k2-text-mute)' }} />
           <Input
+            aria-label="Procurar contratos"
             placeholder="Procurar por título ou número…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ paddingLeft: 32 }}
           />
         </div>
-        <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
+        <Select aria-label="Filtrar por estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
           <option value="">Todos os estados</option>
           {Object.values(ContratoEstado).map((e) => (
             <option key={e} value={e}>
@@ -242,7 +243,7 @@ function ContratosListInner() {
             </option>
           ))}
         </Select>
-        <Select value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
+        <Select aria-label="Filtrar por tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
           <option value="">Todos os tipos</option>
           {tipos.map((t) => (
             <option key={t.id} value={t.id}>
@@ -250,7 +251,7 @@ function ContratosListInner() {
             </option>
           ))}
         </Select>
-        <Select value={expiraEmDias} onChange={(e) => setExpiraEmDias(e.target.value)}>
+        <Select aria-label="Filtrar por vencimento" value={expiraEmDias} onChange={(e) => setExpiraEmDias(e.target.value)}>
           <option value="">Vencimento — qualquer</option>
           <option value="30">Expira ≤ 30 dias</option>
           <option value="60">Expira ≤ 60 dias</option>

@@ -19,6 +19,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { MOEDAS_SUPORTADAS } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
 import { Drawer, DrawerHeader, DrawerBody, DrawerFooter } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
@@ -331,9 +332,9 @@ function FieldRenderer({
             }
             style={{ width: 90 }}
           >
-            <option value="AOA">AOA</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
+            {MOEDAS_SUPORTADAS.map((mo) => (
+              <option key={mo} value={mo}>{mo}</option>
+            ))}
           </Select>
         </div>
       )

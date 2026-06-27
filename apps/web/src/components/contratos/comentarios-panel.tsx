@@ -188,11 +188,13 @@ export function ComentariosPanel({
           value={novoCl}
           onChange={(e) => setNovoCl(e.target.value)}
           placeholder="Cláusula (ex.: 3.2)"
+          aria-label="Cláusula de referência"
         />
         <textarea
           value={novoTexto}
           onChange={(e) => setNovoTexto(e.target.value)}
           placeholder="Nota interna ou resposta à contraparte…"
+          aria-label="Novo comentário"
           rows={2}
           style={{
             background: 'var(--k2-bg)',

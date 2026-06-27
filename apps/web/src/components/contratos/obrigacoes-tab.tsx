@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Plus, CheckCircle2, XCircle, Calendar } from 'lucide-react'
 import {
+  MOEDAS_SUPORTADAS,
   ObrigacaoTipo,
   ObrigacaoPeriodicidade,
   ObrigacaoInstanciaEstado,
@@ -461,9 +462,9 @@ function NovaObrigacaoDrawer({
             </FieldLabel>
             <FieldLabel label="Moeda">
               <Select value={moeda} onChange={(e) => setMoeda(e.target.value)}>
-                <option value="AOA">AOA</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
+                {MOEDAS_SUPORTADAS.map((mo) => (
+                  <option key={mo} value={mo}>{mo}</option>
+                ))}
               </Select>
             </FieldLabel>
           </div>
