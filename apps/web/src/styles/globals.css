@@ -187,8 +187,8 @@
    arredondados, sombra e fundo elevado. Em mobile volta a drawer
    full-height (ver media query). */
 .k2-sidebar {
-  background: var(--k2-bg-elev);
-  border: 1px solid var(--k2-border);
+  background: var(--k2-bg);
+  border: 1px solid var(--k2-border-strong);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -200,7 +200,7 @@
   max-height: calc(100vh - 24px);
   overflow: hidden;
   z-index: 10;
-  box-shadow: 0 10px 32px -14px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 10px 32px -14px rgba(0, 0, 0, 0.35);
 }
 .k2-sb-head {
   padding: 18px 18px 14px;
@@ -249,10 +249,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border-radius: var(--k2-radius-sm);
   color: var(--k2-text);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   position: relative;
   width: 100%;
