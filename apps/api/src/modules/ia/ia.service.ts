@@ -86,11 +86,17 @@ export class IaService {
     }
   }
 
-  /** Estorna uma reserva de quota (best-effort) quando a chamada falha cedo. */
+  /**
+   * Estorna uma reserva de quota (best-effort) quando a resposta não é
+   * entregue (erro/abort). Espelha EXACTAMENTE `reserveIaQuota` —
+   * incluindo planos ilimitados (limite < 0), que também são contados
+   * na reserva; o único guard é `iaMessagesUsado > 0` para nunca ir
+   * abaixo de zero.
+   */
   private async refundIaQuota(tenantId: string): Promise<void> {
     try {
       await this.prisma.usageQuota.updateMany({
-        where: { tenantId, iaMessagesUsado: { gt: 0 }, iaMessagesLimit: { gte: 0 } },
+        where: { tenantId, iaMessagesUsado: { gt: 0 } },
         data: { iaMessagesUsado: { decrement: 1 } },
       });
     } catch {
@@ -243,6 +249,8 @@ export class IaService {
         this.logger.error(
           `Claude call falhou: ${e instanceof Error ? e.message : e}`,
         );
+        // Não houve resposta real — estorna a unidade de quota reservada.
+        await this.refundIaQuota(tenantId);
         respostaConteudo =
           STUB_PREAMBLE +
           `Não foi possível obter resposta da IA neste momento. ` +
@@ -416,12 +424,18 @@ export class IaService {
           tokensIn = ev.tokensInput;
           tokensOut = ev.tokensOutput;
         } else if (ev.kind === 'error') {
+          // Sem resposta entregue — estorna a quota reservada.
+          await this.refundIaQuota(tenantId);
           yield { kind: 'error', message: ev.message };
           return;
         }
       }
-      // Cliente desconectou a meio — não persistir resposta parcial.
-      if (signal?.aborted) return;
+      // Cliente desconectou a meio — não persistir resposta parcial nem
+      // cobrar a mensagem.
+      if (signal?.aborted) {
+        await this.refundIaQuota(tenantId);
+        return;
+      }
       respostaText = respostaText + DISCLAIMER_FINAL;
     } else {
       // Stub: emite chunks fake para teste do fluxo SSE
@@ -643,8 +657,12 @@ export class IaService {
       await this.refundIaQuota(tenantId);
       return;
     }
-    // Cliente desconectou a meio — não persistir mensagem enganadora.
-    if (signal?.aborted) return;
+    // Cliente desconectou a meio — não persistir mensagem enganadora
+    // nem cobrar a mensagem.
+    if (signal?.aborted) {
+      await this.refundIaQuota(tenantId);
+      return;
+    }
 
     // Persiste assistant message (apenas texto final; tool calls
     // só ficam no SSE — sem persistência em Sprint 1.2)
