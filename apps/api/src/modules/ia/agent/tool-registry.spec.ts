@@ -225,7 +225,8 @@ describe('ToolRegistry', () => {
       await reg.execute('read', {}, CTX_BASE);
       expect(audit.log).not.toHaveBeenCalled();
 
-      await reg.execute('mutate', { v: 'x' }, CTX_BASE);
+      // Mutação confirmada (allowMutations) executa e audita.
+      await reg.execute('mutate', { v: 'x' }, { ...CTX_BASE, allowMutations: true });
       expect(audit.log).toHaveBeenCalledTimes(1);
       const call = audit.calls[0];
       expect(call.tenantId).toBe('tenant-A');
@@ -233,6 +234,58 @@ describe('ToolRegistry', () => {
       expect(
         (call.afterData as { aiAgent: { toolName: string } }).aiAgent.toolName,
       ).toBe('mutate');
+    });
+  });
+
+  describe('execute — gate de confirmação de mutações', () => {
+    it('tool mutates sem allowMutations NÃO executa e devolve CONFIRMATION_REQUIRED', async () => {
+      const audit = makeMockAudit();
+      const reg = new ToolRegistry(audit as never);
+      const execSpy = jest.fn(async () => ({ result: { ok: true } }));
+      reg.register(
+        defineTool({
+          name: 'mutate',
+          description: 'x',
+          schema: z.object({ v: z.string() }),
+          requiredRoles: [Role.ADMIN],
+          mutates: true,
+          execute: execSpy,
+        }),
+      );
+
+      const out = await reg.execute('mutate', { v: 'x' }, CTX_BASE);
+      expect('error' in out && out.error.code).toBe('CONFIRMATION_REQUIRED');
+      expect(execSpy).not.toHaveBeenCalled();
+      expect(audit.log).not.toHaveBeenCalled();
+
+      // Com allowMutations, executa.
+      const ok = await reg.execute('mutate', { v: 'x' }, { ...CTX_BASE, allowMutations: true });
+      expect('result' in ok).toBe(true);
+      expect(execSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('needsConfirmation(args) sobrepõe mutates — leitura pura não gateia', async () => {
+      const audit = makeMockAudit();
+      const reg = new ToolRegistry(audit as never);
+      const execSpy = jest.fn(async () => ({ result: { ok: true } }));
+      reg.register(
+        defineTool({
+          name: 'find_or_create',
+          description: 'x',
+          schema: z.object({ create: z.boolean().default(false) }),
+          requiredRoles: [Role.ADMIN],
+          mutates: true,
+          needsConfirmation: (args: { create: boolean }) => args.create === true,
+          execute: execSpy,
+        }),
+      );
+
+      // create=false → não gateia, executa.
+      const lookup = await reg.execute('find_or_create', { create: false }, CTX_BASE);
+      expect('result' in lookup).toBe(true);
+      // create=true → gateia.
+      const willCreate = await reg.execute('find_or_create', { create: true }, CTX_BASE);
+      expect('error' in willCreate && willCreate.error.code).toBe('CONFIRMATION_REQUIRED');
     });
   });
 

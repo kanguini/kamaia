@@ -220,14 +220,19 @@ export class AgentService {
         const outcome = await this.registry.execute(tu.name, tu.input, ctx);
 
         if ('error' in outcome) {
-          // Tool error estruturado — Claude vê e adapta
+          // Confirmação humana pendente — não é um erro real; a UI deve
+          // mostrar Confirmar/Cancelar com os parâmetros propostos.
+          const isConfirm = outcome.error.code === 'CONFIRMATION_REQUIRED';
           yield {
             kind: 'tool_result',
             id: tu.id,
             name: tu.name,
             isError: true,
             result: outcome.error,
-            renderHint: 'text',
+            renderHint: isConfirm ? 'confirmation' : 'text',
+            ...(isConfirm
+              ? { uiPayload: (outcome.error.details as unknown) ?? null }
+              : {}),
           };
           toolResults.push({
             type: 'tool_result',

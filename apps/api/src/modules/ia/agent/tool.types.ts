@@ -50,6 +50,14 @@ export interface ToolContext {
   /** Conversation+message ids para audit trail. */
   conversationId: string;
   messageId: string;
+  /**
+   * Gate de confirmação humana ("o engine sugere, o humano confirma").
+   * Tools `mutates:true` NÃO são executadas enquanto isto for falso —
+   * o registry devolve CONFIRMATION_REQUIRED e o agente pede confirmação
+   * ao utilizador. Fica `true` apenas no turn em que o utilizador
+   * confirma explicitamente (frontend reenvia com este flag).
+   */
+  allowMutations?: boolean;
 }
 
 /**
@@ -102,6 +110,14 @@ export interface ToolDefinition<TArgs = unknown, TResult = unknown> {
   requiredRoles: Role[];
   /** True para acções que mutam estado. UI pode pedir confirmação. */
   mutates: boolean;
+  /**
+   * Determina, a partir dos args validados, se ESTA invocação precisa
+   * de confirmação humana. Por omissão é `mutates` (qualquer escrita
+   * confirma). Tools cuja mutação é condicional aos args (ex.:
+   * find_or_create só cria com `createIfMissing:true`) sobrepõem isto
+   * para não gatear leituras puras.
+   */
+  needsConfirmation?: (args: TArgs) => boolean;
   /** Implementação. tenantId/userId vêm de ctx, NÃO de args. */
   execute(args: TArgs, ctx: ToolContext): Promise<ToolExecutionResult<TResult>>;
 }

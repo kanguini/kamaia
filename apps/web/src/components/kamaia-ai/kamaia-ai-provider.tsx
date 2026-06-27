@@ -63,7 +63,7 @@ interface KamaiaAIContextValue {
 
   // Mensagens
   messages: Message[]
-  send: (text: string) => Promise<void>
+  send: (text: string, opts?: { allowMutations?: boolean }) => Promise<void>
   sending: boolean
 }
 
@@ -297,7 +297,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
    * 5. Reconcilia ids reais; marca streaming=false em done.
    */
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { allowMutations?: boolean }) => {
       if (!text.trim() || !session?.accessToken) return
 
       // Cria conversa on-demand se nenhuma estiver activa. Usa o
@@ -371,6 +371,9 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
             body: JSON.stringify({
               conteudo: text,
               pageContext,
+              // Gate de confirmação: só vai true quando o utilizador
+              // confirma explicitamente uma acção de mutação proposta.
+              ...(opts?.allowMutations ? { allowMutations: true } : {}),
             }),
             signal: ac.signal,
           },

@@ -30,7 +30,8 @@ export interface ToolError {
     | 'FORBIDDEN'
     | 'INVALID_ARGS'
     | 'EXECUTION_ERROR'
-    | 'NOT_FOUND';
+    | 'NOT_FOUND'
+    | 'CONFIRMATION_REQUIRED';
   message: string;
   details?: unknown;
 }
@@ -174,6 +175,28 @@ export class ToolRegistry {
           code: 'INVALID_ARGS',
           message: `Args inválidos para "${name}"`,
           details: parsed.error.flatten(),
+        },
+      };
+    }
+
+    // Gate de confirmação humana — tools que mutam estado NÃO são
+    // executadas sem confirmação explícita do utilizador. Esta é a
+    // barreira real ("o engine sugere, o humano confirma"): não confia
+    // no LLM "perguntar antes" via prompt. Devolve sem executar; o
+    // agente surface-a como pedido de confirmação e o frontend mostra
+    // Confirmar/Cancelar. Ao confirmar, o turn corre com allowMutations.
+    const needsConfirm = tool.needsConfirmation
+      ? tool.needsConfirmation(parsed.data)
+      : tool.mutates;
+    if (needsConfirm && !ctx.allowMutations) {
+      return {
+        error: {
+          code: 'CONFIRMATION_REQUIRED',
+          message:
+            `A acção "${name}" altera dados e requer confirmação do utilizador — NÃO foi executada. ` +
+            `Descreve em linguagem natural o que vais fazer (com os parâmetros principais) e pede ao utilizador para confirmar. ` +
+            `Quando ele confirmar, a acção será executada.`,
+          details: { toolName: name, args: parsed.data },
         },
       };
     }

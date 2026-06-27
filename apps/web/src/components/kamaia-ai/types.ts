@@ -54,6 +54,9 @@ export interface ToolCallTrace {
       sublabel?: string
       href?: string
     }>
+    /** Para renderHint 'confirmation': acção proposta (não executada). */
+    toolName?: string
+    args?: Record<string, unknown>
   }
   errorMessage?: string
 }

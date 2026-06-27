@@ -492,6 +492,7 @@ export class IaService {
     conversationId: string,
     dto: SendMessageDto,
     pageContext?: PageContext,
+    allowMutations?: boolean,
     signal?: AbortSignal,
   ): AsyncGenerator<
     | { kind: 'user-msg'; messageId: string }
@@ -604,6 +605,7 @@ export class IaService {
         pageContext,
         conversationId,
         messageId: userMsg.id,
+        allowMutations,
       },
     })) {
       if (ev.kind === 'text') {

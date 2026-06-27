@@ -85,6 +85,9 @@ NUNCA invoca com createIfMissing=true sem o utilizador ter autorizado claramente
     schema: FindOrCreateEntidadeArgsSchema,
     requiredRoles: [Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER],
     mutates: true,
+    // Só precisa de confirmação quando vai mesmo criar — uma pesquisa
+    // pura (createIfMissing=false) não muta e não deve gatear.
+    needsConfirmation: (args) => args.createIfMissing === true,
     async execute(args, ctx) {
       // Pesquisa por nome / NIF
       const matches = await prisma.entidade.findMany({

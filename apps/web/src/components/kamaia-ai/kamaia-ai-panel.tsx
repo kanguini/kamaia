@@ -553,13 +553,17 @@ export function KamaiaAIPanel() {
  *  - error: ⚠ + mensagem
  */
 function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
+  const { send, sending } = useKamaiaAI()
+  const [acted, setActed] = useState<null | 'confirm' | 'cancel'>(null)
+  const isConfirmation = trace.renderHint === 'confirmation'
   const isRunning = trace.status === 'starting' || trace.status === 'executing'
-  const isError = trace.status === 'error'
+  // Confirmação chega como tool_result is_error, mas não é um erro real.
+  const isError = trace.status === 'error' && !isConfirmation
   const items = trace.uiPayload?.items
 
   return (
     <div
-      className={`kai-tool ${isRunning ? 'running' : ''} ${isError ? 'error' : ''}`}
+      className={`kai-tool ${isRunning ? 'running' : ''} ${isError ? 'error' : ''} ${isConfirmation ? 'confirm' : ''}`}
     >
       <div className="kai-tool-head">
         <Wrench size={11} />
@@ -568,8 +572,46 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
           {isRunning && 'a executar…'}
           {trace.status === 'done' && '✓'}
           {isError && '⚠'}
+          {isConfirmation && 'requer confirmação'}
         </span>
       </div>
+      {isConfirmation && (
+        <div className="kai-tool-confirm">
+          <div className="kai-tool-confirm-msg">
+            Esta acção altera dados. Confirmas?
+          </div>
+          {acted === null ? (
+            <div className="kai-tool-confirm-actions">
+              <button
+                type="button"
+                className="kai-confirm-yes"
+                disabled={sending}
+                onClick={() => {
+                  setActed('confirm')
+                  void send('Sim, confirmo.', { allowMutations: true })
+                }}
+              >
+                Confirmar
+              </button>
+              <button
+                type="button"
+                className="kai-confirm-no"
+                disabled={sending}
+                onClick={() => {
+                  setActed('cancel')
+                  void send('Não, cancela essa acção.')
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <div className="kai-tool-confirm-done">
+              {acted === 'confirm' ? 'Confirmado ✓' : 'Cancelado'}
+            </div>
+          )}
+        </div>
+      )}
       {isError && trace.errorMessage && (
         <div className="kai-tool-err">{trace.errorMessage}</div>
       )}
@@ -610,6 +652,50 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
         }
         .kai-tool.error {
           border-color: var(--k2-bad);
+        }
+        .kai-tool.confirm {
+          border-color: var(--k2-warn);
+          background: var(--k2-bg-elev-2);
+        }
+        .kai-tool-confirm {
+          margin-top: 7px;
+        }
+        .kai-tool-confirm-msg {
+          font-size: 12px;
+          color: var(--k2-text);
+          margin-bottom: 7px;
+        }
+        .kai-tool-confirm-actions {
+          display: flex;
+          gap: 7px;
+        }
+        .kai-confirm-yes,
+        .kai-confirm-no {
+          font-family: inherit;
+          font-size: 12px;
+          font-weight: 500;
+          padding: 6px 14px;
+          border-radius: var(--k2-radius-sm);
+          cursor: pointer;
+          border: 1px solid transparent;
+        }
+        .kai-confirm-yes {
+          background: var(--k2-accent);
+          color: var(--k2-accent-fg);
+        }
+        .kai-confirm-yes:disabled,
+        .kai-confirm-no:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+        .kai-confirm-no {
+          background: transparent;
+          border-color: var(--k2-border-strong);
+          color: var(--k2-text-dim);
+        }
+        .kai-tool-confirm-done {
+          font-size: 12px;
+          color: var(--k2-text-mute);
         }
         .kai-tool-head {
           display: inline-flex;
