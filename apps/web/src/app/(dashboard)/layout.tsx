@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
 import { ToastProvider } from '@/components/ui/toast'
-import { Logo } from '@/components/ui/logo'
+import { Logo, LogoIcon } from '@/components/ui/logo'
 import { TenantPlan } from '@kamaia/shared-types'
 import {
   KamaiaAIProvider,
@@ -145,7 +145,7 @@ function Sidebar({
       <div className="k2-sb-head">
         <div className="k2-brand">
           <div className="k2-brand-logo" aria-label="Kamaia">
-            <Logo height={20} />
+            {collapsed ? <LogoIcon size={22} /> : <Logo height={20} />}
           </div>
         </div>
       </div>

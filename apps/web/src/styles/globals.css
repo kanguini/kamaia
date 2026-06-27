@@ -206,12 +206,12 @@
   padding: 18px 18px 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 }
 .k2-brand {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
   min-width: 0;
 }
@@ -356,7 +356,6 @@
 /* Topbar */
 .k2-topbar {
   height: var(--k2-topbar-h);
-  border-bottom: 1px solid var(--k2-border);
   display: flex;
   align-items: center;
   padding: 0 28px;
