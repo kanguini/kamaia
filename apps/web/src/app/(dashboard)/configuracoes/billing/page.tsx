@@ -193,7 +193,7 @@ export default function BillingPage() {
           />
           <UsageCard
             icon={MessageSquare}
-            label="Mensagens Kamaia AI"
+            label="Mensagens Dr. Kamaia"
             value={fmtQuota(status.usage.iaMessages.usado, status.usage.iaMessages.limite)}
             pct={status.usage.iaMessages.pct}
             unlimited={status.usage.iaMessages.limite < 0}

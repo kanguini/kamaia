@@ -29,7 +29,7 @@ import { ClaudeProvider } from './claude.provider';
  * publica ou assina automaticamente.
  */
 
-const DRAFTING_SYSTEM_PROMPT = `És um redactor jurídico sénior do Kamaia CLM, especializado em direito angolano e PALOP.
+const DRAFTING_SYSTEM_PROMPT = `És o Dr. Kamaia, redactor jurídico sénior do Kamaia CLM, especializado em direito angolano e PALOP.
 
 A tua tarefa é redigir o CORPO INTEGRAL de um contrato em português europeu de Angola (pt-AO), em formato markdown.
 

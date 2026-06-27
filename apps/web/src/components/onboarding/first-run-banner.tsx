@@ -3,10 +3,10 @@
 /**
  * FirstRunBanner — banner do primeiro arranque.
  *
- * Aparece na homepage da Kamaia AI quando o tenant tem 0 contratos.
+ * Aparece na homepage do Dr. Kamaia quando o tenant tem 0 contratos.
  * Oferece 2 caminhos contextuais:
  *   1. "Importar carteira existente" → /contratos com modo bulk
- *   2. "Criar primeiro contrato com Clara" → abre o side panel
+ *   2. "Criar primeiro contrato com o Dr. Kamaia" → abre o side panel
  *      com prompt pré-populado
  *
  * Estratégia: a maior fricção do CLM B2B é o "cold start". Quem
@@ -123,10 +123,10 @@ export function FirstRunBanner() {
           <Sparkles size={16} className="frb-path-icon" />
           <div>
             <div className="frb-path-title">
-              Criar primeiro contrato com a Clara
+              Criar primeiro contrato com o Dr. Kamaia
             </div>
             <div className="frb-path-sub">
-              Diz à Kamaia AI o que precisas. Ela faz as perguntas certas e
+              Diz ao Dr. Kamaia o que precisas. Ele faz as perguntas certas e
               monta o contrato.
             </div>
           </div>

@@ -130,13 +130,13 @@ export function KamaiaAIPanel() {
         // botões/inputs internos.
         {...(!open ? { inert: '' as never } : {})}
         role="complementary"
-        aria-label="Kamaia AI assistant"
+        aria-label="Dr. Kamaia"
       >
         {/* Header */}
         <div className="kai-head">
           <div className="kai-title">
             <Sparkles size={14} />
-            <span>Kamaia AI</span>
+            <span>Dr. Kamaia</span>
           </div>
           <div className="kai-head-actions">
             <button
@@ -275,7 +275,7 @@ export function KamaiaAIPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunta à Kamaia AI…"
+            placeholder="Pergunta ao Dr. Kamaia…"
             rows={1}
             disabled={sending}
             aria-label="Escreve uma mensagem"
@@ -303,7 +303,7 @@ export function KamaiaAIPanel() {
           )}
         </form>
         <div className="kai-foot-hint">
-          Kamaia AI pode cometer erros. Verifica informação crítica.
+          O Dr. Kamaia pode cometer erros. Verifica informação crítica.
         </div>
       </div>
 
@@ -958,8 +958,8 @@ export function Message({ message: m }: { message: import('./types').Message }) 
               dangerouslySetInnerHTML={{ __html: html }}
             />
           ) : (
-            <span className="kai-thinking" aria-label="Kamaia a pensar">
-              Kamaia a pensar<span className="kai-dots" aria-hidden="true" />
+            <span className="kai-thinking" aria-label="Dr. Kamaia a pensar">
+              Dr. Kamaia a pensar<span className="kai-dots" aria-hidden="true" />
             </span>
           )}
           {m.streaming && !isUser && m.content && <span className="kai-caret" />}

@@ -113,7 +113,7 @@ function Hero() {
         </h1>
 
         <p className="mt-6 max-w-[680px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
-          A Kamaia AI pesquisa, cria e monitoriza contratos por ti, em
+          O Dr. Kamaia pesquisa, cria e monitoriza contratos por ti, em
           linguagem natural. Compliance angolano (Imposto de Selo, BNA, AGT,
           registos) calculado automaticamente. Multi-sector, alto volume.
         </p>

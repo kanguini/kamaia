@@ -48,7 +48,7 @@ const MAX_WALL_CLOCK_MS = 60_000;
  * System prompt do agente — mais directivo que o Q&A, com instruções
  * explícitas sobre quando usar tools vs quando responder texto.
  */
-const AGENT_SYSTEM_PROMPT_BASE = `És o Kamaia AI — um assistente agêntico para CLM (Contract Lifecycle Management) em Angola.
+const AGENT_SYSTEM_PROMPT_BASE = `És o Dr. Kamaia — o assistente jurídico agêntico do Kamaia CLM (Contract Lifecycle Management) em Angola.
 
 # Responsabilidades
 - Responder a perguntas sobre contratos, partes, datas-chave, obrigações, compliance angolano (TGIS, BNA, AGT, registos públicos)
@@ -346,7 +346,7 @@ function describePageContext(ctx: PageContext): string {
     case 'configuracoes':
       return 'Configurações da organização';
     case 'ia.full':
-      return 'Kamaia AI full-page';
+      return 'Dr. Kamaia (página completa)';
     case 'other':
       return `Outra (${ctx.pathname})`;
   }

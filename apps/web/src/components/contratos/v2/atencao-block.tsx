@@ -7,7 +7,7 @@
  * este contrato precisa de ti AGORA, cada uma resolvível in-line.
  *
  * Diferença face ao Contracko (e à v2 anterior, que era clone):
- *   - Contracko: vês metadata, agarras a Clara para perguntar.
+ *   - Contracko: vês metadata, agarras o assistente para perguntar.
  *   - Kamaia: o produto diz-te o que precisa antes de perguntares,
  *     e resolves sem sair da página.
  *

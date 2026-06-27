@@ -120,12 +120,12 @@ export default function KamaiaAIHomePage() {
     >
       <input
         className="kai-home-input"
-        placeholder="Pergunta à Kamaia AI…"
+        placeholder="Pergunta ao Dr. Kamaia…"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         disabled={sending}
         autoFocus
-        aria-label="Pergunta à Kamaia AI"
+        aria-label="Pergunta ao Dr. Kamaia"
       />
       {sending ? (
         <button
@@ -157,7 +157,7 @@ export default function KamaiaAIHomePage() {
         <div className="kai-conv">
           <div className="kai-conv-head">
             <span className="kai-conv-title">
-              <Sparkles size={14} /> Kamaia AI
+              <Sparkles size={14} /> Dr. Kamaia
             </span>
             <button
               type="button"
@@ -181,7 +181,7 @@ export default function KamaiaAIHomePage() {
           <div className="kai-conv-foot">
             {inputForm}
             <div className="kai-conv-hint">
-              Kamaia AI pode cometer erros. Verifica informação crítica.
+              O Dr. Kamaia pode cometer erros. Verifica informação crítica.
             </div>
           </div>
         </div>

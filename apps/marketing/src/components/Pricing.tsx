@@ -79,7 +79,7 @@ export async function Pricing() {
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-white/70">
               Pagas pelo número de contratos activos e por créditos de IA
-              consumidos. Mensagens da Kamaia AI grátis dentro do plano.
+              consumidos. Mensagens do Dr. Kamaia grátis dentro do plano.
             </p>
           </div>
         </Reveal>

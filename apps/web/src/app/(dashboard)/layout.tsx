@@ -60,7 +60,7 @@ interface NavItem {
 // - IA full-page legacy fica acessível mas fora do menu primário
 
 const WORK_NAV: NavItem[] = [
-  { label: 'Kamaia AI', href: '/', icon: Sparkles, match: (p) => p === '/' },
+  { label: 'Dr. Kamaia', href: '/', icon: Sparkles, match: (p) => p === '/' },
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
@@ -252,9 +252,9 @@ function KamaiaAIToggle() {
     <button
       className={cn('k2-icon-btn', open && 'active')}
       onClick={toggle}
-      aria-label={open ? 'Fechar Kamaia AI' : 'Abrir Kamaia AI'}
+      aria-label={open ? 'Fechar Dr. Kamaia' : 'Abrir Dr. Kamaia'}
       aria-pressed={open}
-      title={open ? 'Fechar Kamaia AI (⌘+J)' : 'Abrir Kamaia AI (⌘+J)'}
+      title={open ? 'Fechar Dr. Kamaia (⌘+J)' : 'Abrir Dr. Kamaia (⌘+J)'}
       style={open ? { color: 'var(--k2-text)' } : undefined}
     >
       <Sparkles size={16} />
