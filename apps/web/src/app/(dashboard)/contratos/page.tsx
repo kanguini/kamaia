@@ -79,6 +79,10 @@ function ContratosListInner() {
   // Quando true, o modal abre directo no caminho ① (registar
   // contrato existente — equivalente a "Importar 1 ficheiro").
   const [importarMode, setImportarMode] = useState(false)
+  // Entidade pré-preenchida como parte (vindo de /entidades/[id]).
+  const [presetParte, setPresetParte] = useState<
+    { entidadeId: string; entidadeNome: string } | undefined
+  >(undefined)
 
   // Auto-abre modal quando vier de /contratos/novo (que faz redirect)
   // ou de qualquer link com `?novo=1`. Limpa query string a seguir.
@@ -87,6 +91,11 @@ function ContratosListInner() {
   // primeira jornada típica de quem traz carteira herdada.
   useEffect(() => {
     if (searchParams.get('novo') === '1') {
+      const entidadeId = searchParams.get('parteEntidade')
+      const entidadeNome = searchParams.get('parteNome')
+      if (entidadeId && entidadeNome) {
+        setPresetParte({ entidadeId, entidadeNome })
+      }
       setNovoOpen(true)
       router.replace('/contratos')
     } else if (searchParams.get('onboard') === 'import') {
@@ -191,8 +200,10 @@ function ContratosListInner() {
         onClose={() => {
           setNovoOpen(false)
           setImportarMode(false)
+          setPresetParte(undefined)
         }}
         presetCaminho={importarMode ? 'existente' : undefined}
+        presetParte={presetParte}
       />
 
       <div

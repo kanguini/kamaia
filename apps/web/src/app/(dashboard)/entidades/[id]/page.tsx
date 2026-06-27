@@ -10,9 +10,9 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { ChevronLeft, Plus, Trash2, GitMerge, FileText } from 'lucide-react'
+import { ChevronLeft, Plus, Trash2, GitMerge, FileText, FilePlus } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -90,6 +90,7 @@ const KYC_TIPOS = [
 
 export default function EntidadeDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const router = useRouter()
   const { data: session } = useSession()
 
   const [entidade, setEntidade] = useState<Entidade | null>(null)
@@ -181,9 +182,26 @@ export default function EntidadeDetailPage() {
             <Badge variant="default">{entidade._count.partesEmContratos} contrato(s)</Badge>
           </div>
         </div>
-        <Button variant="secondary" onClick={() => setMergeOpen(true)} leftIcon={<GitMerge size={13} />}>
-          Mesclar com outra
-        </Button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            onClick={() => setMergeOpen(true)}
+            leftIcon={<GitMerge size={13} />}
+          >
+            Mesclar com outra
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() =>
+              router.push(
+                `/contratos?novo=1&parteEntidade=${entidade.id}&parteNome=${encodeURIComponent(entidade.nome)}`,
+              )
+            }
+            leftIcon={<FilePlus size={13} />}
+          >
+            Criar contrato
+          </Button>
+        </div>
       </header>
 
       <Section title="Dados">

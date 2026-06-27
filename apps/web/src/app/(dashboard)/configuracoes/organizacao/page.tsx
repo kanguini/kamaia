@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { useApi, useMutation } from '@/hooks/use-api'
+import { useTheme } from '@/hooks/use-theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TenantPlan, TenantStatus } from '@kamaia/shared-types'
@@ -94,6 +95,7 @@ export default function OrganizacaoPage() {
  * a opção fica wired para quando rolar o i18n full (next-intl).
  */
 function Preferencias() {
+  const { theme, setTheme } = useTheme()
   const [idioma, setIdioma] = useState<'pt-AO' | 'en'>('pt-AO')
   useEffect(() => {
     try {
@@ -143,6 +145,24 @@ function Preferencias() {
             strings continuam em português.
           </span>
         )}
+      </Field>
+      <Field label="Tema">
+        <select
+          value={theme}
+          onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+          style={{
+            padding: '8px 10px',
+            background: 'var(--k2-bg-elev)',
+            border: '1px solid var(--k2-border)',
+            borderRadius: 'var(--k2-radius-sm)',
+            color: 'var(--k2-text)',
+            fontSize: 13,
+            fontFamily: 'inherit',
+          }}
+        >
+          <option value="light">Claro</option>
+          <option value="dark">Escuro</option>
+        </select>
       </Field>
     </div>
   )

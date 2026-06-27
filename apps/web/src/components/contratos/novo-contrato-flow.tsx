@@ -40,6 +40,7 @@ import { unwrapList } from '@/lib/list'
 import {
   ContratoEstado,
   MOEDAS_SUPORTADAS,
+  PartePapel,
 } from '@kamaia/shared-types'
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
@@ -79,10 +80,17 @@ export function NovoContratoFlow({
    * Quando undefined, o utilizador escolhe o caminho no step 1.
    */
   presetCaminho,
+  presetParte,
 }: {
   open: boolean
   onClose: () => void
   presetCaminho?: Caminho
+  /**
+   * Pré-preenche uma parte do contrato (entidade + papel). Usado pelo
+   * botão "Criar contrato" da página de detalhe de uma entidade, que
+   * entra já com essa entidade como contraparte (editável no picker).
+   */
+  presetParte?: { entidadeId: string; entidadeNome: string }
 }) {
   const router = useRouter()
   const { data: session, status } = useSession()
@@ -101,6 +109,20 @@ export function NovoContratoFlow({
       setCaminho(null)
     }
   }, [open, presetCaminho])
+
+  // Pré-preenche a entidade como contraparte (vindo da página de
+  // detalhe de uma entidade). O papel é editável no PartesPicker.
+  useEffect(() => {
+    if (open && presetParte) {
+      setPartes([
+        {
+          entidadeId: presetParte.entidadeId,
+          entidadeNome: presetParte.entidadeNome,
+          papel: PartePapel.CONTRAPARTE,
+        },
+      ])
+    }
+  }, [open, presetParte])
 
   // Catálogos
   const [tipos, setTipos] = useState<OptionItem[]>([])

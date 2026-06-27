@@ -12,8 +12,8 @@
 
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   LayoutDashboard,
   FileText,
@@ -22,11 +22,10 @@ import {
   BookOpen,
   Bell,
   Settings,
-  Sun,
-  Moon,
   LogOut,
   ChevronDown,
   Check,
+  CheckCheck,
   Menu,
   X,
   Search,
@@ -35,7 +34,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useTheme } from '@/hooks/use-theme'
+import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
 import { ToastProvider } from '@/components/ui/toast'
 import { Logo } from '@/components/ui/logo'
@@ -216,7 +215,6 @@ function Topbar({
   user?: { firstName?: string; lastName?: string; email?: string }
   onBurger: () => void
 }) {
-  const { theme, toggle: toggleTheme } = useTheme()
   const initials = useInitials(user)
 
   return (
@@ -236,14 +234,7 @@ function Topbar({
       <div className="k2-topbar-actions">
         <GlobalSearch />
         <KamaiaAIToggle />
-        <button
-          className="k2-icon-btn"
-          onClick={toggleTheme}
-          aria-label="Alternar tema"
-          title="Alternar tema"
-        >
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        <NotificationsBell />
         <UserMenu user={user} initials={initials} />
       </div>
     </header>
@@ -267,6 +258,234 @@ function KamaiaAIToggle() {
     >
       <Sparkles size={16} />
     </button>
+  )
+}
+
+interface NotificationItem {
+  id: string
+  tipo: string
+  titulo: string
+  conteudo: string
+  status: string
+  payload?: { contratoId?: string; entidadeId?: string } | null
+  createdAt: string
+}
+
+/**
+ * Sino de notificações no topbar — substitui o antigo toggle de tema
+ * (que migrou para Configurações). Mostra contagem de não-lidas e um
+ * dropdown com as notificações recentes do utilizador. Clicar marca
+ * como lida e navega para o contrato associado (se houver).
+ */
+function NotificationsBell() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState<NotificationItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const token = session?.accessToken
+  const unread = items.filter((n) => n.status !== 'READ').length
+
+  const load = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const res = await api<{ data: NotificationItem[] }>(
+        '/notifications?limit=20',
+        { token },
+      )
+      setItems(res.data ?? [])
+    } catch {
+      setItems([])
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  // Carrega ao montar e em polling discreto (90s) para refrescar o badge.
+  useEffect(() => {
+    void load()
+    const t = setInterval(() => void load(), 90_000)
+    return () => clearInterval(t)
+  }, [load])
+
+  // Fecha ao clicar fora.
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const onItemClick = async (n: NotificationItem) => {
+    if (n.status !== 'READ' && token) {
+      setItems((prev) =>
+        prev.map((x) => (x.id === n.id ? { ...x, status: 'READ' } : x)),
+      )
+      try {
+        await api(`/notifications/${n.id}/read`, { method: 'PATCH', token })
+      } catch {
+        /* badge reverte no próximo load */
+      }
+    }
+    const contratoId = n.payload?.contratoId
+    setOpen(false)
+    if (contratoId) router.push(`/contratos/${contratoId}`)
+  }
+
+  const markAllRead = async () => {
+    const naoLidas = items.filter((n) => n.status !== 'READ')
+    if (naoLidas.length === 0 || !token) return
+    setItems((prev) => prev.map((x) => ({ ...x, status: 'READ' })))
+    await Promise.allSettled(
+      naoLidas.map((n) =>
+        api(`/notifications/${n.id}/read`, { method: 'PATCH', token }),
+      ),
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative' }} ref={ref}>
+      <button
+        type="button"
+        className={cn('k2-icon-btn', open && 'active')}
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notificações"
+        title="Notificações"
+        style={open ? { color: 'var(--k2-text)' } : undefined}
+      >
+        <Bell size={16} />
+        {unread > 0 && (
+          <span
+            style={{
+              position: 'absolute',
+              top: 3,
+              right: 3,
+              minWidth: 15,
+              height: 15,
+              padding: '0 4px',
+              borderRadius: 999,
+              background: 'var(--k2-bad)',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 700,
+              display: 'grid',
+              placeItems: 'center',
+              lineHeight: 1,
+            }}
+          >
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 'calc(100% + 6px)',
+            width: 340,
+            maxHeight: 440,
+            display: 'flex',
+            flexDirection: 'column',
+            background: 'var(--k2-bg-elev)',
+            border: '1px solid var(--k2-border-strong)',
+            borderRadius: 'var(--k2-radius)',
+            boxShadow: '0 12px 32px -12px rgba(0,0,0,0.5)',
+            zIndex: 50,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 12px',
+              borderBottom: '1px solid var(--k2-border)',
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Notificações</span>
+            {unread > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllRead()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--k2-text-mute)',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                }}
+              >
+                <CheckCheck size={12} /> Marcar todas
+              </button>
+            )}
+          </div>
+          <div style={{ overflowY: 'auto' }}>
+            {loading && items.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: 'var(--k2-text-mute)' }}>
+                A carregar…
+              </div>
+            ) : items.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--k2-text-mute)' }}>
+                <Bell size={20} style={{ opacity: 0.4 }} />
+                <div style={{ fontSize: 12, marginTop: 8 }}>Sem notificações.</div>
+              </div>
+            ) : (
+              items.map((n) => {
+                const lida = n.status === 'READ'
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    onClick={() => void onItemClick(n)}
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      background: lida ? 'transparent' : 'var(--k2-bg-elev-2)',
+                      border: 'none',
+                      borderBottom: '1px solid var(--k2-border)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        marginTop: 5,
+                        flexShrink: 0,
+                        background: lida ? 'transparent' : 'var(--k2-accent)',
+                      }}
+                    />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontSize: 12.5, fontWeight: lida ? 400 : 600, color: 'var(--k2-text)' }}>
+                        {n.titulo}
+                      </span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--k2-text-mute)', marginTop: 2, lineHeight: 1.4 }}>
+                        {n.conteudo}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -696,7 +696,7 @@ function prettyToolName(name: string): string {
   return map[name] ?? name
 }
 
-function Message({ message: m }: { message: import('./types').Message }) {
+export function Message({ message: m }: { message: import('./types').Message }) {
   const isUser = m.role === 'user'
   // Render assistant content as markdown; user fica como plain text para
   // preservar a forma como ele escreveu (incluindo erros tipográficos).
