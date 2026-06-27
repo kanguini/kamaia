@@ -238,6 +238,34 @@
 }
 .k2-ws-btn:hover { color: var(--k2-text); background: var(--k2-bg-hover); }
 .k2-nav-group { padding: 6px 10px; overflow-y: auto; flex: 1; }
+
+/* Rodapé da sidebar — avatar + organização activa + botão de recolher
+   (chevron) ao fundo-direita. A .k2-nav-group tem flex:1, logo este
+   rodapé fica encostado à base. */
+.k2-sb-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--k2-border);
+}
+.k2-sb-foot-org { flex: 1; min-width: 0; }
+.k2-sb-collapse {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  color: var(--k2-text-mute);
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.k2-sb-collapse:hover { color: var(--k2-text); background: var(--k2-bg-hover); }
+/* Colapsada — empilha avatar e chevron na vertical, centrados. */
+.k2-sidebar.collapsed .k2-sb-foot { flex-direction: column; gap: 10px; padding: 12px 8px; }
+.k2-sidebar.collapsed .k2-sb-collapse { margin-left: 0; }
 .k2-nav-label {
   font-size: 10px;
   color: var(--k2-text-dim);

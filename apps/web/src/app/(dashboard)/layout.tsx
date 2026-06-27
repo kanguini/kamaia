@@ -28,10 +28,9 @@ import {
   Check,
   CheckCheck,
   Menu,
-  X,
   Search,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
+  ChevronRight,
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -105,13 +104,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClose={() => setMobileOpen(false)}
             collapsed={collapsed}
             onToggleCollapsed={toggleCollapsed}
+            user={session?.user}
           />
 
           <div className="k2-main">
-            <Topbar
-              user={session?.user}
-              onBurger={() => setMobileOpen(true)}
-            />
+            <Topbar onBurger={() => setMobileOpen(true)} />
             <div style={{ padding: '1.25rem 1.5rem 2rem' }}>{children}</div>
           </div>
 
@@ -130,35 +127,27 @@ function Sidebar({
   onClose,
   collapsed,
   onToggleCollapsed,
+  user,
 }: {
   pathname: string
   open: boolean
   onClose: () => void
   collapsed: boolean
   onToggleCollapsed: () => void
+  user?: { firstName?: string; lastName?: string; email?: string }
 }) {
+  const initials = useInitials(user)
+
   return (
     <aside className={cn('k2-sidebar', open && 'open', collapsed && 'collapsed')}>
-      {/* AUDIT: header limpo — sem chevron decorativo nem sub-label "CLM".
-          Mantém apenas o logo e o toggle de colapsar. */}
+      {/* Header limpo — só o logo. O toggle de recolher migrou para o
+          rodapé (fundo-direita). */}
       <div className="k2-sb-head">
         <div className="k2-brand">
           <div className="k2-brand-logo" aria-label="Kamaia">
             <Logo height={20} />
           </div>
         </div>
-        <button
-          className="k2-ws-btn"
-          onClick={() => {
-            if (open) onClose()
-            else onToggleCollapsed()
-          }}
-          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
-          aria-expanded={!collapsed}
-          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-        >
-          {open ? <X size={15} /> : collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
-        </button>
       </div>
 
       <nav className="k2-nav-group">
@@ -175,6 +164,29 @@ function Sidebar({
           <NavLink key={item.href} item={item} pathname={pathname} onClick={onClose} collapsed={collapsed} />
         ))}
       </nav>
+
+      {/* Rodapé — avatar do utilizador + organização activa, com o botão
+          de recolher (chevron minimalista) ao fundo-direita. */}
+      <div className="k2-sb-foot">
+        <UserMenu user={user} initials={initials} direction="up" />
+        {!collapsed && (
+          <div className="k2-sb-foot-org">
+            <TenantSwitcher direction="up" />
+          </div>
+        )}
+        <button
+          className="k2-sb-collapse"
+          onClick={() => {
+            if (open) onClose()
+            else onToggleCollapsed()
+          }}
+          aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      </div>
     </aside>
   )
 }
@@ -209,15 +221,7 @@ function NavLink({
   )
 }
 
-function Topbar({
-  user,
-  onBurger,
-}: {
-  user?: { firstName?: string; lastName?: string; email?: string }
-  onBurger: () => void
-}) {
-  const initials = useInitials(user)
-
+function Topbar({ onBurger }: { onBurger: () => void }) {
   return (
     <header className="k2-topbar">
       <button
@@ -228,15 +232,12 @@ function Topbar({
         <Menu size={16} />
       </button>
 
-      <TenantSwitcher />
-
       <div style={{ flex: 1 }} />
 
       <div className="k2-topbar-actions">
         <GlobalSearch />
         <KamaiaAIToggle />
         <NotificationsBell />
-        <UserMenu user={user} initials={initials} />
       </div>
     </header>
   )
@@ -584,10 +585,11 @@ function GlobalSearch() {
   )
 }
 
-function TenantSwitcher() {
+function TenantSwitcher({ direction = 'down' }: { direction?: 'up' | 'down' }) {
   const { tenants, active, switchTenant, loading } = useTenants()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const up = direction === 'up'
 
   useEffect(() => {
     if (!open) return
@@ -613,7 +615,7 @@ function TenantSwitcher() {
   }
 
   return (
-    <div style={{ position: 'relative' }} ref={ref}>
+    <div style={{ position: 'relative', width: '100%' }} ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -621,6 +623,7 @@ function TenantSwitcher() {
           display: 'inline-flex',
           alignItems: 'center',
           gap: 8,
+          width: '100%',
           padding: '6px 10px',
           borderRadius: 'var(--k2-radius-sm)',
           background: 'var(--k2-bg-elev)',
@@ -632,23 +635,24 @@ function TenantSwitcher() {
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <Building2 size={14} />
-        <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Building2 size={14} style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {active?.nome ?? 'Selecciona organização'}
         </span>
         {active?.plan === TenantPlan.AGENCY && (
-          <span style={{ fontSize: 10, color: 'var(--k2-accent)', letterSpacing: '0.06em' }}>AGENCY</span>
+          <span style={{ fontSize: 10, color: 'var(--k2-accent)', letterSpacing: '0.06em', flexShrink: 0 }}>AGENCY</span>
         )}
-        <ChevronDown size={13} />
+        <ChevronDown size={13} style={{ flexShrink: 0 }} />
       </button>
       {open && (
         <div
           role="listbox"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
+            ...(up ? { bottom: 'calc(100% + 6px)' } : { top: 'calc(100% + 6px)' }),
             left: 0,
-            minWidth: 260,
+            right: 0,
+            minWidth: 220,
             background: 'var(--k2-bg-elev)',
             border: '1px solid var(--k2-border-strong)',
             borderRadius: 'var(--k2-radius)',
@@ -705,12 +709,15 @@ function TenantSwitcher() {
 function UserMenu({
   user,
   initials,
+  direction = 'down',
 }: {
   user?: { firstName?: string; lastName?: string; email?: string }
   initials: string
+  direction?: 'up' | 'down'
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const up = direction === 'up'
 
   useEffect(() => {
     if (!open) return
@@ -762,8 +769,7 @@ function UserMenu({
           role="menu"
           style={{
             position: 'absolute',
-            right: 0,
-            top: 'calc(100% + 6px)',
+            ...(up ? { left: 0, bottom: 'calc(100% + 6px)' } : { right: 0, top: 'calc(100% + 6px)' }),
             minWidth: 220,
             background: 'var(--k2-bg-elev)',
             border: '1px solid var(--k2-border-strong)',
