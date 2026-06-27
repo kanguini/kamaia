@@ -49,18 +49,23 @@ export class IaService {
   ) {}
 
   /**
-   * Onda B.RACE.6: increment atómico com guard de quota.
+   * Onda IA-1: reserva atómica de quota ANTES de chamar a Claude.
    *
-   * `WHERE iaMessagesUsado < iaMessagesLimit` OR `iaMessagesLimit < 0`
-   * (unlimited). updateMany devolve `count: 0` quando a condição
-   * falha (quota saturada). Não throw em DB error — log + continua;
-   * a mensagem já foi gravada, não vamos partir o turn por causa
-   * disso. Caller pode chamar sem await em hot-path se preferir
-   * (`void this.incrementIaMessagesUsado(tenantId)`).
+   * Um único UPDATE atómico que incrementa `iaMessagesUsado` apenas se
+   * houver quota (`usado < limite`) ou o plano for ilimitado
+   * (`limite < 0`). `updateMany` devolve `count` — se `0`, ou a quota
+   * está esgotada OU não existe linha de quota para o tenant
+   * (fail-CLOSED: sem provisão de quota = sem IA, em vez do antigo
+   * fail-open que dava IA grátis ilimitada).
+   *
+   * Reservar à entrada (não no fim, e não `void`) fecha a corrida
+   * TOCTOU: N pedidos concorrentes não podem todos passar o limite,
+   * porque cada um consome uma unidade atomicamente antes de gastar
+   * tokens. Devolve `true` se reservou, `false` caso contrário.
    */
-  private async incrementIaMessagesUsado(tenantId: string): Promise<void> {
+  private async reserveIaQuota(tenantId: string): Promise<boolean> {
     try {
-      await this.prisma.usageQuota.updateMany({
+      const { count } = await this.prisma.usageQuota.updateMany({
         where: {
           tenantId,
           OR: [
@@ -70,10 +75,26 @@ export class IaService {
         },
         data: { iaMessagesUsado: { increment: 1 } },
       });
+      return count > 0;
     } catch (e) {
+      // Fail-closed: se não conseguimos verificar a quota, não gastamos
+      // dinheiro de API às cegas.
       this.logger.warn(
-        `Falha ao incrementar iaMessagesUsado (tenant ${tenantId}): ${(e as Error).message}`,
+        `Falha ao reservar quota IA (tenant ${tenantId}): ${(e as Error).message}`,
       );
+      return false;
+    }
+  }
+
+  /** Estorna uma reserva de quota (best-effort) quando a chamada falha cedo. */
+  private async refundIaQuota(tenantId: string): Promise<void> {
+    try {
+      await this.prisma.usageQuota.updateMany({
+        where: { tenantId, iaMessagesUsado: { gt: 0 }, iaMessagesLimit: { gte: 0 } },
+        data: { iaMessagesUsado: { decrement: 1 } },
+      });
+    } catch {
+      /* best-effort */
     }
   }
 
@@ -137,24 +158,18 @@ export class IaService {
     conversationId: string,
     dto: SendMessageDto,
   ) {
-    // AUDIT fix (IA): respeitar quota iaMessagesLimit do tenant
-    // antes de chamar Claude. Mensagens custam dinheiro; sem este
-    // check, um tenant podia gerar custo ilimitado.
-    const quota = await this.prisma.usageQuota.findUnique({
-      where: { tenantId },
-      select: { iaMessagesLimit: true, iaMessagesUsado: true },
-    });
-    if (quota && quota.iaMessagesUsado >= quota.iaMessagesLimit) {
-      throw new ForbiddenException(
-        `Quota IA esgotada (${quota.iaMessagesUsado}/${quota.iaMessagesLimit}). Renova o plano ou aguarda o próximo ciclo.`,
-      );
-    }
-
     const conv = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, tenantId, userId },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) throw new NotFoundException('Conversation not found');
+
+    // Reserva atómica de quota ANTES de chamar Claude (fail-closed).
+    if (!(await this.reserveIaQuota(tenantId))) {
+      throw new ForbiddenException(
+        'Quota de IA esgotada ou não provisionada. Renova o plano ou contacta o suporte.',
+      );
+    }
 
     const userMsg = await this.prisma.aIMessage.create({
       data: {
@@ -273,8 +288,7 @@ export class IaService {
       entityId: conversationId,
     });
 
-    await this.incrementIaMessagesUsado(tenantId);
-
+    // Quota já foi reservada atomicamente à entrada (reserveIaQuota).
     return { user: userMsg, assistant: assistantMsg };
   }
 
@@ -295,6 +309,7 @@ export class IaService {
     userId: string,
     conversationId: string,
     dto: SendMessageDto,
+    signal?: AbortSignal,
   ): AsyncGenerator<
     | { kind: 'user-msg'; messageId: string }
     | { kind: 'citations'; citacoes: Array<{ documentCodigo: string; titulo: string; artigo: string | null; trecho: string }> }
@@ -303,24 +318,21 @@ export class IaService {
     | { kind: 'error'; message: string }
   > {
     // Quota check
-    const quota = await this.prisma.usageQuota.findUnique({
-      where: { tenantId },
-      select: { iaMessagesLimit: true, iaMessagesUsado: true },
-    });
-    if (quota && quota.iaMessagesUsado >= quota.iaMessagesLimit) {
-      yield {
-        kind: 'error',
-        message: `Quota IA esgotada (${quota.iaMessagesUsado}/${quota.iaMessagesLimit}).`,
-      };
-      return;
-    }
-
     const conv = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, tenantId, userId },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) {
       yield { kind: 'error', message: 'Conversation not found' };
+      return;
+    }
+
+    // Reserva atómica de quota ANTES de chamar Claude (fail-closed).
+    if (!(await this.reserveIaQuota(tenantId))) {
+      yield {
+        kind: 'error',
+        message: 'Quota de IA esgotada ou não provisionada.',
+      };
       return;
     }
 
@@ -389,7 +401,13 @@ export class IaService {
     let tokensOut = 0;
 
     if (this.claude.isAvailable()) {
-      for await (const ev of this.claude.completeStream(historico, contextoRAG)) {
+      for await (const ev of this.claude.completeStream(
+        historico,
+        contextoRAG,
+        undefined,
+        undefined,
+        signal,
+      )) {
         if (ev.kind === 'text') {
           respostaText += ev.delta;
           yield { kind: 'text', delta: ev.delta };
@@ -402,6 +420,8 @@ export class IaService {
           return;
         }
       }
+      // Cliente desconectou a meio — não persistir resposta parcial.
+      if (signal?.aborted) return;
       respostaText = respostaText + DISCLAIMER_FINAL;
     } else {
       // Stub: emite chunks fake para teste do fluxo SSE
@@ -444,8 +464,7 @@ export class IaService {
       entityId: conversationId,
     });
 
-    void this.incrementIaMessagesUsado(tenantId);
-
+    // Quota já reservada atomicamente à entrada (reserveIaQuota).
     yield {
       kind: 'done',
       assistantMessageId: assistantMsg.id,
@@ -473,6 +492,7 @@ export class IaService {
     conversationId: string,
     dto: SendMessageDto,
     pageContext?: PageContext,
+    signal?: AbortSignal,
   ): AsyncGenerator<
     | { kind: 'user-msg'; messageId: string }
     | { kind: 'text'; delta: string }
@@ -497,25 +517,21 @@ export class IaService {
       }
     | { kind: 'error'; message: string }
   > {
-    // Quota check (mesma lógica do stream Q&A)
-    const quota = await this.prisma.usageQuota.findUnique({
-      where: { tenantId },
-      select: { iaMessagesLimit: true, iaMessagesUsado: true },
-    });
-    if (quota && quota.iaMessagesUsado >= quota.iaMessagesLimit) {
-      yield {
-        kind: 'error',
-        message: `Quota IA esgotada (${quota.iaMessagesUsado}/${quota.iaMessagesLimit}).`,
-      };
-      return;
-    }
-
     const conv = await this.prisma.aIConversation.findFirst({
       where: { id: conversationId, tenantId, userId },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
     if (!conv) {
       yield { kind: 'error', message: 'Conversation not found' };
+      return;
+    }
+
+    // Reserva atómica de quota ANTES de chamar Claude (fail-closed).
+    if (!(await this.reserveIaQuota(tenantId))) {
+      yield {
+        kind: 'error',
+        message: 'Quota de IA esgotada ou não provisionada.',
+      };
       return;
     }
 
@@ -580,6 +596,7 @@ export class IaService {
 
     for await (const ev of this.agent.run({
       messages: historico,
+      signal,
       ctx: {
         tenantId,
         userId,
@@ -618,7 +635,14 @@ export class IaService {
       }
     }
 
-    if (erroredOut) return;
+    if (erroredOut) {
+      // Falha do agente — estorna a unidade de quota reservada (o
+      // utilizador não deve pagar por uma resposta que nunca veio).
+      await this.refundIaQuota(tenantId);
+      return;
+    }
+    // Cliente desconectou a meio — não persistir mensagem enganadora.
+    if (signal?.aborted) return;
 
     // Persiste assistant message (apenas texto final; tool calls
     // só ficam no SSE — sem persistência em Sprint 1.2)
@@ -652,8 +676,7 @@ export class IaService {
       afterData: { agent: true, turns, tokensInput: tokensIn, tokensOutput: tokensOut },
     });
 
-    void this.incrementIaMessagesUsado(tenantId);
-
+    // Quota já reservada atomicamente à entrada (reserveIaQuota).
     yield {
       kind: 'done',
       assistantMessageId: assistantMsg.id,

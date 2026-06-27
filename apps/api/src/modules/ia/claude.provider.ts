@@ -82,10 +82,18 @@ export type ClaudeStreamEvent =
     }
   | { kind: 'error'; message: string };
 
-const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
+// Alias sem sufixo de data (recomendado pela Anthropic — IDs datados
+// podem ser retirados de serviço). Opus para o agente com tool-use;
+// sobreponível por env CLAUDE_MODEL.
+const DEFAULT_MODEL = 'claude-opus-4-8';
 const DEFAULT_MAX_TOKENS = 2048;
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
+
+// Status retryable da Anthropic: 429 (rate limit), 500/502/503
+// (transitórios), 529 (overloaded). 4xx restantes são fatais.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 529]);
+const MAX_RETRIES = 3;
 
 const SYSTEM_PROMPT = `És o assistente jurídico do Kamaia CLM — uma plataforma de Contract Lifecycle Management para Angola e PALOP.
 
@@ -126,6 +134,82 @@ export class ClaudeProvider {
   }
 
   /**
+   * POST à Anthropic com retry/backoff para status retryable (429/5xx/529)
+   * e propagação de AbortSignal. Devolve o `Response` (corpo NÃO consumido,
+   * para o caller fazer stream). Lança em abort, erro de rede esgotado, ou
+   * status fatal após drenar o corpo.
+   */
+  private async fetchAnthropic(
+    body: unknown,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      let res: Response;
+      try {
+        res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': this.apiKey as string,
+            'anthropic-version': ANTHROPIC_VERSION,
+          },
+          body: JSON.stringify(body),
+          signal,
+        });
+      } catch (e) {
+        if (signal?.aborted) throw e; // abort — não faz retry
+        lastErr = e;
+        if (attempt < MAX_RETRIES) {
+          await this.backoff(attempt, signal);
+          continue;
+        }
+        throw e;
+      }
+
+      if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+        const retryAfter = Number(res.headers.get('retry-after'));
+        await res.body?.cancel().catch(() => undefined); // liberta a ligação
+        this.logger.warn(
+          `Anthropic ${res.status} — retry ${attempt + 1}/${MAX_RETRIES}`,
+        );
+        await this.backoff(
+          attempt,
+          signal,
+          Number.isFinite(retryAfter) ? retryAfter * 1000 : undefined,
+        );
+        continue;
+      }
+      return res;
+    }
+    throw lastErr instanceof Error
+      ? lastErr
+      : new Error('Falha ao contactar a IA após múltiplas tentativas.');
+  }
+
+  /** Espera exponencial com jitter (ou `retry-after` quando dado). */
+  private async backoff(
+    attempt: number,
+    signal?: AbortSignal,
+    retryAfterMs?: number,
+  ): Promise<void> {
+    const base = retryAfterMs ?? Math.min(8000, 500 * 2 ** attempt);
+    const wait = base + base * 0.25 * Math.random();
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(resolve, wait);
+      signal?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(t);
+          reject(new DOMException('Aborted', 'AbortError'));
+        },
+        { once: true },
+      );
+    });
+  }
+
+  /**
    * Chama a Anthropic Messages API. Devolve `null` se a chave não está
    * configurada. Throwa em erros de rede / API — o caller decide se
    * cai para stub.
@@ -145,6 +229,7 @@ export class ClaudeProvider {
      * 4k-8k para uma minuta completa, enquanto Q&A normal usa 2k.
      */
     maxTokensOverride?: number,
+    signal?: AbortSignal,
   ): Promise<ClaudeResponse | null> {
     if (!this.apiKey) return null;
 
@@ -162,16 +247,9 @@ export class ClaudeProvider {
 
     let res: Response;
     try {
-      res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': this.apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-        },
-        body: JSON.stringify(body),
-      });
+      res = await this.fetchAnthropic(body, signal);
     } catch (e) {
+      if (signal?.aborted || (e as Error)?.name === 'AbortError') throw e;
       this.logger.error(
         `Falha de rede ao chamar Anthropic: ${e instanceof Error ? e.message : String(e)}`,
       );
@@ -220,6 +298,7 @@ export class ClaudeProvider {
     legislacaoContext?: string,
     systemOverride?: string,
     maxTokensOverride?: number,
+    signal?: AbortSignal,
   ): AsyncGenerator<
     | { kind: 'text'; delta: string }
     | { kind: 'done'; modelo: string; tokensInput: number; tokensOutput: number }
@@ -248,16 +327,9 @@ export class ClaudeProvider {
 
     let res: Response;
     try {
-      res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': this.apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-        },
-        body: JSON.stringify(body),
-      });
+      res = await this.fetchAnthropic(body, signal);
     } catch (e) {
+      if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
       yield {
         kind: 'error',
         message: `Falha de rede: ${e instanceof Error ? e.message : String(e)}`,
@@ -286,6 +358,10 @@ export class ClaudeProvider {
 
     try {
       while (true) {
+        if (signal?.aborted) {
+          await reader.cancel().catch(() => undefined);
+          return;
+        }
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -324,6 +400,7 @@ export class ClaudeProvider {
         }
       }
     } catch (e) {
+      if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
       yield {
         kind: 'error',
         message: e instanceof Error ? e.message : String(e),
@@ -357,6 +434,7 @@ export class ClaudeProvider {
     tools: AnthropicToolSpec[],
     systemPrompt: string,
     maxTokens?: number,
+    signal?: AbortSignal,
   ): AsyncGenerator<ClaudeStreamEvent> {
     if (!this.apiKey) {
       yield {
@@ -377,16 +455,9 @@ export class ClaudeProvider {
 
     let res: Response;
     try {
-      res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': this.apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-        },
-        body: JSON.stringify(body),
-      });
+      res = await this.fetchAnthropic(body, signal);
     } catch (e) {
+      if (signal?.aborted || (e as Error)?.name === 'AbortError') return;
       yield {
         kind: 'error',
         message: `Falha de rede: ${e instanceof Error ? e.message : String(e)}`,
@@ -428,6 +499,10 @@ export class ClaudeProvider {
 
     try {
       while (true) {
+        if (signal?.aborted) {
+          await reader.cancel().catch(() => undefined);
+          return;
+        }
         const { value, done } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });

@@ -95,8 +95,10 @@ export class AgentService {
   async *run(opts: {
     messages: AnthropicStructuredMessage[];
     ctx: ToolContext;
+    /** Abortado quando o cliente SSE desconecta — pára o loop e a chamada Claude. */
+    signal?: AbortSignal;
   }): AsyncGenerator<AgentStreamEvent> {
-    const { messages, ctx } = opts;
+    const { messages, ctx, signal } = opts;
     const tools = this.registry.specsFor(ctx.role);
     const systemPrompt = this.buildSystemPrompt(ctx.role, ctx.pageContext);
 
@@ -110,6 +112,9 @@ export class AgentService {
     const startedAt = Date.now();
 
     while (turn < MAX_TURNS) {
+      // Cliente desconectou — pára sem gastar mais tokens
+      if (signal?.aborted) return;
+
       // Check cumulative caps ANTES de gastar mais tokens neste turn
       if (totalTokensOutput >= MAX_TOTAL_OUTPUT_TOKENS) {
         this.logger.warn(
@@ -143,6 +148,7 @@ export class AgentService {
         tools,
         systemPrompt,
         DEFAULT_MAX_TOKENS,
+        signal,
       )) {
         if (ev.kind === 'text') {
           yield { kind: 'text', delta: ev.delta };
