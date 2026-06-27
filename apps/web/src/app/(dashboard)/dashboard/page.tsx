@@ -140,9 +140,9 @@ export default function ExecutiveOverviewPage() {
           </div>
         </div>
 
-        <RecentActivity data={data} loading={loading} />
-
         <DistribuicaoEstado data={data} loading={loading} />
+
+        <RecentActivity data={data} loading={loading} />
       </div>
     </div>
   )
@@ -176,16 +176,6 @@ function Header() {
         >
           Visão Executiva
         </h1>
-        <p
-          style={{
-            margin: '4px 0 0',
-            fontSize: 14,
-            color: T.inkDim,
-            lineHeight: 1.5,
-          }}
-        >
-          Estado actual da carteira de contratos.
-        </p>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Link

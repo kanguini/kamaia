@@ -70,7 +70,6 @@ function ContratosListInner() {
   const [items, setItems] = useState<ContratoListItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [total, setTotal] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -139,7 +138,6 @@ function ContratosListInner() {
         if (cancelled) return
         setItems((prev) => (cursor ? [...prev, ...(res.data ?? [])] : res.data ?? []))
         setNextCursor(res.nextCursor)
-        setTotal(res.total ?? 0)
         setError(null)
       })
       .catch((err: { error?: string }) => {
@@ -164,9 +162,6 @@ function ContratosListInner() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 500, margin: 0 }}>Contratos</h1>
-          <p style={{ marginTop: 4, color: 'var(--k2-text-dim)', fontSize: 13 }}>
-            {total.toLocaleString('pt-AO')} resultado(s)
-          </p>
         </div>
         {/* Importação consolidada aqui (sidebar removido).
             "Importar" abre o flow de novo contrato directamente
