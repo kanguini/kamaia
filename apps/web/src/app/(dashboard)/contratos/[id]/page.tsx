@@ -99,6 +99,9 @@ import type {
 import { AssinarWizard } from '@/components/contratos/v2/assinar-wizard'
 import { TermosDrawer } from '@/components/contratos/v2/termos-drawer'
 import { AdendaDrawer } from '@/components/contratos/v2/adenda-drawer'
+import { TerminarDrawer } from '@/components/contratos/v2/terminar-drawer'
+import { NegociacaoDrawer } from '@/components/contratos/v2/negociacao-drawer'
+import { ComentariosPanel } from '@/components/contratos/comentarios-panel'
 import { LifecycleRail } from '@/components/contratos/v2/lifecycle-rail'
 import { EditorTab } from '@/components/contratos/editor-tab'
 import { VersoesTab } from '@/components/contratos/versoes-tab'
@@ -202,7 +205,6 @@ export default function ContratoDetailPage() {
   return contrato ? (
     <Inner
       contrato={contrato}
-      askAI={askAI}
       onAiAnalysis={() =>
         askAI(
           `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
@@ -237,12 +239,10 @@ function DetailShell({
 
 function Inner({
   contrato,
-  askAI,
   onAiAnalysis,
   onRefresh,
 }: {
   contrato: Contrato
-  askAI: (prompt: string) => void
   onAiAnalysis: () => void
   onRefresh: () => void
 }) {
@@ -250,6 +250,8 @@ function Inner({
   const [signWizardOpen, setSignWizardOpen] = useState(false)
   const [termosOpen, setTermosOpen] = useState(false)
   const [adendaOpen, setAdendaOpen] = useState(false)
+  const [terminarOpen, setTerminarOpen] = useState(false)
+  const [negociacaoOpen, setNegociacaoOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [detalhesTab, setDetalhesTab] = useState<DetalheTab | null>(null)
 
@@ -311,6 +313,19 @@ function Inner({
     }
   }
 
+  // Conclui o sub-ciclo conforme o estado: adenda/disputa voltam a
+  // ACTIVO; terminação avança para TERMINADO.
+  const concluirSubciclo = () => {
+    if (contrato.estado === ContratoEstado.EM_TERMINACAO) {
+      if (window.confirm('Concluir a terminação? O contrato passa a terminado.'))
+        void transitar(ContratoEstado.TERMINADO)
+    } else {
+      // EM_ADENDA ou EM_DISPUTA → regressa a ACTIVO
+      if (window.confirm('Concluir e voltar a pôr o contrato activo?'))
+        void transitar(ContratoEstado.ACTIVO)
+    }
+  }
+
   // Registry: cada acção do resolver → ícone + destino. Total sobre
   // AccaoContrato, por isso qualquer acção que o resolver permita tem
   // sempre um handler. Acções sem ecrã dedicado encaminham para a IA
@@ -322,10 +337,7 @@ function Inner({
       icon: <Send size={13} />,
       run: () => void transitar(ContratoEstado.EM_NEGOCIACAO),
     },
-    NOVO_PONTO: {
-      icon: <MessageSquare size={13} />,
-      run: () => askAI('Ajuda-me a registar um ponto de negociação neste contrato.'),
-    },
+    NOVO_PONTO: { icon: <MessageSquare size={13} />, run: () => setNegociacaoOpen(true) },
     COMPARAR: { icon: <GitCompare size={13} />, run: () => openTab('documentos') },
     COMENTAR: { icon: <MessageSquare size={13} />, run: () => openTab('conversa') },
     APROVAR: {
@@ -345,18 +357,11 @@ function Inner({
       icon: <PlayCircle size={13} />,
       run: () => void transitar(ContratoEstado.ACTIVO),
     },
-    CONCLUIR_SUBCICLO: {
-      icon: <CheckCircle2 size={13} />,
-      run: () => askAI(`Ajuda-me a concluir: ${caps.aviso ?? 'o sub-ciclo em curso'}`),
-    },
+    CONCLUIR_SUBCICLO: { icon: <CheckCircle2 size={13} />, run: concluirSubciclo },
     GERIR_DATAS: { icon: <CalendarClock size={13} />, run: () => setTermosOpen(true) },
     GERIR_OBRIGACOES: { icon: <ListChecks size={13} />, run: () => openTab('obrigacoes') },
     RENOVAR: { icon: <RefreshCw size={13} />, run: () => setTermosOpen(true) },
-    TERMINAR: {
-      icon: <Ban size={13} />,
-      run: () =>
-        askAI('Quero iniciar a terminação deste contrato. Indica-me os passos e implicações.'),
-    },
+    TERMINAR: { icon: <Ban size={13} />, run: () => setTerminarOpen(true) },
     REVER_COMPLIANCE: { icon: <Scale size={13} />, run: () => scrollTo('cd-compliance') },
     ARQUIVAR: {
       icon: <Archive size={13} />,
@@ -542,9 +547,7 @@ function Inner({
         )}
         {detalhesTab === 'conversa' && (
           <div className="cd-mais-body">
-            <div className="cd-placeholder">
-              Comentários por cláusula + timeline detalhada em consolidação.
-            </div>
+            <ComentariosPanel contratoId={contrato.id} versaoId={null} />
           </div>
         )}
       </div>
@@ -572,6 +575,18 @@ function Inner({
         contratoId={contrato.id}
         contratoTitulo={contrato.titulo}
         onSaved={onResolved}
+      />
+      <TerminarDrawer
+        open={terminarOpen}
+        onClose={() => setTerminarOpen(false)}
+        contratoId={contrato.id}
+        onSaved={onResolved}
+      />
+      <NegociacaoDrawer
+        open={negociacaoOpen}
+        onClose={() => setNegociacaoOpen(false)}
+        contratoId={contrato.id}
+        onChanged={onResolved}
       />
 
       <style jsx>{`
