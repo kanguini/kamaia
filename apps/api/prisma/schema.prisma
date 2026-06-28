@@ -79,6 +79,7 @@ model Tenant {
   webhooks        Webhook[]
   backupExports   BackupExport[]
   agendaEventos   AgendaEvento[]
+  tarefas         Tarefa[]
 
   @@index([parentTenantId])
   @@index([slug])
@@ -126,6 +127,7 @@ model User {
   notifications   Notification[]
   pushSubscriptions PushSubscription[]
   aiConversations AIConversation[]
+  tarefas         Tarefa[]
 
   @@index([email])
   @@index([resetTokenHash])
@@ -632,6 +634,7 @@ model Contrato {
   assinaturas         ContratoAssinatura[]
   customFieldValues   ContratoCustomFieldValue[]
   agendaEventos       AgendaEvento[]
+  tarefas             Tarefa[]
 
   @@unique([tenantId, numeroInterno])
   @@index([tenantId, estado])
@@ -1408,6 +1411,68 @@ enum AgendaEventoTipo {
   AUDIENCIA
   LEMBRETE
   ASSINATURA
+}
+
+// ─── Tarefas (gestor de trabalho humano) ──────────────────────────
+//
+// A peça que faltava: trabalho criado e atribuído a MEMBROS da equipa,
+// com estado e prazo. Distinta dos sinais derivados (obrigações,
+// compliance, datas-chave) — cruza-se com eles via `contratoId` e na
+// vista unificada "O meu trabalho". Espelha o AgendaEvento nos vínculos
+// opcionais (contrato/entidade) e aparece na Agenda quando tem prazo.
+
+enum TarefaEstado {
+  A_FAZER
+  EM_CURSO
+  CONCLUIDA
+  CANCELADA
+}
+
+enum TarefaPrioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model Tarefa {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @map("tenant_id") @db.Uuid
+
+  titulo         String           @db.VarChar(200)
+  descricao      String?          @db.Text
+  estado         TarefaEstado     @default(A_FAZER)
+  prioridade     TarefaPrioridade @default(MEDIA)
+
+  /// Prazo (UTC), opcional. Quando presente, a tarefa entra na Agenda
+  /// e na fila priorizada de "O meu trabalho".
+  dataVencimento DateTime?        @map("data_vencimento") @db.Timestamptz
+
+  /// Responsável: um User com Membership no tenant (validado no service).
+  responsavelId  String?          @map("responsavel_id") @db.Uuid
+
+  /// Vínculos opcionais para contexto (espelha AgendaEvento). contratoId
+  /// tem relação para SetNull em soft delete; entidadeId é escalar.
+  contratoId     String?          @map("contrato_id") @db.Uuid
+  entidadeId     String?          @map("entidade_id") @db.Uuid
+
+  concluidaEm    DateTime?        @map("concluida_em") @db.Timestamptz
+  concluidaPor   String?          @map("concluida_por") @db.Uuid
+
+  createdBy      String           @map("created_by") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contrato       Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
+  responsavel    User?            @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, responsavelId, estado])
+  @@index([tenantId, estado, dataVencimento])
+  @@index([tenantId, contratoId])
+  @@index([tenantId, deletedAt])
+  @@map("tarefas")
 }
 
 model PushSubscription {

@@ -23,6 +23,7 @@ import { IaModule } from './modules/ia/ia.module';
 import { RagModule } from './modules/rag/rag.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
+import { TarefasModule } from './modules/tarefas/tarefas.module';
 import { HealthModule } from './modules/health/health.module';
 import { HolidaysModule } from './modules/holidays/holidays.module';
 import { BackupModule } from './modules/backup/backup.module';
@@ -78,6 +79,7 @@ import { BillingModule } from './modules/billing/billing.module';
     // Cross-cutting
     NotificationsModule,
     AgendaModule,
+    TarefasModule,
     WebhooksModule,
     MailModule,
     SeedModule,

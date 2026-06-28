@@ -1058,6 +1058,58 @@ export const AGENDA_EVENTO_TIPO_LABELS: Record<AgendaEventoTipo, string> = {
   [AgendaEventoTipo.ASSINATURA]: 'Assinatura',
 };
 
+// ─── Tarefas ──────────────────────────────────────────────
+//
+// Trabalho humano atribuível, com estado e prazo. Distinto dos sinais
+// derivados (obrigações/compliance/datas) — junta-se a eles na vista
+// unificada "O meu trabalho".
+
+export enum TarefaEstado {
+  A_FAZER = 'A_FAZER',
+  EM_CURSO = 'EM_CURSO',
+  CONCLUIDA = 'CONCLUIDA',
+  CANCELADA = 'CANCELADA',
+}
+
+export const TAREFA_ESTADO_LABELS: Record<TarefaEstado, string> = {
+  [TarefaEstado.A_FAZER]: 'A fazer',
+  [TarefaEstado.EM_CURSO]: 'Em curso',
+  [TarefaEstado.CONCLUIDA]: 'Concluída',
+  [TarefaEstado.CANCELADA]: 'Cancelada',
+};
+
+export enum TarefaPrioridade {
+  BAIXA = 'BAIXA',
+  MEDIA = 'MEDIA',
+  ALTA = 'ALTA',
+  URGENTE = 'URGENTE',
+}
+
+export const TAREFA_PRIORIDADE_LABELS: Record<TarefaPrioridade, string> = {
+  [TarefaPrioridade.BAIXA]: 'Baixa',
+  [TarefaPrioridade.MEDIA]: 'Média',
+  [TarefaPrioridade.ALTA]: 'Alta',
+  [TarefaPrioridade.URGENTE]: 'Urgente',
+};
+
+/** Estados terminais (não voltam a ser trabalho activo). */
+export const TAREFA_ESTADOS_FECHADOS: TarefaEstado[] = [
+  TarefaEstado.CONCLUIDA,
+  TarefaEstado.CANCELADA,
+];
+
+export function tarefaEstaFechada(estado: TarefaEstado): boolean {
+  return TAREFA_ESTADOS_FECHADOS.includes(estado);
+}
+
+/** Peso de prioridade para ordenação (maior = mais urgente). */
+export const TAREFA_PRIORIDADE_PESO: Record<TarefaPrioridade, number> = {
+  [TarefaPrioridade.URGENTE]: 3,
+  [TarefaPrioridade.ALTA]: 2,
+  [TarefaPrioridade.MEDIA]: 1,
+  [TarefaPrioridade.BAIXA]: 0,
+};
+
 export enum NotificationType {
   CONTRATO_VENCIMENTO_PROXIMO = 'CONTRATO_VENCIMENTO_PROXIMO',
   JANELA_DENUNCIA_PROXIMA = 'JANELA_DENUNCIA_PROXIMA',
@@ -1120,6 +1172,7 @@ export enum EntityType {
   API_KEY = 'API_KEY',
   WEBHOOK = 'WEBHOOK',
   AGENDA_EVENTO = 'AGENDA_EVENTO',
+  TAREFA = 'TAREFA',
 }
 
 // ─── Contrato Evento types (taxonomia controlada) ─────────
