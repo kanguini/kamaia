@@ -335,18 +335,6 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       if (!text.trim() || !session?.accessToken) return
       lastSentRef.current = { text, opts }
 
-      // Cria conversa on-demand se nenhuma estiver activa. Usa o
-      // shared in-flight ref (Onda A.5) para coordenar com
-      // newConversation() — se utilizador clicar + escrever rápido,
-      // apenas 1 POST é feito ao servidor.
-      let activeId = conversationId
-      if (!activeId) {
-        const conv = await createConversationShared(session.accessToken)
-        if (!conv) return
-        setConversationId(conv.id)
-        activeId = conv.id
-      }
-
       // Onda A.4: usar randomUUID em vez de Date.now() para evitar
       // colisão quando 2 sends ocorrem no mesmo milissegundo (e.g.
       // click num chip + Enter rápido). crypto.randomUUID() é
@@ -362,6 +350,12 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       const tempUserId = newId('tmp-u-')
       const tempAssistantId = newId('tmp-a-')
 
+      // Mostra já a mensagem do utilizador + a bolha do assistente em
+      // streaming ANTES de criar a conversa. Assim, se a criação da
+      // conversa falhar (API em baixo, sem rede, sessão expirada), o
+      // erro cai no catch e fica VISÍVEL na bolha do assistente — em
+      // vez de o envio morrer em silêncio e parecer que "não acontece
+      // nada" (causa reportada de "escrevi e o chat não começou").
       setMessages((prev) => [
         ...prev,
         {
@@ -389,6 +383,22 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
       sendAbortRef.current = ac
 
       try {
+        // Cria conversa on-demand se nenhuma estiver activa. Usa o
+        // shared in-flight ref (Onda A.5) para coordenar com
+        // newConversation() — apenas 1 POST ao servidor. Dentro do try
+        // para que a falha marque a bolha como errored (e não silêncio).
+        let activeId = conversationId
+        if (!activeId) {
+          const conv = await createConversationShared(session.accessToken)
+          if (!conv) {
+            throw new Error(
+              'Não consegui iniciar a conversa. Verifique a ligação e tente de novo.',
+            )
+          }
+          setConversationId(conv.id)
+          activeId = conv.id
+        }
+
         const tenantId = getActiveTenantId()
         // Sprint 1.2: usa o endpoint agêntico /agent-stream que suporta
         // tool use. Backend faz round-trip multi-turn com Claude e
