@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Nav } from '@/components/Nav'
 import { Footer } from '@/components/Footer'
 import { AnimatedGradient } from '@/components/AnimatedGradient'
-import { HeroFloatingCards } from '@/components/HeroFloatingCards'
+import { DrKamaia } from '@/components/DrKamaia'
 import { Reveal } from '@/components/Reveal'
 import { Pricing } from '@/components/Pricing'
 import { appUrl } from '@/lib/utm'
@@ -10,32 +10,32 @@ import { appUrl } from '@/lib/utm'
 // FAQ mantido sincronizado com o componente Faq() para o rich result do Google.
 const FAQ_ITEMS = [
   {
-    q: 'O que é o Kamaia exactamente?',
-    a: 'O Kamaia é um Contract Lifecycle Management (CLM) horizontal — um sistema para gerir o ciclo de vida completo dos contratos da tua organização, desde a solicitação inicial até ao arquivo após a terminação. Pensado para empresas com carteiras de centenas a dezenas de milhares de contratos, e para sociedades de advogados que oferecem gestão de contratos como serviço aos seus clientes.',
+    q: 'O que é o Kamaia?',
+    a: 'Um sistema de gestão do ciclo de vida de contratos (CLM) para empresas angolanas. Acompanha cada contrato do primeiro rascunho ao arquivo — solicitação, negociação, assinatura, vida activa, renovações, adendas e terminação — com o compliance angolano embebido. Serve organizações com carteiras de centenas a dezenas de milhares de contratos.',
   },
   {
-    q: 'Em que sectores faz sentido usar?',
-    a: 'O Kamaia é horizontal — funciona em qualquer sector que tenha contratos. O catálogo de fábrica cobre Imobiliário, Indústria, Serviços, Comércio, Banca, Seguros, Petróleo & Gás, Mineração, Telecomunicações, Agricultura, Construção, Transportes, Saúde, Educação, Tecnologia, Energia, Turismo e Retail. Cada organização pode estender o catálogo com tipos próprios.',
+    q: 'Tenho de criar tudo de raiz ou posso trazer a carteira que já existe?',
+    a: 'As duas vias valem por igual. Pode criar contratos de raiz, ou importar a carteira que já tem — em massa, a partir de PDF, Word ou documentos digitalizados. A extracção assistida lê partes, valores e datas-chave de cada contrato e coloca-o de imediato sob gestão. A maioria das organizações começa precisamente por aqui.',
   },
   {
-    q: 'Como ajuda com o compliance angolano?',
-    a: 'Compliance Engine embebido com regras versionadas para Imposto de Selo (TGIS), Registos (Predial, Comercial, Automóvel, IAPI), BNA/Lei Cambial/RJOC, retenção AGT sobre serviços de não-residentes, e reconhecimento notarial. O motor sugere os actos requeridos e os prazos legais a partir das características de cada contrato — confirma sempre com o responsável jurídico antes de submeter.',
+    q: 'Em que sectores faz sentido?',
+    a: 'Em qualquer sector que viva de contratos. O catálogo cobre Imobiliário, Indústria, Serviços, Comércio, Banca, Seguros, Petróleo & Gás, Mineração, Telecomunicações, Agricultura, Construção, Transportes, Saúde, Educação, Tecnologia, Energia, Turismo e Retail — e cada organização estende-o com os seus próprios tipos.',
   },
   {
-    q: 'Qual o tempo típico de adopção?',
-    a: 'Em modo Repositório, uma carteira de algumas centenas de contratos já existentes é importada e indexada em horas, com extracção assistida de partes, datas-chave e valor. Equipas a estrear o produto de raiz costumam ter uma carteira-piloto em produção em 2 a 4 semanas.',
+    q: 'Como trata o compliance angolano?',
+    a: 'Um motor de regras versionadas avalia cada contrato e sugere os actos regulatórios aplicáveis — Imposto de Selo (TGIS), registos públicos, BNA e Lei Cambial, retenção AGT e reconhecimento notarial — com o prazo legal e a referência ao diploma vigente à data do facto. O motor sugere; a sua equipa confirma. Nunca submete nada sem confirmação humana.',
   },
   {
-    q: 'Posso usar como sociedade de advogados a gerir contratos dos meus clientes?',
-    a: 'Sim. O plano AGENCY permite criar tenants-filho, um por cliente. Cada cliente fica totalmente isolado do outro — pesquisa, dados, IA, audit log. A tua equipa navega entre eles via workspace switcher. Os teus clientes não pagam — facturamos só ao gabinete.',
+    q: 'Quanto tempo demora a entrar em produção?',
+    a: 'Uma carteira de algumas centenas de contratos existentes é importada e indexada em horas. Os alertas de renovação e os prazos passam a estar visíveis no próprio dia. Equipas que começam a redigir de raiz costumam ter um piloto em produção em duas a quatro semanas.',
   },
   {
-    q: 'Como é garantida a segurança e confidencialidade?',
-    a: 'Isolamento por tenant com guards em todas as camadas. Audit log append-only em todas as escritas. Hash + selo temporal nas versões assinadas. Storage em R2 ou S3 com cifra em repouso e em trânsito. Backups encriptados. Os detalhes estão na política de privacidade.',
+    q: 'Quem é o Dr. Kamaia?',
+    a: 'O conselheiro de IA do sistema. Vigia a carteira e sinaliza o que exige atenção, responde a perguntas sobre a legislação angolana com citação ao artigo, dá sentido a um contrato herdado e assiste na redacção. Apoia a decisão — nunca substitui o aconselhamento jurídico profissional, e cada sugestão fica sujeita a confirmação.',
   },
   {
-    q: 'Como funciona a IA?',
-    a: 'A IA do Kamaia foca-se em Q&A sobre legislação angolana, com citação ao artigo aplicável. O catálogo seed inclui Constituição, Código Civil, Código Comercial, Lei das Sociedades Comerciais, Código do Imposto de Selo, Lei Cambial, Lei do Trabalho, Lei do Investimento Privado, Lei de Protecção de Dados (22/11), Lei 3/14 sobre branqueamento, entre outros. O assistente nunca substitui aconselhamento jurídico profissional.',
+    q: 'E a segurança e a confidencialidade?',
+    a: 'Isolamento por organização em todas as camadas, registo de auditoria imutável em cada escrita, selo temporal e hash nas versões assinadas, e cifra em repouso e em trânsito. Os detalhes constam da política de privacidade.',
   },
 ]
 
@@ -101,21 +101,23 @@ function Hero() {
       <div className="relative z-10 flex flex-col items-center text-center px-4 pt-[clamp(80px,12vh,130px)] pb-10">
         <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] uppercase tracking-[0.12em] text-white/65 backdrop-blur-sm">
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: '#6be49a' }} />
-          O agente de IA que gere os teus contratos · Localizado para Angola
+          Gestão do ciclo de vida de contratos · Angola
         </span>
 
-        <h1 className="mt-7 mx-auto max-w-[960px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
-          O sistema operativo dos teus
+        <h1 className="mt-7 mx-auto max-w-[980px] font-playfair text-[clamp(40px,5.4vw,76px)] font-medium leading-[1.06] tracking-[-0.01em] text-white">
+          O ciclo de vida dos seus contratos,
           <br />
+          sob{' '}
           <em className="not-italic" style={{ color: '#9cb6ff' }}>
-            contratos.
+            domínio.
           </em>
         </h1>
 
-        <p className="mt-6 max-w-[680px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
-          O Dr. Kamaia pesquisa, cria e monitoriza contratos por ti, em
-          linguagem natural. Compliance angolano (Imposto de Selo, BNA, AGT,
-          registos) calculado automaticamente. Multi-sector, alto volume.
+        <p className="mt-6 max-w-[700px] text-[clamp(15px,1.5vw,18px)] leading-relaxed text-white/72">
+          Crie de raiz ou herde a carteira que já existe. O Kamaia acompanha
+          cada contrato — renovações, obrigações, assinaturas e compliance
+          angolano — para que nada lhe escape. Com o Dr.&nbsp;Kamaia a vigiar a
+          carteira e a responder com a lei aplicável.
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -129,12 +131,15 @@ function Hero() {
             href="/contacto"
             className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
           >
-            Falar com a equipa
+            Agendar demonstração
           </Link>
         </div>
       </div>
 
-      <HeroFloatingCards />
+      {/* Dr. Kamaia — personificação animada */}
+      <div className="relative z-10 flex justify-center px-4 pb-16">
+        <DrKamaia />
+      </div>
 
       <div
         aria-hidden="true"
@@ -155,16 +160,14 @@ function Positioning() {
             Para quem
           </p>
           <h2 className="mt-4 font-playfair text-[clamp(28px,3.8vw,48px)] font-medium leading-[1.15] text-white">
-            Empresas com carteira de contratos.
-            <br />
-            Sociedades de advogados que cuidam dela.
+            Para organizações que vivem de contratos.
           </h2>
           <p className="mt-6 text-[clamp(15px,1.4vw,17px)] leading-relaxed text-white/65">
-            Imobiliária com 800 arrendamentos a renovar. Industrial com 200 contratos
-            de fornecimento. Banca com SLAs a vencer. Direcção jurídica que perdeu
-            a janela de denúncia. Gabinete que cuida da carteira de cinco clientes
-            corporativos. O Kamaia fala a linguagem destes problemas — e responde
-            em português angolano, com a lei aplicável.
+            Uma imobiliária com 800 arrendamentos a renovar. Uma indústria com
+            200 contratos de fornecimento. Uma direcção jurídica que não pode
+            perder uma janela de denúncia. Uma seguradora com obrigações a
+            vencer todos os meses. O Kamaia foi desenhado para esta realidade —
+            alto volume, compliance exigente, e a língua e a lei de Angola.
           </p>
         </div>
       </Reveal>
@@ -176,20 +179,20 @@ function Positioning() {
 function Pillars() {
   const PILLARS = [
     {
-      title: 'Ciclo de vida completo',
-      body: 'Solicitação → Drafting → Revisão → Negociação → Aprovação → Assinatura → Vida activa → Adendas → Terminação. 17 estados, transições validadas, timeline imutável por contrato.',
+      title: 'O ciclo de vida, de ponta a ponta',
+      body: 'Solicitação, redacção, negociação, aprovação, assinatura, vida activa, adendas e terminação. Cada contrato tem um estado claro, transições validadas e uma cronologia imutável. Nada se decide sem rasto.',
+    },
+    {
+      title: 'Criar ou herdar — vale por igual',
+      body: 'Redija contratos novos ou traga a carteira que já existe, importada em massa com extracção assistida de partes, valores e datas. Herdar um contrato é tão sólido quanto criá-lo de raiz — e é por aí que a maioria começa.',
     },
     {
       title: 'Compliance angolano embebido',
-      body: 'Imposto de Selo automático, registos públicos, BNA/Lei Cambial, retenção AGT, reconhecimento notarial. Regras versionadas com referência ao diploma vigente à data do facto.',
+      body: 'Imposto de Selo, registos públicos, BNA e Lei Cambial, retenção AGT e reconhecimento notarial — sugeridos a partir das características de cada contrato, com prazo legal e referência ao diploma vigente. O sistema sugere; a sua equipa confirma.',
     },
     {
-      title: 'IA sobre a legislação angolana',
-      body: 'Q&A com citação ao artigo. 13 diplomas-âncora curados — Constituição, Códigos, Lei Cambial, Lei 22/11, Lei 3/14. A IA sugere; tu validas.',
-    },
-    {
-      title: 'Hierarquia multi-tenant',
-      body: 'Modo AGENCY: sociedades de advogados gerem N clientes isolados num só interface. Workspace switcher tipo Linear. Audit cruzado para defesa legal.',
+      title: 'O Dr. Kamaia ao seu lado',
+      body: 'Um conselheiro de IA que vigia a carteira, sinaliza o que exige atenção, dá sentido a um contrato herdado e responde sobre a legislação angolana com citação ao artigo. Apoia a decisão; a palavra final é sempre sua.',
     },
   ]
   return (
@@ -201,7 +204,7 @@ function Pillars() {
               Pilares
             </p>
             <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
-              Quatro coisas que ninguém faz por ti em Angola.
+              Quatro pilares. Uma carteira sob controlo.
             </h2>
           </div>
         </Reveal>
@@ -228,40 +231,40 @@ function Pillars() {
 function Features() {
   const FEATURES = [
     {
-      group: 'Repositório',
-      title: 'Importação em massa',
+      group: 'Herança',
+      title: 'Importação da carteira existente',
       body:
-        'Carrega PDFs e ZIPs da tua carteira legada. OCR + extracção IA preenchem partes, datas-chave, valor. Revisão humana antes de publicar.',
+        'Carregue os contratos que já tem — PDF, Word ou digitalizados. A extracção assistida lê partes, datas-chave e valor; a sua equipa confirma antes de publicar.',
     },
     {
       group: 'Negociação',
-      title: 'Diff inteligente entre versões',
+      title: 'Comparação entre versões',
       body:
-        'V3 contra V2 numa tabela: que cláusulas mudaram e como. Resumo em linguagem do negócio. Foco no que importa.',
+        'Veja, lado a lado, que cláusulas mudaram de uma versão para a outra — com um resumo na linguagem do negócio. Sem ler tudo de novo.',
     },
     {
       group: 'Vida activa',
       title: 'Alertas que não falham',
       body:
-        'Renovação automática em 30 dias, janela de denúncia a fechar, IS por liquidar. Email, push e in-app — múltiplos canais para garantir.',
+        'Renovação a 30 dias, janela de denúncia a fechar, Imposto de Selo por liquidar. Por e-mail, notificação e dentro do sistema — para que nenhum prazo passe despercebido.',
     },
     {
       group: 'Biblioteca',
       title: 'Cláusulas reutilizáveis',
       body:
-        'A cláusula que negociaste há 6 meses está pesquisável e linkada ao contrato de origem. A biblioteca do gabinete cresce sozinha.',
+        'A cláusula que negociou há seis meses fica pesquisável e ligada ao contrato de origem. O acervo da organização cresce a cada contrato.',
     },
     {
       group: 'Compliance',
-      title: 'TGIS automático',
+      title: 'Imposto de Selo calculado',
       body:
-        '11 verbas seed cobrindo prestação de serviços, arrendamento, mútuo, compra e venda. Calcula a base, sugere o prazo. Tu confirmas.',
+        'Verbas da TGIS para prestação de serviços, arrendamento, mútuo e compra e venda. O sistema calcula a base e sugere o prazo; a sua equipa confirma.',
     },
     {
       group: 'Integração',
-      title: 'API + Webhooks',
+      title: 'API e webhooks',
       body:
-        'Dispara fluxos quando um contrato é assinado, expira, ou muda de estado. Integra com o teu ERP, ferramenta de assinatura, ou data lake.',
+        'Despolete fluxos quando um contrato é assinado, expira ou muda de estado. Integre com o seu ERP, a ferramenta de assinatura ou o data lake.',
     },
   ]
   return (
@@ -269,11 +272,11 @@ function Features() {
       <div className="mx-auto max-w-[1180px]">
         <Reveal>
           <div className="mb-16">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
               Funcionalidades
             </p>
             <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
-              Construído para o trabalho real.
+              Funciona como a sua organização funciona.
             </h2>
           </div>
         </Reveal>
@@ -307,22 +310,23 @@ function ComplianceCallout() {
         <Reveal>
           <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-10 md:p-14">
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-              Compliance Engine
+              A vantagem angolana
             </p>
             <h2 className="mt-4 font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15] text-white">
-              Imposto de Selo, registos, BNA e AGT —
+              O compliance do país, tratado de origem —
               <br />
-              sugeridos automaticamente, validados por ti.
+              sugerido pelo sistema, confirmado por si.
             </h2>
             <p className="mt-6 max-w-[760px] text-[15px] leading-relaxed text-white/65">
               O motor lê o tipo de contrato, o valor, as partes e o objecto e
-              produz a lista de actos regulatórios aplicáveis com prazo legal,
-              referência ao diploma vigente e disclaimer obrigatório. Tu confirmas
-              cada acto manualmente. Cada regra é versionada — a lei vigente à
-              data do facto tributário é a que se aplica, não a data presente.
+              apresenta os actos regulatórios aplicáveis, com prazo legal,
+              referência ao diploma e nota obrigatória. Cada acto é confirmado
+              pela sua equipa. As regras são versionadas: aplica-se a lei
+              vigente à data do facto tributário, não a data de hoje. É uma
+              vantagem do produto — não a razão única para o adoptar.
             </p>
             <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-5">
-              {['TGIS', 'Registo Comercial', 'Registo Predial', 'BNA / RJOC', 'AGT IRT'].map((label) => (
+              {['Imposto de Selo', 'Registo Comercial', 'Registo Predial', 'BNA / Lei Cambial', 'Retenção AGT'].map((label) => (
                 <div
                   key={label}
                   className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-center text-[13px] text-white/70"
@@ -349,7 +353,7 @@ function Faq() {
               Perguntas frequentes
             </p>
             <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.15] text-white">
-              O essencial, sem dar voltas.
+              As respostas, sem rodeios.
             </h2>
           </div>
         </Reveal>
@@ -379,11 +383,12 @@ function CTAFinal() {
       <Reveal>
         <div className="mx-auto max-w-[720px] text-center">
           <h2 className="font-playfair text-[clamp(32px,4vw,52px)] font-medium leading-[1.1] text-white">
-            Começa pela tua carteira de hoje.
+            Comece pela carteira que já tem.
           </h2>
           <p className="mt-5 text-[15px] leading-relaxed text-white/60">
-            Importa os contratos que já tens. Vê alertas de renovação em 24 horas.
-            Decide depois se queres redigir os próximos aqui.
+            Importe os contratos existentes e veja os alertas de renovação no
+            próprio dia. Quando estiver pronta, a sua organização passa a
+            redigir os próximos aqui — com a mesma exigência.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link
