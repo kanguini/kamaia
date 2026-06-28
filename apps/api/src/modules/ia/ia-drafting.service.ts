@@ -5,10 +5,17 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, EntityType, VersaoDireccao } from '@kamaia/shared-types';
+import {
+  AuditAction,
+  ContratoEstado,
+  ContratoOrigem,
+  EntityType,
+  VersaoDireccao,
+} from '@kamaia/shared-types';
 import { renderMarkdownToHtml } from '../../common/markdown';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertPodeFase } from '../contratos/contrato-fase.guard';
 import { ClaudeProvider } from './claude.provider';
 
 /**
@@ -144,6 +151,16 @@ export class IaDraftingService {
         'Contrato sem tipo definido — atribui um tipo antes de pedir draft à IA.',
       );
     }
+
+    // Coerência com o editor humano (assertPodeFase em editarCorpo): o
+    // corpo só é redigível antes de assinar (rascunho/negociação). Sem
+    // isto, a IA podia reescrever o corpo de um contrato em vigor ou
+    // herdado — exactamente o que o guard de fase impede no editor.
+    assertPodeFase(
+      contrato.estado as ContratoEstado,
+      contrato.origem as ContratoOrigem,
+      'EDITAR_CORPO',
+    );
 
     // Pull cláusulas-base aprovadas. Estratégia em duas camadas:
     //  1) Cláusulas com `tipoContratoCodigos` que inclui o código do

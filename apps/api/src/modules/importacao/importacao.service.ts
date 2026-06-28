@@ -30,7 +30,6 @@ import { ImportQueueService } from './import-queue.service';
 interface LinhaMeta {
   titulo?: string;
   descricao?: string;
-  numero?: string;
   valor?: string | number; // em kwanzas/unidade (convertido p/ centavos)
   moeda?: string;
   dataAssinatura?: string; // ISO YYYY-MM-DD

@@ -30,7 +30,6 @@ interface Props {
 interface MetaRow {
   _row: number
   titulo: string
-  numero?: string
   contraparte?: string
   valor?: string
   moeda?: string
@@ -46,7 +45,7 @@ interface StartResult {
   totalLinhas?: number
 }
 
-const COLUNAS = 'titulo, numero, contraparte, valor, moeda, dataAssinatura, dataTermo, descricao'
+const COLUNAS = 'titulo, contraparte, valor, moeda, dataAssinatura, dataTermo, descricao'
 
 export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
   const { data: session } = useSession()
@@ -101,7 +100,6 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
           body: JSON.stringify({
             metadataInput: {
               titulo: l.titulo,
-              numero: l.numero,
               contraparte: l.contraparte,
               valor: l.valor,
               moeda: l.moeda,
@@ -114,12 +112,25 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
       }
 
       setProgresso('A processar a carteira…')
-      const res = await api<StartResult>(`/importacao/lotes/${lote.id}/start`, {
+      await api(`/importacao/lotes/${lote.id}/start`, {
         method: 'POST',
         token,
         body: JSON.stringify({}),
       })
-      setResultado(res ?? {})
+
+      // O processamento pode ser ASSÍNCRONO (BullMQ): faz polling do
+      // estado do lote até um estado terminal e lê as contagens reais.
+      // Em modo síncrono o lote já vem terminal à primeira leitura.
+      const TERMINAIS = ['CONCLUIDO', 'CONCLUIDO_COM_ERROS', 'FALHOU', 'CANCELADO']
+      let loteFinal: StartResult = {}
+      for (let tentativa = 0; tentativa < 60; tentativa++) {
+        const l = await api<StartResult>(`/importacao/lotes/${lote.id}`, { token })
+        loteFinal = l ?? {}
+        if (l?.estado && TERMINAIS.includes(l.estado)) break
+        setProgresso(`A processar… (${l?.processadas ?? 0}/${l?.totalLinhas ?? linhas.length})`)
+        await new Promise((r) => setTimeout(r, 1500))
+      }
+      setResultado(loteFinal)
       onDone?.()
     } catch (e) {
       setErr((e as { error?: string })?.error ?? 'Erro ao importar a carteira')
@@ -266,7 +277,6 @@ function parseCsv(text: string): { rows: MetaRow[]; errors: Array<{ row: number;
   const header = parseCsvLine(lines[0]).map((s) => s.trim().toLowerCase())
   const idx = (name: string) => header.indexOf(name.toLowerCase())
   const iTitulo = idx('titulo')
-  const iNumero = idx('numero')
   const iContra = idx('contraparte')
   const iValor = idx('valor')
   const iMoeda = idx('moeda')
@@ -292,7 +302,6 @@ function parseCsv(text: string): { rows: MetaRow[]; errors: Array<{ row: number;
     rows.push({
       _row: rowNum,
       titulo,
-      numero: val(cols, iNumero) || undefined,
       contraparte: val(cols, iContra) || undefined,
       valor: val(cols, iValor) || undefined,
       moeda: val(cols, iMoeda) || undefined,
