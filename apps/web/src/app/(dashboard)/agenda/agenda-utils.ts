@@ -4,7 +4,7 @@
  * (convenção PT/AO).
  */
 
-export type AgendaOrigem = 'evento' | 'data-chave' | 'acto' | 'obrigacao'
+export type AgendaOrigem = 'evento' | 'data-chave' | 'acto' | 'obrigacao' | 'tarefa'
 
 export interface AgendaItem {
   id: string
@@ -30,6 +30,7 @@ export function corDoItem(item: AgendaItem): string {
   if (item.origem === 'acto') return '#b45309' // âmbar — compliance
   if (item.origem === 'data-chave') return '#0e7490' // ciano — datas
   if (item.origem === 'obrigacao') return '#7c3aed' // roxo — obrigações
+  if (item.origem === 'tarefa') return '#15803d' // verde — tarefas
   // Eventos próprios por tipo:
   switch (item.tipo) {
     case 'REUNIAO':

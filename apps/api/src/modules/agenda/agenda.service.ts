@@ -6,6 +6,7 @@ import {
 } from '@kamaia/shared-types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { TarefasService } from '../tarefas/tarefas.service';
 import { CreateAgendaEventoDto, UpdateAgendaEventoDto } from './agenda.dto';
 
 /**
@@ -16,7 +17,7 @@ import { CreateAgendaEventoDto, UpdateAgendaEventoDto } from './agenda.dto';
  */
 export interface AgendaItem {
   id: string;
-  origem: 'evento' | 'data-chave' | 'acto' | 'obrigacao';
+  origem: 'evento' | 'data-chave' | 'acto' | 'obrigacao' | 'tarefa';
   titulo: string;
   inicio: string;
   fim: string | null;
@@ -33,6 +34,7 @@ export class AgendaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly tarefas: TarefasService,
   ) {}
 
   /**
@@ -47,7 +49,7 @@ export class AgendaService {
     from: Date,
     to: Date,
   ): Promise<{ items: AgendaItem[] }> {
-    const [eventos, datasChave, actos, obrigacoes] = await Promise.all([
+    const [eventos, datasChave, actos, obrigacoes, tarefasAbertas] = await Promise.all([
       this.prisma.agendaEvento.findMany({
         where: {
           tenantId,
@@ -81,6 +83,9 @@ export class AgendaService {
         },
         include: { contrato: { select: { id: true, numeroInterno: true } } },
       }),
+      // Tarefas abertas com prazo na janela — o trabalho humano entra
+      // na agenda a par dos sinais derivados.
+      this.tarefas.listAbertasComPrazo(tenantId, from, to),
     ]);
 
     const items: AgendaItem[] = [];
@@ -147,6 +152,23 @@ export class AgendaService {
         cor: null,
         contratoId: o.contrato.id,
         contratoNumero: o.contrato.numeroInterno,
+        editavel: false,
+      });
+    }
+
+    for (const t of tarefasAbertas) {
+      if (!t.dataVencimento) continue;
+      items.push({
+        id: `tarefa-${t.id}`,
+        origem: 'tarefa',
+        titulo: t.titulo,
+        inicio: t.dataVencimento.toISOString(),
+        fim: null,
+        diaInteiro: true,
+        tipo: t.prioridade,
+        cor: null,
+        contratoId: t.contratoId,
+        contratoNumero: t.contrato?.numeroInterno ?? null,
         editavel: false,
       });
     }

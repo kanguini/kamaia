@@ -103,6 +103,7 @@ import { TerminarDrawer } from '@/components/contratos/v2/terminar-drawer'
 import { NegociacaoDrawer } from '@/components/contratos/v2/negociacao-drawer'
 import { ComentariosPanel } from '@/components/contratos/comentarios-panel'
 import { LifecycleRail } from '@/components/contratos/v2/lifecycle-rail'
+import { ContratoTarefas } from '@/components/contratos/v2/contrato-tarefas'
 import { EditorTab } from '@/components/contratos/editor-tab'
 import { VersoesTab } from '@/components/contratos/versoes-tab'
 import { DocumentosTab } from '@/components/contratos/documentos-tab'
@@ -498,6 +499,7 @@ function Inner({
             <ComplianceSpine actos={sinais.actos} />
           </div>
           <RelacaoParceiro contratoId={contrato.id} partes={sinais.partes} />
+          <ContratoTarefas contratoId={contrato.id} />
           <ResumoCustomFields contratoId={contrato.id} />
         </div>
         <aside className="cd-pdf">

@@ -183,6 +183,7 @@ export default function AgendaPage() {
         <Leg cor="#0e7490" txt="Datas-chave" />
         <Leg cor="#b45309" txt="Actos / compliance" />
         <Leg cor="#7c3aed" txt="Obrigações" />
+        <Leg cor="#15803d" txt="Tarefas" />
       </div>
 
       <div className="ag-layout">
