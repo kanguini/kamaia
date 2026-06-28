@@ -55,6 +55,7 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [progresso, setProgresso] = useState('')
   const [resultado, setResultado] = useState<StartResult | null>(null)
+  const [avisoEnvio, setAvisoEnvio] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
   const reset = () => {
@@ -62,6 +63,7 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
     setLinhas([])
     setParseErros([])
     setResultado(null)
+    setAvisoEnvio(null)
     setErr(null)
     setProgresso('')
   }
@@ -81,6 +83,7 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
     setSubmitting(true)
     setErr(null)
     setResultado(null)
+    setAvisoEnvio(null)
     try {
       setProgresso('A criar o lote…')
       const lote = await api<{ id: string }>('/importacao/lotes', {
@@ -91,25 +94,42 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
         }),
       })
 
+      let enviadas = 0
+      let falhasEnvio = 0
       for (let i = 0; i < linhas.length; i++) {
         const l = linhas[i]
         setProgresso(`A enviar contrato ${i + 1} de ${linhas.length}…`)
-        await api(`/importacao/lotes/${lote.id}/linhas`, {
-          method: 'POST',
-          token,
-          body: JSON.stringify({
-            metadataInput: {
-              titulo: l.titulo,
-              contraparte: l.contraparte,
-              valor: l.valor,
-              moeda: l.moeda,
-              dataAssinatura: l.dataAssinatura,
-              dataTermo: l.dataTermo,
-              descricao: l.descricao,
-            },
-          }),
-        })
+        try {
+          await api(`/importacao/lotes/${lote.id}/linhas`, {
+            method: 'POST',
+            token,
+            body: JSON.stringify({
+              metadataInput: {
+                titulo: l.titulo,
+                contraparte: l.contraparte,
+                valor: l.valor,
+                moeda: l.moeda,
+                dataAssinatura: l.dataAssinatura,
+                dataTermo: l.dataTermo,
+                descricao: l.descricao,
+              },
+            }),
+          })
+          enviadas++
+        } catch {
+          // Falha de envio (rede) não aborta o lote inteiro — conta e
+          // segue; o lote arranca com o que chegou (sem ficar órfão).
+          falhasEnvio++
+        }
       }
+      if (enviadas === 0) {
+        throw new Error('Nenhuma linha foi enviada — verifica a ligação e tenta de novo.')
+      }
+      setAvisoEnvio(
+        falhasEnvio > 0
+          ? `${falhasEnvio} linha(s) não chegaram ao servidor e ficaram de fora.`
+          : null,
+      )
 
       setProgresso('A processar a carteira…')
       await api(`/importacao/lotes/${lote.id}/start`, {
@@ -222,6 +242,7 @@ export function ImportarCarteiraDrawer({ open, onClose, onDone }: Props) {
             {!!resultado.falhas && (
               <div className="ic-result-fail">{resultado.falhas} com erro</div>
             )}
+            {avisoEnvio && <div className="ic-result-fail">{avisoEnvio}</div>}
             <p className="ic-result-sub">
               Os contratos entraram como <strong>herdados</strong>, em repositório. Activa cada um para o pôr em gestão.
             </p>

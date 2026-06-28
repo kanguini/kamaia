@@ -81,6 +81,9 @@ export function NegociacaoDrawer({ open, onClose, contratoId, onChanged }: Props
     NegociacaoPontoCriticidade.MEDIA,
   )
   const [saving, setSaving] = useState(false)
+  // Resolução in-line do acordo (substitui o window.prompt).
+  const [resolvendo, setResolvendo] = useState<string | null>(null)
+  const [acordoTexto, setAcordoTexto] = useState('')
 
   const load = useCallback(async () => {
     if (!session?.accessToken) return
@@ -143,18 +146,20 @@ export function NegociacaoDrawer({ open, onClose, contratoId, onChanged }: Props
     }
   }
 
-  const resolver = async (ponto: Ponto, estado: NegociacaoPontoEstado) => {
+  const aplicar = async (
+    ponto: Ponto,
+    estado: NegociacaoPontoEstado,
+    acordoFinal?: string,
+  ) => {
     if (!session?.accessToken) return
-    const acordoFinal =
-      estado === NegociacaoPontoEstado.ACEITE
-        ? window.prompt('Acordo final para este ponto (opcional):') ?? undefined
-        : undefined
     try {
       await api(`/contratos/${contratoId}/negociacao/${ponto.id}`, {
         method: 'PATCH',
         token: session.accessToken,
-        body: JSON.stringify({ estado, acordoFinal: acordoFinal || undefined }),
+        body: JSON.stringify({ estado, acordoFinal: acordoFinal?.trim() || undefined }),
       })
+      setResolvendo(null)
+      setAcordoTexto('')
       await load()
       onChanged?.()
     } catch (e) {
@@ -244,12 +249,20 @@ export function NegociacaoDrawer({ open, onClose, contratoId, onChanged }: Props
                     <span className={`ng-badge ${resolvido ? 'res' : 'open'}`}>{ESTADO_LABELS[p.estado]}</span>
                     {p.criticidade && <span className="ng-badge crit">{CRIT_LABELS[p.criticidade]}</span>}
                   </div>
-                  {!resolvido && (
+                  {!resolvido && resolvendo !== p.id && (
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button type="button" className="ng-act ok" title="Aceitar" onClick={() => void resolver(p, NegociacaoPontoEstado.ACEITE)}>
+                      <button
+                        type="button"
+                        className="ng-act ok"
+                        title="Aceitar"
+                        onClick={() => {
+                          setResolvendo(p.id)
+                          setAcordoTexto('')
+                        }}
+                      >
                         <Check size={14} />
                       </button>
-                      <button type="button" className="ng-act no" title="Rejeitar" onClick={() => void resolver(p, NegociacaoPontoEstado.REJEITADO)}>
+                      <button type="button" className="ng-act no" title="Rejeitar" onClick={() => void aplicar(p, NegociacaoPontoEstado.REJEITADO)}>
                         <X size={14} />
                       </button>
                     </div>
@@ -263,6 +276,28 @@ export function NegociacaoDrawer({ open, onClose, contratoId, onChanged }: Props
                   </div>
                 )}
                 {p.acordoFinal && <div className="ng-acordo">Acordo: {p.acordoFinal}</div>}
+                {resolvendo === p.id && (
+                  <div className="ng-resolve">
+                    <textarea
+                      className="ng-input"
+                      value={acordoTexto}
+                      onChange={(e) => setAcordoTexto(e.target.value)}
+                      rows={2}
+                      maxLength={5000}
+                      placeholder="Acordo final (opcional)"
+                      autoFocus
+                      style={{ resize: 'vertical', width: '100%' }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                      <Button type="button" variant="secondary" onClick={() => setResolvendo(null)}>
+                        Cancelar
+                      </Button>
+                      <Button type="button" onClick={() => void aplicar(p, NegociacaoPontoEstado.ACEITE, acordoTexto)}>
+                        Aceitar com acordo
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -291,6 +326,7 @@ export function NegociacaoDrawer({ open, onClose, contratoId, onChanged }: Props
           .ng-pos { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--k2-text-dim); }
           .ng-pos span { color: var(--k2-text-mute); font-weight: 500; }
           .ng-acordo { margin-top: 8px; font-size: 12px; color: var(--k2-ok, #2faa6a); }
+          .ng-resolve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--k2-border); }
         `}</style>
       </DrawerBody>
       <DrawerFooter>

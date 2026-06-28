@@ -37,11 +37,47 @@ interface LinhaMeta {
   contraparte?: string; // nome da entidade
 }
 
-/** "12 500 000" / "12500000,50" → centavos (BigInt). undefined se vazio/inválido. */
-function parseValorCentavos(v?: string | number): bigint | undefined {
+/**
+ * Converte um valor monetário em centavos (BigInt), tolerando os
+ * formatos comuns:
+ *   "12 500 000"      → 1 250 000 000   (espaço = milhares)
+ *   "12.500.000"      → 1 250 000 000   (ponto = milhares, múltiplos)
+ *   "12,500,000"      → 1 250 000 000   (vírgula = milhares, múltiplos)
+ *   "1500,50"         →       150 050   (vírgula decimal, 2 casas)
+ *   "1500.50"         →       150 050   (ponto decimal)
+ *   "12.500.000,50"   → 1 250 000 050   (PT: ponto milhares, vírgula decimal)
+ *   "12,500,000.50"   → 1 250 000 050   (EN: vírgula milhares, ponto decimal)
+ * undefined se vazio/inválido/negativo.
+ */
+export function parseValorCentavos(v?: string | number): bigint | undefined {
   if (v === undefined || v === null || v === '') return undefined;
-  const limpo = String(v).replace(/\s/g, '').replace(',', '.').replace(/[^\d.]/g, '');
-  const n = Number(limpo);
+  let s = String(v).trim().replace(/\s/g, '');
+  if (!s) return undefined;
+  // Rejeita negativos antes de limpar — senão o '-' seria removido e
+  // "-100" passaria como 100.
+  if (s.startsWith('-')) return undefined;
+
+  const temPonto = s.includes('.');
+  const temVirgula = s.includes(',');
+  if (temPonto && temVirgula) {
+    // O separador mais à direita é o decimal; o outro é de milhares.
+    const decimal = s.lastIndexOf('.') > s.lastIndexOf(',') ? '.' : ',';
+    const milhares = decimal === '.' ? ',' : '.';
+    s = s.split(milhares).join('').replace(decimal, '.');
+  } else if (temVirgula) {
+    const partes = s.split(',');
+    // Várias vírgulas, ou uma com 3 dígitos a seguir → milhares.
+    s =
+      partes.length > 2 || partes[1]?.length === 3
+        ? partes.join('')
+        : partes.join('.');
+  } else if (temPonto) {
+    const partes = s.split('.');
+    // Vários pontos → milhares; um único ponto fica como decimal.
+    if (partes.length > 2) s = partes.join('');
+  }
+
+  const n = Number(s.replace(/[^\d.]/g, ''));
   if (!Number.isFinite(n) || n < 0) return undefined;
   return BigInt(Math.round(n * 100));
 }
@@ -156,21 +192,29 @@ export class ImportacaoService implements OnModuleInit {
   ): Promise<Array<{ entidadeId: string; papel: PartePapel; ordem: number }>> {
     const nome = contraparte?.trim();
     if (!nome) return [];
-    let entidade = await this.prisma.entidade.findFirst({
-      where: {
-        tenantId,
-        deletedAt: null,
-        nome: { equals: nome, mode: 'insensitive' },
-      },
-      select: { id: true },
-    });
-    if (!entidade) {
-      entidade = await this.prisma.entidade.create({
+    const normalizado = nome.toLowerCase();
+    // Race-safe (mesma estratégia do find-or-create-entidade tool):
+    // advisory lock por (tenant+nome) serializa creates concorrentes do
+    // mesmo nome entre lotes paralelos; a re-busca após o lock evita
+    // duplicados. Liberta no commit.
+    const entidadeId = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${tenantId}::ent::${normalizado}`}))`;
+      const existente = await tx.entidade.findFirst({
+        where: {
+          tenantId,
+          deletedAt: null,
+          nome: { equals: nome, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      if (existente) return existente.id;
+      const criada = await tx.entidade.create({
         data: { tenantId, tipo: EntidadeTipo.PESSOA_COLECTIVA, nome },
         select: { id: true },
       });
-    }
-    return [{ entidadeId: entidade.id, papel: PartePapel.CONTRAPARTE, ordem: 0 }];
+      return criada.id;
+    });
+    return [{ entidadeId, papel: PartePapel.CONTRAPARTE, ordem: 0 }];
   }
 
   private async processarSincrono(
