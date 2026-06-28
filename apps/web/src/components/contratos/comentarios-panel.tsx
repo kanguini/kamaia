@@ -107,13 +107,14 @@ export function ComentariosPanel({
   const onResolver = async (id: string) => {
     if (!session?.accessToken) return
     try {
+      setErro(null)
       await api(`/contratos/${contratoId}/comentarios/${id}/resolver`, {
         method: 'PATCH',
         token: session.accessToken,
       })
       void fetchAll()
     } catch (e) {
-      alert((e as { error?: string })?.error ?? 'Erro ao resolver')
+      setErro((e as { error?: string })?.error ?? 'Erro ao resolver comentário.')
     }
   }
 

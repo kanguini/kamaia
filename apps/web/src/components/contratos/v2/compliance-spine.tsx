@@ -24,6 +24,7 @@ import {
   Banknote,
   Receipt,
   FileSignature,
+  ShieldQuestion,
 } from 'lucide-react'
 import type { ActoInput } from './atencao-engine'
 
@@ -125,6 +126,28 @@ export function ComplianceSpine({ actos }: { actos: ActoInput[] }) {
       a.estado === 'EXPIRADO',
   ).length
 
+  // Catch-all: qualquer acto cujo tipo não caia numa categoria explícita
+  // (ex.: SECTORIAL_OUTRO, ou um valor futuro do enum) entra em "Outros
+  // actos" — NUNCA é silenciosamente escondido (a omissão seria pior:
+  // num produto de compliance, esconder um acto regulatório é o risco).
+  const tiposMapeados = new Set(CATEGORIAS.flatMap((c) => c.tipos))
+  const tiposOutros = Array.from(
+    new Set(actos.map((a) => a.tipo).filter((t) => !tiposMapeados.has(t))),
+  )
+  const categoriasRender: Categoria[] =
+    tiposOutros.length > 0
+      ? [
+          ...CATEGORIAS,
+          {
+            key: 'outros',
+            label: 'Outros actos',
+            icon: ShieldQuestion,
+            tipos: tiposOutros,
+            vazioNota: '',
+          },
+        ]
+      : CATEGORIAS
+
   return (
     <section className="cs">
       <header className="cs-head">
@@ -137,7 +160,7 @@ export function ComplianceSpine({ actos }: { actos: ActoInput[] }) {
       </header>
 
       <div className="cs-cats">
-        {CATEGORIAS.map((cat) => {
+        {categoriasRender.map((cat) => {
           const catActos = actos.filter((a) => cat.tipos.includes(a.tipo))
           return (
             <div key={cat.key} className="cs-cat">
