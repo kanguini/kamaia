@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import {
   AuditAction,
   ContratoEstado,
@@ -19,6 +24,7 @@ import {
   CreateLoteDto,
   ListLotesQuery,
 } from './importacao.dto';
+import { ImportQueueService } from './import-queue.service';
 
 /** Forma do `metadataInput` de cada linha de importação (vinda do CSV). */
 interface LinhaMeta {
@@ -57,14 +63,23 @@ function normalizarMoeda(m?: string): MoedaSuportada | undefined {
 }
 
 @Injectable()
-export class ImportacaoService {
+export class ImportacaoService implements OnModuleInit {
   private readonly logger = new Logger(ImportacaoService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly contratos: ContratosService,
+    private readonly queue: ImportQueueService,
   ) {}
+
+  onModuleInit(): void {
+    // Regista o processamento de um lote na fila (BullMQ se houver Redis,
+    // senão inline). Mantém uma única implementação — processarSincrono.
+    this.queue.registerProcessor(({ loteId, tenantId, actorUserId }) =>
+      this.processarSincrono(tenantId, actorUserId, loteId),
+    );
+  }
 
   async createLote(
     tenantId: string,
@@ -121,19 +136,14 @@ export class ImportacaoService {
       data: { estado: LoteEstado.PROCESSANDO },
     });
 
-    // ────────────────────────────────────────────────────────────────
-    // STUB de worker síncrono. Em produção este enfileiramento será
-    // substituído por um job BullMQ:
-    //
-    //   await this.queue.add('importacao-lote', { loteId }, { jobId: loteId });
-    //
-    // O worker fará OCR (Tesseract/Textract) por linha, extracção IA
-    // (Claude) dos campos do contrato, validação humana opcional e por
-    // fim a criação do `Contrato` em estado REPOSITORIO → ACTIVO.
-    // ────────────────────────────────────────────────────────────────
-    await this.processarSincrono(tenantId, actorUserId, loteId);
+    // Enfileira o lote. Com Redis, o Worker BullMQ processa em segundo
+    // plano e o pedido devolve já (modo='queued'); o cliente faz polling
+    // de GET /importacao/lotes/:id. Sem Redis, processa inline e só
+    // devolve no fim (modo='inline') — o estado final já reflecte o
+    // resultado. Em ambos os casos a lógica é processarSincrono.
+    const modo = await this.queue.enqueue({ loteId, tenantId, actorUserId });
 
-    return { ok: true };
+    return { ok: true, modo };
   }
 
   /**

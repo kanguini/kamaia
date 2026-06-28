@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ContratosModule } from '../contratos/contratos.module';
 import { ImportacaoController } from './importacao.controller';
 import { ImportacaoService } from './importacao.service';
+import { ImportQueueService } from './import-queue.service';
 
 @Module({
   // Importa ContratosModule para reutilizar ContratosService.create() —
@@ -9,7 +10,7 @@ import { ImportacaoService } from './importacao.service';
   // quota, compliance) que um criado: paridade por construção.
   imports: [ContratosModule],
   controllers: [ImportacaoController],
-  providers: [ImportacaoService],
+  providers: [ImportacaoService, ImportQueueService],
   exports: [ImportacaoService],
 })
 export class ImportacaoModule {}
