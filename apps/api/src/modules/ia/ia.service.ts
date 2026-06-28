@@ -118,6 +118,51 @@ export class IaService {
    * para uma iteração futura). Best-effort: nunca lança por falha da IA
    * — devolve sugestões ou nada. Consome 1 unidade de quota IA.
    */
+  /**
+   * Extrai texto cru de um documento conforme o tipo:
+   *  - PDF com texto → pdf-parse
+   *  - Word .docx → mammoth
+   *  - Imagens (PNG/JPEG) → OCR tesseract.js (língua portuguesa)
+   * Best-effort: devolve '' em qualquer falha (dep em falta, ficheiro
+   * corrupto, OCR sem dados de língua) — o chamador degrada para
+   * preenchimento manual. PDFs digitalizados (imagem dentro de PDF)
+   * devolvem pouco texto e caem na mesma degradação.
+   */
+  private async extrairTexto(
+    buffer: Buffer,
+    mimeType: string,
+    documentId: string,
+  ): Promise<string> {
+    try {
+      if (mimeType === 'application/pdf') {
+        const parsed = await pdfParse(buffer);
+        return (parsed.text ?? '').trim();
+      }
+      if (
+        mimeType ===
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ) {
+        const mammoth = await import('mammoth');
+        const { value } = await mammoth.extractRawText({ buffer });
+        return (value ?? '').trim();
+      }
+      if (
+        mimeType === 'image/png' ||
+        mimeType === 'image/jpeg' ||
+        mimeType === 'image/jpg'
+      ) {
+        const { recognize } = await import('tesseract.js');
+        const { data } = await recognize(buffer, 'por');
+        return (data.text ?? '').trim();
+      }
+    } catch (e) {
+      this.logger.warn(
+        `extrairTexto (${mimeType}) falhou doc ${documentId}: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    return '';
+  }
+
   async extrairContrato(
     tenantId: string,
     actorUserId: string,
@@ -125,26 +170,12 @@ export class IaService {
   ): Promise<{ suportado: boolean; motivo?: string; campos?: ExtractedContractFields }> {
     const { buffer, mimeType } = await this.documents.getBytes(tenantId, documentId);
 
-    if (mimeType !== 'application/pdf') {
-      return {
-        suportado: false,
-        motivo: 'Extracção automática disponível só para PDF (por agora).',
-      };
-    }
-
-    let texto = '';
-    try {
-      const parsed = await pdfParse(buffer);
-      texto = (parsed.text ?? '').trim();
-    } catch (e) {
-      this.logger.warn(
-        `pdf-parse falhou para doc ${documentId}: ${e instanceof Error ? e.message : e}`,
-      );
-    }
+    const texto = await this.extrairTexto(buffer, mimeType, documentId);
     if (texto.length < 80) {
       return {
         suportado: false,
-        motivo: 'O PDF parece digitalizado (sem texto). Preenche os campos manualmente.',
+        motivo:
+          'Não foi possível ler texto suficiente do documento (digitalização de baixa qualidade ou formato não suportado). Preenche os campos manualmente.',
       };
     }
 
