@@ -21,6 +21,7 @@ import { ImportacaoModule } from './modules/importacao/importacao.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { IaModule } from './modules/ia/ia.module';
 import { RagModule } from './modules/rag/rag.module';
+import { LegislacaoModule } from './modules/legislacao/legislacao.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
 import { TarefasModule } from './modules/tarefas/tarefas.module';
@@ -76,6 +77,7 @@ import { BillingModule } from './modules/billing/billing.module';
     // IA
     IaModule,
     RagModule,
+    LegislacaoModule,
     // Cross-cutting
     NotificationsModule,
     AgendaModule,
