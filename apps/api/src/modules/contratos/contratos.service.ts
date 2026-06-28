@@ -216,6 +216,21 @@ export class ContratosService {
       afterData: contrato as object,
     });
 
+    // HERANÇA (paridade): um contrato que ENTRA já num estado gerido
+    // (registo de existente / importação: REPOSITORIO/ACTIVO/ASSINADO)
+    // nunca passa por transitar(...ASSINADO), por isso a avaliação de
+    // compliance tem de ser disparada aqui. Sem isto, um contrato
+    // herdado — a porta principal de entrada — nunca recebe detecção de
+    // Imposto de Selo / registos / BNA. Contratos criados em INTAKE/
+    // DRAFTING recebem-na mais tarde, na transição para ASSINADO.
+    if (
+      estadoFinal === ContratoEstado.REPOSITORIO ||
+      estadoFinal === ContratoEstado.ACTIVO ||
+      estadoFinal === ContratoEstado.ASSINADO
+    ) {
+      await this.compliance.avaliarContrato(contrato.id, tenantId, actorUserId);
+    }
+
     return contrato;
   }
 

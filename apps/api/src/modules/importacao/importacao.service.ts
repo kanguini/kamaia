@@ -24,6 +24,7 @@ export class ImportacaoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly contratos: ContratosService,
   ) {}
 
   async createLote(
@@ -125,47 +126,29 @@ export class ImportacaoService {
         if (!tipo) {
           throw new Error('Nenhum TipoContrato disponível para o tenant');
         }
-        await this.prisma.$transaction(async (tx) => {
-          const numeroInterno = await ContratosService.gerarNumeroNaTransaction(
-            tx,
-            tenantId,
-          );
-          const titulo =
-            (linha.metadataInput as { titulo?: string } | null)?.titulo ??
-            `Importado ${numeroInterno}`;
-          const contrato = await tx.contrato.create({
-            data: {
-              tenantId,
-              numeroInterno,
-              titulo,
-              tipoId: tipo.id,
-              estado: ContratoEstado.REPOSITORIO,
-              origem: ContratoOrigem.IMPORTADO_REPOSITORIO,
-              createdBy: actorUserId,
-            },
-          });
-          await tx.importacaoLinha.update({
-            where: { id: linha.id },
-            data: {
-              estado: LinhaEstado.CRIADO,
-              contratoId: contrato.id,
-            },
-          });
-          // Linka documentId se fornecido na metadata
-          if (linha.documentId) {
-            await tx.contratoVersao.create({
-              data: {
-                contratoId: contrato.id,
-                ordem: 1,
-                criadoPor: actorUserId,
-                versao: 'v1.0-importado',
-                direccao: 'ASSINADO_FINAL',
-                documentId: linha.documentId,
-                comentario: 'Importação em lote — documento original anexado',
-                seloTemporal: new Date(),
-              },
-            });
-          }
+        const meta = (linha.metadataInput ?? {}) as { titulo?: string };
+        // PARIDADE: reutiliza ContratosService.create() em vez de um
+        // INSERT cru — o contrato importado recebe a MESMA génese de um
+        // criado: ContratoEvento(CRIADO), audit_log, webhook, dedução de
+        // quota, validação do documento e avaliação de compliance (que
+        // create() dispara para o estado REPOSITORIO). Antes, o bulk
+        // produzia um contrato de segunda classe (timeline vazia, sem
+        // audit, quota ignorada, compliance nunca corria).
+        const contrato = await this.contratos.create(tenantId, actorUserId, {
+          titulo: meta.titulo?.trim() || 'Contrato importado (a classificar)',
+          tipoId: tipo.id,
+          origem: ContratoOrigem.IMPORTADO_REPOSITORIO,
+          estadoInicial: ContratoEstado.REPOSITORIO,
+          renovacaoAutomatica: false,
+          prazoIndeterminado: false,
+          ...(linha.documentId ? { documentoInicialId: linha.documentId } : {}),
+        });
+        await this.prisma.importacaoLinha.update({
+          where: { id: linha.id },
+          data: {
+            estado: LinhaEstado.CRIADO,
+            contratoId: contrato.id,
+          },
         });
         processadas += 1;
       } catch (e) {

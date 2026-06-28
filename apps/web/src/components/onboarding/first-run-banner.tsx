@@ -110,8 +110,8 @@ export function FirstRunBanner() {
           <div>
             <div className="frb-path-title">Importar carteira existente</div>
             <div className="frb-path-sub">
-              Tens contratos já assinados em PDF/Word? Carrega tudo, a IA
-              extrai os campos automaticamente.
+              Tens contratos já assinados em PDF/Word? Regista-os e põe-nos
+              a ser geridos — datas, obrigações e compliance angolano.
             </div>
           </div>
         </Link>

@@ -35,7 +35,7 @@ const ESTADO_VARIANT: Partial<Record<LoteEstado, string>> = {
 }
 
 export default function ImportacaoPage() {
-  const { data, loading, refetch } = useApi<PaginatedResponse<Lote>>('/importacao?limit=50')
+  const { data, loading, refetch } = useApi<PaginatedResponse<Lote>>('/importacao/lotes?limit=50')
   const [showCreate, setShowCreate] = useState(false)
   const lotes = data?.data ?? []
 
@@ -85,7 +85,7 @@ export default function ImportacaoPage() {
 
 function CreateLoteModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [nome, setNome] = useState('')
-  const { mutate, loading, error } = useMutation('/importacao', 'POST')
+  const { mutate, loading, error } = useMutation('/importacao/lotes', 'POST')
   return (
     <div
       role="dialog"
