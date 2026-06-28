@@ -1232,13 +1232,19 @@ model AIMessage {
 
 model LegislationDocument {
   id              String              @id @default(uuid()) @db.Uuid
-  codigo          String              @unique @db.VarChar(80)  // ex "CC", "CCom", "CIS", "LSC"
+  // `codigo` é a chave curta dos diplomas curados (CC, CIS, LSC…). Para
+  // diplomas importados em massa (ex. lex.ao) fica null — a chave natural
+  // passa a ser `url`.
+  codigo          String?             @unique @db.VarChar(80)
   titulo          String              @db.VarChar(300)
   diploma         String              @db.VarChar(200)  // ex "Lei n.º 20/88, de 30 de Julho"
+  orgao           String?             @db.VarChar(200)  // órgão emissor (ex "Banco Nacional de Angola")
+  ano             Int?                                  // ano do diploma
+  fonte           String              @default("CURADO") @db.VarChar(20)  // CURADO | LEXAO
   publicacao      DateTime?           @db.Date
   emVigorDesde    DateTime?           @map("em_vigor_desde") @db.Date
   emVigorAte      DateTime?           @map("em_vigor_ate") @db.Date
-  url             String?             @db.VarChar(500)
+  url             String?             @unique @db.VarChar(500)  // chave natural dos importados
   conteudo        String?             @db.Text
 
   createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
@@ -1246,6 +1252,7 @@ model LegislationDocument {
 
   chunks          LegislationChunk[]
 
+  @@index([fonte, orgao])
   @@map("legislation_documents")
 }
 
