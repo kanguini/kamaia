@@ -12,9 +12,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
 import { unwrapList } from '@/lib/list'
-import { Loader2, Plus, Search, Upload } from 'lucide-react'
+import { Download, Loader2, Plus, Search, Upload } from 'lucide-react'
 import {
   ContratoEstado,
+  ContratoOrigem,
   CONTRATO_ESTADO_LABELS,
   PaginatedResponse,
 } from '@kamaia/shared-types'
@@ -29,6 +30,7 @@ interface ContratoListItem {
   numero: string | null
   titulo: string
   estado: ContratoEstado
+  origem: ContratoOrigem
   dataTermo: string | null
   tipo: { id: string; nome: string } | null
   contrapartePrincipal: { id: string; nome: string } | null
@@ -64,6 +66,7 @@ function ContratosListInner() {
   const searchParams = useSearchParams()
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState<string>('')
+  const [origem, setOrigem] = useState<string>('')
   const [tipoId, setTipoId] = useState<string>('')
   const [expiraEmDias, setExpiraEmDias] = useState<string>('')
 
@@ -124,12 +127,13 @@ function ContratosListInner() {
     const sp = new URLSearchParams()
     if (search) sp.set('search', search)
     if (estado) sp.set('estado', estado)
+    if (origem) sp.set('origem', origem)
     if (tipoId) sp.set('tipoId', tipoId)
     if (expiraEmDias) sp.set('expiraEmDias', expiraEmDias)
     sp.set('limit', '25')
     if (cursor) sp.set('cursor', cursor)
     return sp.toString()
-  }, [search, estado, tipoId, expiraEmDias, cursor])
+  }, [search, estado, origem, tipoId, expiraEmDias, cursor])
 
   useEffect(() => {
     if (status !== 'authenticated' || !session?.accessToken) return
@@ -160,7 +164,7 @@ function ContratosListInner() {
   useEffect(() => {
     setCursor(null)
     setItems([])
-  }, [search, estado, tipoId, expiraEmDias])
+  }, [search, estado, origem, tipoId, expiraEmDias])
 
   // Refetch da página 1 quando a janela volta a ganhar foco — apanha
   // contratos criados/alterados noutra vista sem reload manual.
@@ -220,7 +224,7 @@ function ContratosListInner() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(220px, 1fr) repeat(3, minmax(160px, 200px))',
+          gridTemplateColumns: 'minmax(200px, 1fr) repeat(4, minmax(150px, 190px))',
           gap: 10,
           alignItems: 'end',
         }}
@@ -242,6 +246,11 @@ function ContratosListInner() {
               {CONTRATO_ESTADO_LABELS[e]}
             </option>
           ))}
+        </Select>
+        <Select aria-label="Filtrar por origem" value={origem} onChange={(e) => setOrigem(e.target.value)}>
+          <option value="">Criados e herdados</option>
+          <option value={ContratoOrigem.IMPORTADO_REPOSITORIO}>Herdados</option>
+          <option value={ContratoOrigem.CRIADO_INTERNAMENTE}>Criados de raiz</option>
         </Select>
         <Select aria-label="Filtrar por tipo" value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
           <option value="">Todos os tipos</option>
@@ -276,19 +285,20 @@ function ContratosListInner() {
               <Th>Estado</Th>
               <Th>Data termo</Th>
               <Th>Contraparte</Th>
+              <Th>Origem</Th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 && loading && (
               <tr>
-                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>
+                <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>
                   A carregar…
                 </td>
               </tr>
             )}
             {items.length === 0 && !loading && (
               <tr>
-                <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>
+                <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--k2-text-mute)' }}>
                   Sem contratos.
                 </td>
               </tr>
@@ -311,6 +321,7 @@ function ContratosListInner() {
                 </Td>
                 <Td>{fmtDate(c.dataTermo)}</Td>
                 <Td>{c.contrapartePrincipal?.nome ?? '—'}</Td>
+                <Td><OrigemBadge origem={c.origem} /></Td>
               </tr>
             ))}
           </tbody>
@@ -338,4 +349,31 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children }: { children: React.ReactNode }) {
   return <td style={{ padding: '12px 14px' }}>{children}</td>
+}
+
+/**
+ * Distingue as duas portas de entrada: contrato criado de raiz (＋) vs.
+ * herdado / importado (↓). Iguala visualmente a herança à criação.
+ */
+function OrigemBadge({ origem }: { origem: ContratoOrigem }) {
+  const herdado = origem === ContratoOrigem.IMPORTADO_REPOSITORIO
+  return (
+    <span
+      title={herdado ? 'Herdado' : 'Criado de raiz'}
+      aria-label={herdado ? 'Herdado' : 'Criado de raiz'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        background: 'var(--k2-bg-elev-2)',
+        border: '1px solid var(--k2-border)',
+        color: herdado ? 'var(--k2-accent)' : 'var(--k2-text-mute)',
+      }}
+    >
+      {herdado ? <Download size={13} /> : <Plus size={13} />}
+    </span>
+  )
 }

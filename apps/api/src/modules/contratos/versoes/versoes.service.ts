@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditAction,
+  ContratoEstado,
   ContratoEventoTipo,
+  ContratoOrigem,
   EntityType,
   VersaoDireccao,
 } from '@kamaia/shared-types';
@@ -9,6 +11,7 @@ import { renderMarkdownToHtml } from '../../../common/markdown';
 import { diffLines, type DiffResult } from '../../../common/text-diff';
 import { AuditService } from '../../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertPodeFase } from '../contrato-fase.guard';
 
 @Injectable()
 export class ContratoVersoesService {
@@ -121,7 +124,19 @@ export class ContratoVersoesService {
     versaoId: string,
     dto: { corpoMarkdown: string; geradoPorIA?: boolean },
   ) {
-    await this.assertContrato(tenantId, contratoId);
+    // Gate de fase: o corpo só é editável antes de assinar (rascunho /
+    // negociação). Num contrato em vigor, herdado ou encerrado, o corpo
+    // está congelado — esconder o editor na UI não basta.
+    const contrato = await this.prisma.contrato.findFirst({
+      where: { id: contratoId, tenantId, deletedAt: null },
+      select: { estado: true, origem: true },
+    });
+    if (!contrato) throw new NotFoundException('Contrato not found');
+    assertPodeFase(
+      contrato.estado as ContratoEstado,
+      contrato.origem as ContratoOrigem,
+      'EDITAR_CORPO',
+    );
     const v = await this.prisma.contratoVersao.findFirst({
       where: { id: versaoId, contratoId },
       include: {

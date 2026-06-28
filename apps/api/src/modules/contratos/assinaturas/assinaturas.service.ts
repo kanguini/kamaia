@@ -6,6 +6,7 @@ import {
   canTransition,
   ContratoEstado,
   ContratoEventoTipo,
+  ContratoOrigem,
   EntityType,
 } from '@kamaia/shared-types';
 import { createHash } from 'crypto';
@@ -13,6 +14,7 @@ import { AuditService } from '../../audit/audit.service';
 import { ComplianceService } from '../../compliance/compliance.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../../webhooks/webhooks.service';
+import { assertPodeFase } from '../contrato-fase.guard';
 
 @Injectable()
 export class ContratoAssinaturasService {
@@ -109,6 +111,20 @@ export class ContratoAssinaturasService {
     });
     if (!versao) {
       throw new NotFoundException('Versão não pertence ao contrato neste tenant');
+    }
+    // Gate de fase: só se assina na fase de assinatura (pronto p/ assinar
+    // ou já assinado, para multi-parte). Não se assina um rascunho nem se
+    // re-assina um contrato em vigor.
+    const contratoFase = await this.prisma.contrato.findFirst({
+      where: { id: params.contratoId, tenantId: params.tenantId },
+      select: { estado: true, origem: true },
+    });
+    if (contratoFase) {
+      assertPodeFase(
+        contratoFase.estado as ContratoEstado,
+        contratoFase.origem as ContratoOrigem,
+        'REGISTAR_ASSINATURA',
+      );
     }
     if (!versao.corpoMarkdown) {
       throw new BadRequestException(

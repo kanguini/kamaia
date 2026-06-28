@@ -335,6 +335,445 @@ export function canTransition(from: ContratoEstado, to: ContratoEstado): boolean
   return CONTRATO_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
+// ─── CONTRATO — Capacidades por fase (visualização state-driven) ──
+//
+// Fonte de verdade ÚNICA do que se pode fazer com um contrato em cada
+// fase do ciclo de vida. Consumida pelo frontend (que acções e tabs
+// mostrar) E pelo backend (negar acções fora de fase). Pura e
+// determinística — testável sem DB.
+//
+// Princípio: esconder um botão não é segurança. O mesmo resolver que
+// decide a UI decide o gate do endpoint. Um contrato em vigor não
+// "edita corpo" nem "assina" — a sua acção primária é adicionar
+// adenda. Um contrato herdado entra directamente em vigor e nunca vê
+// rascunho/negociação/assinatura.
+
+export type ContratoFase =
+  | 'RASCUNHO'
+  | 'NEGOCIACAO'
+  | 'ASSINATURA'
+  | 'EM_VIGOR'
+  | 'SUBCICLO'
+  | 'ENCERRADO';
+
+export const CONTRATO_FASE_LABELS: Record<ContratoFase, string> = {
+  RASCUNHO: 'Rascunho',
+  NEGOCIACAO: 'Negociação',
+  ASSINATURA: 'Assinatura',
+  EM_VIGOR: 'Em vigor',
+  SUBCICLO: 'Sub-ciclo',
+  ENCERRADO: 'Encerrado',
+};
+
+/** Agrupa os 17 estados técnicos nas 6 fases de visualização. */
+export function contratoFase(estado: ContratoEstado): ContratoFase {
+  switch (estado) {
+    case ContratoEstado.INTAKE:
+    case ContratoEstado.DRAFTING:
+    case ContratoEstado.REV_INTERNA:
+    case ContratoEstado.REV_CLIENTE:
+      return 'RASCUNHO';
+    case ContratoEstado.EM_NEGOCIACAO:
+    case ContratoEstado.APROVACAO:
+      return 'NEGOCIACAO';
+    case ContratoEstado.PRONTO_ASSINATURA:
+    case ContratoEstado.ASSINADO:
+      return 'ASSINATURA';
+    case ContratoEstado.POS_ASSINATURA:
+    case ContratoEstado.ACTIVO:
+    case ContratoEstado.REPOSITORIO:
+      return 'EM_VIGOR';
+    case ContratoEstado.EM_DISPUTA:
+    case ContratoEstado.EM_ADENDA:
+    case ContratoEstado.EM_TERMINACAO:
+      return 'SUBCICLO';
+    case ContratoEstado.TERMINADO:
+    case ContratoEstado.ARQUIVADO:
+    case ContratoEstado.CANCELADO:
+      return 'ENCERRADO';
+  }
+}
+
+export type AccaoContrato =
+  | 'EDITAR_CORPO'
+  | 'NOVA_VERSAO'
+  | 'ENVIAR_NEGOCIACAO'
+  | 'NOVO_PONTO'
+  | 'COMPARAR'
+  | 'COMENTAR'
+  | 'APROVAR'
+  | 'PEDIR_ASSINATURA'
+  | 'PARTILHAR_LINK'
+  | 'REGISTAR_ASSINATURA'
+  | 'ADICIONAR_ADENDA'
+  | 'ACTIVAR'
+  | 'CONCLUIR_SUBCICLO'
+  | 'GERIR_DATAS'
+  | 'GERIR_OBRIGACOES'
+  | 'RENOVAR'
+  | 'TERMINAR'
+  | 'REVER_COMPLIANCE'
+  | 'ARQUIVAR'
+  | 'DESCARREGAR';
+
+export const ACCAO_LABELS: Record<AccaoContrato, string> = {
+  EDITAR_CORPO: 'Editar corpo',
+  NOVA_VERSAO: 'Nova versão',
+  ENVIAR_NEGOCIACAO: 'Enviar para negociação',
+  NOVO_PONTO: 'Novo ponto de negociação',
+  COMPARAR: 'Comparar versões',
+  COMENTAR: 'Comentar',
+  APROVAR: 'Aprovar',
+  PEDIR_ASSINATURA: 'Pedir assinatura',
+  PARTILHAR_LINK: 'Partilhar link externo',
+  REGISTAR_ASSINATURA: 'Registar assinatura',
+  ADICIONAR_ADENDA: 'Adicionar adenda',
+  ACTIVAR: 'Activar (pôr em gestão)',
+  CONCLUIR_SUBCICLO: 'Concluir',
+  GERIR_DATAS: 'Gerir datas-chave',
+  GERIR_OBRIGACOES: 'Gerir obrigações',
+  RENOVAR: 'Renovar / denunciar',
+  TERMINAR: 'Iniciar terminação',
+  REVER_COMPLIANCE: 'Rever compliance',
+  ARQUIVAR: 'Arquivar',
+  DESCARREGAR: 'Descarregar documento',
+};
+
+export type ContratoTab =
+  | 'RESUMO'
+  | 'EDITOR'
+  | 'VERSOES'
+  | 'DIFF'
+  | 'PARTES'
+  | 'DATAS'
+  | 'OBRIGACOES'
+  | 'CLAUSULAS'
+  | 'NEGOCIACAO'
+  | 'COMENTARIOS'
+  | 'ASSINATURAS'
+  | 'COMPLIANCE'
+  | 'DOCUMENTO'
+  | 'CRONOLOGIA';
+
+export const CONTRATO_TAB_LABELS: Record<ContratoTab, string> = {
+  RESUMO: 'Resumo',
+  EDITOR: 'Editor',
+  VERSOES: 'Versões',
+  DIFF: 'Comparar',
+  PARTES: 'Partes',
+  DATAS: 'Datas-chave',
+  OBRIGACOES: 'Obrigações',
+  CLAUSULAS: 'Cláusulas',
+  NEGOCIACAO: 'Negociação',
+  COMENTARIOS: 'Comentários',
+  ASSINATURAS: 'Assinaturas',
+  COMPLIANCE: 'Compliance',
+  DOCUMENTO: 'Documento',
+  CRONOLOGIA: 'Cronologia',
+};
+
+export interface ContratoCapacidades {
+  fase: ContratoFase;
+  /** Modo legado (4 valores) — mantido para back-compat dos callers. */
+  modo: ContratoModo;
+  railVariant: 'CRIADO' | 'HERDADO';
+  /** Banner do estado temporário (sub-ciclo); null fora dele. */
+  aviso: string | null;
+  accaoPrimaria: AccaoContrato | null;
+  /** Acções secundárias, na ordem de exibição. */
+  accoes: AccaoContrato[];
+  /** Conjunto autoritário de acções permitidas (serializável). */
+  accoesPermitidas: AccaoContrato[];
+  tabs: ContratoTab[];
+  /** Gate de conveniência: UI esconde, backend nega. */
+  pode(accao: AccaoContrato): boolean;
+}
+
+function ehHerdado(origem: ContratoOrigem): boolean {
+  return origem === ContratoOrigem.IMPORTADO_REPOSITORIO;
+}
+
+export function contratoCapacidades(
+  estado: ContratoEstado,
+  origem: ContratoOrigem = ContratoOrigem.CRIADO_INTERNAMENTE,
+): ContratoCapacidades {
+  const fase = contratoFase(estado);
+  const railVariant: 'CRIADO' | 'HERDADO' = ehHerdado(origem)
+    ? 'HERDADO'
+    : 'CRIADO';
+
+  let accaoPrimaria: AccaoContrato | null = null;
+  let accoes: AccaoContrato[] = [];
+  // Conjunto autoritário (gate). Superset dos botões: inclui acções
+  // disparadas a partir de tabs (ex.: editar corpo via separador Editor)
+  // que não merecem um botão na barra mas continuam permitidas.
+  let permitidas: AccaoContrato[] = [];
+  let tabs: ContratoTab[] = [];
+  let aviso: string | null = null;
+
+  switch (fase) {
+    case 'RASCUNHO':
+      accaoPrimaria = 'EDITAR_CORPO';
+      accoes = ['NOVA_VERSAO', 'ENVIAR_NEGOCIACAO'];
+      permitidas = [
+        'EDITAR_CORPO',
+        'NOVA_VERSAO',
+        'ENVIAR_NEGOCIACAO',
+        'GERIR_DATAS',
+        'COMENTAR',
+      ];
+      tabs = ['EDITOR', 'VERSOES', 'PARTES', 'DATAS', 'CLAUSULAS', 'CRONOLOGIA'];
+      break;
+    case 'NEGOCIACAO':
+      accaoPrimaria = 'NOVO_PONTO';
+      accoes = ['NOVA_VERSAO', 'COMPARAR', 'COMENTAR', 'APROVAR'];
+      // Corpo ainda mutável (pré-assinatura) — editável pelo separador Editor.
+      permitidas = [
+        'NOVO_PONTO',
+        'NOVA_VERSAO',
+        'COMPARAR',
+        'COMENTAR',
+        'APROVAR',
+        'EDITAR_CORPO',
+        'ENVIAR_NEGOCIACAO',
+        'GERIR_DATAS',
+      ];
+      tabs = [
+        'NEGOCIACAO',
+        'DIFF',
+        'EDITOR',
+        'COMENTARIOS',
+        'PARTES',
+        'VERSOES',
+        'CRONOLOGIA',
+      ];
+      break;
+    case 'ASSINATURA':
+      // Corpo CONGELA aqui — nada de EDITAR_CORPO.
+      accaoPrimaria = 'PEDIR_ASSINATURA';
+      accoes = ['PARTILHAR_LINK', 'REGISTAR_ASSINATURA'];
+      permitidas = [
+        'PEDIR_ASSINATURA',
+        'PARTILHAR_LINK',
+        'REGISTAR_ASSINATURA',
+        'DESCARREGAR',
+      ];
+      tabs = ['ASSINATURAS', 'VERSOES', 'PARTES', 'DOCUMENTO', 'CRONOLOGIA'];
+      break;
+    case 'EM_VIGOR':
+      // O coração da gestão — mas o estado exacto importa:
+      //  · REPOSITORIO (herdado em arquivo): ainda não está em gestão
+      //    activa. Primária = Activar; só depois se adiciona adenda.
+      //  · POS_ASSINATURA (a fazer registos): primária = rever
+      //    compliance (os registos são actos de compliance).
+      //  · ACTIVO: o caso pleno — primária Adicionar adenda.
+      // Em nenhum se edita corpo nem se assina.
+      tabs = [
+        'RESUMO',
+        'DATAS',
+        'OBRIGACOES',
+        'COMPLIANCE',
+        'PARTES',
+        'DOCUMENTO',
+        'CRONOLOGIA',
+      ];
+      if (estado === ContratoEstado.REPOSITORIO) {
+        accaoPrimaria = 'ACTIVAR';
+        accoes = ['GERIR_DATAS', 'REVER_COMPLIANCE', 'ARQUIVAR'];
+        permitidas = [
+          'ACTIVAR',
+          'GERIR_DATAS',
+          'GERIR_OBRIGACOES',
+          'REVER_COMPLIANCE',
+          'ARQUIVAR',
+          'DESCARREGAR',
+        ];
+      } else if (estado === ContratoEstado.POS_ASSINATURA) {
+        accaoPrimaria = 'REVER_COMPLIANCE';
+        accoes = ['GERIR_DATAS', 'GERIR_OBRIGACOES'];
+        permitidas = [
+          'REVER_COMPLIANCE',
+          'GERIR_DATAS',
+          'GERIR_OBRIGACOES',
+          'DESCARREGAR',
+        ];
+      } else {
+        accaoPrimaria = 'ADICIONAR_ADENDA';
+        accoes = [
+          'GERIR_DATAS',
+          'GERIR_OBRIGACOES',
+          'RENOVAR',
+          'TERMINAR',
+          'REVER_COMPLIANCE',
+        ];
+        permitidas = [
+          'ADICIONAR_ADENDA',
+          'GERIR_DATAS',
+          'GERIR_OBRIGACOES',
+          'RENOVAR',
+          'TERMINAR',
+          'REVER_COMPLIANCE',
+          'DESCARREGAR',
+        ];
+      }
+      break;
+    case 'SUBCICLO':
+      // Situação temporária sobreposta ao ACTIVO. Resolver primeiro;
+      // sem nova adenda em paralelo, sem editar corpo.
+      tabs = [
+        'RESUMO',
+        'DATAS',
+        'OBRIGACOES',
+        'COMPLIANCE',
+        'DOCUMENTO',
+        'CRONOLOGIA',
+      ];
+      accaoPrimaria = 'CONCLUIR_SUBCICLO';
+      if (estado === ContratoEstado.EM_ADENDA) {
+        aviso = 'Adenda em curso — conclui a adenda para voltar a gerir o contrato.';
+        accoes = ['REVER_COMPLIANCE'];
+        permitidas = ['CONCLUIR_SUBCICLO', 'REVER_COMPLIANCE', 'DESCARREGAR'];
+      } else if (estado === ContratoEstado.EM_DISPUTA) {
+        aviso = 'Contrato em disputa.';
+        accoes = ['TERMINAR', 'REVER_COMPLIANCE'];
+        permitidas = [
+          'CONCLUIR_SUBCICLO',
+          'TERMINAR',
+          'REVER_COMPLIANCE',
+          'DESCARREGAR',
+        ];
+      } else {
+        aviso = 'Terminação em curso.';
+        accoes = ['DESCARREGAR'];
+        permitidas = ['CONCLUIR_SUBCICLO', 'DESCARREGAR'];
+      }
+      break;
+    case 'ENCERRADO':
+      tabs = ['RESUMO', 'DOCUMENTO', 'CRONOLOGIA'];
+      if (estado === ContratoEstado.TERMINADO) {
+        accoes = ['ARQUIVAR', 'DESCARREGAR'];
+        permitidas = ['ARQUIVAR', 'DESCARREGAR'];
+      } else {
+        accoes = ['DESCARREGAR'];
+        permitidas = ['DESCARREGAR'];
+      }
+      break;
+  }
+
+  const permitidasSet = new Set<AccaoContrato>(permitidas);
+
+  return {
+    fase,
+    modo: contratoModo(estado),
+    railVariant,
+    aviso,
+    accaoPrimaria,
+    accoes,
+    accoesPermitidas: Array.from(permitidasSet),
+    tabs,
+    pode: (accao) => permitidasSet.has(accao),
+  };
+}
+
+/** Gate directo para guards de backend, sem construir o objecto todo. */
+export function contratoPode(
+  estado: ContratoEstado,
+  origem: ContratoOrigem,
+  accao: AccaoContrato,
+): boolean {
+  return contratoCapacidades(estado, origem).pode(accao);
+}
+
+// ─── CONTRATO — Rail do ciclo de vida (mode-aware) ────────
+//
+// Um contrato CRIADO percorre os 6 marcos lineares. Um contrato
+// HERDADO entra a meio: a rail colapsa para Importado → Em vigor →
+// Renovação → Terminação, para não fingir que passou por elaboração.
+
+export interface RailStep {
+  key: string;
+  label: string;
+}
+
+export const RAIL_CRIADO: RailStep[] = [
+  { key: 'entrada', label: 'Entrada' },
+  { key: 'elaboracao', label: 'Elaboração' },
+  { key: 'negociacao', label: 'Negociação' },
+  { key: 'assinatura', label: 'Assinatura' },
+  { key: 'vigor', label: 'Em vigor' },
+  { key: 'terminacao', label: 'Terminação' },
+];
+
+export const RAIL_HERDADO: RailStep[] = [
+  { key: 'importado', label: 'Importado' },
+  { key: 'vigor', label: 'Em vigor' },
+  { key: 'renovacao', label: 'Renovação' },
+  { key: 'terminacao', label: 'Terminação' },
+];
+
+export interface ContratoRail {
+  variant: 'CRIADO' | 'HERDADO';
+  steps: RailStep[];
+  /** Índice do passo actual; -1 quando cancelado (sem progressão). */
+  currentIndex: number;
+  cancelado: boolean;
+}
+
+export function contratoRail(
+  estado: ContratoEstado,
+  origem: ContratoOrigem = ContratoOrigem.CRIADO_INTERNAMENTE,
+): ContratoRail {
+  const cancelado = estado === ContratoEstado.CANCELADO;
+
+  if (ehHerdado(origem)) {
+    let currentIndex = 1; // Em vigor por defeito
+    if (estado === ContratoEstado.REPOSITORIO) currentIndex = 0;
+    else if (
+      estado === ContratoEstado.EM_TERMINACAO ||
+      estado === ContratoEstado.TERMINADO ||
+      estado === ContratoEstado.ARQUIVADO
+    )
+      currentIndex = 3;
+    return { variant: 'HERDADO', steps: RAIL_HERDADO, currentIndex, cancelado };
+  }
+
+  let currentIndex: number;
+  switch (estado) {
+    case ContratoEstado.INTAKE:
+      currentIndex = 0;
+      break;
+    case ContratoEstado.DRAFTING:
+    case ContratoEstado.REV_INTERNA:
+    case ContratoEstado.REV_CLIENTE:
+      currentIndex = 1;
+      break;
+    case ContratoEstado.EM_NEGOCIACAO:
+    case ContratoEstado.APROVACAO:
+      currentIndex = 2;
+      break;
+    case ContratoEstado.PRONTO_ASSINATURA:
+    case ContratoEstado.ASSINADO:
+      currentIndex = 3;
+      break;
+    case ContratoEstado.POS_ASSINATURA:
+    case ContratoEstado.ACTIVO:
+    case ContratoEstado.REPOSITORIO:
+    case ContratoEstado.EM_ADENDA:
+    case ContratoEstado.EM_DISPUTA:
+      currentIndex = 4;
+      break;
+    case ContratoEstado.EM_TERMINACAO:
+    case ContratoEstado.TERMINADO:
+    case ContratoEstado.ARQUIVADO:
+      currentIndex = 5;
+      break;
+    default:
+      currentIndex = -1; // CANCELADO
+  }
+
+  return { variant: 'CRIADO', steps: RAIL_CRIADO, currentIndex, cancelado };
+}
+
 // ─── Categorias de TipoContrato ───────────────────────────
 
 export enum TipoContratoCategoria {

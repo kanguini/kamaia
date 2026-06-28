@@ -398,6 +398,7 @@ export class ContratosService {
       deletedAt: null,
       ...(ftsIds && { id: { in: ftsIds } }),
       ...(q.estado && { estado: q.estado }),
+      ...(q.origem && { origem: q.origem }),
       ...(q.tipoId && { tipoId: q.tipoId }),
       ...(q.carteiraId && { carteiraId: q.carteiraId }),
       ...(q.responsavelId && { responsavelId: q.responsavelId }),

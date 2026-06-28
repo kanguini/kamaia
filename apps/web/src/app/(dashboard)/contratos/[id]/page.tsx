@@ -48,19 +48,37 @@ import {
   Paperclip,
   MessageSquare,
   ChevronDown,
+  FilePlus,
+  FilePlus2,
+  GitCompare,
+  Check,
+  CheckCircle2,
+  Send,
+  PenLine,
+  Link2,
+  CalendarClock,
+  ListChecks,
+  RefreshCw,
+  Ban,
+  Archive,
+  Download,
+  PlayCircle,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useApi } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { unwrapList } from '@/lib/list'
 import { Badge } from '@/components/ui/badge'
 import {
   ContratoEstado,
-  contratoModo,
+  ContratoOrigem,
+  contratoCapacidades,
   contratoFlags,
   CONTRATO_FLAG_LABELS,
+  ACCAO_LABELS,
   userVisibleEstado,
   CONTRATO_ESTADO_VISIVEL_LABELS,
-  type ContratoModo,
+  type AccaoContrato,
 } from '@kamaia/shared-types'
 import { estadoBadgeVariant } from '@/lib/clm-format'
 import { useKamaiaAI, useKamaiaPageContext } from '@/components/kamaia-ai/kamaia-ai-provider'
@@ -80,9 +98,15 @@ import type {
 } from '@/components/contratos/v2/atencao-engine'
 import { AssinarWizard } from '@/components/contratos/v2/assinar-wizard'
 import { TermosDrawer } from '@/components/contratos/v2/termos-drawer'
+import { AdendaDrawer } from '@/components/contratos/v2/adenda-drawer'
+import { LifecycleRail } from '@/components/contratos/v2/lifecycle-rail'
 import { EditorTab } from '@/components/contratos/editor-tab'
 import { VersoesTab } from '@/components/contratos/versoes-tab'
 import { DocumentosTab } from '@/components/contratos/documentos-tab'
+import { ObrigacoesTab } from '@/components/contratos/obrigacoes-tab'
+import { AssinaturasTab } from '@/components/contratos/assinaturas-tab'
+
+type DetalheTab = 'termos' | 'documentos' | 'obrigacoes' | 'assinaturas' | 'conversa'
 
 interface Contrato {
   id: string
@@ -90,6 +114,7 @@ interface Contrato {
   titulo: string
   descricao: string | null
   estado: ContratoEstado
+  origem: ContratoOrigem
   valor: string | null
   moeda: string | null
   leiAplicavel: string | null
@@ -166,18 +191,23 @@ export default function ContratoDetailPage() {
   )
   const { setOpen: setAiOpen, send: aiSend } = useKamaiaAI()
 
-  const modo: ContratoModo = contrato ? contratoModo(contrato.estado) : 'REPOSITORY'
+  const askAI = useCallback(
+    (prompt: string) => {
+      setAiOpen(true)
+      void aiSend(prompt)
+    },
+    [setAiOpen, aiSend],
+  )
 
   return contrato ? (
     <Inner
       contrato={contrato}
-      modo={modo}
-      onAiAnalysis={() => {
-        setAiOpen(true)
-        void aiSend(
+      askAI={askAI}
+      onAiAnalysis={() =>
+        askAI(
           `Analisa o contrato ${contrato.numero ?? contrato.id} (${contrato.titulo}) e sumariza riscos, compliance pendente, e próximas acções.`,
         )
-      }}
+      }
       onRefresh={() => void refetch()}
     />
   ) : (
@@ -207,18 +237,21 @@ function DetailShell({
 
 function Inner({
   contrato,
-  modo,
+  askAI,
   onAiAnalysis,
   onRefresh,
 }: {
   contrato: Contrato
-  modo: ContratoModo
+  askAI: (prompt: string) => void
   onAiAnalysis: () => void
   onRefresh: () => void
 }) {
+  const { data: session } = useSession()
   const [signWizardOpen, setSignWizardOpen] = useState(false)
   const [termosOpen, setTermosOpen] = useState(false)
-  const [detalhesTab, setDetalhesTab] = useState<'termos' | 'documentos' | 'conversa' | null>(null)
+  const [adendaOpen, setAdendaOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [detalhesTab, setDetalhesTab] = useState<DetalheTab | null>(null)
 
   const sinais = useContratoSinais(contrato.id)
 
@@ -231,12 +264,113 @@ function Inner({
   const proximaAccao = proximaAccaoHint(contrato)
   const flags = contratoFlags(contrato.estado)
   const visivel = userVisibleEstado(contrato.estado)
-  const readonly = modo === 'CLOSED'
+  // Fonte de verdade da visualização por fase: que acções e tabs mostrar.
+  const caps = contratoCapacidades(contrato.estado, contrato.origem)
 
   // Resolução de actos / vigência refresca contrato + sinais
   const onResolved = () => {
     onRefresh()
     void sinais.reload()
+  }
+
+  const scrollTo = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  const openTab = (t: DetalheTab) => {
+    setDetalhesTab(t)
+    setTimeout(() => scrollTo('cd-mais'), 60)
+  }
+
+  // Tabs do "Mais detalhes" dirigidas pela fase: o Editor só aparece
+  // quando o corpo é editável; Obrigações/Assinaturas conforme a fase.
+  const maisTabs: { key: DetalheTab; label: string; icon: ReactNode }[] = [
+    ...(caps.pode('EDITAR_CORPO')
+      ? [{ key: 'termos' as const, label: 'Termos & cláusulas', icon: <Scale size={13} /> }]
+      : []),
+    { key: 'documentos', label: 'Documentos & versões', icon: <Paperclip size={13} /> },
+    ...(caps.tabs.includes('OBRIGACOES')
+      ? [{ key: 'obrigacoes' as const, label: 'Obrigações', icon: <ListChecks size={13} /> }]
+      : []),
+    ...(caps.tabs.includes('ASSINATURAS')
+      ? [{ key: 'assinaturas' as const, label: 'Assinaturas', icon: <PenLine size={13} /> }]
+      : []),
+    { key: 'conversa', label: 'Conversa & histórico', icon: <MessageSquare size={13} /> },
+  ]
+
+  const transitar = async (para: ContratoEstado, motivo?: string) => {
+    if (!session?.accessToken) return
+    try {
+      await api(`/contratos/${contrato.id}/transicao`, {
+        method: 'POST',
+        token: session.accessToken,
+        body: JSON.stringify({ para, motivo }),
+      })
+      onResolved()
+    } catch {
+      // Estado real reflecte-se no refetch; transição inválida é barrada no backend.
+    }
+  }
+
+  // Registry: cada acção do resolver → ícone + destino. Total sobre
+  // AccaoContrato, por isso qualquer acção que o resolver permita tem
+  // sempre um handler. Acções sem ecrã dedicado encaminham para a IA
+  // (que serve a gestão) — interino e honesto.
+  const actionDefs: Record<AccaoContrato, { icon: ReactNode; run: () => void }> = {
+    EDITAR_CORPO: { icon: <Edit2 size={13} />, run: () => openTab('termos') },
+    NOVA_VERSAO: { icon: <FilePlus size={13} />, run: () => openTab('documentos') },
+    ENVIAR_NEGOCIACAO: {
+      icon: <Send size={13} />,
+      run: () => void transitar(ContratoEstado.EM_NEGOCIACAO),
+    },
+    NOVO_PONTO: {
+      icon: <MessageSquare size={13} />,
+      run: () => askAI('Ajuda-me a registar um ponto de negociação neste contrato.'),
+    },
+    COMPARAR: { icon: <GitCompare size={13} />, run: () => openTab('documentos') },
+    COMENTAR: { icon: <MessageSquare size={13} />, run: () => openTab('conversa') },
+    APROVAR: {
+      icon: <Check size={13} />,
+      run: () =>
+        void transitar(
+          contrato.estado === ContratoEstado.EM_NEGOCIACAO
+            ? ContratoEstado.APROVACAO
+            : ContratoEstado.PRONTO_ASSINATURA,
+        ),
+    },
+    PEDIR_ASSINATURA: { icon: <PenLine size={13} />, run: () => setSignWizardOpen(true) },
+    PARTILHAR_LINK: { icon: <Link2 size={13} />, run: () => setSignWizardOpen(true) },
+    REGISTAR_ASSINATURA: { icon: <PenLine size={13} />, run: () => setSignWizardOpen(true) },
+    ADICIONAR_ADENDA: { icon: <FilePlus2 size={13} />, run: () => setAdendaOpen(true) },
+    ACTIVAR: {
+      icon: <PlayCircle size={13} />,
+      run: () => void transitar(ContratoEstado.ACTIVO),
+    },
+    CONCLUIR_SUBCICLO: {
+      icon: <CheckCircle2 size={13} />,
+      run: () => askAI(`Ajuda-me a concluir: ${caps.aviso ?? 'o sub-ciclo em curso'}`),
+    },
+    GERIR_DATAS: { icon: <CalendarClock size={13} />, run: () => setTermosOpen(true) },
+    GERIR_OBRIGACOES: { icon: <ListChecks size={13} />, run: () => openTab('obrigacoes') },
+    RENOVAR: { icon: <RefreshCw size={13} />, run: () => setTermosOpen(true) },
+    TERMINAR: {
+      icon: <Ban size={13} />,
+      run: () =>
+        askAI('Quero iniciar a terminação deste contrato. Indica-me os passos e implicações.'),
+    },
+    REVER_COMPLIANCE: { icon: <Scale size={13} />, run: () => scrollTo('cd-compliance') },
+    ARQUIVAR: {
+      icon: <Archive size={13} />,
+      run: () => {
+        if (window.confirm('Arquivar este contrato? Fica em modo de leitura.'))
+          void transitar(ContratoEstado.ARQUIVADO)
+      },
+    },
+    DESCARREGAR: { icon: <Download size={13} />, run: () => openTab('documentos') },
+  }
+
+  const runAccao = (a: AccaoContrato) => {
+    setMenuOpen(false)
+    actionDefs[a].run()
   }
 
   return (
@@ -275,26 +409,62 @@ function Inner({
             <button type="button" className="cd-btn cd-btn-soft" onClick={onAiAnalysis}>
               <Sparkles size={13} /> Análise IA
             </button>
-            {!readonly && (
+            {caps.accaoPrimaria && (
               <button
                 type="button"
                 className="cd-btn cd-btn-primary"
-                onClick={() => {
-                  if (modo === 'SIGNATURE') setSignWizardOpen(true)
-                  else if (modo === 'REPOSITORY') setTermosOpen(true)
-                  else setDetalhesTab('termos')
-                }}
+                onClick={() => runAccao(caps.accaoPrimaria!)}
               >
-                <Edit2 size={12} />
-                {modo === 'SIGNATURE' ? 'Enviar para assinar' : modo === 'DRAFTING' ? 'Editor' : 'Editar'}
+                {actionDefs[caps.accaoPrimaria].icon}
+                {ACCAO_LABELS[caps.accaoPrimaria]}
               </button>
             )}
-            <button type="button" className="cd-btn cd-btn-soft cd-btn-icon" aria-label="Mais acções">
-              <MoreHorizontal size={14} />
-            </button>
+            {caps.accoes.length > 0 && (
+              <div className="cd-menu-wrap">
+                <button
+                  type="button"
+                  className="cd-btn cd-btn-soft cd-btn-icon"
+                  aria-label="Mais acções"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((v) => !v)}
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="cd-menu-backdrop" onClick={() => setMenuOpen(false)} />
+                    <div className="cd-menu" role="menu">
+                      {caps.accoes.map((a) => (
+                        <button
+                          key={a}
+                          type="button"
+                          role="menuitem"
+                          className="cd-menu-item"
+                          onClick={() => runAccao(a)}
+                        >
+                          {actionDefs[a].icon}
+                          <span>{ACCAO_LABELS[a]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
+
+      {/* Rail do ciclo de vida — adapta-se a criado vs herdado */}
+      <LifecycleRail estado={contrato.estado} origem={contrato.origem} />
+
+      {/* Aviso de sub-ciclo (adenda / disputa / terminação em curso) */}
+      {caps.aviso && (
+        <div className="cd-aviso" role="status">
+          {caps.aviso}
+        </div>
+      )}
 
       {/* Precisa da tua atenção — lidera a página */}
       {sinais.loaded && (
@@ -319,7 +489,9 @@ function Inner({
       <div className="cd-split">
         <div className="cd-col">
           <ResumoIdentificacao contrato={contrato} />
-          <ComplianceSpine actos={sinais.actos} />
+          <div id="cd-compliance">
+            <ComplianceSpine actos={sinais.actos} />
+          </div>
           <RelacaoParceiro contratoId={contrato.id} partes={sinais.partes} />
           <ResumoCustomFields contratoId={contrato.id} />
         </div>
@@ -331,23 +503,19 @@ function Inner({
       {/* Evolução temporal */}
       <EvolucaoTimeline contratoId={contrato.id} />
 
-      {/* Mais detalhes — secundário, colapsável */}
-      <div className="cd-mais">
+      {/* Mais detalhes — secundário, colapsável, dirigido pela fase */}
+      <div className="cd-mais" id="cd-mais">
         <div className="cd-mais-tabs">
-          {(['termos', 'documentos', 'conversa'] as const).map((t) => (
+          {maisTabs.map((t) => (
             <button
-              key={t}
+              key={t.key}
               type="button"
-              className={`cd-mais-tab ${detalhesTab === t ? 'active' : ''}`}
-              onClick={() => setDetalhesTab(detalhesTab === t ? null : t)}
+              className={`cd-mais-tab ${detalhesTab === t.key ? 'active' : ''}`}
+              onClick={() => setDetalhesTab(detalhesTab === t.key ? null : t.key)}
             >
-              {t === 'termos' && <Scale size={13} />}
-              {t === 'documentos' && <Paperclip size={13} />}
-              {t === 'conversa' && <MessageSquare size={13} />}
-              <span>
-                {t === 'termos' ? 'Termos & cláusulas' : t === 'documentos' ? 'Documentos & versões' : 'Conversa & histórico'}
-              </span>
-              <ChevronDown size={12} className={`cd-mais-chev ${detalhesTab === t ? 'open' : ''}`} />
+              {t.icon}
+              <span>{t.label}</span>
+              <ChevronDown size={12} className={`cd-mais-chev ${detalhesTab === t.key ? 'open' : ''}`} />
             </button>
           ))}
         </div>
@@ -360,6 +528,16 @@ function Inner({
           <div className="cd-mais-body">
             <VersoesTab contratoId={contrato.id} />
             <DocumentosTab contratoId={contrato.id} />
+          </div>
+        )}
+        {detalhesTab === 'obrigacoes' && (
+          <div className="cd-mais-body">
+            <ObrigacoesTab contratoId={contrato.id} />
+          </div>
+        )}
+        {detalhesTab === 'assinaturas' && (
+          <div className="cd-mais-body">
+            <AssinaturasTab contratoId={contrato.id} />
           </div>
         )}
         {detalhesTab === 'conversa' && (
@@ -386,6 +564,13 @@ function Inner({
           prazoRenovacaoMeses: contrato.prazoRenovacaoMeses,
           janelaDenunciaDias: contrato.janelaDenunciaDias,
         }}
+        onSaved={onResolved}
+      />
+      <AdendaDrawer
+        open={adendaOpen}
+        onClose={() => setAdendaOpen(false)}
+        contratoId={contrato.id}
+        contratoTitulo={contrato.titulo}
         onSaved={onResolved}
       />
 
@@ -461,6 +646,55 @@ function Inner({
         }
         .cd-btn-primary:hover { opacity: 0.9; }
         .cd-btn-icon { padding: 6px; }
+
+        .cd-menu-wrap { position: relative; }
+        .cd-menu-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 40;
+        }
+        .cd-menu {
+          position: absolute;
+          top: calc(100% + 6px);
+          right: 0;
+          z-index: 41;
+          min-width: 220px;
+          background: var(--k2-bg-elev);
+          border: 1px solid var(--k2-border);
+          border-radius: var(--k2-radius);
+          box-shadow: 0 8px 28px -12px rgba(0, 0, 0, 0.5);
+          padding: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .cd-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          width: 100%;
+          padding: 8px 10px;
+          border: 0;
+          background: none;
+          border-radius: var(--k2-radius-sm);
+          color: var(--k2-text-dim);
+          font-size: 12.5px;
+          font-family: inherit;
+          text-align: left;
+          cursor: pointer;
+          transition: background 120ms ease, color 120ms ease;
+        }
+        .cd-menu-item:hover { background: var(--k2-bg-hover); color: var(--k2-text); }
+
+        .cd-aviso {
+          background: var(--k2-warn-bg, rgba(180, 130, 20, 0.1));
+          border: 1px solid var(--k2-warn-border, rgba(180, 130, 20, 0.3));
+          color: var(--k2-warn);
+          padding: 9px 14px;
+          border-radius: var(--k2-radius-sm);
+          font-size: 12.5px;
+          font-weight: 500;
+        }
 
         .cd-split {
           display: grid;

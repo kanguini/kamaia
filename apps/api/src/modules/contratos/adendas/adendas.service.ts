@@ -15,6 +15,7 @@ import { Prisma } from '@prisma/client';
 import { AuditService } from '../../audit/audit.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WebhooksService } from '../../webhooks/webhooks.service';
+import { assertPodeFase } from '../contrato-fase.guard';
 
 /**
  * Adendas — modificações ao contrato vigente.
@@ -68,11 +69,14 @@ export class ContratoAdendasService {
       include: { partes: true },
     });
     if (!parent) throw new NotFoundException('Contrato pai não encontrado');
-    if (parent.estado !== ContratoEstado.ACTIVO) {
-      throw new BadRequestException(
-        `Adenda só pode ser criada sobre contrato ACTIVO (estado actual: ${parent.estado})`,
-      );
-    }
+    // Gate de fase (mesma fonte de verdade que a UI): adenda só é
+    // permitida sobre um contrato ACTIVO. Um herdado em REPOSITORIO
+    // tem de ser activado primeiro.
+    assertPodeFase(
+      parent.estado as ContratoEstado,
+      parent.origem as ContratoOrigem,
+      'ADICIONAR_ADENDA',
+    );
     if (parent.parentContratoId) {
       throw new BadRequestException(
         'Não é permitido criar adendas sobre adendas. ' +

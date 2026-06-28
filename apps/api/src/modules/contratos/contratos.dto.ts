@@ -154,6 +154,7 @@ export type TransicaoEstadoDto = z.infer<typeof TransicaoEstadoSchema>;
 export const ListContratosQuerySchema = z.object({
   q: z.string().optional(),
   estado: z.nativeEnum(ContratoEstado).optional(),
+  origem: z.nativeEnum(ContratoOrigem).optional(),
   tipoId: z.string().uuid().optional(),
   carteiraId: z.string().uuid().optional(),
   responsavelId: z.string().uuid().optional(),

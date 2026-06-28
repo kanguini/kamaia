@@ -14,10 +14,19 @@ interface FakePrisma {
   contratoVersao: { findFirst: jest.Mock; update: jest.Mock };
 }
 
-function makePrisma(versao: unknown): FakePrisma {
+function makePrisma(
+  versao: unknown,
+  contratoEstado = 'DRAFTING',
+): FakePrisma {
   return {
     contrato: {
-      findFirst: jest.fn().mockResolvedValue({ id: 'contrato-1' }),
+      // Fase editável por defeito (DRAFTING) — estes testes incidem
+      // sobre o guard de assinatura, que pressupõe corpo mutável.
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'contrato-1',
+        estado: contratoEstado,
+        origem: 'CRIADO_INTERNAMENTE',
+      }),
     },
     contratoVersao: {
       findFirst: jest.fn().mockResolvedValue(versao),
@@ -78,6 +87,21 @@ describe('ContratoVersoesService.editarCorpo guard', () => {
     );
     await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).rejects.toThrow(
       /pendente/,
+    );
+    expect(prisma.contratoVersao.update).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia edição num contrato em vigor (gate de fase), antes de tocar na versão', async () => {
+    const prisma = makePrisma(
+      { id: 'v1', assinaturas: [], geradoPorIA: false },
+      'ACTIVO',
+    );
+    const svc = new ContratoVersoesService(
+      prisma as unknown as never,
+      { log: jest.fn() } as unknown as never,
+    );
+    await expect(svc.editarCorpo('t', 'u', 'c', 'v1', DTO)).rejects.toThrow(
+      /Editar corpo|estado/,
     );
     expect(prisma.contratoVersao.update).not.toHaveBeenCalled();
   });
