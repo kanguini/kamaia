@@ -98,8 +98,9 @@ export default function PoliticaPrivacidadePage() {
               </p>
               <ul>
                 <li>
-                  <strong>Infraestrutura:</strong> Vercel (hosting do site),
-                  Railway (API e base de dados), AWS S3 (ficheiros)
+                  <strong>Infraestrutura:</strong> Vercel (alojamento do site),
+                  Railway (API e base de dados), Cloudflare R2 (ficheiros,
+                  compatível com S3)
                 </li>
                 <li>
                   <strong>Email transaccional:</strong> Resend
