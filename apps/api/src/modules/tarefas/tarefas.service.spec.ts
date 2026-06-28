@@ -46,6 +46,14 @@ describe('TarefasService.update — carimbo de conclusão', () => {
     expect(cap.data?.concluidaPor).toBeNull();
   });
 
+  it('cancelar uma concluída PRESERVA o carimbo (não reabre)', async () => {
+    const cap: Captured = {};
+    const svc = makeService(TarefaEstado.CONCLUIDA, cap);
+    await svc.update('tenant', 'user-1', 't1', { estado: TarefaEstado.CANCELADA });
+    expect(cap.data?.estado).toBe(TarefaEstado.CANCELADA);
+    expect('concluidaEm' in (cap.data ?? {})).toBe(false);
+  });
+
   it('sem mudança de estado, não toca nos campos de conclusão', async () => {
     const cap: Captured = {};
     const svc = makeService(TarefaEstado.EM_CURSO, cap);

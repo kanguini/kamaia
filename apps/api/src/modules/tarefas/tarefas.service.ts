@@ -150,7 +150,13 @@ export class TarefasService {
       if (dto.estado === TarefaEstado.CONCLUIDA) {
         data.concluidaEm = new Date();
         data.concluidaPor = actorUserId;
-      } else if (atual.estado === TarefaEstado.CONCLUIDA) {
+      } else if (
+        atual.estado === TarefaEstado.CONCLUIDA &&
+        (dto.estado === TarefaEstado.A_FAZER ||
+          dto.estado === TarefaEstado.EM_CURSO)
+      ) {
+        // Só limpa o carimbo numa REABERTURA para trabalho activo —
+        // cancelar uma concluída preserva o registo de que foi feita.
         data.concluidaEm = null;
         data.concluidaPor = null;
       }
@@ -345,7 +351,8 @@ export class TarefasService {
   /** O responsável tem de ser membro do tenant. */
   private async assertMembro(tenantId: string, userId: string) {
     const m = await this.prisma.membership.findFirst({
-      where: { tenantId, userId },
+      // deletedAt: null — um membro removido não pode ser responsável.
+      where: { tenantId, userId, deletedAt: null },
       select: { id: true },
     });
     if (!m) {
