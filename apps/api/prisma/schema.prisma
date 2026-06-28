@@ -640,6 +640,14 @@ model Contrato {
   @@index([tenantId, responsavelId])
   @@index([tenantId, carteiraId])
   @@index([parentContratoId])
+  // PERF: serve a lista por defeito (ORDER BY created_at, id) e as
+  // contagens/série temporal do dashboard por createdAt.
+  @@index([tenantId, createdAt, id])
+  // PERF: serve "recentes" do dashboard (ORDER BY updated_at DESC).
+  @@index([tenantId, updatedAt])
+  // PERF (C1): serve o scan global do motor de renovação
+  // (estado=ACTIVO AND data_termo<=hoje), que não tem tenantId leading.
+  @@index([estado, dataTermo])
   @@index([searchVector], type: Gin)
   @@map("contratos")
 }

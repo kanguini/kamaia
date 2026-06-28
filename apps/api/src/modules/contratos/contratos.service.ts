@@ -434,7 +434,10 @@ export class ContratosService {
         tipo: true,
         carteira: true,
         partes: { include: { entidade: true } },
-        versoes: { orderBy: { ordem: 'desc' } },
+        // PERF (H2): `versoes` NÃO é consumido pelo payload do detalhe —
+        // as tabs Editor/Versões buscam /contratos/:id/versoes à parte.
+        // Incluí-lo aqui enviava todos os corpoMarkdown/corpoHtml (@db.Text)
+        // a cada abertura do contrato. Removido.
         datasChave: { orderBy: { data: 'asc' } },
         obrigacoes: { include: { instancias: { orderBy: { dataPrevista: 'desc' }, take: 5 } } },
         actosRegulatorios: { orderBy: { prazoLimite: 'asc' } },
@@ -877,11 +880,17 @@ export class ContratosService {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${tenantId}))`;
 
     // Contagem dentro do lock — leitura consistente.
+    // PERF: LIKE com prefixo constante + 5 wildcards de 1 char é
+    // SARGÁVEL (usa o índice único (tenant_id, numero_interno)). O
+    // `prefixo + '_____'` casa exactamente `CT-AAAA-NNNNN` (13 chars) e
+    // exclui adendas (`...-A01`, mais longas) pelo comprimento. Substitui
+    // o antigo regex `~` que forçava avaliação por-linha em todo o tenant
+    // (50k) dentro do lock de escrita.
     const matched = await tx.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count
       FROM contratos
       WHERE tenant_id = ${tenantId}::uuid
-        AND numero_interno ~ ${`^${prefixo.replace(/-/g, '\\-')}\\d{5}$`}
+        AND numero_interno LIKE ${`${prefixo}_____`}
     `;
     let seq = Number(matched[0]?.count ?? 0n) + 1;
 

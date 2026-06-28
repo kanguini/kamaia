@@ -100,17 +100,24 @@ export class RenovacaoEngineService {
 
     let renovados = 0;
     let falhas = 0;
+    if (candidatos.length === 0) return { renovados, falhas };
+
+    // PERF (C1): idempotência em LOTE — uma única query para todos os
+    // candidatos em vez de uma por candidato (N+1). Set dos que já foram
+    // renovados nas últimas 24h.
+    const cutoff = new Date(Date.now() - 24 * 3600_000);
+    const jaRenovados = await this.prisma.contratoEvento.findMany({
+      where: {
+        contratoId: { in: candidatos.map((c) => c.id) },
+        tipo: ContratoEventoTipo.RENOVACAO_EXECUTADA,
+        createdAt: { gte: cutoff },
+      },
+      select: { contratoId: true },
+    });
+    const renovadoRecente = new Set(jaRenovados.map((e) => e.contratoId));
+
     for (const c of candidatos) {
-      // Skip se já renovado nas últimas 24h (idempotência defensiva)
-      const recente = await this.prisma.contratoEvento.findFirst({
-        where: {
-          contratoId: c.id,
-          tipo: ContratoEventoTipo.RENOVACAO_EXECUTADA,
-          createdAt: { gte: new Date(Date.now() - 24 * 3600_000) },
-        },
-        select: { id: true },
-      });
-      if (recente) continue;
+      if (renovadoRecente.has(c.id)) continue;
 
       try {
         await this.renovarUm(c);
