@@ -22,6 +22,7 @@ import {
   BookOpen,
   Bell,
   CalendarDays,
+  ListChecks,
   Settings,
   LogOut,
   Check,
@@ -63,6 +64,7 @@ const WORK_NAV: NavItem[] = [
   { label: 'Contratos', href: '/contratos', icon: FileText },
   { label: 'Entidades', href: '/entidades', icon: Building2 },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, match: (p) => p.startsWith('/agenda') || p.startsWith('/alertas') },
+  { label: 'Tarefas', href: '/tarefas', icon: ListChecks, match: (p) => p.startsWith('/tarefas') },
   { label: 'Análise', href: '/compliance', icon: ShieldCheck },
 ]
 
