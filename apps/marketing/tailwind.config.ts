@@ -30,7 +30,6 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         display: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
-        playfair: ['var(--font-playfair)', 'Playfair Display', 'Georgia', 'serif'],
       },
       borderRadius: {
         sm: '7px',

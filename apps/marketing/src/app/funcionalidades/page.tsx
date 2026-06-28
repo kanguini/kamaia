@@ -110,16 +110,16 @@ export default function FuncionalidadesPage() {
   return (
     <>
       <Nav />
-      <main className="bg-black">
+      <main className="bg-white">
         <section className="px-6 pt-32 pb-12 text-center">
           <Reveal>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">
               Funcionalidades
             </p>
-            <h1 className="mt-3 font-playfair text-[clamp(36px,5vw,64px)] font-medium leading-[1.1] text-white">
+            <h1 className="mt-3 font-sans text-[clamp(36px,5vw,64px)] font-medium leading-[1.1] text-neutral-900">
               Da solicitação ao arquivo.
             </h1>
-            <p className="mx-auto mt-5 max-w-[680px] text-[15px] leading-relaxed text-white/65">
+            <p className="mx-auto mt-5 max-w-[680px] text-[15px] leading-relaxed text-neutral-600">
               Um sistema, pensado em conjunto desde o primeiro dia — não um
               conjunto de módulos montados à pressa. Cada capacidade existe ao
               serviço da gestão do ciclo de vida.
@@ -128,15 +128,15 @@ export default function FuncionalidadesPage() {
         </section>
 
         <section className="px-6 pb-24">
-          <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-px bg-white/10 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-px bg-neutral-100 md:grid-cols-2 lg:grid-cols-3">
             {CAPACIDADES.map((c) => (
               <Reveal key={c.title}>
-                <article className="h-full bg-black p-7">
-                  <c.icon className="h-6 w-6 text-white/70" aria-hidden="true" />
-                  <h3 className="mt-4 font-playfair text-xl font-medium text-white">
+                <article className="h-full bg-white p-7">
+                  <c.icon className="h-6 w-6 text-neutral-600" aria-hidden="true" />
+                  <h3 className="mt-4 font-sans text-xl font-medium text-neutral-900">
                     {c.title}
                   </h3>
-                  <p className="mt-2 text-[14px] leading-relaxed text-white/60">
+                  <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">
                     {c.body}
                   </p>
                 </article>
@@ -145,12 +145,12 @@ export default function FuncionalidadesPage() {
           </div>
         </section>
 
-        <section className="px-6 py-24 text-center border-t border-white/10">
+        <section className="px-6 py-24 text-center border-t border-neutral-200">
           <Reveal>
-            <h2 className="font-playfair text-[clamp(28px,3.6vw,40px)] font-medium leading-[1.15] text-white">
+            <h2 className="font-sans text-[clamp(28px,3.6vw,40px)] font-medium leading-[1.15] text-neutral-900">
               Falta alguma coisa?
             </h2>
-            <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-white/60">
+            <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-neutral-600">
               O produto está em fase inicial e o percurso é desenhado a partir
               de conversas com quem o vai usar. Diga-nos o que a sua organização
               precisa.
@@ -158,13 +158,13 @@ export default function FuncionalidadesPage() {
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Link
                 href="/contacto"
-                className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
+                className="inline-flex items-center rounded-md bg-neutral-900 px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
               >
                 Falar com a equipa
               </Link>
               <Link
                 href={appUrl('/register', 'funcs_cta')}
-                className="inline-flex items-center rounded-md border border-white/25 bg-white/5 px-6 py-3.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
+                className="inline-flex items-center rounded-md border border-neutral-300 bg-neutral-50 px-6 py-3.5 text-sm font-medium text-neutral-900 backdrop-blur-sm transition-colors hover:bg-neutral-100"
               >
                 Criar conta
               </Link>

@@ -18,18 +18,18 @@ const LINKS = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-black">
+    <footer className="border-t border-neutral-200 bg-white">
       <div className="shell grid gap-10 py-16 md:grid-cols-[1.2fr_repeat(3,_1fr)]">
         <div>
-          <Logo height={22} className="text-white" />
-          <p className="mt-4 max-w-xs text-sm text-white/60">
+          <Logo height={22} className="text-neutral-900" />
+          <p className="mt-4 max-w-xs text-sm text-neutral-600">
             Gestão do ciclo de vida de contratos para Angola e o PALOP.
             Compliance angolano embebido — Imposto de Selo, registos, BNA e AGT.
           </p>
         </div>
         {Object.entries(LINKS).map(([group, links]) => (
           <div key={group}>
-            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-white/55">
+            <h3 className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-neutral-500">
               {group}
             </h3>
             <ul className="space-y-3">
@@ -39,7 +39,7 @@ export function Footer() {
                     href={l.href}
                     target={'external' in l && l.external ? '_blank' : undefined}
                     rel={'external' in l && l.external ? 'noopener' : undefined}
-                    className="text-sm text-white/75 transition-colors hover:text-white"
+                    className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
                   >
                     {l.label}
                   </Link>
@@ -49,11 +49,11 @@ export function Footer() {
           </div>
         ))}
       </div>
-      <div className="border-t border-white/5">
-        <div className="shell flex flex-col items-start justify-between gap-4 py-6 text-xs text-white/55 md:flex-row md:items-center">
+      <div className="border-t border-neutral-200">
+        <div className="shell flex flex-col items-start justify-between gap-4 py-6 text-xs text-neutral-500 md:flex-row md:items-center">
           <p>© {new Date().getFullYear()} Kamaia. Todos os direitos reservados.</p>
           <p>
-            <Link href="mailto:hello@kamaia.cc" className="hover:text-white/70">
+            <Link href="mailto:hello@kamaia.cc" className="hover:text-neutral-600">
               hello@kamaia.cc
             </Link>
           </p>

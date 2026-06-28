@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import '@/styles/globals.css'
 
@@ -10,13 +10,6 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
-})
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -82,8 +75,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  themeColor: '#0a0f1f',
-  colorScheme: 'dark' as const,
+  themeColor: '#ffffff',
+  colorScheme: 'light' as const,
   width: 'device-width',
   initialScale: 1,
 }
@@ -164,7 +157,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-AO" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="pt-AO" className={inter.variable}>
       <head>
         <script
           type="application/ld+json"

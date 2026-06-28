@@ -1,14 +1,15 @@
 'use client'
 
 /**
- * Dr. Kamaia — personificação animada do conselheiro de contratos.
+ * Dr. Kamaia — orbe de energia (conselheiro de IA).
  *
- * Um emblema/selo (autoridade, registo, contrato) com o monograma K,
- * aura que respira, anel que gira e uma partícula em órbita (atenção).
- * Por baixo, uma "voz": cicla frases de valor com efeito de escrita —
- * o Dr. Kamaia a falar do que está a vigiar na carteira.
+ * Uma esfera luminosa, viva: corpo com gradiente índigo→azul→violeta e um
+ * reflexo especular, dois redemoinhos de energia que giram em sentidos
+ * opostos (mistura "screen"), um halo que respira e partículas em órbita.
+ * Afinada para fundo claro — o brilho colorido destaca-se sobre o branco.
  *
- * Sem dependências; SVG + CSS. Respeita prefers-reduced-motion.
+ * Por baixo, a "voz": cicla frases de valor com efeito de escrita.
+ * Sem dependências (CSS puro). Respeita prefers-reduced-motion.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -21,9 +22,6 @@ const FALAS = [
 ]
 
 export function DrKamaia() {
-  const ticks = Array.from({ length: 60 })
-
-  // Efeito de escrita ciclando as falas.
   const [idx, setIdx] = useState(0)
   const [texto, setTexto] = useState('')
   const reduMotion = useRef(false)
@@ -73,68 +71,31 @@ export function DrKamaia() {
 
   return (
     <div className="dk-wrap">
-      <div className="dk-stage">
-        <div className="dk-aura" aria-hidden="true" />
-        <svg viewBox="0 0 200 200" className="dk-svg" role="img" aria-label="Dr. Kamaia">
-          <defs>
-            <radialGradient id="dk-disc" cx="50%" cy="38%" r="70%">
-              <stop offset="0%" stopColor="#1a2340" />
-              <stop offset="100%" stopColor="#0a0e1c" />
-            </radialGradient>
-            <linearGradient id="dk-k" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#cdd9ff" />
-              <stop offset="100%" stopColor="#9cb6ff" />
-            </linearGradient>
-          </defs>
+      <div className="dk-stage" role="img" aria-label="Dr. Kamaia — conselheiro de IA">
+        <div className="dk-halo" aria-hidden="true" />
 
-          {/* Anel de selo com marcas — gira devagar */}
-          <g className="dk-ring">
-            <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(156,182,255,0.22)" strokeWidth="1" />
-            <circle cx="100" cy="100" r="84" fill="none" stroke="rgba(156,182,255,0.12)" strokeWidth="1" />
-            {ticks.map((_, i) => {
-              const grande = i % 5 === 0
-              return (
-                <line
-                  key={i}
-                  x1="100"
-                  y1={grande ? 8 : 10}
-                  x2="100"
-                  y2={grande ? 15 : 13}
-                  stroke="rgba(156,182,255,0.5)"
-                  strokeWidth={grande ? 1.4 : 0.8}
-                  transform={`rotate(${(i * 360) / 60} 100 100)`}
-                />
-              )
-            })}
-          </g>
+        <div className="dk-orb" aria-hidden="true">
+          <div className="dk-swirl dk-swirl-a" />
+          <div className="dk-swirl dk-swirl-b" />
+          <div className="dk-spec" />
+          <div className="dk-core" />
+        </div>
 
-          {/* Disco central */}
-          <circle cx="100" cy="100" r="72" fill="url(#dk-disc)" stroke="rgba(156,182,255,0.25)" strokeWidth="1" />
+        <div className="dk-ring" aria-hidden="true" />
 
-          {/* Monograma K */}
-          <g className="dk-mono" stroke="url(#dk-k)" strokeWidth="7" strokeLinecap="round" fill="none">
-            <line x1="80" y1="74" x2="80" y2="126" />
-            <line x1="80" y1="100" x2="118" y2="74" />
-            <line x1="80" y1="100" x2="118" y2="126" />
-          </g>
+        <div className="dk-orbit dk-orbit-a" aria-hidden="true">
+          <span className="dk-dot dk-dot-lg" />
+        </div>
+        <div className="dk-orbit dk-orbit-b" aria-hidden="true">
+          <span className="dk-dot dk-dot-sm" />
+        </div>
 
-          {/* Ponto da assinatura (a "fechar" o selo) */}
-          <circle cx="100" cy="100" r="3" fill="#6be49a" className="dk-core" />
-
-          {/* Partícula em órbita — atenção */}
-          <g className="dk-orbit">
-            <circle cx="100" cy="8" r="3.4" fill="#9cb6ff" />
-          </g>
-        </svg>
-
-        {/* Etiqueta */}
         <div className="dk-badge">
           <span className="dk-live" aria-hidden="true" />
-          Dr. Kamaia · conselheiro de contratos
+          Dr. Kamaia · conselheiro de IA
         </div>
       </div>
 
-      {/* Voz */}
       <div className="dk-say" aria-live="polite">
         <p>
           {texto}
@@ -147,7 +108,7 @@ export function DrKamaia() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 26px;
+          gap: 30px;
           width: 100%;
           padding-bottom: 8px;
         }
@@ -158,37 +119,161 @@ export function DrKamaia() {
           display: grid;
           place-items: center;
         }
-        .dk-aura {
+
+        /* halo de energia — brilho que respira */
+        .dk-halo {
           position: absolute;
-          inset: -14%;
+          inset: -16%;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(124,154,255,0.32), transparent 62%);
-          filter: blur(26px);
+          background: radial-gradient(
+            circle,
+            rgba(74, 125, 255, 0.4) 0%,
+            rgba(124, 92, 255, 0.22) 38%,
+            transparent 66%
+          );
+          filter: blur(30px);
           animation: dk-breathe 6s ease-in-out infinite;
         }
-        .dk-svg {
+
+        /* corpo da esfera */
+        .dk-orb {
           position: relative;
-          width: 100%;
-          height: 100%;
-          z-index: 1;
+          width: 78%;
+          height: 78%;
+          border-radius: 50%;
+          overflow: hidden;
+          isolation: isolate;
+          background:
+            radial-gradient(
+              circle at 70% 78%,
+              rgba(124, 92, 255, 0.85) 0%,
+              transparent 56%
+            ),
+            radial-gradient(
+              circle at 50% 50%,
+              #2a4fd0 0%,
+              #18255e 58%,
+              #0b1130 100%
+            );
+          box-shadow:
+            inset 0 0 40px rgba(8, 12, 36, 0.7),
+            inset -8px -10px 30px rgba(8, 12, 36, 0.55),
+            0 26px 60px -20px rgba(38, 60, 150, 0.6);
+          animation: dk-float 7s ease-in-out infinite;
         }
-        .dk-ring {
-          transform-origin: 100px 100px;
-          animation: dk-spin 60s linear infinite;
+
+        /* redemoinhos de energia */
+        .dk-swirl {
+          position: absolute;
+          inset: -20%;
+          border-radius: 50%;
+          mix-blend-mode: screen;
         }
-        .dk-orbit {
-          transform-origin: 100px 100px;
-          animation: dk-spin 9s linear infinite;
+        .dk-swirl-a {
+          background: conic-gradient(
+            from 0deg,
+            transparent 0%,
+            rgba(70, 211, 255, 0.6) 14%,
+            transparent 32%,
+            rgba(124, 92, 255, 0.5) 56%,
+            transparent 72%,
+            rgba(74, 125, 255, 0.6) 92%,
+            transparent 100%
+          );
+          opacity: 0.85;
+          animation: dk-spin 13s linear infinite;
         }
-        .dk-mono {
-          animation: dk-glow 6s ease-in-out infinite;
+        .dk-swirl-b {
+          background: conic-gradient(
+            from 180deg,
+            transparent 0%,
+            rgba(124, 92, 255, 0.5) 20%,
+            transparent 44%,
+            rgba(70, 211, 255, 0.45) 68%,
+            transparent 88%
+          );
+          opacity: 0.6;
+          animation: dk-spin-rev 19s linear infinite;
         }
+
+        /* reflexo especular */
+        .dk-spec {
+          position: absolute;
+          top: 12%;
+          left: 16%;
+          width: 42%;
+          height: 34%;
+          border-radius: 50%;
+          background: radial-gradient(
+            circle at 40% 38%,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(255, 255, 255, 0.25) 30%,
+            transparent 60%
+          );
+          filter: blur(2px);
+        }
+
+        /* núcleo pulsante */
         .dk-core {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 14%;
+          height: 14%;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          background: radial-gradient(circle, #eaf1ff 0%, #46d3ff 55%, transparent 75%);
+          box-shadow: 0 0 18px rgba(70, 211, 255, 0.9);
           animation: dk-pulse 2.6s ease-in-out infinite;
         }
+
+        /* anel de contenção */
+        .dk-ring {
+          position: absolute;
+          width: 92%;
+          height: 92%;
+          border-radius: 50%;
+          border: 1px solid rgba(52, 96, 217, 0.22);
+          box-shadow: inset 0 0 0 1px rgba(124, 92, 255, 0.06);
+        }
+
+        /* partículas em órbita */
+        .dk-orbit {
+          position: absolute;
+          inset: 0;
+          transform-origin: 50% 50%;
+        }
+        .dk-orbit-a {
+          animation: dk-spin 14s linear infinite;
+        }
+        .dk-orbit-b {
+          inset: 8%;
+          animation: dk-spin-rev 9s linear infinite;
+        }
+        .dk-dot {
+          position: absolute;
+          top: 0;
+          left: 50%;
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+        }
+        .dk-dot-lg {
+          width: 9px;
+          height: 9px;
+          background: #4a7dff;
+          box-shadow: 0 0 12px rgba(74, 125, 255, 0.9);
+        }
+        .dk-dot-sm {
+          width: 6px;
+          height: 6px;
+          background: #7c5cff;
+          box-shadow: 0 0 10px rgba(124, 92, 255, 0.85);
+        }
+
+        /* etiqueta */
         .dk-badge {
           position: absolute;
-          bottom: -6px;
+          bottom: -8px;
           left: 50%;
           transform: translateX(-50%);
           display: inline-flex;
@@ -196,32 +281,35 @@ export function DrKamaia() {
           gap: 8px;
           white-space: nowrap;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          background: rgba(10, 14, 28, 0.78);
+          border: 1px solid var(--k2-border);
+          background: rgba(255, 255, 255, 0.85);
           backdrop-filter: blur(8px);
           padding: 6px 13px;
           font-size: 11px;
           letter-spacing: 0.04em;
-          color: rgba(255, 255, 255, 0.78);
+          color: var(--k2-text-dim);
+          box-shadow: 0 8px 24px -12px rgba(20, 30, 80, 0.4);
           z-index: 2;
         }
         .dk-live {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: #6be49a;
-          box-shadow: 0 0 0 3px rgba(107, 228, 154, 0.22);
+          background: #1f9d57;
+          box-shadow: 0 0 0 3px rgba(31, 157, 87, 0.18);
           animation: dk-pulse 2.4s ease-in-out infinite;
         }
+
+        /* voz */
         .dk-say {
-          max-width: 440px;
-          min-height: 78px;
+          max-width: 460px;
+          min-height: 80px;
           border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(255, 255, 255, 0.03);
-          backdrop-filter: blur(8px);
+          border: 1px solid var(--k2-border);
+          background: #ffffff;
           padding: 16px 18px;
           position: relative;
+          box-shadow: 0 20px 50px -28px rgba(20, 30, 80, 0.35);
         }
         .dk-say::before {
           content: '';
@@ -231,15 +319,15 @@ export function DrKamaia() {
           transform: translateX(-50%) rotate(45deg);
           width: 12px;
           height: 12px;
-          background: rgba(20, 24, 38, 0.9);
-          border-left: 1px solid rgba(255, 255, 255, 0.1);
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background: #ffffff;
+          border-left: 1px solid var(--k2-border);
+          border-top: 1px solid var(--k2-border);
         }
         .dk-say p {
           margin: 0;
           font-size: 14px;
           line-height: 1.6;
-          color: rgba(255, 255, 255, 0.82);
+          color: var(--k2-text-dim);
           text-align: center;
         }
         .dk-caret {
@@ -248,53 +336,46 @@ export function DrKamaia() {
           height: 1.05em;
           margin-left: 2px;
           vertical-align: -0.18em;
-          background: #9cb6ff;
+          background: var(--k2-accent);
           animation: dk-caret 1s step-end infinite;
         }
+
         @keyframes dk-spin {
-          to {
-            transform: rotate(360deg);
-          }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes dk-spin-rev {
+          to { transform: rotate(-360deg); }
         }
         @keyframes dk-breathe {
-          0%, 100% {
-            opacity: 0.55;
-            transform: scale(0.96);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.04);
-          }
+          0%, 100% { opacity: 0.6; transform: scale(0.97); }
+          50%       { opacity: 1; transform: scale(1.05); }
         }
-        @keyframes dk-glow {
-          0%, 100% {
-            filter: drop-shadow(0 0 2px rgba(156, 182, 255, 0.3));
-          }
-          50% {
-            filter: drop-shadow(0 0 9px rgba(156, 182, 255, 0.65));
-          }
+        @keyframes dk-float {
+          0%, 100% { transform: translateY(0); }
+          50%       { transform: translateY(-8px); }
         }
         @keyframes dk-pulse {
-          0%, 100% {
-            opacity: 0.6;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.25);
-          }
+          0%, 100% { opacity: 0.65; transform: translate(-50%, -50%) scale(1); }
+          50%       { opacity: 1; transform: translate(-50%, -50%) scale(1.18); }
+        }
+        .dk-live {
+          /* o badge não usa translate central; pulso simples */
+          animation: dk-pulse-simple 2.4s ease-in-out infinite;
+        }
+        @keyframes dk-pulse-simple {
+          0%, 100% { opacity: 0.7; }
+          50%       { opacity: 1; }
         }
         @keyframes dk-caret {
-          50% {
-            opacity: 0;
-          }
+          50% { opacity: 0; }
         }
+
         @media (prefers-reduced-motion: reduce) {
-          .dk-ring,
-          .dk-orbit,
-          .dk-aura,
-          .dk-mono,
+          .dk-halo,
+          .dk-orb,
+          .dk-swirl,
           .dk-core,
+          .dk-orbit,
           .dk-live,
           .dk-caret {
             animation: none !important;

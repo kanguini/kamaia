@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
       'CLM horizontal para Angola e PALOP. Imposto de Selo, registos, BNA e AGT automáticos. IA Q&A sobre legislação angolana.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0a0f1f',
-    theme_color: '#0a0f1f',
+    background_color: '#ffffff',
+    theme_color: '#ffffff',
     lang: 'pt',
     categories: ['business', 'productivity', 'legal'],
     icons: [

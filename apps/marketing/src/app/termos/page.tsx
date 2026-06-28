@@ -15,23 +15,23 @@ export default function TermosPage() {
   return (
     <>
       <Nav />
-      <main className="bg-black text-white">
-        <section className="border-b border-white/5 py-20">
+      <main className="bg-white text-neutral-900">
+        <section className="border-b border-neutral-200 py-20">
           <div className="shell max-w-3xl">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-neutral-500">
               Legal
             </span>
             <h1 className="mt-3 text-[clamp(32px,4vw,48px)] font-medium leading-[1.1] tracking-[-0.02em]">
               Termos de serviço
             </h1>
-            <p className="mt-3 text-sm text-white/55">
+            <p className="mt-3 text-sm text-neutral-500">
               Última actualização: {LAST_UPDATED}
             </p>
           </div>
         </section>
 
         <section className="py-16">
-          <article className="shell max-w-3xl space-y-10 text-[15px] leading-relaxed text-white/80 [&_h2]:text-2xl [&_h2]:font-medium [&_h2]:text-white [&_h2]:tracking-[-0.02em] [&_h2]:mt-8 [&_p]:text-white/75 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_a]:text-white [&_a]:underline [&_a]:underline-offset-4">
+          <article className="shell max-w-3xl space-y-10 text-[15px] leading-relaxed text-neutral-700 [&_h2]:text-2xl [&_h2]:font-medium [&_h2]:text-neutral-900 [&_h2]:tracking-[-0.02em] [&_h2]:mt-8 [&_p]:text-neutral-600 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-2 [&_a]:text-neutral-900 [&_a]:underline [&_a]:underline-offset-4">
 
             <section>
               <h2>1. Aceitação</h2>

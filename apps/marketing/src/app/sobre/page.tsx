@@ -23,21 +23,21 @@ export default function SobrePage() {
   return (
     <>
       <Nav />
-      <main className="bg-black text-white">
-        <section className="border-b border-white/5 py-24">
+      <main className="bg-white text-neutral-900">
+        <section className="border-b border-neutral-200 py-24">
           <div className="shell">
             <Reveal>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-neutral-500">
                 Sobre o Kamaia
               </span>
-              <h1 className="mt-4 font-playfair text-[clamp(36px,5vw,64px)] font-medium leading-[1.1]">
+              <h1 className="mt-4 font-sans text-[clamp(36px,5vw,64px)] font-medium leading-[1.1]">
                 Construído em Angola,
                 <br />
                 <em className="not-italic" style={{ color: '#9cb6ff' }}>
                   à medida de Angola.
                 </em>
               </h1>
-              <p className="mt-6 max-w-[680px] text-[15px] leading-relaxed text-white/65">
+              <p className="mt-6 max-w-[680px] text-[15px] leading-relaxed text-neutral-600">
                 O Kamaia é um sistema de gestão do ciclo de vida de contratos.
                 Foi desenhado para qualquer organização que viva de contratos em
                 Angola — imobiliário, indústria, banca, comércio, serviços — e
@@ -48,15 +48,15 @@ export default function SobrePage() {
           </div>
         </section>
 
-        <section className="border-b border-white/5 py-24">
+        <section className="border-b border-neutral-200 py-24">
           <div className="shell">
             <Reveal>
-              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+              <h2 className="font-sans text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
                 Porquê construir aqui.
               </h2>
               <div className="mt-8 grid grid-cols-1 gap-10 md:grid-cols-2">
                 <div>
-                  <p className="text-[15px] leading-relaxed text-white/70">
+                  <p className="text-[15px] leading-relaxed text-neutral-600">
                     Os grandes sistemas internacionais de gestão de contratos não
                     conhecem o Código do Imposto de Selo, não sabem qual a verba
                     da TGIS aplicável a um arrendamento, não interpretam a Lei
@@ -65,7 +65,7 @@ export default function SobrePage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[15px] leading-relaxed text-white/70">
+                  <p className="text-[15px] leading-relaxed text-neutral-600">
                     Os sistemas locais, por sua vez, não fazem gestão de ciclo de
                     vida. O Kamaia ocupa este espaço — ambição global, substância
                     angolana. Aqui, o compliance do país não é um acessório: é
@@ -77,13 +77,13 @@ export default function SobrePage() {
           </div>
         </section>
 
-        <section className="border-b border-white/5 py-24">
+        <section className="border-b border-neutral-200 py-24">
           <div className="shell">
             <Reveal>
-              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+              <h2 className="font-sans text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
                 Uma arquitectura que se defende.
               </h2>
-              <div className="mt-10 grid grid-cols-1 gap-px bg-white/10 md:grid-cols-2">
+              <div className="mt-10 grid grid-cols-1 gap-px bg-neutral-100 md:grid-cols-2">
                 <Pillar
                   icon={Server}
                   title="Regras de compliance versionadas"
@@ -112,10 +112,10 @@ export default function SobrePage() {
         <section className="py-24">
           <div className="shell text-center">
             <Reveal>
-              <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
+              <h2 className="font-sans text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
                 Estamos a falar com as primeiras organizações.
               </h2>
-              <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-white/60">
+              <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-neutral-600">
                 Se a sua organização tem uma carteira de contratos para pôr em
                 ordem, fale connosco. O percurso do produto segue conversas
                 reais.
@@ -123,7 +123,7 @@ export default function SobrePage() {
               <div className="mt-8">
                 <Link
                   href="/contacto"
-                  className="inline-flex items-center rounded-md bg-white px-6 py-3.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
+                  className="inline-flex items-center rounded-md bg-neutral-900 px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
                 >
                   Falar com a equipa
                 </Link>
@@ -147,12 +147,12 @@ function Pillar({
   body: string
 }) {
   return (
-    <article className="bg-black p-7">
-      <Icon className="h-6 w-6 text-white/70" aria-hidden="true" />
-      <h3 className="mt-4 font-playfair text-xl font-medium text-white">
+    <article className="bg-white p-7">
+      <Icon className="h-6 w-6 text-neutral-600" aria-hidden="true" />
+      <h3 className="mt-4 font-sans text-xl font-medium text-neutral-900">
         {title}
       </h3>
-      <p className="mt-2 text-[14px] leading-relaxed text-white/60">{body}</p>
+      <p className="mt-2 text-[14px] leading-relaxed text-neutral-600">{body}</p>
     </article>
   )
 }

@@ -1,13 +1,10 @@
 'use client'
 
 /**
- * Subtle brand backdrop — static, near-black with very faint navy accents.
- *
- * Previous revisions cross-faded a bright blue wash; it bled around the
- * mockup on wider viewports and clashed with the institutional tone. Now
- * we stay close to #0a0f1f with small atmospheric radials and no
- * animation. Kept as a client component for consistency with earlier
- * imports across the site.
+ * Subtle brand backdrop — light theme. A near-white field with two very
+ * faint cool radials (navy / violet) anchoring the top and bottom of the
+ * hero, so the orb has air to glow into without the page feeling flat.
+ * Static, no animation; kept as a client component for import parity.
  */
 export function AnimatedGradient() {
   return (
@@ -21,16 +18,16 @@ export function AnimatedGradient() {
           z-index: 0;
           background:
             radial-gradient(
-              800px 500px at 50% 0%,
-              rgba(74, 125, 255, 0.1) 0%,
+              900px 520px at 50% -5%,
+              rgba(52, 96, 217, 0.08) 0%,
               transparent 70%
             ),
             radial-gradient(
-              600px 400px at 50% 100%,
-              rgba(178, 74, 255, 0.05) 0%,
+              640px 420px at 50% 105%,
+              rgba(124, 92, 255, 0.05) 0%,
               transparent 65%
             ),
-            #05080f;
+            #ffffff;
         }
       `}</style>
     </div>

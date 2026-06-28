@@ -41,11 +41,11 @@ export default function ContactoPage({
         />
       )}
       <Nav />
-      <main className="bg-black text-white">
-        <section className="border-b border-white/5 py-24">
+      <main className="bg-white text-neutral-900">
+        <section className="border-b border-neutral-200 py-24">
           <div className="shell">
             <Reveal>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-white/50">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-neutral-500">
                 Contacto
               </span>
               <h1 className="mt-3 max-w-3xl text-[clamp(36px,5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
@@ -53,7 +53,7 @@ export default function ContactoPage({
                 <br />
                 <span style={{ color: '#9cb6ff' }}>Respondemos num dia útil.</span>
               </h1>
-              <p className="mt-6 max-w-2xl text-lg text-white/75">
+              <p className="mt-6 max-w-2xl text-lg text-neutral-600">
                 Questões sobre preços, sobre como trazer a carteira que já tem,
                 ou um pedido de demonstração privada — respondemos pessoalmente.
               </p>
@@ -97,13 +97,13 @@ export default function ContactoPage({
                   hint="Visita por marcação"
                 />
 
-                <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">
+                <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm">
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-neutral-500">
                     Já tem conta?
                   </p>
                   <Link
                     href="https://app.kamaia.cc/login"
-                    className="mt-2 inline-block text-white underline underline-offset-4"
+                    className="mt-2 inline-block text-neutral-900 underline underline-offset-4"
                   >
                     Entre em app.kamaia.cc →
                   </Link>
@@ -132,16 +132,16 @@ function ChannelCard({
   hint?: string
 }) {
   const inner = (
-    <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5 transition-colors hover:border-white/20">
-      <div className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5">
-        <Icon size={16} className="text-white/80" />
+    <div className="flex items-start gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-5 transition-colors hover:border-neutral-300">
+      <div className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-50">
+        <Icon size={16} className="text-neutral-700" />
       </div>
       <div className="min-w-0">
-        <div className="text-[11px] uppercase tracking-[0.1em] text-white/50">
+        <div className="text-[11px] uppercase tracking-[0.1em] text-neutral-500">
           {title}
         </div>
-        <div className="mt-1 text-[15px] font-medium text-white">{value}</div>
-        {hint && <div className="mt-1 text-xs text-white/50">{hint}</div>}
+        <div className="mt-1 text-[15px] font-medium text-neutral-900">{value}</div>
+        {hint && <div className="mt-1 text-xs text-neutral-500">{hint}</div>}
       </div>
     </div>
   )

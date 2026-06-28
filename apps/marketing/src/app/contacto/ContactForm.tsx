@@ -72,7 +72,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       if (widgetRef.current) return
       widgetRef.current = window.turnstile.render(containerRef.current, {
         sitekey: TURNSTILE_SITE_KEY,
-        theme: 'dark',
+        theme: 'auto',
         callback: (t: string) => {
           setToken(t)
           setCaptchaReady(true)
@@ -123,7 +123,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
     if (!form.consent) {
       setResult({
         ok: false,
-        error: 'Tens de aceitar a política de privacidade para enviar a mensagem.',
+        error: 'Tem de aceitar a política de privacidade para enviar a mensagem.',
       })
       return
     }
@@ -131,7 +131,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       setResult({
         ok: false,
         error:
-          'Verificação anti-bot ainda não carregou. Aguarda 1–2 segundos e tenta de novo.',
+          'Verificação anti-bot ainda não carregou. Aguarde 1–2 segundos e tente de novo.',
       })
       return
     }
@@ -177,15 +177,15 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
     return (
       <div className="rounded-xl border border-[#6be49a]/30 bg-[#6be49a]/5 p-6">
         <CheckCircle2 size={24} className="text-[#6be49a]" />
-        <h3 className="mt-3 text-lg font-medium text-white">Mensagem enviada</h3>
-        <p className="mt-2 text-sm text-white/70">
+        <h3 className="mt-3 text-lg font-medium text-neutral-900">Mensagem enviada</h3>
+        <p className="mt-2 text-sm text-neutral-600">
           Recebemos o seu contacto. Respondemos num dia útil. Se for urgente,
           escreva directamente para hello@kamaia.cc.
         </p>
         <button
           type="button"
           onClick={() => setResult(null)}
-          className="mt-5 text-sm text-white/60 underline underline-offset-4 hover:text-white"
+          className="mt-5 text-sm text-neutral-600 underline underline-offset-4 hover:text-neutral-900"
         >
           Enviar outra mensagem
         </button>
@@ -196,7 +196,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       {result && !result.ok && result.error && (
-        <div className="flex items-start gap-3 rounded-lg border border-[#e46b7a]/30 bg-[#e46b7a]/10 p-4 text-sm text-white">
+        <div className="flex items-start gap-3 rounded-lg border border-[#e46b7a]/30 bg-[#e46b7a]/10 p-4 text-sm text-neutral-900">
           <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-[#e46b7a]" />
           <span>{result.error}</span>
         </div>
@@ -256,12 +256,12 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       </Field>
 
       {/* Consentimento RGPD / Lei 22/11 de Angola */}
-      <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-4 text-sm text-white/75">
+      <label className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600">
         <input
           type="checkbox"
           checked={form.consent}
           onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))}
-          className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer accent-white"
+          className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer accent-neutral-900"
           required
         />
         <span className="leading-relaxed">
@@ -269,7 +269,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
           esta mensagem, em conformidade com a{' '}
           <Link
             href="/politica-privacidade"
-            className="underline underline-offset-4 hover:text-white"
+            className="underline underline-offset-4 hover:text-neutral-900"
           >
             Política de Privacidade
           </Link>{' '}
@@ -282,7 +282,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       {TURNSTILE_SITE_KEY ? (
         <div ref={containerRef} className="cf-turnstile" />
       ) : (
-        <p className="text-xs text-white/55">
+        <p className="text-xs text-neutral-500">
           (Verificação anti-bot desactivada em desenvolvimento.)
         </p>
       )}
@@ -290,15 +290,15 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
       <button
         type="submit"
         disabled={pending || !form.consent || (!!TURNSTILE_SITE_KEY && !captchaReady)}
-        className="inline-flex items-center gap-2 rounded-md bg-white px-5 py-3 text-sm font-medium text-black transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+        className="inline-flex items-center gap-2 rounded-md bg-neutral-900 px-5 py-3 text-sm font-medium text-white transition-all hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
       >
         {pending && <Loader2 size={14} className="animate-spin" />}
         {pending ? 'A enviar…' : 'Enviar mensagem'}
       </button>
 
-      <p className="text-xs text-white/55">
+      <p className="text-xs text-neutral-500">
         Os dados são guardados em servidores protegidos e usados exclusivamente
-        para te responder. Não partilhamos nem vendemos informação a terceiros.
+        para lhe responder. Não partilhamos nem vendemos informação a terceiros.
       </p>
 
       <style jsx>{`
@@ -337,7 +337,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-white/55">
+      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-neutral-500">
         {label}
       </span>
       {children}
