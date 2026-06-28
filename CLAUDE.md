@@ -4,16 +4,25 @@
 
 - **Produto:** Kamaia — plataforma SaaS de gestão de contratos (CLM)
 - **Mercado:** Angola → PALOP
-- **Posicionamento:** *"O sistema operativo dos contratos da tua organização"*
-- **Comprador-alvo:**
-  - **Empresas** com carteira de contratos (Imobiliário, Indústria, Serviços, Energia, Banca, Retail)
-  - **Sociedades de Advogados** que oferecem CLM-as-a-service aos seus clientes (modo `AGENCY` com sub-tenants)
-- **Diferenciador defensável:** Localização profunda em Angola — Imposto de Selo (TGIS) automático, registos públicos, BNA/Lei Cambial, retenção AGT, biblioteca de cláusulas PT-AO, IA Q&A sobre legislação angolana
+- **Posicionamento:** *"O sistema de gestão do ciclo de vida dos contratos para empresas angolanas — contratos que se criam OU se herdam."*
+- **Cliente focal:** **Empresas directas** com carteira de contratos (Imobiliário, Indústria, Serviços, Energia, Banca, Retail) e **sociedades de advogados que gerem os seus próprios contratos**. *(O modo `AGENCY`/revenda existe e está correcto, mas está **adormecido** — não é o cliente focal. Ver "Orientação de produto".)*
+- **Coração do produto:** a **gestão do ciclo de vida** do contrato. As duas portas de entrada — **criar** de raiz e **herdar** (carregar um contrato existente e pô-lo a ser gerido) — valem **IGUAL**.
+- **Diferenciador (vantagem, não cabeçalho):** localização profunda em Angola — compliance angolano (Imposto de Selo/TGIS, registos, BNA/Lei Cambial, AGT), biblioteca de cláusulas PT-AO, IA sobre legislação. Reforça o produto; **não** é a razão de venda.
 
 ## Fase actual
 
 - **CLM rewrite (Junho 2026)** — pivot de software jurídico de prática para CLM horizontal
 - Branch `archive/pre-clm` preserva o código anterior (legal practice management)
+
+## Orientação de produto (protagonismo — Junho 2026)
+
+Fio condutor: **reordenar protagonismo, não destruir trabalho.** Tudo o que foi construído fica no sistema; muda-se o que está no centro e o que fica em segundo plano.
+
+1. **Compliance = diferenciador, não protagonista.** Motor **congelado** onde está (está bom) — não alocar mais horas até um cliente pedir. Narrativa: centro = ciclo de vida; compliance = vantagem.
+2. **IA serve as DUAS portas.** Não pode viver só na criação. Onde acrescenta valor à **gestão** (dar sentido a um contrato herdado, Q&A sobre o que lá está, sinalizar datas/obrigações) deve ter o mesmo peso. Nivelar, sem tirar nada à criação.
+3. **AGENCY viva mas adormecida.** Não apagar (correcta, um dia serve); **não acrescentar** nada a esse caminho agora. Esforço todo no cliente focal.
+4. **Herança = cidadão de primeira.** Carregar um contrato existente e geri-lo tem de ser tão sólido quanto criar de raiz — é por aí que a maioria das empresas entra.
+5. **Narrativa alinhada.** Site, onboarding e descrição interna dizem o mesmo: gestão do ciclo de vida para empresas angolanas, contratos criados **ou** herdados.
 
 ## Arquitectura — Regras Absolutas
 

@@ -1,13 +1,17 @@
 # Kamaia CLM
 
-> Contract Lifecycle Management para Angola & PALOP
+> O sistema de gestão do ciclo de vida dos contratos para empresas angolanas — contratos que se **criam ou se herdam**.
 
-Plataforma SaaS de gestão de contratos (CLM) horizontal, multi-sector, com **compliance angolano embebido** — Imposto de Selo, Registos públicos, BNA / Lei Cambial / RJOC, retenção AGT IRT, reconhecimento notarial — e **assistente IA sobre legislação angolana**.
+Plataforma SaaS de gestão de contratos (CLM) horizontal e multi-sector. O coração é a **gestão do ciclo de vida** do contrato (intake → redacção/herança → assinatura → vigência → renovação/terminação → arquivo), com **duas portas de entrada que valem igual**: criar de raiz, ou carregar um contrato existente e pô-lo a ser gerido.
 
-## Compradores-alvo
+Como **vantagem** (não como cabeçalho), traz localização profunda em Angola: compliance angolano embebido — Imposto de Selo, registos públicos, BNA / Lei Cambial / RJOC, retenção AGT IRT, reconhecimento notarial — e assistente IA sobre legislação angolana.
 
-- **Empresas** com carteira contratual (Imobiliário, Indústria, Serviços, Energia, Banca, Comércio…)
-- **Sociedades de advogados** que oferecem CLM-as-a-service aos seus clientes (plano `AGENCY` com sub-tenants)
+## Cliente focal
+
+- **Empresas directas** com carteira contratual (Imobiliário, Indústria, Serviços, Energia, Banca, Comércio…)
+- **Sociedades de advogados** que gerem os seus próprios contratos
+
+> O plano `AGENCY` (revenda multi-tenant hierárquica) existe e está implementado, mas está **adormecido** — não é o cliente focal. Ver "Orientação de produto" em `CLAUDE.md`.
 
 ## Arquitectura
 
