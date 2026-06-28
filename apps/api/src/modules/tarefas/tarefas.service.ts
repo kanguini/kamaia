@@ -1,5 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { AuditAction, EntityType, TarefaEstado } from '@kamaia/shared-types';
+import {
+  ActoEstado,
+  AuditAction,
+  EntityType,
+  ItemTrabalho,
+  ordenarTrabalho,
+  TarefaEstado,
+  TAREFA_PRIORIDADE_PESO,
+} from '@kamaia/shared-types';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -204,6 +212,109 @@ export class TarefasService {
       include: INCLUDE,
       orderBy: { dataVencimento: 'asc' },
     });
+  }
+
+  /**
+   * "O meu trabalho": fila unificada e priorizada das MINHAS tarefas
+   * abertas + os sinais derivados do ciclo de vida do tenant
+   * (obrigações, compliance, datas-chave) até `dias` à frente (e os já
+   * em atraso no último ano). A ordenação é pura (ordenarTrabalho).
+   */
+  async trabalho(tenantId: string, userId: string, dias = 90) {
+    const agora = new Date();
+    const to = new Date(agora.getTime() + dias * 86_400_000);
+    const desde = new Date(agora.getTime() - 365 * 86_400_000);
+
+    const [tarefas, obrigacoes, actos, datas] = await Promise.all([
+      this.prisma.tarefa.findMany({
+        where: {
+          tenantId,
+          deletedAt: null,
+          responsavelId: userId,
+          estado: { notIn: [TarefaEstado.CONCLUIDA, TarefaEstado.CANCELADA] },
+        },
+        include: { contrato: { select: { id: true, numeroInterno: true } } },
+      }),
+      this.prisma.contratoObrigacao.findMany({
+        where: {
+          contrato: { tenantId, deletedAt: null },
+          isActive: true,
+          proximaData: { gte: desde, lte: to },
+        },
+        include: { contrato: { select: { id: true, numeroInterno: true } } },
+      }),
+      this.prisma.contratoActoRegulatorio.findMany({
+        where: {
+          contrato: { tenantId, deletedAt: null },
+          estado: { in: [ActoEstado.PENDENTE, ActoEstado.EM_CURSO] },
+          prazoLimite: { gte: desde, lte: to },
+        },
+        include: { contrato: { select: { id: true, numeroInterno: true } } },
+      }),
+      this.prisma.contratoDataChave.findMany({
+        where: {
+          contrato: { tenantId, deletedAt: null },
+          cumprida: false,
+          data: { gte: desde, lte: to },
+        },
+        include: { contrato: { select: { id: true, numeroInterno: true } } },
+      }),
+    ]);
+
+    const itens: ItemTrabalho[] = [];
+
+    for (const t of tarefas) {
+      itens.push({
+        id: `tarefa-${t.id}`,
+        tipo: 'tarefa',
+        titulo: t.titulo,
+        prazo: t.dataVencimento ? t.dataVencimento.toISOString() : null,
+        contratoId: t.contratoId,
+        contratoNumero: t.contrato?.numeroInterno ?? null,
+        pesoPrioridade: TAREFA_PRIORIDADE_PESO[t.prioridade],
+        href: t.contratoId ? `/contratos/${t.contratoId}` : '/tarefas',
+      });
+    }
+    for (const o of obrigacoes) {
+      if (!o.proximaData) continue;
+      itens.push({
+        id: `obr-${o.id}`,
+        tipo: 'obrigacao',
+        titulo: o.descricao.slice(0, 140),
+        prazo: o.proximaData.toISOString(),
+        contratoId: o.contrato.id,
+        contratoNumero: o.contrato.numeroInterno,
+        pesoPrioridade: 2,
+        href: `/contratos/${o.contrato.id}`,
+      });
+    }
+    for (const a of actos) {
+      if (!a.prazoLimite) continue;
+      itens.push({
+        id: `acto-${a.id}`,
+        tipo: 'compliance',
+        titulo: a.tipo.replace(/_/g, ' '),
+        prazo: a.prazoLimite.toISOString(),
+        contratoId: a.contrato.id,
+        contratoNumero: a.contrato.numeroInterno,
+        pesoPrioridade: 2,
+        href: `/contratos/${a.contrato.id}`,
+      });
+    }
+    for (const d of datas) {
+      itens.push({
+        id: `dc-${d.id}`,
+        tipo: 'data-chave',
+        titulo: d.descricao || d.tipo.replace(/_/g, ' '),
+        prazo: d.data.toISOString(),
+        contratoId: d.contrato.id,
+        contratoNumero: d.contrato.numeroInterno,
+        pesoPrioridade: 1,
+        href: `/contratos/${d.contrato.id}`,
+      });
+    }
+
+    return { itens: ordenarTrabalho(itens, agora) };
   }
 
   private async getRaw(tenantId: string, id: string) {

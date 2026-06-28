@@ -24,6 +24,8 @@ import {
   CreateTarefaSchema,
   ListTarefasQuery,
   ListTarefasQuerySchema,
+  TrabalhoQuery,
+  TrabalhoQuerySchema,
   UpdateTarefaDto,
   UpdateTarefaSchema,
 } from './tarefas.dto';
@@ -50,6 +52,17 @@ export class TarefasController {
     @Body(new ParseZodPipe(CreateTarefaSchema)) dto: CreateTarefaDto,
   ) {
     return this.tarefas.create(tenant.tenantId, user.sub, dto);
+  }
+
+  // ANTES de @Get(':id') — rota estática tem de preceder a paramétrica.
+  @Get('trabalho')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
+  async trabalho(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Query(new ParseZodPipe(TrabalhoQuerySchema)) q: TrabalhoQuery,
+  ) {
+    return this.tarefas.trabalho(tenant.tenantId, user.sub, q.dias);
   }
 
   @Get(':id')

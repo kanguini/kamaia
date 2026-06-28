@@ -39,3 +39,8 @@ export const ListTarefasQuerySchema = z.object({
   orderDir: z.enum(['asc', 'desc']).default('asc'),
 });
 export type ListTarefasQuery = z.infer<typeof ListTarefasQuerySchema>;
+
+export const TrabalhoQuerySchema = z.object({
+  dias: z.coerce.number().int().min(1).max(365).default(90),
+});
+export type TrabalhoQuery = z.infer<typeof TrabalhoQuerySchema>;

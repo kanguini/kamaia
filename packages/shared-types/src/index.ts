@@ -1110,6 +1110,69 @@ export const TAREFA_PRIORIDADE_PESO: Record<TarefaPrioridade, number> = {
   [TarefaPrioridade.BAIXA]: 0,
 };
 
+// ─── "O meu trabalho" — fila unificada e priorizada ───────
+//
+// Junta numa só fila as tarefas (humanas) e os sinais derivados do
+// ciclo de vida (obrigações, compliance, datas-chave). Pura e testável:
+// o backend reúne os dados, normaliza para ItemTrabalho e ordena aqui.
+
+export type TrabalhoTipo = 'tarefa' | 'obrigacao' | 'compliance' | 'data-chave';
+
+export const TRABALHO_TIPO_LABELS: Record<TrabalhoTipo, string> = {
+  tarefa: 'Tarefa',
+  obrigacao: 'Obrigação',
+  compliance: 'Compliance',
+  'data-chave': 'Data-chave',
+};
+
+export interface ItemTrabalho {
+  id: string;
+  tipo: TrabalhoTipo;
+  titulo: string;
+  /** Prazo ISO, ou null (ex.: tarefa sem data). */
+  prazo: string | null;
+  contratoId: string | null;
+  contratoNumero: string | null;
+  /** Peso 0–3: tarefas vêm da prioridade; derivados têm peso fixo. */
+  pesoPrioridade: number;
+  /** Rota para resolver/abrir o item no frontend. */
+  href: string;
+}
+
+/**
+ * Ordena a fila de trabalho por urgência:
+ *  1. Em atraso primeiro (prazo < agora), o mais atrasado no topo.
+ *  2. Depois os futuros, por prazo ascendente.
+ *  3. Por fim os sem prazo, por peso de prioridade descendente.
+ * Determinística (desempate por id) — pura, sem efeitos.
+ */
+export function ordenarTrabalho(
+  itens: ItemTrabalho[],
+  agora: Date,
+): ItemTrabalho[] {
+  const t = agora.getTime();
+  const rank = (i: ItemTrabalho) => {
+    if (!i.prazo) return 2; // sem prazo → fundo
+    return new Date(i.prazo).getTime() < t ? 0 : 1; // atrasado : futuro
+  };
+  return [...itens].sort((a, b) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 2) {
+      // sem prazo: prioridade desc
+      if (a.pesoPrioridade !== b.pesoPrioridade)
+        return b.pesoPrioridade - a.pesoPrioridade;
+      return a.id.localeCompare(b.id);
+    }
+    // com prazo (atrasado ou futuro): por prazo ascendente
+    const pa = new Date(a.prazo as string).getTime();
+    const pb = new Date(b.prazo as string).getTime();
+    if (pa !== pb) return pa - pb;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export enum NotificationType {
   CONTRATO_VENCIMENTO_PROXIMO = 'CONTRATO_VENCIMENTO_PROXIMO',
   JANELA_DENUNCIA_PROXIMA = 'JANELA_DENUNCIA_PROXIMA',
