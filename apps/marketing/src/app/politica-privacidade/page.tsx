@@ -108,8 +108,10 @@ export default function PoliticaPrivacidadePage() {
                   <strong>SMS de alerta:</strong> Twilio
                 </li>
                 <li>
-                  <strong>IA Assistente:</strong> Google (Gemini API), com
-                  dados despersonalizados no processamento
+                  <strong>Assistente de IA (Dr. Kamaia):</strong> Anthropic
+                  (Claude API), fornecedor sediado nos EUA. Processa o conteúdo
+                  que submete às funções de IA — que pode incluir dados de
+                  contratos — ao abrigo de termos de processamento de dados.
                 </li>
               </ul>
               <p>
