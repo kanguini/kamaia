@@ -8,10 +8,10 @@
  * Kamaia mostra "Inov Holding · 3 contratos · 30M AOA total · maior
  * exposição da carteira Hexa". O contrato deixa de ser isolado.
  *
- * Para cada parte do contrato, busca /entidades/:id/contratos e
- * agrega: quantos contratos partilhamos, valor total, e link para
- * a entidade. Isto dá contexto de RISCO e RELAÇÃO que nenhum CLM
- * genérico oferece.
+ * Para todas as partes do contrato, chama UMA vez o endpoint agregado
+ * /entidades/contratos-resumo (SUM em SQL): quantos contratos
+ * partilhamos, valor total e estados activos por entidade. Isto dá
+ * contexto de RISCO e RELAÇÃO que nenhum CLM genérico oferece.
  */
 
 import { useEffect, useState } from 'react'
@@ -26,16 +26,12 @@ interface ParteRef {
   entidade: { id: string; nome: string }
 }
 
-interface ContratoDaEntidade {
-  papel: string
-  contrato: {
-    id: string
-    numeroInterno: string
-    titulo: string
-    estado: string
-    valor: string | null
-    moeda: string | null
-  }
+/** Resposta do endpoint agregado /entidades/contratos-resumo. */
+interface ResumoCarteira {
+  entidadeId: string
+  totalContratos: number
+  valorTotalCentavos: string
+  estadosActivos: number
 }
 
 interface AggParceiro {
@@ -72,46 +68,47 @@ export function RelacaoParceiro({
     }
     let cancelled = false
     const token = session.accessToken
+    const entidadeIds = partes.map((p) => p.entidade.id)
 
-    Promise.all(
-      partes.map(async (p) => {
-        try {
-          const rows = await api<ContratoDaEntidade[]>(
-            `/entidades/${p.entidade.id}/contratos`,
-            { token },
-          )
-          const list = Array.isArray(rows) ? rows : []
-          const valorTotalCentavos = list.reduce(
-            (acc, r) => acc + centavosDe(r.contrato.valor),
-            0,
-          )
-          const activos = list.filter((r) =>
-            ['ACTIVO', 'REPOSITORIO', 'POS_ASSINATURA'].includes(
-              r.contrato.estado,
-            ),
-          ).length
-          return {
-            entidadeId: p.entidade.id,
-            nome: p.entidade.nome,
-            papel: p.papel,
-            totalContratos: list.length,
-            valorTotalAKZ: valorTotalCentavos / 100,
-            estadosActivos: activos,
-          } as AggParceiro
-        } catch {
-          return {
-            entidadeId: p.entidade.id,
-            nome: p.entidade.nome,
-            papel: p.papel,
-            totalContratos: 0,
-            valorTotalAKZ: 0,
-            estadosActivos: 0,
-          } as AggParceiro
-        }
-      }),
-    ).then((result) => {
-      if (!cancelled) setAggs(result)
+    const zeros = (): AggParceiro[] =>
+      partes.map((p) => ({
+        entidadeId: p.entidade.id,
+        nome: p.entidade.nome,
+        papel: p.papel,
+        totalContratos: 0,
+        valorTotalAKZ: 0,
+        estadosActivos: 0,
+      }))
+
+    // PERF (H1): UMA query agregada (SUM em SQL no backend) em vez de
+    // um pedido por parte com agregação no cliente.
+    api<ResumoCarteira[]>('/entidades/contratos-resumo', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ entidadeIds }),
     })
+      .then((rows) => {
+        if (cancelled) return
+        const byId = new Map(
+          (Array.isArray(rows) ? rows : []).map((r) => [r.entidadeId, r]),
+        )
+        setAggs(
+          partes.map((p) => {
+            const r = byId.get(p.entidade.id)
+            return {
+              entidadeId: p.entidade.id,
+              nome: p.entidade.nome,
+              papel: p.papel,
+              totalContratos: r?.totalContratos ?? 0,
+              valorTotalAKZ: r ? centavosDe(r.valorTotalCentavos) / 100 : 0,
+              estadosActivos: r?.estadosActivos ?? 0,
+            } as AggParceiro
+          }),
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setAggs(zeros())
+      })
 
     return () => {
       cancelled = true

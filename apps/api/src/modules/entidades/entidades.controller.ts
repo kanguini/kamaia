@@ -54,6 +54,10 @@ const MergeSchema = z.object({
   sourceId: z.string().uuid(),
 });
 
+const ResumoCarteiraSchema = z.object({
+  entidadeIds: z.array(z.string().uuid()).min(1).max(50),
+});
+
 @Controller('entidades')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
 export class EntidadesController {
@@ -120,6 +124,21 @@ export class EntidadesController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.entidades.listContratos(tenant.tenantId, id);
+  }
+
+  /**
+   * PERF (H1): agregação da carteira de VÁRIAS entidades numa só query
+   * (SUM em SQL). Substitui o fan-out de 1 pedido por parte feito pelo
+   * painel "Relação com o parceiro" no detalhe do contrato.
+   */
+  @Post('contratos-resumo')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
+  async resumoCarteira(
+    @Tenant() tenant: TenantContext,
+    @Body(new ParseZodPipe(ResumoCarteiraSchema))
+    dto: z.infer<typeof ResumoCarteiraSchema>,
+  ) {
+    return this.entidades.resumoCarteira(tenant.tenantId, dto.entidadeIds);
   }
 
   @Get(':id/contactos')

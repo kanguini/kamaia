@@ -301,6 +301,47 @@ export class EntidadesService {
     return out;
   }
 
+  /**
+   * PERF (H1): agrega a carteira de VÁRIAS entidades numa só query.
+   * Por entidade: nº de contratos, soma dos valores (centavos, SUM em
+   * SQL — não em JS), e nº em estados activos. DISTINCT por (entidade,
+   * contrato) evita duplicar quando a entidade tem >1 papel no mesmo
+   * contrato. Scoped por tenant.
+   */
+  async resumoCarteira(tenantId: string, entidadeIds: string[]) {
+    if (entidadeIds.length === 0) return [];
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        entidade_id: string;
+        total: number;
+        valor_total_centavos: string | null;
+        activos: number;
+      }>
+    >`
+      SELECT entidade_id,
+             COUNT(*)::int AS total,
+             SUM(valor)::text AS valor_total_centavos,
+             COUNT(*) FILTER (
+               WHERE estado IN ('ACTIVO', 'REPOSITORIO', 'POS_ASSINATURA')
+             )::int AS activos
+      FROM (
+        SELECT DISTINCT cp.entidade_id, c.id, c.valor, c.estado
+        FROM contrato_partes cp
+        JOIN contratos c ON c.id = cp.contrato_id
+        WHERE cp.entidade_id = ANY(${entidadeIds}::uuid[])
+          AND c.tenant_id = ${tenantId}::uuid
+          AND c.deleted_at IS NULL
+      ) sub
+      GROUP BY entidade_id
+    `;
+    return rows.map((r) => ({
+      entidadeId: r.entidade_id,
+      totalContratos: r.total,
+      valorTotalCentavos: r.valor_total_centavos ?? '0',
+      estadosActivos: r.activos,
+    }));
+  }
+
   async listContactos(tenantId: string, entidadeId: string) {
     await this.assertEntidade(tenantId, entidadeId);
     return this.prisma.entidadeContacto.findMany({
