@@ -3,9 +3,12 @@ import {
   AuditAction,
   ContratoEstado,
   ContratoOrigem,
+  EntidadeTipo,
   EntityType,
   LinhaEstado,
   LoteEstado,
+  MOEDAS_SUPORTADAS,
+  PartePapel,
 } from '@kamaia/shared-types';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
@@ -16,6 +19,42 @@ import {
   CreateLoteDto,
   ListLotesQuery,
 } from './importacao.dto';
+
+/** Forma do `metadataInput` de cada linha de importação (vinda do CSV). */
+interface LinhaMeta {
+  titulo?: string;
+  descricao?: string;
+  numero?: string;
+  valor?: string | number; // em kwanzas/unidade (convertido p/ centavos)
+  moeda?: string;
+  dataAssinatura?: string; // ISO YYYY-MM-DD
+  dataTermo?: string;
+  contraparte?: string; // nome da entidade
+}
+
+/** "12 500 000" / "12500000,50" → centavos (BigInt). undefined se vazio/inválido. */
+function parseValorCentavos(v?: string | number): bigint | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
+  const limpo = String(v).replace(/\s/g, '').replace(',', '.').replace(/[^\d.]/g, '');
+  const n = Number(limpo);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return BigInt(Math.round(n * 100));
+}
+
+function parseData(s?: string): Date | undefined {
+  if (!s) return undefined;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+type MoedaSuportada = (typeof MOEDAS_SUPORTADAS)[number];
+function normalizarMoeda(m?: string): MoedaSuportada | undefined {
+  if (!m) return undefined;
+  const up = m.trim().toUpperCase();
+  return (MOEDAS_SUPORTADAS as readonly string[]).includes(up)
+    ? (up as MoedaSuportada)
+    : undefined;
+}
 
 @Injectable()
 export class ImportacaoService {
@@ -97,6 +136,34 @@ export class ImportacaoService {
     return { ok: true };
   }
 
+  /**
+   * Resolve a contraparte por nome: reutiliza a entidade existente
+   * (match exacto, case-insensitive) ou cria uma PESSOA_COLECTIVA
+   * mínima. Devolve-a já como parte CONTRAPARTE para o create().
+   */
+  private async resolverPartes(
+    tenantId: string,
+    contraparte?: string,
+  ): Promise<Array<{ entidadeId: string; papel: PartePapel; ordem: number }>> {
+    const nome = contraparte?.trim();
+    if (!nome) return [];
+    let entidade = await this.prisma.entidade.findFirst({
+      where: {
+        tenantId,
+        deletedAt: null,
+        nome: { equals: nome, mode: 'insensitive' },
+      },
+      select: { id: true },
+    });
+    if (!entidade) {
+      entidade = await this.prisma.entidade.create({
+        data: { tenantId, tipo: EntidadeTipo.PESSOA_COLECTIVA, nome },
+        select: { id: true },
+      });
+    }
+    return [{ entidadeId: entidade.id, papel: PartePapel.CONTRAPARTE, ordem: 0 }];
+  }
+
   private async processarSincrono(
     tenantId: string,
     actorUserId: string,
@@ -126,7 +193,12 @@ export class ImportacaoService {
         if (!tipo) {
           throw new Error('Nenhum TipoContrato disponível para o tenant');
         }
-        const meta = (linha.metadataInput ?? {}) as { titulo?: string };
+        const meta = (linha.metadataInput ?? {}) as LinhaMeta;
+        // Contraparte por nome → resolve/cria a entidade e entra como parte.
+        const partes = await this.resolverPartes(tenantId, meta.contraparte);
+        const valorCentavos = parseValorCentavos(meta.valor);
+        const dataAssinatura = parseData(meta.dataAssinatura);
+        const dataTermo = parseData(meta.dataTermo);
         // PARIDADE: reutiliza ContratosService.create() em vez de um
         // INSERT cru — o contrato importado recebe a MESMA génese de um
         // criado: ContratoEvento(CRIADO), audit_log, webhook, dedução de
@@ -136,11 +208,17 @@ export class ImportacaoService {
         // audit, quota ignorada, compliance nunca corria).
         const contrato = await this.contratos.create(tenantId, actorUserId, {
           titulo: meta.titulo?.trim() || 'Contrato importado (a classificar)',
+          ...(meta.descricao?.trim() ? { descricao: meta.descricao.trim() } : {}),
           tipoId: tipo.id,
           origem: ContratoOrigem.IMPORTADO_REPOSITORIO,
           estadoInicial: ContratoEstado.REPOSITORIO,
           renovacaoAutomatica: false,
           prazoIndeterminado: false,
+          ...(valorCentavos !== undefined ? { valor: valorCentavos } : {}),
+          ...((m) => (m ? { moeda: m } : {}))(normalizarMoeda(meta.moeda)),
+          ...(dataAssinatura ? { dataAssinatura } : {}),
+          ...(dataTermo ? { dataTermo } : {}),
+          ...(partes.length ? { partes } : {}),
           ...(linha.documentId ? { documentoInicialId: linha.documentId } : {}),
         });
         await this.prisma.importacaoLinha.update({

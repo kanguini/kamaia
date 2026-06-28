@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { estadoBadgeVariant, estadoLabel, fmtDate } from '@/lib/clm-format'
 import { NovoContratoFlow } from '@/components/contratos/novo-contrato-flow'
+import { ImportarCarteiraDrawer } from '@/components/contratos/importar-carteira-drawer'
 
 interface ContratoListItem {
   id: string
@@ -82,6 +83,7 @@ function ContratosListInner() {
 
   const [tipos, setTipos] = useState<TipoContrato[]>([])
   const [novoOpen, setNovoOpen] = useState(false)
+  const [importCarteiraOpen, setImportCarteiraOpen] = useState(false)
   // Quando true, o modal abre directo no caminho ① (registar
   // contrato existente — equivalente a "Importar 1 ficheiro").
   const [importarMode, setImportarMode] = useState(false)
@@ -191,12 +193,9 @@ function ContratosListInner() {
           <Button
             variant="secondary"
             leftIcon={<Upload size={14} />}
-            onClick={() => {
-              setImportarMode(true)
-              setNovoOpen(true)
-            }}
+            onClick={() => setImportCarteiraOpen(true)}
           >
-            Importar
+            Importar carteira
           </Button>
           <Button
             leftIcon={<Plus size={14} />}
@@ -219,6 +218,15 @@ function ContratosListInner() {
         }}
         presetCaminho={importarMode ? 'existente' : undefined}
         presetParte={presetParte}
+      />
+
+      <ImportarCarteiraDrawer
+        open={importCarteiraOpen}
+        onClose={() => setImportCarteiraOpen(false)}
+        onDone={() => {
+          setCursor(null)
+          setRefreshKey((k) => k + 1)
+        }}
       />
 
       <div
