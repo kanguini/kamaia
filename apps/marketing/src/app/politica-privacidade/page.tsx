@@ -93,7 +93,7 @@ export default function PoliticaPrivacidadePage() {
             <section>
               <h2>5. Partilha com terceiros</h2>
               <p>
-                Não vendemos nem cedemos os teus dados. Utilizamos fornecedores
+                Não vendemos nem cedemos os seus dados. Utilizamos fornecedores
                 estritamente necessários à operação do serviço:
               </p>
               <ul>
@@ -120,12 +120,12 @@ export default function PoliticaPrivacidadePage() {
             </section>
 
             <section>
-              <h2>6. Os teus direitos</h2>
+              <h2>6. Os seus direitos</h2>
               <p>
-                Podes a qualquer momento:
+                Pode, a qualquer momento:
               </p>
               <ul>
-                <li>Aceder aos teus dados</li>
+                <li>Aceder aos seus dados</li>
                 <li>Corrigir dados incorrectos</li>
                 <li>Exportar todos os dados em formato JSON</li>
                 <li>Pedir a eliminação da conta (30 dias de grace)</li>

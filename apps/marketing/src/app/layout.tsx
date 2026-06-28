@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     template: '%s · Kamaia',
   },
   description:
-    'CLM horizontal para Angola e PALOP. Gere contratos da solicitação ao arquivo com Imposto de Selo, registos públicos, BNA e AGT calculados automaticamente. IA Q&A sobre legislação angolana com citações.',
+    'Gestão do ciclo de vida de contratos para empresas angolanas. Crie de raiz ou herde a carteira que já existe — com renovações, obrigações e compliance angolano (Imposto de Selo, registos, BNA, AGT) tratados de origem, e um conselheiro de IA sobre a legislação local.',
   applicationName: 'Kamaia',
   keywords: [
     'Contract Lifecycle Management Angola',
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Kamaia · O sistema operativo dos teus contratos',
+    title: 'Kamaia · Gestão do ciclo de vida de contratos para Angola',
     description:
-      'CLM horizontal para Angola — Imposto de Selo, registos, BNA e AGT calculados automaticamente. Multi-tenant com modo Agency para sociedades de advogados.',
+      'Crie de raiz ou herde a carteira que já existe. O ciclo de vida do contrato, do primeiro acto ao último, com o compliance angolano tratado de origem.',
     url: SITE_URL,
     siteName: 'Kamaia',
     locale: 'pt_AO',

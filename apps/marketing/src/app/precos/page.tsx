@@ -8,23 +8,23 @@ import { appUrl } from '@/lib/utm'
 export const metadata: Metadata = {
   title: 'Preços · Kamaia CLM',
   description:
-    'Quatro planos por escala de carteira contratual: Starter, Growth, Scale, Enterprise. Plano Agency para sociedades de advogados.',
+    'Quatro planos por escala da carteira de contratos: Starter, Growth, Scale e Enterprise. Disponível também para escritórios que gerem a carteira de vários clientes.',
 }
 
 const PLANS = [
   {
     name: 'Starter',
     tag: 'Para começar',
-    headline: 'Para gabinetes e empresas pequenas que querem pôr a carteira em ordem.',
+    headline: 'Para empresas e equipas pequenas que querem pôr a carteira em ordem.',
     price: 'Sob consulta',
     features: [
       'Até 200 contratos',
       '3 utilizadores',
-      '5 GB de storage',
-      '100 mensagens IA / mês',
-      'Compliance Engine completo',
-      'Importação em massa',
-      'Suporte por email',
+      '5 GB de armazenamento',
+      '100 mensagens de IA / mês',
+      'Compliance angolano completo',
+      'Importação da carteira existente',
+      'Suporte por e-mail',
     ],
   },
   {
@@ -36,54 +36,53 @@ const PLANS = [
     features: [
       'Até 2.000 contratos',
       '10 utilizadores',
-      '50 GB de storage',
-      '1.000 mensagens IA / mês',
-      'Webhooks (3)',
-      'Biblioteca de cláusulas e templates',
+      '50 GB de armazenamento',
+      '1.000 mensagens de IA / mês',
+      'Webhooks',
+      'Biblioteca de cláusulas e modelos',
       'Suporte prioritário',
     ],
   },
   {
     name: 'Scale',
     tag: 'Para grandes carteiras',
-    headline: 'Para organizações com dezenas de milhares de contratos e múltiplos departamentos.',
+    headline: 'Para organizações com dezenas de milhares de contratos e vários departamentos.',
     price: 'Sob consulta',
     features: [
       'Até 20.000 contratos',
       '30 utilizadores',
-      '500 GB de storage',
-      '10.000 mensagens IA / mês',
-      'API pública + Webhooks (20)',
-      'SSO',
-      'SLA com tempo de resposta garantido',
+      '500 GB de armazenamento',
+      '10.000 mensagens de IA / mês',
+      'API pública e webhooks',
+      'Autenticação única (SSO)',
+      'Tempo de resposta garantido',
     ],
   },
   {
     name: 'Enterprise',
     tag: 'Sob medida',
-    headline: 'Carteiras sem limite, on-prem dedicado, integrações personalizadas.',
+    headline: 'Carteiras sem limite, instalação dedicada e integrações à medida.',
     price: 'Sob consulta',
     features: [
       'Contratos ilimitados',
       'Utilizadores ilimitados',
-      'Storage ilimitado',
-      'IA ilimitada',
-      'Deploy dedicado / on-prem',
-      'Customer Success Manager',
-      'SLA 99.95%',
+      'Armazenamento ilimitado',
+      'IA sem limite de plano',
+      'Instalação dedicada ou local',
+      'Gestor de conta dedicado',
+      'Nível de serviço de 99,95%',
     ],
   },
 ]
 
 const AGENCY = {
-  headline: 'Para sociedades de advogados que oferecem CLM aos seus clientes.',
+  headline: 'Para escritórios que gerem a carteira de vários clientes.',
   features: [
-    'Cria N sub-tenants — um por cliente — totalmente isolados',
-    'Workspace switcher entre clientes',
-    'Audit log cruzado para defesa legal',
-    'Até 50 sub-tenants + 50 utilizadores',
-    'API + Webhooks',
-    'O teu cliente não paga — facturamos só ao gabinete',
+    'Um espaço isolado por cliente — dados, pesquisa e auditoria separados',
+    'Alternância entre clientes num único acesso',
+    'Registo de auditoria por cliente',
+    'API e webhooks',
+    'A facturação é feita apenas ao escritório',
   ],
 }
 
@@ -96,12 +95,12 @@ export default function PrecosPage() {
           <Reveal>
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/40">Preços</p>
             <h1 className="mt-3 font-playfair text-[clamp(36px,5vw,64px)] font-medium leading-[1.1] text-white">
-              Um plano por escala de carteira.
+              Um plano à escala da sua carteira.
             </h1>
             <p className="mx-auto mt-5 max-w-[640px] text-[15px] leading-relaxed text-white/65">
-              Preços indicativos sob consulta enquanto estamos em early access.
-              Falamos contigo para definir o plano correcto ao volume real dos
-              teus contratos.
+              Os valores são indicados sob consulta enquanto o produto está em
+              fase inicial. Falamos consigo para definir o plano certo ao volume
+              real dos seus contratos.
             </p>
           </Reveal>
         </section>
@@ -161,7 +160,7 @@ export default function PrecosPage() {
           <Reveal>
             <div className="mx-auto max-w-[1080px] rounded-2xl border border-white/10 bg-white/[0.02] p-10 md:p-14">
               <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
-                Plano Agency
+                Para escritórios
               </p>
               <h2 className="mt-3 font-playfair text-[clamp(28px,3.6vw,40px)] font-medium leading-[1.15] text-white">
                 {AGENCY.headline}
@@ -179,7 +178,7 @@ export default function PrecosPage() {
                   href="/contacto"
                   className="inline-flex items-center rounded-md bg-white px-5 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
                 >
-                  Discutir parceria
+                  Falar com a equipa
                 </Link>
               </div>
             </div>
@@ -189,10 +188,11 @@ export default function PrecosPage() {
         <section className="px-6 py-24 text-center">
           <Reveal>
             <h2 className="font-playfair text-[clamp(28px,3.6vw,40px)] font-medium leading-[1.15] text-white">
-              Trial de 30 dias em qualquer plano.
+              Avaliação de 30 dias em qualquer plano.
             </h2>
             <p className="mx-auto mt-5 max-w-[600px] text-[15px] leading-relaxed text-white/60">
-              Importa a tua carteira existente, vê alertas a funcionar, decide com factos.
+              Importe a carteira que já tem, veja os alertas a funcionar e decida
+              com factos.
             </p>
             <div className="mt-8">
               <Link

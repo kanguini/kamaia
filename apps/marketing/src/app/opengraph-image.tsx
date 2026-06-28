@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og'
 // Open Graph card — shown when kamaia.cc is shared on LinkedIn, WhatsApp,
 // Facebook, Messenger, etc. Next.js auto-adds the og:image meta tag.
 export const alt =
-  'Kamaia — Contract Lifecycle Management para Angola. O sistema operativo dos teus contratos.'
+  'Kamaia — Gestão do ciclo de vida de contratos para Angola. Crie de raiz ou herde a carteira que já existe.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -99,7 +99,7 @@ export default function OpengraphImage() {
                 background: '#6be49a',
               }}
             />
-            Contract Lifecycle Management · Angola & PALOP
+            Gestão do ciclo de vida de contratos · Angola
           </div>
 
           <div
@@ -113,8 +113,8 @@ export default function OpengraphImage() {
               flexDirection: 'column',
             }}
           >
-            <span>O sistema operativo</span>
-            <span style={{ color: '#9cb6ff' }}>dos teus contratos.</span>
+            <span>O ciclo de vida dos seus</span>
+            <span style={{ color: '#9cb6ff' }}>contratos, sob domínio.</span>
           </div>
 
           <div

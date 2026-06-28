@@ -49,13 +49,13 @@ export default function ContactoPage({
                 Contacto
               </span>
               <h1 className="mt-3 max-w-3xl text-[clamp(36px,5vw,56px)] font-medium leading-[1.05] tracking-[-0.025em]">
-                Fala connosco.
+                Fale connosco.
                 <br />
-                <span style={{ color: '#9cb6ff' }}>Respondemos em 1 dia útil.</span>
+                <span style={{ color: '#9cb6ff' }}>Respondemos num dia útil.</span>
               </h1>
               <p className="mt-6 max-w-2xl text-lg text-white/75">
-                Questões sobre preços, migração do Excel ou demo privada — o
-                Helder responde pessoalmente.
+                Questões sobre preços, sobre como trazer a carteira que já tem,
+                ou um pedido de demonstração privada — respondemos pessoalmente.
               </p>
             </Reveal>
           </div>
@@ -99,13 +99,13 @@ export default function ContactoPage({
 
                 <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm">
                   <p className="text-[11px] uppercase tracking-[0.12em] text-white/55">
-                    Já tens conta?
+                    Já tem conta?
                   </p>
                   <Link
                     href="https://app.kamaia.cc/login"
                     className="mt-2 inline-block text-white underline underline-offset-4"
                   >
-                    Entra em app.kamaia.cc →
+                    Entre em app.kamaia.cc →
                   </Link>
                 </div>
               </aside>

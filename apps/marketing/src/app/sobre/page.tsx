@@ -8,12 +8,12 @@ import { Reveal } from '@/components/Reveal'
 export const metadata: Metadata = {
   title: 'Sobre · Kamaia CLM',
   description:
-    'Kamaia é um Contract Lifecycle Management horizontal, construído em Angola para Angola e PALOP. Compliance angolano embebido. IA sobre a legislação local.',
+    'O Kamaia é um sistema de gestão do ciclo de vida de contratos construído em Angola, para Angola e o PALOP. Compliance angolano embebido e um conselheiro de IA sobre a legislação local.',
   alternates: { canonical: '/sobre' },
   openGraph: {
     title: 'Sobre · Kamaia CLM',
     description:
-      'A visão, a arquitectura e o porquê de existir um CLM construído em Angola.',
+      'A visão, a arquitectura e o porquê de um CLM construído em Angola.',
     url: '/sobre',
     type: 'website',
   },
@@ -31,18 +31,18 @@ export default function SobrePage() {
                 Sobre o Kamaia
               </span>
               <h1 className="mt-4 font-playfair text-[clamp(36px,5vw,64px)] font-medium leading-[1.1]">
-                Construído em Angola para
+                Construído em Angola,
                 <br />
                 <em className="not-italic" style={{ color: '#9cb6ff' }}>
-                  resolver problemas de Angola.
+                  à medida de Angola.
                 </em>
               </h1>
               <p className="mt-6 max-w-[680px] text-[15px] leading-relaxed text-white/65">
-                O Kamaia é um Contract Lifecycle Management horizontal. Está
-                desenhado para qualquer organização que tenha contratos em
-                Angola — imobiliária, indústria, banca, comércio, serviços —
-                e para as sociedades de advogados que cuidam da carteira dos
-                seus clientes corporativos.
+                O Kamaia é um sistema de gestão do ciclo de vida de contratos.
+                Foi desenhado para qualquer organização que viva de contratos em
+                Angola — imobiliário, indústria, banca, comércio, serviços — e
+                acompanha cada contrato, criado de raiz ou herdado, do primeiro
+                acto ao último.
               </p>
             </Reveal>
           </div>
@@ -57,18 +57,19 @@ export default function SobrePage() {
               <div className="mt-8 grid grid-cols-1 gap-10 md:grid-cols-2">
                 <div>
                   <p className="text-[15px] leading-relaxed text-white/70">
-                    Os grandes CLMs internacionais — Ironclad, ContractWorks,
-                    LinkSquares, SpotDraft — não conhecem o Código do Imposto
-                    de Selo. Não sabem o que é a verba TGIS aplicável a um
-                    arrendamento. Não falam com a BNA. Não interpretam o RJOC.
-                    Não lêem PT-AO.
+                    Os grandes sistemas internacionais de gestão de contratos não
+                    conhecem o Código do Imposto de Selo, não sabem qual a verba
+                    da TGIS aplicável a um arrendamento, não interpretam a Lei
+                    Cambial e não leem português de Angola. O compliance do país
+                    fica, na melhor das hipóteses, do lado de fora.
                   </p>
                 </div>
                 <div>
                   <p className="text-[15px] leading-relaxed text-white/70">
-                    Os sistemas locais não fazem CLM. O Kamaia preenche este
-                    espaço — software global em ambição, angolano em substância.
-                    O compliance angolano não é um plugin: é a coluna vertebral.
+                    Os sistemas locais, por sua vez, não fazem gestão de ciclo de
+                    vida. O Kamaia ocupa este espaço — ambição global, substância
+                    angolana. Aqui, o compliance do país não é um acessório: é
+                    parte da estrutura, e por isso uma vantagem real do produto.
                   </p>
                 </div>
               </div>
@@ -80,28 +81,28 @@ export default function SobrePage() {
           <div className="shell">
             <Reveal>
               <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
-                Arquitectura defensável.
+                Uma arquitectura que se defende.
               </h2>
               <div className="mt-10 grid grid-cols-1 gap-px bg-white/10 md:grid-cols-2">
                 <Pillar
-                  icon={Shield}
-                  title="Multi-tenancy hierárquico"
-                  body="Tenants podem ter sub-tenants. Sociedades de advogados gerem N clientes isolados num só interface. Cada cliente é um tenant — auditável, separável, exportável."
+                  icon={Server}
+                  title="Regras de compliance versionadas"
+                  body="As regras de compliance são código versionado, não lógica dispersa. Aplica-se a lei vigente à data do facto tributário — não a de hoje. Cada acto é sugerido pelo sistema e confirmado pela equipa."
                 />
                 <Pillar
                   icon={FileLock}
-                  title="Audit log append-only"
-                  body="Toda a escrita é registada com actor, antes/depois e contexto. Defesa legal e compliance interno fora da caixa. Audit cruzado para Modo AGENCY."
-                />
-                <Pillar
-                  icon={Server}
-                  title="Engine declarativo"
-                  body="As regras de compliance são código versionado, não lógica espalhada por services. A regra vigente à data do facto tributário é a que se aplica — não a data presente."
+                  title="Registo de auditoria imutável"
+                  body="Cada escrita fica registada com autor, estado anterior e posterior, e contexto. Prova de integridade e controlo interno desde o primeiro dia."
                 />
                 <Pillar
                   icon={Globe2}
                   title="Localização profunda"
-                  body="pt-AO em todas as labels. Datas UTC → WAT. Catálogo de tipos cobre o vocabulário forense angolano. Multi-moeda com taxa de referência convertível."
+                  body="Português de Angola em toda a interface, datas no fuso do país, catálogo de tipos com o vocabulário local e suporte multi-moeda com taxa de referência convertível."
+                />
+                <Pillar
+                  icon={Shield}
+                  title="Isolamento e escala"
+                  body="Isolamento por organização em todas as camadas, com estrutura para grupos com vários departamentos — ou para um escritório que gere a carteira de vários clientes, cada um separado e auditável."
                 />
               </div>
             </Reveal>
@@ -112,11 +113,12 @@ export default function SobrePage() {
           <div className="shell text-center">
             <Reveal>
               <h2 className="font-playfair text-[clamp(28px,3.4vw,42px)] font-medium leading-[1.15]">
-                Estamos a falar com early adopters.
+                Estamos a falar com as primeiras organizações.
               </h2>
               <p className="mx-auto mt-5 max-w-[580px] text-[15px] leading-relaxed text-white/60">
-                Se tens uma carteira de contratos para ordenar, conta-nos. O
-                roadmap segue conversas reais — não decisões de gabinete.
+                Se a sua organização tem uma carteira de contratos para pôr em
+                ordem, fale connosco. O percurso do produto segue conversas
+                reais.
               </p>
               <div className="mt-8">
                 <Link

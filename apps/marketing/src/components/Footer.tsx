@@ -23,8 +23,8 @@ export function Footer() {
         <div>
           <Logo height={22} className="text-white" />
           <p className="mt-4 max-w-xs text-sm text-white/60">
-            Contract Lifecycle Management para Angola e PALOP. Compliance
-            angolano embebido — TGIS, registos, BNA, AGT.
+            Gestão do ciclo de vida de contratos para Angola e o PALOP.
+            Compliance angolano embebido — Imposto de Selo, registos, BNA e AGT.
           </p>
         </div>
         {Object.entries(LINKS).map(([group, links]) => (

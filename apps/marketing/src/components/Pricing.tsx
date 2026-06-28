@@ -71,23 +71,23 @@ export async function Pricing() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="font-playfair text-[clamp(32px,4.4vw,52px)] font-medium leading-[1.08] tracking-[-0.01em] text-white">
-              Preços simples,
+              Preços claros,
               <br />
               <em className="not-italic" style={{ color: '#9cb6ff' }}>
-                alinhados com o teu volume.
+                à escala da sua carteira.
               </em>
             </h2>
             <p className="mt-6 text-[15px] leading-relaxed text-white/70">
-              Pagas pelo número de contratos activos e por créditos de IA
-              consumidos. Mensagens do Dr. Kamaia grátis dentro do plano.
+              O valor acompanha o número de contratos sob gestão. As mensagens do
+              Dr.&nbsp;Kamaia estão incluídas no plano.
             </p>
           </div>
         </Reveal>
 
         {plans.length === 0 ? (
           <div className="mt-12 text-center text-white/50">
-            Tabela de preços temporariamente indisponível. Contacta-nos para
-            uma proposta personalizada.
+            Tabela de preços temporariamente indisponível. Contacte-nos para
+            uma proposta à medida.
           </div>
         ) : (
           <div className="mt-16 grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -165,9 +165,9 @@ export async function Pricing() {
 
         <Reveal>
           <p className="mt-12 text-center text-xs text-white/50">
-            Os preços estão em Kwanza (AKZ). Faturação mensal ou anual com
-            10% de desconto. Sem fidelização — podes cancelar a qualquer
-            momento.
+            Os preços estão em Kwanza (AKZ). Facturação mensal ou anual, com
+            10% de desconto no plano anual. Sem fidelização — pode cancelar a
+            qualquer momento.
           </p>
         </Reveal>
       </div>

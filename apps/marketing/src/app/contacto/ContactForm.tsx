@@ -179,8 +179,8 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
         <CheckCircle2 size={24} className="text-[#6be49a]" />
         <h3 className="mt-3 text-lg font-medium text-white">Mensagem enviada</h3>
         <p className="mt-2 text-sm text-white/70">
-          Recebemos o teu contacto. Respondemos em 1 dia útil. Se for urgente,
-          escreve directamente para hello@kamaia.cc.
+          Recebemos o seu contacto. Respondemos num dia útil. Se for urgente,
+          escreva directamente para hello@kamaia.cc.
         </p>
         <button
           type="button"
@@ -233,7 +233,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
             autoComplete="tel"
           />
         </Field>
-        <Field label="Gabinete">
+        <Field label="Organização">
           <input
             type="text"
             value={form.gabinete}
@@ -250,7 +250,7 @@ export function ContactForm({ initialPlan }: { initialPlan?: string }) {
           onChange={update('message')}
           rows={5}
           required
-          placeholder="Conta-nos o que precisas — queres demo, tens dúvidas sobre preços, migração do Excel..."
+          placeholder="Diga-nos o que precisa — uma demonstração, dúvidas sobre preços, ou como trazer a carteira que já tem…"
           className="k2-input resize-y min-h-[120px]"
         />
       </Field>
