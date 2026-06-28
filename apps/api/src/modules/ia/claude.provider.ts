@@ -25,6 +25,26 @@ export interface ClaudeResponse {
   tokensOutput: number;
 }
 
+/**
+ * Campos sugeridos pela extracção IA de um contrato herdado. Todos
+ * opcionais — o modelo só preenche o que estiver no documento. Valores
+ * em kwanzas (número), datas em AAAA-MM-DD.
+ */
+export interface ExtractedContractFields {
+  titulo?: string;
+  tipoSugerido?: string;
+  valor?: number;
+  moeda?: string;
+  dataAssinatura?: string;
+  dataInicioVigencia?: string;
+  dataTermo?: string;
+  partes?: Array<{ nome?: string; papel?: string }>;
+  leiAplicavel?: string;
+  foro?: string;
+  renovacaoAutomatica?: boolean;
+  confianca?: number;
+}
+
 // ─── Tool use types ──────────────────────────────────────────────
 //
 // A Anthropic Messages API com tool use usa content blocks
@@ -279,6 +299,101 @@ export class ClaudeProvider {
       tokensInput: data.usage?.input_tokens ?? 0,
       tokensOutput: data.usage?.output_tokens ?? 0,
     };
+  }
+
+  /**
+   * Extracção estruturada dos campos de um contrato a partir do seu
+   * texto (herança: ler um contrato existente e pré-preencher o
+   * formulário). Usa tool-use forçado (`tool_choice`) para garantir
+   * saída JSON. Best-effort: devolve `null` em qualquer falha (sem
+   * chave, rede, erro IA), para o fluxo degradar para preenchimento
+   * manual em vez de partir.
+   */
+  async extractContractFields(
+    documentText: string,
+    signal?: AbortSignal,
+  ): Promise<ExtractedContractFields | null> {
+    if (!this.apiKey) return null;
+
+    const tool: AnthropicToolSpec = {
+      name: 'registar_campos_contrato',
+      description:
+        'Regista os campos extraídos do contrato fornecido. Preenche apenas o que estiver realmente no documento.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string', description: 'Título/objecto do contrato' },
+          tipoSugerido: {
+            type: 'string',
+            description:
+              'Tipo de contrato (e.g. Arrendamento, Prestação de serviços, Compra e venda)',
+          },
+          valor: {
+            type: 'number',
+            description: 'Valor do contrato em kwanzas (número, sem separadores)',
+          },
+          moeda: { type: 'string', description: 'AOA, USD ou EUR' },
+          dataAssinatura: { type: 'string', description: 'AAAA-MM-DD' },
+          dataInicioVigencia: { type: 'string', description: 'AAAA-MM-DD' },
+          dataTermo: { type: 'string', description: 'AAAA-MM-DD' },
+          partes: {
+            type: 'array',
+            description: 'Partes do contrato',
+            items: {
+              type: 'object',
+              properties: {
+                nome: { type: 'string' },
+                papel: { type: 'string', description: 'e.g. Senhorio, Arrendatário, Prestador' },
+              },
+            },
+          },
+          leiAplicavel: { type: 'string' },
+          foro: { type: 'string' },
+          renovacaoAutomatica: { type: 'boolean' },
+          confianca: {
+            type: 'number',
+            description: 'Auto-avaliação 0-1 da confiança na extracção',
+          },
+        },
+      },
+    };
+
+    const system =
+      'És um extractor de dados de contratos angolanos (pt-AO). Lês o texto de um contrato e extrais os campos para o tool. Datas no formato AAAA-MM-DD. Valores em kwanzas como número simples. NUNCA inventes — se um campo não estiver no documento, omite-o. Não devolvas texto, apenas a chamada ao tool.';
+
+    const body = {
+      model: this.model,
+      max_tokens: 1024,
+      system,
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
+      messages: [
+        {
+          role: 'user',
+          content: `Extrai os campos deste contrato:\n\n<documento>\n${documentText}\n</documento>`,
+        },
+      ],
+    };
+
+    let res: Response;
+    try {
+      res = await this.fetchAnthropic(body, signal);
+    } catch (e) {
+      this.logger.error(
+        `extractContractFields rede: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      return null;
+    }
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      this.logger.error(`Anthropic extract ${res.status}: ${txt.slice(0, 300)}`);
+      return null;
+    }
+    const data = (await res.json().catch(() => null)) as {
+      content?: Array<{ type: string; input?: unknown }>;
+    } | null;
+    const block = data?.content?.find((b) => b.type === 'tool_use');
+    return (block?.input as ExtractedContractFields | undefined) ?? null;
   }
 
   /**

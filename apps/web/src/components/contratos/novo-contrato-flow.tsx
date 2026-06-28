@@ -152,6 +152,9 @@ export function NovoContratoFlow({
   const [estadoInicial, setEstadoInicial] = useState<ContratoEstado>(
     ContratoEstado.REPOSITORIO,
   )
+  // Extracção IA do documento herdado (pré-preenchimento dos campos).
+  const [extraindo, setExtraindo] = useState(false)
+  const [extracaoMsg, setExtracaoMsg] = useState<string | null>(null)
 
   // Caminho ② — IA
   const [iaPrompt, setIaPrompt] = useState('')
@@ -222,7 +225,65 @@ export function NovoContratoFlow({
     setTemplateId(null)
     setErr(null)
     setErrDetails([])
+    setExtraindo(false)
+    setExtracaoMsg(null)
   }, [open])
+
+  /**
+   * Herança: após anexar o documento, pede à IA para extrair os campos
+   * e pré-preenche os vazios (não sobrepõe edições do utilizador). Falha
+   * em silêncio para preenchimento manual — a UX nunca fica bloqueada.
+   */
+  const extrairCampos = async (documentId: string) => {
+    if (!session?.accessToken) return
+    setExtraindo(true)
+    setExtracaoMsg(null)
+    try {
+      const r = await api<{
+        suportado: boolean
+        motivo?: string
+        campos?: {
+          titulo?: string
+          valor?: number
+          moeda?: string
+          dataAssinatura?: string
+          dataInicioVigencia?: string
+          dataTermo?: string
+          leiAplicavel?: string
+          foro?: string
+          renovacaoAutomatica?: boolean
+        }
+      }>('/ia/extrair-contrato', {
+        method: 'POST',
+        token: session.accessToken,
+        body: JSON.stringify({ documentId }),
+      })
+      const c = r?.campos
+      if (!c) {
+        setExtracaoMsg(r?.motivo ?? null)
+        return
+      }
+      const d = (s?: string) => (s ? s.slice(0, 10) : '')
+      setTitulo((v) => v.trim() || c.titulo || v)
+      setValor((v) => (v.trim() || c.valor == null ? v : String(c.valor)))
+      if (c.moeda && (MOEDAS_SUPORTADAS as readonly string[]).includes(c.moeda)) {
+        setMoeda(c.moeda)
+      }
+      setDataAssinatura((v) => v || d(c.dataAssinatura))
+      setDataInicioVigencia((v) => v || d(c.dataInicioVigencia))
+      setDataTermo((v) => v || d(c.dataTermo))
+      setLeiAplicavel((v) => v.trim() || c.leiAplicavel || v)
+      setForo((v) => v.trim() || c.foro || v)
+      if (typeof c.renovacaoAutomatica === 'boolean') {
+        setRenovacaoAutomatica(c.renovacaoAutomatica)
+      }
+      setExtracaoMsg('Campos sugeridos pela IA a partir do documento — confirma antes de gravar.')
+    } catch {
+      // Silencioso — o utilizador preenche à mão.
+    } finally {
+      setExtraindo(false)
+    }
+  }
 
   // Conjunto de paths preenchidos para o TemplatePicker marcar ✓
   const pathsPresentes = useMemo(() => {
@@ -634,9 +695,25 @@ export function NovoContratoFlow({
                     accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
                     maxMB={20}
                     attached={docInicial}
-                    onUploaded={(d) => setDocInicial(d)}
-                    onCleared={() => setDocInicial(null)}
+                    onUploaded={(d) => {
+                      setDocInicial(d)
+                      void extrairCampos(d.id)
+                    }}
+                    onCleared={() => {
+                      setDocInicial(null)
+                      setExtracaoMsg(null)
+                    }}
                   />
+                  {extraindo && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--k2-text-mute)' }} aria-live="polite">
+                      A ler o documento e a sugerir os campos…
+                    </div>
+                  )}
+                  {!extraindo && extracaoMsg && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--k2-text-dim)' }} aria-live="polite">
+                      {extracaoMsg}
+                    </div>
+                  )}
                 </Field>
                 <Field label="Estado inicial">
                   <Select value={estadoInicial} onChange={(e) => setEstadoInicial(e.target.value as ContratoEstado)}>

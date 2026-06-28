@@ -16,6 +16,8 @@ import * as path from 'path';
 export interface DocumentStorage {
   readonly kind: 'LOCAL' | 'R2';
   put(key: string, body: Buffer, mimeType: string): Promise<void>;
+  /** Lê os bytes do objecto — usado pela extracção IA do documento. */
+  get(key: string): Promise<Buffer>;
   signedUrl(key: string, expiresInSeconds?: number): Promise<string>;
   delete(key: string): Promise<void>;
 }
@@ -38,6 +40,10 @@ export class LocalDiskStorage implements DocumentStorage {
     await fs.mkdir(path.dirname(full), { recursive: true });
     await fs.writeFile(full, body);
     this.logger.debug(`PUT ${key} (${body.byteLength}B, ${mimeType})`);
+  }
+
+  async get(key: string): Promise<Buffer> {
+    return fs.readFile(this.resolve(key));
   }
 
   async signedUrl(key: string, _expiresInSeconds = 300): Promise<string> {
@@ -69,6 +75,13 @@ export class R2Storage implements DocumentStorage {
     this.logger.warn(
       `R2 STUB put ${this.bucket}/${key} (${body.byteLength}B, ${mimeType}) endpoint=${this.endpoint}`,
     );
+  }
+
+  async get(key: string): Promise<Buffer> {
+    // STUB — em produção GetObjectCommand. Devolve vazio para não partir
+    // a wiring; a extracção IA degrada para "sem texto".
+    this.logger.warn(`R2 STUB get ${this.bucket}/${key}`);
+    return Buffer.alloc(0);
   }
 
   async signedUrl(key: string, expiresInSeconds = 300): Promise<string> {

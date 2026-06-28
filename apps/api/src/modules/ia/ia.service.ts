@@ -6,13 +6,16 @@ import {
 } from '@nestjs/common';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { AIMessageRole, Prisma, Role } from '@prisma/client';
+import pdfParse from 'pdf-parse';
 import { AuditService } from '../audit/audit.service';
+import { DocumentsService } from '../documents/documents.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RagService } from '../rag/rag.service';
 import {
   AnthropicStructuredMessage,
   ClaudeMessage,
   ClaudeProvider,
+  ExtractedContractFields,
 } from './claude.provider';
 import { AgentService } from './agent/agent.service';
 import type { PageContext } from './agent/tool.types';
@@ -46,6 +49,7 @@ export class IaService {
     private readonly claude: ClaudeProvider,
     private readonly rag: RagService,
     private readonly agent: AgentService,
+    private readonly documents: DocumentsService,
   ) {}
 
   /**
@@ -102,6 +106,87 @@ export class IaService {
     } catch {
       /* best-effort */
     }
+  }
+
+  /**
+   * HERANÇA + IA-na-gestão: lê um documento de contrato JÁ EXISTENTE e
+   * extrai os campos para pré-preencher o formulário de registo — para
+   * que herdar um contrato seja tão fácil como criar.
+   *
+   * MVP: PDF com texto (pdf-parse → Claude). PDFs digitalizados (sem
+   * texto), Word e imagens degradam para `{ suportado:false }` (OCR fica
+   * para uma iteração futura). Best-effort: nunca lança por falha da IA
+   * — devolve sugestões ou nada. Consome 1 unidade de quota IA.
+   */
+  async extrairContrato(
+    tenantId: string,
+    actorUserId: string,
+    documentId: string,
+  ): Promise<{ suportado: boolean; motivo?: string; campos?: ExtractedContractFields }> {
+    const { buffer, mimeType } = await this.documents.getBytes(tenantId, documentId);
+
+    if (mimeType !== 'application/pdf') {
+      return {
+        suportado: false,
+        motivo: 'Extracção automática disponível só para PDF (por agora).',
+      };
+    }
+
+    let texto = '';
+    try {
+      const parsed = await pdfParse(buffer);
+      texto = (parsed.text ?? '').trim();
+    } catch (e) {
+      this.logger.warn(
+        `pdf-parse falhou para doc ${documentId}: ${e instanceof Error ? e.message : e}`,
+      );
+    }
+    if (texto.length < 80) {
+      return {
+        suportado: false,
+        motivo: 'O PDF parece digitalizado (sem texto). Preenche os campos manualmente.',
+      };
+    }
+
+    // Quota: a extracção é uma chamada à IA.
+    if (!(await this.reserveIaQuota(tenantId))) {
+      throw new ForbiddenException(
+        'Esgotaste as mensagens de IA do teu plano. Faz upgrade para extrair mais contratos.',
+      );
+    }
+
+    let campos: ExtractedContractFields | null = null;
+    try {
+      // Tecto de texto enviado à IA (contratos longos) — primeiras
+      // ~30k chars chegam para os metadados-chave.
+      campos = await this.claude.extractContractFields(texto.slice(0, 30000));
+    } catch (e) {
+      await this.refundIaQuota(tenantId);
+      this.logger.error(
+        `extractContractFields erro doc ${documentId}: ${e instanceof Error ? e.message : e}`,
+      );
+      return { suportado: true, motivo: 'A extracção falhou. Tenta de novo ou preenche manualmente.' };
+    }
+
+    if (!campos) {
+      // Sem chave (stub) ou sem resultado — estorna a quota reservada.
+      await this.refundIaQuota(tenantId);
+      return {
+        suportado: false,
+        motivo: 'Extracção indisponível de momento. Preenche os campos manualmente.',
+      };
+    }
+
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.READ,
+      entityType: EntityType.DOCUMENT,
+      entityId: documentId,
+      afterData: { acao: 'EXTRACAO_IA', confianca: campos.confianca },
+    });
+
+    return { suportado: true, campos };
   }
 
   async createConversation(

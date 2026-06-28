@@ -55,6 +55,16 @@ export class DocumentsService {
     return doc;
   }
 
+  /** Bytes + mime do documento (tenant-scoped) — usado pela extracção IA. */
+  async getBytes(
+    tenantId: string,
+    id: string,
+  ): Promise<{ buffer: Buffer; mimeType: string; nome: string }> {
+    const doc = await this.get(tenantId, id);
+    const buffer = await this.storage.get(doc.storageKey);
+    return { buffer, mimeType: doc.mimeType, nome: doc.nome };
+  }
+
   async getDownloadUrl(
     tenantId: string,
     actorUserId: string | undefined,

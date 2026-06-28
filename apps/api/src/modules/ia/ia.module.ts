@@ -6,6 +6,7 @@ import { ContratosModule } from '../contratos/contratos.module';
 import { ContratosService } from '../contratos/contratos.service';
 import { CustomFieldsModule } from '../custom-fields/custom-fields.module';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
+import { DocumentsModule } from '../documents/documents.module';
 import { EntidadesModule } from '../entidades/entidades.module';
 import { EntidadesService } from '../entidades/entidades.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,6 +33,7 @@ import { buildCreateContratoTool } from './agent/tools/create-contrato.tool';
     EntidadesModule,
     ComplianceModule,
     CustomFieldsModule,
+    DocumentsModule,
   ],
   controllers: [IaController],
   providers: [
