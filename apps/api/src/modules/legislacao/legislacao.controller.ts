@@ -19,7 +19,7 @@ import {
   ListLegislationQuerySchema,
 } from '../rag/rag.dto';
 import { RagService } from '../rag/rag.service';
-import { LegislacaoImportQueueService } from './legislacao-import-queue.service';
+import { LexAoImportService } from './lex-ao-import.service';
 
 const ImportarSchema = z.object({
   mode: z.enum(['full', 'incremental']).default('incremental'),
@@ -38,7 +38,7 @@ const ImportarSchema = z.object({
 export class LegislacaoController {
   constructor(
     private readonly rag: RagService,
-    private readonly queue: LegislacaoImportQueueService,
+    private readonly lexAo: LexAoImportService,
   ) {}
 
   @Get()
@@ -76,19 +76,12 @@ export class LegislacaoController {
   async importar(
     @Query(new ParseZodPipe(ImportarSchema)) q: z.infer<typeof ImportarSchema>,
   ) {
-    if (!this.queue.enabled) {
-      return {
-        ok: false,
-        estado: 'sem-fila',
-        mensagem:
-          'Importação assíncrona indisponível (sem Redis configurado).',
-      };
-    }
-    const estado = await this.queue.enqueue(`lexao-${q.mode}`, {
-      mode: q.mode,
-      orgaoFilter: q.orgaoFilter,
-      limit: q.limit,
-    });
-    return { ok: estado === 'queued', estado };
+    // Funciona com Redis (fila BullMQ) ou sem (corre em background no
+    // próprio processo da API).
+    const r = await this.lexAo.dispararImport(
+      { mode: q.mode, orgaoFilter: q.orgaoFilter, limit: q.limit },
+      'manual',
+    );
+    return { ok: r.estado !== 'ja-a-correr', ...r };
   }
 }

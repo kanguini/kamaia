@@ -150,14 +150,14 @@ export default function LegislacaoPage() {
     setImporting(true)
     setImportMsg(null)
     try {
-      const r = await api<{ ok: boolean; estado: string; mensagem?: string }>(
+      const r = await api<{ ok: boolean; via?: string; estado: string }>(
         `/legislacao/importar?mode=incremental`,
         { method: 'POST', token },
       )
       setImportMsg(
-        r.ok
-          ? 'Importação iniciada — os diplomas vão aparecer nos próximos minutos. Recarregue para ver.'
-          : r.mensagem ?? 'Não foi possível iniciar a importação.',
+        r.estado === 'ja-a-correr'
+          ? 'A importação já está a correr — aguarde e recarregue.'
+          : `Importação iniciada${r.via === 'in-process' ? ' (em background)' : ''} — os diplomas vão aparecer nos próximos minutos. Recarregue para ver.`,
       )
     } catch {
       setImportMsg('Erro ao iniciar a importação.')

@@ -49,12 +49,6 @@ export class LexAoImportService implements OnModuleInit {
   @Timeout(45_000)
   async bootstrapImport(): Promise<void> {
     if (process.env.NODE_ENV === 'test' || !this.autoImport) return;
-    if (!this.queue.enabled) {
-      this.logger.log(
-        'Ingestão automática de legislação inactiva (sem Redis).',
-      );
-      return;
-    }
     const count = await this.prisma.legislationDocument.count({
       where: { fonte: 'LEXAO' },
     });
@@ -62,22 +56,49 @@ export class LexAoImportService implements OnModuleInit {
       this.logger.log(`Corpus lex.ao já tem ${count} diplomas — sem import inicial.`);
       return;
     }
-    const r = await this.queue.enqueue('lexao-full', { mode: 'full' });
-    this.logger.log(
-      `Import inicial de legislação ${r === 'queued' ? 'enfileirado' : 'saltado'}.`,
-    );
+    const r = await this.dispararImport({ mode: 'full' }, 'arranque');
+    this.logger.log(`Import inicial: ${r.via}/${r.estado}.`);
   }
 
   @Cron(CronExpression.EVERY_WEEK)
   async weeklyRefresh(): Promise<void> {
-    if (!this.autoImport || !this.queue.enabled) return;
-    const now = new Date();
-    const weekKey = `${now.getUTCFullYear()}-${Math.floor(
-      (now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 6.048e8,
-    )}`;
-    await this.queue.enqueue(`lexao-refresh-${weekKey}`, {
-      mode: 'incremental',
-    });
+    if (!this.autoImport) return;
+    await this.dispararImport({ mode: 'incremental' }, 'semanal');
+  }
+
+  /**
+   * Dispara um import. Se houver fila (Redis), enfileira no BullMQ. Caso
+   * contrário, corre NO PRÓPRIO PROCESSO em background (não bloqueia o
+   * arranque nem os pedidos) — assim a ingestão funciona mesmo sem a
+   * variável REDIS_URL configurada. `running` evita corridas concorrentes
+   * dentro da mesma instância.
+   */
+  async dispararImport(
+    job: LegislacaoImportJob,
+    origem: string,
+  ): Promise<{ via: 'fila' | 'in-process'; estado: string }> {
+    if (this.queue.enabled) {
+      const estado = await this.queue.enqueue(`lexao-${job.mode}`, job);
+      return { via: 'fila', estado };
+    }
+    if (this.running) {
+      return { via: 'in-process', estado: 'ja-a-correr' };
+    }
+    this.logger.log(`Import (${origem}) a correr em background, sem fila.`);
+    void this.runDetached(job);
+    return { via: 'in-process', estado: 'iniciado' };
+  }
+
+  private running = false;
+  private async runDetached(job: LegislacaoImportJob): Promise<void> {
+    this.running = true;
+    try {
+      await this.processar(job);
+    } catch (e) {
+      this.logger.error(`Import em background falhou: ${(e as Error).message}`);
+    } finally {
+      this.running = false;
+    }
   }
 
   // ─── processamento (corre no worker BullMQ) ─────────────────
