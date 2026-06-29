@@ -45,6 +45,10 @@ export interface ApiOptions extends RequestInit {
   noTenant?: boolean
 }
 
+// Garante um único signOut quando vários pedidos falham com 401 ao mesmo
+// tempo (a navegação para /login trata do resto).
+let loggingOut = false
+
 export async function api<T>(
   endpoint: string,
   options: ApiOptions = {},
@@ -65,10 +69,19 @@ export async function api<T>(
   if (res.status === 204) return undefined as T
 
   if (res.status === 401 && typeof window !== 'undefined') {
-    try {
-      await fetch('/api/auth/session?update', { credentials: 'include' })
-    } catch {
-      /* ignore */
+    // Sem refresh token: um 401 significa que a sessão terminou. Em vez de
+    // deixar a app presa com "Sessão expirada", faz LOGOUT automático e
+    // redirect para /login. Guardas: não dispara nas páginas de auth (onde
+    // o login legítimo pode dar 401) nem em duplicado (vários pedidos em
+    // voo a falhar ao mesmo tempo).
+    const onAuthPage = /^\/(login|register|forgot-password|reset-password)/.test(
+      window.location.pathname,
+    )
+    if (!onAuthPage && !loggingOut) {
+      loggingOut = true
+      void import('next-auth/react').then(({ signOut }) =>
+        signOut({ callbackUrl: '/login' }),
+      )
     }
   }
 

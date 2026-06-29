@@ -15,6 +15,8 @@ export type RegisterDto = z.infer<typeof RegisterSchema>;
 export const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1).max(200),
+  // "Confiar neste dispositivo" — sessão mais longa (30d vs 7d).
+  lembrar: z.coerce.boolean().optional().default(false),
 });
 export type LoginDto = z.infer<typeof LoginSchema>;
 

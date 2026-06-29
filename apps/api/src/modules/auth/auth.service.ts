@@ -182,7 +182,7 @@ export class AuthService {
       userAgent,
     });
 
-    const token = await this.signToken(user.id, user.email);
+    const token = await this.signToken(user.id, user.email, dto.lembrar);
     const tenants = user.memberships.map((m) => ({
       id: m.tenant.id,
       slug: m.tenant.slug,
@@ -199,9 +199,18 @@ export class AuthService {
     };
   }
 
-  private async signToken(userId: string, email: string): Promise<string> {
+  private async signToken(
+    userId: string,
+    email: string,
+    lembrar = false,
+  ): Promise<string> {
     const payload: JwtPayload = { sub: userId, email };
-    return this.jwt.signAsync(payload);
+    // TTL explícito — ignora JWT_EXPIRES_IN do ambiente (estava em 15m e
+    // expulsava o utilizador a meio do trabalho). 7 dias normal; 30 dias
+    // se "confiar neste dispositivo".
+    return this.jwt.signAsync(payload, {
+      expiresIn: lembrar ? '30d' : '7d',
+    });
   }
 
   private sanitizeUser<T extends { passwordHash?: string | null }>(user: T) {

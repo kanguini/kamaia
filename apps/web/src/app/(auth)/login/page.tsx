@@ -41,6 +41,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [lembrar, setLembrar] = useState(true)
 
   // Query params: ?email=...&accepted=1 (vindo do fluxo /accept-invite)
   const justAccepted = searchParams.get('accepted') === '1'
@@ -67,6 +68,7 @@ function LoginForm() {
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
+        lembrar: lembrar ? 'true' : 'false',
         redirect: false,
       })
       if (result?.error) setError('Email ou palavra-passe incorrectos')
@@ -141,6 +143,15 @@ function LoginForm() {
           {errors.password && <div className="field-error">{errors.password.message}</div>}
         </div>
 
+        <label className="remember">
+          <input
+            type="checkbox"
+            checked={lembrar}
+            onChange={(e) => setLembrar(e.target.checked)}
+          />
+          <span>Confiar neste dispositivo (manter sessão 30 dias)</span>
+        </label>
+
         <button className="primary" type="submit" disabled={isLoading}>
           {isLoading ? <Loader2 size={14} className="animate-spin" /> : null}
           Entrar
@@ -160,6 +171,21 @@ function LoginForm() {
           border-radius: 8px;
           font-size: 12px;
           margin-bottom: 12px;
+        }
+        .remember {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: var(--k2-text-dim);
+          cursor: pointer;
+          user-select: none;
+        }
+        .remember input {
+          width: 15px;
+          height: 15px;
+          accent-color: var(--k2-accent);
+          cursor: pointer;
         }
         .pw-wrap { position: relative; }
         .pw-wrap :global(input) { padding-right: 40px; }

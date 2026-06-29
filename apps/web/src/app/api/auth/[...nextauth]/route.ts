@@ -47,6 +47,7 @@ const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        lembrar: { label: 'Lembrar', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -60,6 +61,7 @@ const authOptions: NextAuthOptions = {
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
+              lembrar: credentials.lembrar === 'true',
             }),
           })
 
@@ -131,7 +133,11 @@ const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 24 * 60 * 60,  // 24h — alinhado com JWT da API
+    // 30 dias: >= TTL máximo do token da API (30d com "confiar neste
+    // dispositivo"). A expiração efectiva é governada pelo token da API —
+    // quando este expira, o api() faz logout automático. Sem isto (24h),
+    // a sessão era cortada antes do token de 30d.
+    maxAge: 30 * 24 * 60 * 60,
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
