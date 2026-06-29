@@ -48,6 +48,8 @@ export default function TarefasPage() {
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editando, setEditando] = useState<Tarefa | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<TarefaEstado | null>(null)
 
   const load = useCallback(async () => {
     if (!token) return
@@ -102,6 +104,28 @@ export default function TarefasPage() {
     }
   }
 
+  // Drag-and-drop: muda o estado da tarefa ao largar noutra coluna.
+  // Optimista (move já o cartão) + PATCH; refetch reconcilia carimbos
+  // (ex.: concluidaEm) ou reverte em caso de erro.
+  const mover = async (tarefaId: string, novoEstado: TarefaEstado) => {
+    const t = tarefas.find((x) => x.id === tarefaId)
+    if (!t || t.estado === novoEstado) return
+    setTarefas((prev) =>
+      prev.map((x) => (x.id === tarefaId ? { ...x, estado: novoEstado } : x)),
+    )
+    if (!token) return
+    try {
+      await api(`/tarefas/${tarefaId}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ estado: novoEstado }),
+      })
+      void load()
+    } catch {
+      void load()
+    }
+  }
+
   const porColuna = useMemo(() => {
     const m: Record<string, Tarefa[]> = {}
     for (const c of COLUNAS) m[c.estado] = []
@@ -143,7 +167,20 @@ export default function TarefasPage() {
       {vista === 'quadro' && (
         <div className="tz-board">
           {COLUNAS.map((c) => (
-            <div key={c.estado} className="tz-col">
+            <div
+              key={c.estado}
+              className={`tz-col${dragOver === c.estado ? ' over' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                if (dragOver !== c.estado) setDragOver(c.estado)
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const id = e.dataTransfer.getData('text/plain') || draggingId
+                setDragOver(null)
+                if (id) void mover(id, c.estado)
+              }}
+            >
               <div className="tz-col-head">
                 <span>{c.label}</span>
                 <span className="tz-count">{porColuna[c.estado]?.length ?? 0}</span>
@@ -151,10 +188,21 @@ export default function TarefasPage() {
               <div className="tz-col-body">
                 {loading && <div className="tz-empty">A carregar…</div>}
                 {!loading && (porColuna[c.estado]?.length ?? 0) === 0 && (
-                  <div className="tz-empty">Sem tarefas.</div>
+                  <div className="tz-empty">Arraste para aqui ou crie uma tarefa.</div>
                 )}
                 {porColuna[c.estado]?.map((t) => (
-                  <TarefaCard key={t.id} tarefa={t} onClick={() => abrirEdicao(t)} onConcluir={() => void concluir(t)} />
+                  <TarefaCard
+                    key={t.id}
+                    tarefa={t}
+                    dragging={draggingId === t.id}
+                    onClick={() => abrirEdicao(t)}
+                    onConcluir={() => void concluir(t)}
+                    onDragStart={() => setDraggingId(t.id)}
+                    onDragEnd={() => {
+                      setDraggingId(null)
+                      setDragOver(null)
+                    }}
+                  />
                 ))}
               </div>
             </div>
@@ -182,7 +230,8 @@ export default function TarefasPage() {
         .tz-seg button.on { background: var(--k2-accent); color: var(--k2-accent-fg); }
         .tz-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
         @media (max-width: 900px) { .tz-board { grid-template-columns: 1fr; } }
-        .tz-col { background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); padding: 12px; }
+        .tz-col { background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); padding: 12px; transition: border-color 120ms ease, background 120ms ease; }
+        .tz-col.over { border-color: var(--k2-accent); background: var(--k2-bg-hover, var(--k2-bg-elev-2)); }
         .tz-col-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; color: var(--k2-text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
         .tz-count { background: var(--k2-bg-elev-2); color: var(--k2-text-mute); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
         .tz-col-body { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
@@ -247,7 +296,21 @@ function TrabalhoLista({ itens, loading }: { itens: ItemTrabalho[]; loading: boo
   )
 }
 
-function TarefaCard({ tarefa, onClick, onConcluir }: { tarefa: Tarefa; onClick: () => void; onConcluir: () => void }) {
+function TarefaCard({
+  tarefa,
+  dragging,
+  onClick,
+  onConcluir,
+  onDragStart,
+  onDragEnd,
+}: {
+  tarefa: Tarefa
+  dragging?: boolean
+  onClick: () => void
+  onConcluir: () => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
+}) {
   const fechada = tarefa.estado === TarefaEstado.CONCLUIDA || tarefa.estado === TarefaEstado.CANCELADA
   const venc = tarefa.dataVencimento ? new Date(tarefa.dataVencimento) : null
   const atrasada = !!venc && !fechada && venc.getTime() < Date.now()
@@ -255,8 +318,20 @@ function TarefaCard({ tarefa, onClick, onConcluir }: { tarefa: Tarefa; onClick: 
   const iniciais = resp ? `${resp.firstName[0] ?? ''}${resp.lastName[0] ?? ''}`.toUpperCase() : null
 
   return (
-    <div className="tc" onClick={onClick} role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}>
+    <div
+      className={`tc${dragging ? ' dragging' : ''}`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', tarefa.id)
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart?.()
+      }}
+      onDragEnd={() => onDragEnd?.()}
+      onKeyDown={(e) => { if (e.key === 'Enter') onClick() }}
+    >
       <div className="tc-top">
         <span className="tc-prio" style={{ color: PRIO_COR[tarefa.prioridade] }}>
           {TAREFA_PRIORIDADE_LABELS[tarefa.prioridade]}
@@ -285,8 +360,10 @@ function TarefaCard({ tarefa, onClick, onConcluir }: { tarefa: Tarefa; onClick: 
         {iniciais && <span className="tc-resp" title={`${resp!.firstName} ${resp!.lastName}`}>{iniciais}</span>}
       </div>
       <style jsx>{`
-        .tc { background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); padding: 10px 12px; cursor: pointer; transition: border-color 120ms ease; }
+        .tc { background: var(--k2-bg); border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); padding: 10px 12px; cursor: grab; transition: border-color 120ms ease, opacity 120ms ease; }
         .tc:hover { border-color: var(--k2-border-strong, var(--k2-accent)); }
+        .tc:active { cursor: grabbing; }
+        .tc.dragging { opacity: 0.5; }
         .tc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .tc-prio { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
         .tc-done { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--k2-border); background: var(--k2-bg-elev); color: var(--k2-text-mute); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }

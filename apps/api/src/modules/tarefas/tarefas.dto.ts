@@ -47,3 +47,19 @@ export const TrabalhoQuerySchema = z.object({
   dias: z.coerce.number().int().min(1).max(365).default(90),
 });
 export type TrabalhoQuery = z.infer<typeof TrabalhoQuerySchema>;
+
+export const AddChecklistSchema = z.object({
+  texto: z.string().min(1).max(500),
+});
+export type AddChecklistDto = z.infer<typeof AddChecklistSchema>;
+
+export const UpdateChecklistSchema = z.object({
+  texto: z.string().min(1).max(500).optional(),
+  concluido: z.boolean().optional(),
+});
+export type UpdateChecklistDto = z.infer<typeof UpdateChecklistSchema>;
+
+export const AddComentarioSchema = z.object({
+  texto: z.string().min(1).max(5000),
+});
+export type AddComentarioDto = z.infer<typeof AddComentarioSchema>;

@@ -20,15 +20,28 @@ import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
 import { TarefasService } from './tarefas.service';
 import {
+  AddChecklistDto,
+  AddChecklistSchema,
+  AddComentarioDto,
+  AddComentarioSchema,
   CreateTarefaDto,
   CreateTarefaSchema,
   ListTarefasQuery,
   ListTarefasQuerySchema,
   TrabalhoQuery,
   TrabalhoQuerySchema,
+  UpdateChecklistDto,
+  UpdateChecklistSchema,
   UpdateTarefaDto,
   UpdateTarefaSchema,
 } from './tarefas.dto';
+
+const WRITE_ROLES = [
+  Role.ADMIN,
+  Role.LEGAL_LEAD,
+  Role.CONTRACT_MANAGER,
+  Role.BUSINESS_USER,
+] as const;
 
 @Controller('tarefas')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -103,5 +116,65 @@ export class TarefasController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.tarefas.softDelete(tenant.tenantId, user.sub, id);
+  }
+
+  // ─── Checklist ────────────────────────────────────────────────────
+
+  @Post(':id/checklist')
+  @Roles(...WRITE_ROLES)
+  async addChecklist(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ParseZodPipe(AddChecklistSchema)) dto: AddChecklistDto,
+  ) {
+    return this.tarefas.addChecklistItem(tenant.tenantId, user.sub, id, dto.texto);
+  }
+
+  @Patch(':id/checklist/:itemId')
+  @Roles(...WRITE_ROLES)
+  async updateChecklist(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
+    @Body(new ParseZodPipe(UpdateChecklistSchema)) dto: UpdateChecklistDto,
+  ) {
+    return this.tarefas.updateChecklistItem(tenant.tenantId, user.sub, id, itemId, dto);
+  }
+
+  @Delete(':id/checklist/:itemId')
+  @Roles(...WRITE_ROLES)
+  async removeChecklist(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('itemId', new ParseUUIDPipe()) itemId: string,
+  ) {
+    return this.tarefas.removeChecklistItem(tenant.tenantId, user.sub, id, itemId);
+  }
+
+  // ─── Comentários ──────────────────────────────────────────────────
+
+  @Post(':id/comentarios')
+  @Roles(...WRITE_ROLES)
+  async addComentario(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ParseZodPipe(AddComentarioSchema)) dto: AddComentarioDto,
+  ) {
+    return this.tarefas.addComentario(tenant.tenantId, user.sub, id, dto.texto);
+  }
+
+  @Delete(':id/comentarios/:comentarioId')
+  @Roles(...WRITE_ROLES)
+  async removeComentario(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('comentarioId', new ParseUUIDPipe()) comentarioId: string,
+  ) {
+    return this.tarefas.removeComentario(tenant.tenantId, user.sub, id, comentarioId);
   }
 }

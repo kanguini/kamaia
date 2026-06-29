@@ -24,6 +24,19 @@ const INCLUDE = {
   contrato: { select: { id: true, numeroInterno: true, titulo: true } },
 } satisfies Prisma.TarefaInclude;
 
+// Detalhe (drawer): inclui checklist + comentários. NÃO usado na lista do
+// quadro (seria pesado por cartão).
+const INCLUDE_DETALHE = {
+  ...INCLUDE,
+  checklist: { orderBy: { ordem: 'asc' } },
+  comentarios: {
+    orderBy: { createdAt: 'asc' },
+    include: {
+      autor: { select: { id: true, firstName: true, lastName: true } },
+    },
+  },
+} satisfies Prisma.TarefaInclude;
+
 @Injectable()
 export class TarefasService {
   constructor(
@@ -108,10 +121,114 @@ export class TarefasService {
   async get(tenantId: string, id: string) {
     const tarefa = await this.prisma.tarefa.findFirst({
       where: { id, tenantId, deletedAt: null },
-      include: INCLUDE,
+      include: INCLUDE_DETALHE,
     });
     if (!tarefa) throw new NotFoundException('Tarefa não encontrada');
     return tarefa;
+  }
+
+  // ─── Checklist ────────────────────────────────────────────────────
+
+  async addChecklistItem(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    texto: string,
+  ) {
+    await this.getRaw(tenantId, id);
+    const last = await this.prisma.tarefaChecklistItem.findFirst({
+      where: { tarefaId: id },
+      orderBy: { ordem: 'desc' },
+      select: { ordem: true },
+    });
+    await this.prisma.tarefaChecklistItem.create({
+      data: { tarefaId: id, texto, ordem: (last?.ordem ?? -1) + 1 },
+    });
+    await this.auditTarefa(tenantId, actorUserId, id);
+    return this.get(tenantId, id);
+  }
+
+  async updateChecklistItem(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    itemId: string,
+    dto: { texto?: string; concluido?: boolean },
+  ) {
+    await this.getRaw(tenantId, id);
+    const { count } = await this.prisma.tarefaChecklistItem.updateMany({
+      where: { id: itemId, tarefaId: id },
+      data: {
+        ...(dto.texto !== undefined && { texto: dto.texto }),
+        ...(dto.concluido !== undefined && { concluido: dto.concluido }),
+      },
+    });
+    if (count === 0) throw new NotFoundException('Item não encontrado');
+    await this.auditTarefa(tenantId, actorUserId, id);
+    return this.get(tenantId, id);
+  }
+
+  async removeChecklistItem(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    itemId: string,
+  ) {
+    await this.getRaw(tenantId, id);
+    await this.prisma.tarefaChecklistItem.deleteMany({
+      where: { id: itemId, tarefaId: id },
+    });
+    await this.auditTarefa(tenantId, actorUserId, id);
+    return this.get(tenantId, id);
+  }
+
+  // ─── Comentários ──────────────────────────────────────────────────
+
+  async addComentario(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    texto: string,
+  ) {
+    await this.getRaw(tenantId, id);
+    await this.prisma.tarefaComentario.create({
+      data: { tarefaId: id, autorId: actorUserId, texto },
+    });
+    await this.auditTarefa(tenantId, actorUserId, id);
+    return this.get(tenantId, id);
+  }
+
+  async removeComentario(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    comentarioId: string,
+  ) {
+    await this.getRaw(tenantId, id);
+    // Só o autor pode apagar o seu comentário (defesa contra edição
+    // cruzada; a role já restringe quem chega aqui).
+    const { count } = await this.prisma.tarefaComentario.deleteMany({
+      where: { id: comentarioId, tarefaId: id, autorId: actorUserId },
+    });
+    if (count === 0) {
+      throw new NotFoundException('Comentário não encontrado ou não é seu');
+    }
+    await this.auditTarefa(tenantId, actorUserId, id);
+    return this.get(tenantId, id);
+  }
+
+  private async auditTarefa(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+  ) {
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.UPDATE,
+      entityType: EntityType.TAREFA,
+      entityId: id,
+    });
   }
 
   async update(

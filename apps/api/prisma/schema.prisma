@@ -128,6 +128,7 @@ model User {
   pushSubscriptions PushSubscription[]
   aiConversations AIConversation[]
   tarefas         Tarefa[]
+  tarefaComentarios TarefaComentario[]
 
   @@index([email])
   @@index([resetTokenHash])
@@ -1475,11 +1476,42 @@ model Tarefa {
   contrato       Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
   responsavel    User?            @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
 
+  checklist      TarefaChecklistItem[]
+  comentarios    TarefaComentario[]
+
   @@index([tenantId, responsavelId, estado])
   @@index([tenantId, estado, dataVencimento])
   @@index([tenantId, contratoId])
   @@index([tenantId, deletedAt])
   @@map("tarefas")
+}
+
+model TarefaChecklistItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  tarefaId  String   @map("tarefa_id") @db.Uuid
+  texto     String   @db.VarChar(500)
+  concluido Boolean  @default(false)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tarefa    Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  @@index([tarefaId])
+  @@map("tarefa_checklist_itens")
+}
+
+model TarefaComentario {
+  id        String   @id @default(uuid()) @db.Uuid
+  tarefaId  String   @map("tarefa_id") @db.Uuid
+  autorId   String   @map("autor_id") @db.Uuid
+  texto     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tarefa    Tarefa   @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  autor     User     @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([tarefaId])
+  @@map("tarefa_comentarios")
 }
 
 model PushSubscription {
