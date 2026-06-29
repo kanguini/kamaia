@@ -8,8 +8,11 @@ import { type ConnectionOptions, Queue, Worker } from 'bullmq';
 import IORedis, { type Redis } from 'ioredis';
 
 export interface LegislacaoImportJob {
-  /** 'full' processa tudo; 'incremental' salta os que já existem. */
-  mode: 'full' | 'incremental';
+  /**
+   * 'full' processa todo o lex.ao; 'incremental' salta os que já existem;
+   * 'reguladores' corre os adaptadores dos sites oficiais (CMC, …).
+   */
+  mode: 'full' | 'incremental' | 'reguladores';
   orgaoFilter?: string;
   limit?: number;
 }

@@ -27,7 +27,7 @@ import { chunkConteudo } from './lex-ao.parse';
 import { LexAoImportService } from './lex-ao-import.service';
 
 const ImportarSchema = z.object({
-  mode: z.enum(['full', 'incremental']).default('incremental'),
+  mode: z.enum(['full', 'incremental', 'reguladores']).default('incremental'),
   orgaoFilter: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(2000).optional(),
 });

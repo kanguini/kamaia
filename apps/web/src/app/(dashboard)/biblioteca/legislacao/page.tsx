@@ -29,7 +29,7 @@ interface LegItem {
   diploma: string
   orgao: string | null
   ano: number | null
-  fonte: 'CURADO' | 'LEXAO'
+  fonte: string // CURADO | LEXAO | código de regulador (CMC, …)
   publicacao: string | null
   url: string | null
 }
@@ -146,13 +146,13 @@ export default function LegislacaoPage() {
   // Import (admin)
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<string | null>(null)
-  const triggerImport = async () => {
+  const triggerImport = async (mode: 'incremental' | 'reguladores' = 'incremental') => {
     if (!token) return
     setImporting(true)
     setImportMsg(null)
     try {
       const r = await api<{ ok: boolean; via?: string; estado: string }>(
-        `/legislacao/importar?mode=incremental`,
+        `/legislacao/importar?mode=${mode}`,
         { method: 'POST', token },
       )
       setImportMsg(
@@ -242,11 +242,20 @@ export default function LegislacaoPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={triggerImport}
+              onClick={() => triggerImport('reguladores')}
               loading={importing}
               leftIcon={<RefreshCw size={13} />}
             >
-              Importar do lex.ao
+              Importar reguladores
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => triggerImport('incremental')}
+              loading={importing}
+              leftIcon={<RefreshCw size={13} />}
+            >
+              Importar lex.ao
             </Button>
           </div>
         )}
@@ -365,9 +374,7 @@ export default function LegislacaoPage() {
           >
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, fontWeight: 500 }}>{it.titulo}</span>
-              <Badge variant={it.fonte === 'LEXAO' ? 'info' : 'success'}>
-                {it.fonte === 'LEXAO' ? 'lex.ao' : 'Curada'}
-              </Badge>
+              <Badge variant={fonteVariant(it.fonte)}>{fonteLabel(it.fonte)}</Badge>
               {it.orgao && <Badge variant="default">{it.orgao}</Badge>}
               {it.ano != null && (
                 <span style={{ fontSize: 11, color: 'var(--k2-text-mute)' }}>{it.ano}</span>
@@ -400,9 +407,7 @@ export default function LegislacaoPage() {
           {!detailLoading && detail && (
             <>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Badge variant={detail.fonte === 'LEXAO' ? 'info' : 'success'}>
-                  {detail.fonte === 'LEXAO' ? 'lex.ao' : 'Curada'}
-                </Badge>
+                <Badge variant={fonteVariant(detail.fonte)}>{fonteLabel(detail.fonte)}</Badge>
                 {detail.orgao && <Badge variant="default">{detail.orgao}</Badge>}
                 {detail.ano != null && (
                   <span style={{ fontSize: 12, color: 'var(--k2-text-mute)' }}>{detail.ano}</span>
@@ -526,6 +531,17 @@ export default function LegislacaoPage() {
       </Drawer>
     </div>
   )
+}
+
+function fonteLabel(f: string): string {
+  if (f === 'LEXAO') return 'lex.ao'
+  if (f === 'CURADO') return 'Curada'
+  return f
+}
+function fonteVariant(f: string): string {
+  if (f === 'LEXAO') return 'info'
+  if (f === 'CURADO') return 'success'
+  return 'warning'
 }
 
 function Field({
