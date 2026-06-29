@@ -12,11 +12,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Search, ExternalLink, RefreshCw } from 'lucide-react'
+import { Search, ExternalLink, RefreshCw, Plus } from 'lucide-react'
 import type { Role } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
-import { Input, Select } from '@/components/ui/input'
+import { Input, Select, Textarea } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Drawer } from '@/components/ui/drawer'
@@ -67,6 +67,7 @@ export default function LegislacaoPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const buildQuery = useCallback(
     (c: string | null) => {
@@ -107,7 +108,7 @@ export default function LegislacaoPage() {
     return () => {
       cancelled = true
     }
-  }, [buildQuery, token, status])
+  }, [buildQuery, token, status, reloadKey])
 
   const loadMore = async () => {
     if (!cursor || !token) return
@@ -166,6 +167,54 @@ export default function LegislacaoPage() {
     }
   }
 
+  // Adicionar diploma (admin) — fiável, sem scraping
+  const [addOpen, setAddOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [addErr, setAddErr] = useState<string | null>(null)
+  const [form, setForm] = useState({
+    titulo: '',
+    diploma: '',
+    orgao: '',
+    ano: '',
+    publicacao: '',
+    url: '',
+    conteudo: '',
+  })
+  const setF =
+    (k: keyof typeof form) =>
+    (
+      e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }))
+  const submitAdd = async () => {
+    if (!token) return
+    if (form.titulo.trim().length < 2 || form.diploma.trim().length < 2) {
+      setAddErr('Título e referência do diploma são obrigatórios.')
+      return
+    }
+    setSaving(true)
+    setAddErr(null)
+    try {
+      const body: Record<string, unknown> = {
+        titulo: form.titulo.trim(),
+        diploma: form.diploma.trim(),
+        orgao: form.orgao.trim() || undefined,
+        ano: form.ano ? Number(form.ano) : undefined,
+        publicacao: form.publicacao || undefined,
+        url: form.url.trim() || undefined,
+        conteudo: form.conteudo.trim() || undefined,
+      }
+      await api('/legislacao', { method: 'POST', token, body: JSON.stringify(body) })
+      setAddOpen(false)
+      setForm({ titulo: '', diploma: '', orgao: '', ano: '', publicacao: '', url: '', conteudo: '' })
+      setReloadKey((k) => k + 1)
+    } catch (e) {
+      setAddErr((e as { error?: string })?.error ?? 'Não foi possível guardar o diploma.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header
@@ -178,15 +227,28 @@ export default function LegislacaoPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={triggerImport}
-            loading={importing}
-            leftIcon={<RefreshCw size={13} />}
-          >
-            Importar do lex.ao
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setAddErr(null)
+                setAddOpen(true)
+              }}
+              leftIcon={<Plus size={13} />}
+            >
+              Adicionar diploma
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={triggerImport}
+              loading={importing}
+              leftIcon={<RefreshCw size={13} />}
+            >
+              Importar do lex.ao
+            </Button>
+          </div>
         )}
       </header>
 
@@ -398,6 +460,96 @@ export default function LegislacaoPage() {
           )}
         </div>
       </Drawer>
+
+      {/* Adicionar diploma (admin) */}
+      <Drawer open={addOpen} onClose={() => setAddOpen(false)} width={620}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Adicionar diploma</h2>
+          <p style={{ fontSize: 12, color: 'var(--k2-text-mute)', margin: 0 }}>
+            Útil para diplomas de reguladores (BNA, ARSEG, CMC, INACOM…) que o
+            lex.ao não cobre. Se colar o texto, o Dr. Kamaia passa a citá-lo.
+          </p>
+
+          {addErr && (
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--k2-bad)',
+                background: 'var(--k2-bg-elev)',
+                border: '1px solid var(--k2-border)',
+                borderRadius: 'var(--k2-radius-sm)',
+                padding: '10px 12px',
+              }}
+            >
+              {addErr}
+            </div>
+          )}
+
+          <Field label="Título *">
+            <Input value={form.titulo} onChange={setF('titulo')} placeholder="Ex: Regime Jurídico das Sociedades Seguradoras" />
+          </Field>
+          <Field label="Referência do diploma *">
+            <Input value={form.diploma} onChange={setF('diploma')} placeholder="Ex: Lei n.º 14/21, de 19 de Maio" />
+          </Field>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Field label="Órgão" style={{ flex: 1, minWidth: 180 }}>
+              <Input value={form.orgao} onChange={setF('orgao')} placeholder="Ex: ARSEG" />
+            </Field>
+            <Field label="Ano" style={{ width: 110 }}>
+              <Input type="number" value={form.ano} onChange={setF('ano')} placeholder="2021" />
+            </Field>
+            <Field label="Publicação" style={{ width: 160 }}>
+              <Input type="date" value={form.publicacao} onChange={setF('publicacao')} />
+            </Field>
+          </div>
+          <Field label="Link ao original (opcional)">
+            <Input value={form.url} onChange={setF('url')} placeholder="https://…" />
+          </Field>
+          <Field label="Texto do diploma (opcional — alimenta o Dr. Kamaia)">
+            <Textarea
+              value={form.conteudo}
+              onChange={setF('conteudo')}
+              rows={8}
+              placeholder="Cole aqui o articulado do diploma…"
+            />
+          </Field>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <Button variant="ghost" onClick={() => setAddOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" onClick={submitAdd} loading={saving}>
+              Guardar diploma
+            </Button>
+          </div>
+        </div>
+      </Drawer>
     </div>
+  )
+}
+
+function Field({
+  label,
+  children,
+  style,
+}: {
+  label: string
+  children: React.ReactNode
+  style?: React.CSSProperties
+}) {
+  return (
+    <label style={{ display: 'block', ...style }}>
+      <span
+        style={{
+          display: 'block',
+          fontSize: 11,
+          color: 'var(--k2-text-mute)',
+          marginBottom: 5,
+        }}
+      >
+        {label}
+      </span>
+      {children}
+    </label>
   )
 }

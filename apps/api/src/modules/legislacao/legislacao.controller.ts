@@ -1,4 +1,6 @@
 import {
+  Body,
+  ConflictException,
   Controller,
   Get,
   Param,
@@ -15,10 +17,13 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
 import {
+  CreateLegislationDto,
+  CreateLegislationSchema,
   ListLegislationQuery,
   ListLegislationQuerySchema,
 } from '../rag/rag.dto';
 import { RagService } from '../rag/rag.service';
+import { chunkConteudo } from './lex-ao.parse';
 import { LexAoImportService } from './lex-ao-import.service';
 
 const ImportarSchema = z.object({
@@ -65,6 +70,40 @@ export class LegislacaoController {
   )
   async get(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.rag.get(id);
+  }
+
+  /**
+   * Adicionar um diploma manualmente (ex. de um regulador que o lex.ao não
+   * cobre). Fiável e sem scraping. Se houver texto, fragmenta-o para o
+   * Dr. Kamaia poder citar. ADMIN/LEGAL_LEAD.
+   */
+  @Post()
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async criar(
+    @Body(new ParseZodPipe(CreateLegislationSchema)) dto: CreateLegislationDto,
+  ) {
+    let doc: { id: string };
+    try {
+      doc = await this.rag.create(dto);
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') {
+        throw new ConflictException(
+          'Já existe um diploma com esse código ou link.',
+        );
+      }
+      throw e;
+    }
+    if (dto.conteudo && dto.conteudo.trim().length > 0) {
+      const trechos = chunkConteudo(dto.conteudo);
+      if (trechos.length > 0) {
+        await this.rag
+          .addChunks(doc.id, {
+            chunks: trechos.map((trecho, i) => ({ trecho, ordem: i })),
+          })
+          .catch(() => undefined);
+      }
+    }
+    return doc;
   }
 
   /**

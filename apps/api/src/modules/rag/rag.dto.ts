@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
 export const CreateLegislationSchema = z.object({
-  codigo: z.string().min(1).max(80),
+  codigo: z.string().min(1).max(80).optional(),
   titulo: z.string().min(2).max(300),
   diploma: z.string().min(2).max(200),
+  orgao: z.string().max(200).optional(),
+  ano: z.coerce.number().int().min(1900).max(2200).optional(),
+  fonte: z.enum(['CURADO', 'LEXAO']).default('CURADO'),
   publicacao: z.coerce.date().optional(),
   emVigorDesde: z.coerce.date().optional(),
   emVigorAte: z.coerce.date().optional(),
