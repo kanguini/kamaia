@@ -79,9 +79,13 @@ export class ContratoDatasChaveService {
 
   /** Para o scanner global (worker BullMQ) — usado pelo serviço de alertas. */
   async listVencendoEm(tenantId: string, dias: number) {
+    // `data` é @db.Date (meia-noite UTC). Usar a hora actual no limite
+    // inferior excluía as datas-chave que vencem HOJE. Normaliza a
+    // meia-noite UTC para apanhar o próprio dia.
     const agora = new Date();
+    agora.setUTCHours(0, 0, 0, 0);
     const limite = new Date(agora);
-    limite.setDate(limite.getDate() + dias);
+    limite.setUTCDate(limite.getUTCDate() + dias);
     return this.prisma.contratoDataChave.findMany({
       where: {
         contrato: { tenantId, deletedAt: null },

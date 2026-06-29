@@ -159,12 +159,20 @@ export default function IAPage() {
           const dataLine = lines.find((l) => l.startsWith('data: '))
           if (!eventLine || !dataLine) continue
           const kind = eventLine.slice(7).trim()
-          const data = JSON.parse(dataLine.slice(6).trim())
+          // Um bloco SSE malformado (proxy, chunk corrompido) não deve
+          // rebentar o loop e crashar o chat — salta-o, como já faz o
+          // painel agêntico.
+          let data: { [key: string]: unknown }
+          try {
+            data = JSON.parse(dataLine.slice(6).trim())
+          } catch {
+            continue
+          }
 
           if (kind === 'user-msg') {
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === tempUserId ? { ...m, id: data.messageId } : m,
+                m.id === tempUserId ? { ...m, id: String(data.messageId) } : m,
               ),
             )
           } else if (kind === 'citations') {
@@ -183,7 +191,7 @@ export default function IAPage() {
                 m.id === tempAssistantId
                   ? {
                       ...m,
-                      id: data.assistantMessageId,
+                      id: String(data.assistantMessageId),
                       streaming: false,
                       citacoes: pendingCitations,
                     }
@@ -196,7 +204,7 @@ export default function IAPage() {
                 m.id === tempAssistantId
                   ? {
                       ...m,
-                      content: `⚠ ${data.message}`,
+                      content: `⚠ ${String(data.message)}`,
                       streaming: false,
                     }
                   : m,

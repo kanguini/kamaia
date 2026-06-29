@@ -276,6 +276,32 @@ export class IaService {
   }
 
   /**
+   * Mensagens de uma conversa, no formato que o frontend espera
+   * (`{ data: [...] }` com `content`). Scoped a {id, tenantId, userId}
+   * para evitar IDOR.
+   */
+  async listMessages(tenantId: string, userId: string, id: string) {
+    const conv = await this.prisma.aIConversation.findFirst({
+      where: { id, tenantId, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!conv) throw new NotFoundException('Conversation not found');
+    const messages = await this.prisma.aIMessage.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      data: messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.conteudo,
+        citacoes: m.citacoes,
+        createdAt: m.createdAt,
+      })),
+    };
+  }
+
+  /**
    * Soft delete de uma conversa (nunca DELETE físico — regra do
    * projecto). Scoped a {id, tenantId, userId} para evitar IDOR. As
    * mensagens permanecem na BD mas ficam inacessíveis (filtradas pela

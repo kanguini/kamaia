@@ -31,6 +31,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import { fmtMoney } from '@/lib/clm-format'
 import { CustomFieldsDrawer } from './custom-fields-drawer'
 
@@ -214,7 +215,10 @@ export function ResumoPartes({ contratoId }: { contratoId: string }) {
       token: session.accessToken,
     })
       .then((r) => {
-        if (!cancelled) setPartes(r.data ?? [])
+        // O endpoint devolve array directo; unwrapList aceita ambas as
+        // formas (array ou {data}) — sem isto, r.data era undefined e o
+        // bloco "Partes" ficava sempre vazio.
+        if (!cancelled) setPartes(unwrapList<ParteRow>(r))
       })
       .catch(() => {
         if (!cancelled) setPartes([])
@@ -594,8 +598,10 @@ export function ResumoProximosEventos({ contratoId }: { contratoId: string }) {
       }).catch(() => ({ data: [] })),
     ]).then(([d, o]) => {
       if (cancelled) return
-      setDatas(d.data ?? [])
-      setObrigacoes(o.data ?? [])
+      // Endpoints devolvem array directo → unwrapList (senão "Próximos
+      // eventos" nunca mostrava datas-chave nem obrigações).
+      setDatas(unwrapList<DataChaveItem>(d))
+      setObrigacoes(unwrapList<ObrigacaoItem>(o))
     })
     return () => {
       cancelled = true

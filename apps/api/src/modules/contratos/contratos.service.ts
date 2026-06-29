@@ -408,9 +408,14 @@ export class ContratosService {
     };
 
     if (q.expiraEm !== undefined) {
-      const limite = new Date();
-      limite.setDate(limite.getDate() + q.expiraEm);
-      where.dataTermo = { lte: limite, gte: new Date() };
+      // dataTermo é @db.Date (meia-noite UTC). Comparar o limite inferior
+      // com `new Date()` (hora actual) excluía contratos que vencem HOJE
+      // — perdia-se o último dia de aviso. Normaliza para meia-noite UTC.
+      const hoje = new Date();
+      hoje.setUTCHours(0, 0, 0, 0);
+      const limite = new Date(hoje);
+      limite.setUTCDate(limite.getUTCDate() + q.expiraEm);
+      where.dataTermo = { lte: limite, gte: hoje };
     }
 
     const rows = await this.prisma.contrato.findMany({

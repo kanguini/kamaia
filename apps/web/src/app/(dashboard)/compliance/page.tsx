@@ -20,8 +20,9 @@ import { fmtDate, fmtMoney } from '@/lib/clm-format'
 interface PendingActo {
   id: string
   contratoId: string
-  contratoNumero: string | null
-  contratoTitulo: string
+  // O backend devolve o contrato aninhado (não campos flat). Antes a
+  // página lia contratoNumero/contratoTitulo → label vazio.
+  contrato: { id: string; numeroInterno: string | null; titulo: string } | null
   tipo: ActoRegulatorioTipo
   estado: ActoEstado
   referenciaLegal: string | null
@@ -94,7 +95,7 @@ function ActoRow({ acto, onChanged }: { acto: PendingActo; onChanged: () => void
         <div style={{ fontSize: 13, fontWeight: 500 }}>{ACTO_REGULATORIO_LABELS[acto.tipo]}</div>
         <div style={{ fontSize: 12, color: 'var(--k2-text-dim)', marginTop: 2 }}>
           <Link href={`/contratos/${acto.contratoId}`} style={{ color: 'var(--k2-accent)', textDecoration: 'none' }}>
-            {acto.contratoNumero ?? acto.contratoTitulo}
+            {acto.contrato?.numeroInterno ?? acto.contrato?.titulo ?? 'Contrato'}
           </Link>
           {acto.referenciaLegal && <span> · {acto.referenciaLegal}</span>}
         </div>

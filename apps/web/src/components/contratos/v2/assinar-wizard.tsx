@@ -27,6 +27,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { unwrapList } from '@/lib/list'
 import { Drawer } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
@@ -97,14 +98,18 @@ export function AssinarWizard({
         token: session.accessToken,
       }).catch(() => ({ data: [] })),
     ]).then(([v, p]) => {
-      setVersoes(v.data ?? [])
+      // Endpoints devolvem array directo → unwrapList. Sem isto, versões
+      // e partes vinham vazias e não dava para iniciar a assinatura.
+      const versoesList = unwrapList<Versao>(v)
+      const partesList = unwrapList<Parte>(p)
+      setVersoes(versoesList)
       // Auto-pick a versão mais recente com documento
-      const withDoc = (v.data ?? []).find((x) => x.documentId)
+      const withDoc = versoesList.find((x) => x.documentId)
       if (withDoc) setVersaoId(withDoc.id)
-      setPartes(p.data ?? [])
+      setPartes(partesList)
       // Pré-popula signers com as partes existentes
       setSigners(
-        (p.data ?? []).map((part, i) => ({
+        partesList.map((part, i) => ({
           id: `s-${part.id}`,
           parteId: part.id,
           nome: part.entidade.nome,
