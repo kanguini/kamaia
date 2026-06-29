@@ -13,7 +13,7 @@
  */
 
 import Link from 'next/link'
-import { BookOpen, ScrollText, Tag, Sparkles } from 'lucide-react'
+import { BookOpen, ScrollText, Tag, Sparkles, Scale } from 'lucide-react'
 
 interface CatalogoCard {
   href: string
@@ -35,6 +35,13 @@ const CARDS: CatalogoCard[] = [
     icon: ScrollText,
     title: 'Cláusulas',
     hint: 'Biblioteca de cláusulas pré-aprovadas (foro, lei aplicável, confidencialidade, força maior). Inserir no editor com 1 clique.',
+  },
+  {
+    href: '/biblioteca/legislacao',
+    icon: Scale,
+    title: 'Legislação',
+    hint: 'Diplomas angolanos (lei, decretos, avisos) importados do lex.ao. Pesquisa por órgão e ano; o Dr. Kamaia cita-os nas respostas.',
+    status: 'novo',
   },
   {
     href: '/biblioteca/tipos',

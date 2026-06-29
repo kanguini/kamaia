@@ -11,7 +11,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, ScrollText, Tag } from 'lucide-react'
+import { BookOpen, ScrollText, Tag, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TabDef {
@@ -23,6 +23,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { href: '/biblioteca/templates', label: 'Templates', icon: BookOpen },
   { href: '/biblioteca/clausulas', label: 'Cláusulas', icon: ScrollText },
+  { href: '/biblioteca/legislacao', label: 'Legislação', icon: Scale },
   { href: '/biblioteca/tipos', label: 'Tipos de contrato', icon: Tag },
 ]
 

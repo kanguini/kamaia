@@ -38,21 +38,31 @@ export class RagService {
           { titulo: { contains: q.q, mode: 'insensitive' } },
           { codigo: { contains: q.q, mode: 'insensitive' } },
           { diploma: { contains: q.q, mode: 'insensitive' } },
+          { orgao: { contains: q.q, mode: 'insensitive' } },
         ],
       }),
+      ...(q.fonte && { fonte: q.fonte }),
+      ...(q.orgao && { orgao: { contains: q.orgao, mode: 'insensitive' } }),
+      ...(q.ano !== undefined && { ano: q.ano }),
     };
-    const rows = await this.prisma.legislationDocument.findMany({
-      where,
-      take: q.limit + 1,
-      ...(q.cursor && { cursor: { id: q.cursor }, skip: 1 }),
-      orderBy: { codigo: 'asc' },
-    });
+    // Ordenação estável p/ o corpus misto: o `codigo` é null nos diplomas
+    // importados (lex.ao), por isso ordenar só por codigo dava paginação
+    // instável. `id` é o desempate único que garante cursor determinístico.
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.legislationDocument.findMany({
+        where,
+        take: q.limit + 1,
+        ...(q.cursor && { cursor: { id: q.cursor }, skip: 1 }),
+        orderBy: [{ ano: 'desc' }, { titulo: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.legislationDocument.count({ where }),
+    ]);
     const hasMore = rows.length > q.limit;
     const data = rows.slice(0, q.limit);
     return {
       data,
       nextCursor: hasMore ? data[data.length - 1].id : null,
-      total: data.length,
+      total,
     };
   }
 

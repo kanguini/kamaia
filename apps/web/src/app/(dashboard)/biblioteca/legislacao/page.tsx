@@ -1,0 +1,403 @@
+'use client'
+
+/**
+ * Biblioteca → Legislação.
+ *
+ * Vista navegável dos diplomas em LegislationDocument — curados + os
+ * ~1.200 importados do lex.ao (fonte='LEXAO'). Pesquisa por título/órgão,
+ * filtros por órgão/ano/fonte, paginação por cursor, e detalhe com o
+ * conteúdo + link para o original. Estes diplomas alimentam as citações
+ * do Dr. Kamaia. ADMIN pode forçar/refrescar a importação.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { Search, ExternalLink, RefreshCw } from 'lucide-react'
+import type { Role } from '@kamaia/shared-types'
+import { api } from '@/lib/api'
+import { useTenants } from '@/hooks/use-tenants'
+import { Input, Select } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Drawer } from '@/components/ui/drawer'
+import { fmtDate } from '@/lib/clm-format'
+
+interface LegItem {
+  id: string
+  codigo: string | null
+  titulo: string
+  diploma: string
+  orgao: string | null
+  ano: number | null
+  fonte: 'CURADO' | 'LEXAO'
+  publicacao: string | null
+  url: string | null
+}
+interface LegDetail extends LegItem {
+  conteudo: string | null
+  emVigorDesde: string | null
+  _count?: { chunks: number }
+}
+interface ListResp {
+  data: LegItem[]
+  nextCursor: string | null
+  total: number
+}
+
+export default function LegislacaoPage() {
+  const { data: session, status } = useSession()
+  const { tenants } = useTenants()
+  const token = session?.accessToken
+
+  const isAdmin = useMemo<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    const id = window.localStorage.getItem('kamaia.activeTenantId')
+    const t = tenants.find((x) => x.id === id)
+    return (t?.role ?? null) === ('ADMIN' as Role)
+  }, [tenants])
+
+  const [q, setQ] = useState('')
+  const [orgao, setOrgao] = useState('')
+  const [ano, setAno] = useState('')
+  const [fonte, setFonte] = useState<'all' | 'CURADO' | 'LEXAO'>('all')
+
+  const [items, setItems] = useState<LegItem[]>([])
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const buildQuery = useCallback(
+    (c: string | null) => {
+      const sp = new URLSearchParams()
+      if (q) sp.set('q', q)
+      if (orgao) sp.set('orgao', orgao)
+      if (ano) sp.set('ano', ano)
+      if (fonte !== 'all') sp.set('fonte', fonte)
+      sp.set('limit', '40')
+      if (c) sp.set('cursor', c)
+      return sp.toString()
+    },
+    [q, orgao, ano, fonte],
+  )
+
+  // Carga inicial / refiltragem
+  useEffect(() => {
+    if (status !== 'authenticated' || !token) return
+    let cancelled = false
+    setLoading(true)
+    api<ListResp>(`/legislacao?${buildQuery(null)}`, { token })
+      .then((res) => {
+        if (cancelled) return
+        setItems(res.data ?? [])
+        setCursor(res.nextCursor)
+        setTotal(res.total)
+        setErr(null)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setItems([])
+          setErr((e as { error?: string })?.error ?? 'Erro a carregar a legislação.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [buildQuery, token, status])
+
+  const loadMore = async () => {
+    if (!cursor || !token) return
+    setLoadingMore(true)
+    try {
+      const res = await api<ListResp>(`/legislacao?${buildQuery(cursor)}`, { token })
+      setItems((prev) => [...prev, ...(res.data ?? [])])
+      setCursor(res.nextCursor)
+    } catch {
+      /* mantém o que já está */
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // Detalhe
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detail, setDetail] = useState<LegDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const openDetail = async (id: string) => {
+    if (!token) return
+    setDetailOpen(true)
+    setDetail(null)
+    setDetailLoading(true)
+    try {
+      const d = await api<LegDetail>(`/legislacao/${id}`, { token })
+      setDetail(d)
+    } catch {
+      setDetail(null)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  // Import (admin)
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+  const triggerImport = async () => {
+    if (!token) return
+    setImporting(true)
+    setImportMsg(null)
+    try {
+      const r = await api<{ ok: boolean; estado: string; mensagem?: string }>(
+        `/legislacao/importar?mode=incremental`,
+        { method: 'POST', token },
+      )
+      setImportMsg(
+        r.ok
+          ? 'Importação iniciada — os diplomas vão aparecer nos próximos minutos. Recarregue para ver.'
+          : r.mensagem ?? 'Não foi possível iniciar a importação.',
+      )
+    } catch {
+      setImportMsg('Erro ao iniciar a importação.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <header
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+      >
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0 }}>Legislação</h1>
+          <p style={{ fontSize: 12, color: 'var(--k2-text-mute)', marginTop: 4 }}>
+            {loading ? 'A carregar…' : `${total.toLocaleString('pt-PT')} diplomas`}
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={triggerImport}
+            loading={importing}
+            leftIcon={<RefreshCw size={13} />}
+          >
+            Importar do lex.ao
+          </Button>
+        )}
+      </header>
+
+      {importMsg && (
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--k2-text-dim)',
+            background: 'var(--k2-bg-elev)',
+            border: '1px solid var(--k2-border)',
+            borderRadius: 'var(--k2-radius-sm)',
+            padding: '10px 12px',
+          }}
+        >
+          {importMsg}
+        </div>
+      )}
+
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 240, position: 'relative' }}>
+          <Search
+            size={14}
+            style={{
+              position: 'absolute',
+              left: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--k2-text-mute)',
+              pointerEvents: 'none',
+            }}
+          />
+          <Input
+            placeholder="Pesquisar título, diploma ou órgão…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            style={{ paddingLeft: 32 }}
+          />
+        </div>
+        <Input
+          placeholder="Órgão (ex: BNA)"
+          value={orgao}
+          onChange={(e) => setOrgao(e.target.value)}
+          style={{ width: 170 }}
+        />
+        <Input
+          type="number"
+          placeholder="Ano"
+          value={ano}
+          onChange={(e) => setAno(e.target.value)}
+          style={{ width: 100 }}
+        />
+        <Select
+          value={fonte}
+          onChange={(e) => setFonte(e.target.value as 'all' | 'CURADO' | 'LEXAO')}
+          style={{ width: 140 }}
+        >
+          <option value="all">Todas as fontes</option>
+          <option value="LEXAO">lex.ao</option>
+          <option value="CURADO">Curada</option>
+        </Select>
+      </div>
+
+      {err && (
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--k2-bad)',
+            background: 'var(--k2-bg-elev)',
+            border: '1px solid var(--k2-border)',
+            borderRadius: 'var(--k2-radius-sm)',
+            padding: '10px 12px',
+          }}
+        >
+          {err}
+        </div>
+      )}
+
+      {!loading && !err && items.length === 0 && (
+        <div
+          style={{
+            background: 'var(--k2-bg-elev)',
+            border: '1px dashed var(--k2-border)',
+            borderRadius: 'var(--k2-radius)',
+            padding: '40px 24px',
+            textAlign: 'center',
+            color: 'var(--k2-text-mute)',
+            fontSize: 13,
+          }}
+        >
+          Sem diplomas a mostrar.
+          {isAdmin
+            ? ' Use “Importar do lex.ao” para carregar a legislação angolana.'
+            : ' A legislação está a ser carregada — volte daqui a pouco.'}
+        </div>
+      )}
+
+      {/* Lista */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((it) => (
+          <button
+            key={it.id}
+            onClick={() => openDetail(it.id)}
+            style={{
+              textAlign: 'left',
+              padding: 14,
+              background: 'var(--k2-bg-elev)',
+              border: '1px solid var(--k2-border)',
+              borderRadius: 'var(--k2-radius)',
+              cursor: 'pointer',
+              font: 'inherit',
+              color: 'inherit',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{it.titulo}</span>
+              <Badge variant={it.fonte === 'LEXAO' ? 'info' : 'success'}>
+                {it.fonte === 'LEXAO' ? 'lex.ao' : 'Curada'}
+              </Badge>
+              {it.orgao && <Badge variant="default">{it.orgao}</Badge>}
+              {it.ano != null && (
+                <span style={{ fontSize: 11, color: 'var(--k2-text-mute)' }}>{it.ano}</span>
+              )}
+            </div>
+            {it.diploma && (
+              <div style={{ fontSize: 12, color: 'var(--k2-text-dim)', marginTop: 6 }}>
+                {it.diploma}
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {cursor && (
+        <Button
+          variant="secondary"
+          onClick={loadMore}
+          loading={loadingMore}
+          style={{ alignSelf: 'center' }}
+        >
+          Carregar mais
+        </Button>
+      )}
+
+      {/* Detalhe */}
+      <Drawer open={detailOpen} onClose={() => setDetailOpen(false)} width={680}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {detailLoading && <div style={{ color: 'var(--k2-text-mute)' }}>A carregar…</div>}
+          {!detailLoading && detail && (
+            <>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Badge variant={detail.fonte === 'LEXAO' ? 'info' : 'success'}>
+                  {detail.fonte === 'LEXAO' ? 'lex.ao' : 'Curada'}
+                </Badge>
+                {detail.orgao && <Badge variant="default">{detail.orgao}</Badge>}
+                {detail.ano != null && (
+                  <span style={{ fontSize: 12, color: 'var(--k2-text-mute)' }}>{detail.ano}</span>
+                )}
+              </div>
+              <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>{detail.titulo}</h2>
+              <div style={{ fontSize: 13, color: 'var(--k2-text-dim)' }}>{detail.diploma}</div>
+              {detail.publicacao && (
+                <div style={{ fontSize: 12, color: 'var(--k2-text-mute)' }}>
+                  Publicação: {fmtDate(detail.publicacao)}
+                </div>
+              )}
+              {detail.url && (
+                <a
+                  href={detail.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13,
+                    color: 'var(--k2-accent)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <ExternalLink size={13} /> Abrir original no lex.ao
+                </a>
+              )}
+              {detail.conteudo && (
+                <pre
+                  style={{
+                    marginTop: 6,
+                    maxHeight: 420,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    fontFamily: 'inherit',
+                    color: 'var(--k2-text-dim)',
+                    background: 'var(--k2-bg)',
+                    border: '1px solid var(--k2-border)',
+                    borderRadius: 'var(--k2-radius-sm)',
+                    padding: 14,
+                  }}
+                >
+                  {detail.conteudo}
+                </pre>
+              )}
+            </>
+          )}
+          {!detailLoading && !detail && (
+            <div style={{ color: 'var(--k2-text-mute)' }}>Não foi possível carregar o diploma.</div>
+          )}
+        </div>
+      </Drawer>
+    </div>
+  )
+}

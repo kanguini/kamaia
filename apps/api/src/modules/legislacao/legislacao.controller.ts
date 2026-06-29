@@ -1,0 +1,94 @@
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { z } from 'zod';
+import { Role } from '@kamaia/shared-types';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { TenantGuard } from '../../common/guards/tenant.guard';
+import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
+import {
+  ListLegislationQuery,
+  ListLegislationQuerySchema,
+} from '../rag/rag.dto';
+import { RagService } from '../rag/rag.service';
+import { LegislacaoImportQueueService } from './legislacao-import-queue.service';
+
+const ImportarSchema = z.object({
+  mode: z.enum(['full', 'incremental']).default('incremental'),
+  orgaoFilter: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(2000).optional(),
+});
+
+/**
+ * Vista navegável da legislação (Biblioteca → Legislação). Lê de
+ * LegislationDocument (curada + importada do lex.ao) reutilizando o
+ * RagService. O trigger de import é a rede de segurança para forçar/
+ * refrescar o crawl quando necessário.
+ */
+@Controller('legislacao')
+@UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+export class LegislacaoController {
+  constructor(
+    private readonly rag: RagService,
+    private readonly queue: LegislacaoImportQueueService,
+  ) {}
+
+  @Get()
+  @Roles(
+    Role.ADMIN,
+    Role.LEGAL_LEAD,
+    Role.CONTRACT_MANAGER,
+    Role.BUSINESS_USER,
+    Role.VIEWER,
+  )
+  async list(
+    @Query(new ParseZodPipe(ListLegislationQuerySchema)) q: ListLegislationQuery,
+  ) {
+    return this.rag.list(q);
+  }
+
+  @Get(':id')
+  @Roles(
+    Role.ADMIN,
+    Role.LEGAL_LEAD,
+    Role.CONTRACT_MANAGER,
+    Role.BUSINESS_USER,
+    Role.VIEWER,
+  )
+  async get(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.rag.get(id);
+  }
+
+  /**
+   * Força o crawl do lex.ao (full ou incremental). Rede de segurança
+   * para o caso de a ingestão automática não ter corrido. Só ADMIN.
+   */
+  @Post('importar')
+  @Roles(Role.ADMIN)
+  async importar(
+    @Query(new ParseZodPipe(ImportarSchema)) q: z.infer<typeof ImportarSchema>,
+  ) {
+    if (!this.queue.enabled) {
+      return {
+        ok: false,
+        estado: 'sem-fila',
+        mensagem:
+          'Importação assíncrona indisponível (sem Redis configurado).',
+      };
+    }
+    const estado = await this.queue.enqueue(`lexao-${q.mode}`, {
+      mode: q.mode,
+      orgaoFilter: q.orgaoFilter,
+      limit: q.limit,
+    });
+    return { ok: estado === 'queued', estado };
+  }
+}
