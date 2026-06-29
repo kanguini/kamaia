@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const CreateConversationSchema = z.object({
-  titulo: z.string().min(2).max(200),
+  // O frontend cria a conversa "preguiçosa" (sem título — só ao escrever a
+  // 1ª mensagem). Sem default, o corpo vazio `{}` dava 400 e o chat não
+  // arrancava. Default garante criação válida; o título real vem depois.
+  titulo: z.string().min(2).max(200).default('Nova conversa'),
   contexto: z.record(z.string(), z.unknown()).optional(),
 });
 export type CreateConversationDto = z.infer<typeof CreateConversationSchema>;
