@@ -34,7 +34,10 @@ export const ListTarefasQuerySchema = z.object({
   /// Só as com prazo já passado e ainda abertas.
   vencidas: z.coerce.boolean().optional(),
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
+  // O quadro de tarefas pede limit=200 para mostrar tudo de uma vez; o
+  // tecto de 100 dava 400 e o quadro ficava vazio (mesmo com tarefas
+  // criadas com sucesso). 200 acomoda a vista; paginação fica para depois.
+  limit: z.coerce.number().int().min(1).max(200).default(50),
   orderBy: z.enum(['dataVencimento', 'prioridade', 'createdAt']).default('dataVencimento'),
   orderDir: z.enum(['asc', 'desc']).default('asc'),
 });
