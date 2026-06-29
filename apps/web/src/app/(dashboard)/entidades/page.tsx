@@ -51,7 +51,7 @@ export default function EntidadesPage() {
 
   const query = useMemo(() => {
     const sp = new URLSearchParams()
-    if (search) sp.set('search', search)
+    if (search) sp.set('q', search)
     if (tipo) sp.set('tipo', tipo)
     if (residencia) sp.set('nacionalidadeCambial', residencia)
     sp.set('limit', '25')

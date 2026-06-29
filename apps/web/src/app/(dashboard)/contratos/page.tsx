@@ -127,11 +127,11 @@ function ContratosListInner() {
 
   const query = useMemo(() => {
     const sp = new URLSearchParams()
-    if (search) sp.set('search', search)
+    if (search) sp.set('q', search)
     if (estado) sp.set('estado', estado)
     if (origem) sp.set('origem', origem)
     if (tipoId) sp.set('tipoId', tipoId)
-    if (expiraEmDias) sp.set('expiraEmDias', expiraEmDias)
+    if (expiraEmDias) sp.set('expiraEm', expiraEmDias)
     sp.set('limit', '25')
     if (cursor) sp.set('cursor', cursor)
     return sp.toString()
