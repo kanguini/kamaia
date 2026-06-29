@@ -40,7 +40,7 @@ const CARDS: CatalogoCard[] = [
     href: '/biblioteca/legislacao',
     icon: Scale,
     title: 'Legislação',
-    hint: 'Diplomas angolanos (lei, decretos, avisos) importados do lex.ao. Pesquisa por órgão e ano; o Dr. Kamaia cita-os nas respostas.',
+    hint: 'Diplomas angolanos (leis, decretos, avisos) com pesquisa por órgão e ano. O Dr. Kamaia cita-os nas respostas.',
     status: 'novo',
   },
   {

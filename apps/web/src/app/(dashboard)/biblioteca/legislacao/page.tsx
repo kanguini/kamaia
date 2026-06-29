@@ -4,7 +4,7 @@
  * Biblioteca → Legislação.
  *
  * Vista navegável dos diplomas em LegislationDocument — curados + os
- * ~1.200 importados do lex.ao (fonte='LEXAO'). Pesquisa por título/órgão,
+ * ~1.200 diplomas importados (fonte='LEXAO'). Pesquisa por título/órgão,
  * filtros por órgão/ano/fonte, paginação por cursor, e detalhe com o
  * conteúdo + link para o original. Estes diplomas alimentam as citações
  * do Dr. Kamaia. ADMIN pode forçar/refrescar a importação.
@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Search, ExternalLink, RefreshCw, Plus } from 'lucide-react'
+import { Search, RefreshCw, Plus } from 'lucide-react'
 import type { Role } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
@@ -255,7 +255,7 @@ export default function LegislacaoPage() {
               loading={importing}
               leftIcon={<RefreshCw size={13} />}
             >
-              Importar lex.ao
+              Importar legislação
             </Button>
           </div>
         )}
@@ -316,7 +316,7 @@ export default function LegislacaoPage() {
           style={{ width: 140 }}
         >
           <option value="all">Todas as fontes</option>
-          <option value="LEXAO">lex.ao</option>
+          <option value="LEXAO">Importada</option>
           <option value="CURADO">Curada</option>
         </Select>
       </div>
@@ -350,7 +350,7 @@ export default function LegislacaoPage() {
         >
           Sem diplomas a mostrar.
           {isAdmin
-            ? ' Use “Importar do lex.ao” para carregar a legislação angolana.'
+            ? ' Use “Importar legislação” para carregar a legislação angolana.'
             : ' A legislação está a ser carregada — volte daqui a pouco.'}
         </div>
       )}
@@ -400,8 +400,8 @@ export default function LegislacaoPage() {
         </Button>
       )}
 
-      {/* Detalhe */}
-      <Drawer open={detailOpen} onClose={() => setDetailOpen(false)} width={680}>
+      {/* Detalhe — painel lateral com o texto transcrito do diploma */}
+      <Drawer open={detailOpen} onClose={() => setDetailOpen(false)} width={680} position="right">
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           {detailLoading && <div style={{ color: 'var(--k2-text-mute)' }}>A carregar…</div>}
           {!detailLoading && detail && (
@@ -420,43 +420,37 @@ export default function LegislacaoPage() {
                   Publicação: {fmtDate(detail.publicacao)}
                 </div>
               )}
-              {detail.url && (
-                <a
-                  href={detail.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 13,
-                    color: 'var(--k2-accent)',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <ExternalLink size={13} /> Abrir original no lex.ao
-                </a>
-              )}
-              {detail.conteudo && (
+              {detail.conteudo ? (
                 <pre
                   style={{
                     marginTop: 6,
-                    maxHeight: 420,
-                    overflow: 'auto',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
-                    fontSize: 13,
-                    lineHeight: 1.6,
+                    fontSize: 13.5,
+                    lineHeight: 1.65,
                     fontFamily: 'inherit',
-                    color: 'var(--k2-text-dim)',
-                    background: 'var(--k2-bg)',
-                    border: '1px solid var(--k2-border)',
-                    borderRadius: 'var(--k2-radius-sm)',
-                    padding: 14,
+                    color: 'var(--k2-text)',
+                    margin: 0,
                   }}
                 >
                   {detail.conteudo}
                 </pre>
+              ) : (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--k2-text-mute)',
+                    background: 'var(--k2-bg-elev)',
+                    border: '1px dashed var(--k2-border)',
+                    borderRadius: 'var(--k2-radius-sm)',
+                    padding: 14,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Texto integral por transcrever. Um ADMIN pode colar o
+                  articulado em <strong>Adicionar diploma</strong> (ou
+                  editando este) — o Dr. Kamaia passa a citá-lo.
+                </div>
               )}
             </>
           )}
@@ -471,8 +465,8 @@ export default function LegislacaoPage() {
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Adicionar diploma</h2>
           <p style={{ fontSize: 12, color: 'var(--k2-text-mute)', margin: 0 }}>
-            Útil para diplomas de reguladores (BNA, ARSEG, CMC, INACOM…) que o
-            lex.ao não cobre. Se colar o texto, o Dr. Kamaia passa a citá-lo.
+            Acrescente um diploma à biblioteca de legislação. Cole o texto
+            integral para o Dr. Kamaia o poder citar.
           </p>
 
           {addErr && (
@@ -534,7 +528,7 @@ export default function LegislacaoPage() {
 }
 
 function fonteLabel(f: string): string {
-  if (f === 'LEXAO') return 'lex.ao'
+  if (f === 'LEXAO') return 'Importada'
   if (f === 'CURADO') return 'Curada'
   return f
 }
