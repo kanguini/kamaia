@@ -262,15 +262,33 @@ export class TarefasService {
       ...(dto.entidadeId !== undefined && { entidadeId: dto.entidadeId }),
     };
 
-    if (dto.estado !== undefined && dto.estado !== atual.estado) {
-      data.estado = dto.estado;
-      if (dto.estado === TarefaEstado.CONCLUIDA) {
+    // Coluna do quadro. Largar numa coluna-sistema (que mapeia um estado)
+    // sincroniza o estado do ciclo de vida; numa coluna livre, o estado
+    // mantém-se.
+    let estadoAlvo = dto.estado;
+    if (dto.colunaId !== undefined) {
+      if (dto.colunaId === null) {
+        data.coluna = { disconnect: true };
+      } else {
+        const col = await this.assertColuna(tenantId, dto.colunaId);
+        data.coluna = { connect: { id: dto.colunaId } };
+        // col.estado é o enum do Prisma; estadoAlvo é o de shared-types
+        // (mesmos valores, tipos nominais distintos).
+        if (col.estado && estadoAlvo === undefined) {
+          estadoAlvo = col.estado as unknown as TarefaEstado;
+        }
+      }
+    }
+
+    if (estadoAlvo !== undefined && estadoAlvo !== atual.estado) {
+      data.estado = estadoAlvo;
+      if (estadoAlvo === TarefaEstado.CONCLUIDA) {
         data.concluidaEm = new Date();
         data.concluidaPor = actorUserId;
       } else if (
         atual.estado === TarefaEstado.CONCLUIDA &&
-        (dto.estado === TarefaEstado.A_FAZER ||
-          dto.estado === TarefaEstado.EM_CURSO)
+        (estadoAlvo === TarefaEstado.A_FAZER ||
+          estadoAlvo === TarefaEstado.EM_CURSO)
       ) {
         // Só limpa o carimbo numa REABERTURA para trabalho activo —
         // cancelar uma concluída preserva o registo de que foi feita.
@@ -318,6 +336,115 @@ export class TarefasService {
       entityId: id,
     });
     return { ok: true };
+  }
+
+  // ─── Colunas do quadro ───────────────────────────────────────────
+
+  async listColunas(tenantId: string) {
+    await this.ensureColunas(tenantId);
+    return this.prisma.tarefaColuna.findMany({
+      where: { tenantId },
+      orderBy: { ordem: 'asc' },
+    });
+  }
+
+  async createColuna(
+    tenantId: string,
+    actorUserId: string,
+    dto: { nome: string; cor?: string },
+  ) {
+    await this.ensureColunas(tenantId);
+    const last = await this.prisma.tarefaColuna.findFirst({
+      where: { tenantId },
+      orderBy: { ordem: 'desc' },
+      select: { ordem: true },
+    });
+    const col = await this.prisma.tarefaColuna.create({
+      data: {
+        tenantId,
+        nome: dto.nome,
+        cor: dto.cor,
+        ordem: (last?.ordem ?? -1) + 1,
+        sistema: false,
+      },
+    });
+    await this.auditColuna(tenantId, actorUserId, col.id, AuditAction.CREATE);
+    return this.listColunas(tenantId);
+  }
+
+  async updateColuna(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    dto: { nome?: string; cor?: string | null; ordem?: number },
+  ) {
+    const { count } = await this.prisma.tarefaColuna.updateMany({
+      where: { id, tenantId },
+      data: {
+        ...(dto.nome !== undefined && { nome: dto.nome }),
+        ...(dto.cor !== undefined && { cor: dto.cor }),
+        ...(dto.ordem !== undefined && { ordem: dto.ordem }),
+      },
+    });
+    if (count === 0) throw new NotFoundException('Coluna não encontrada');
+    await this.auditColuna(tenantId, actorUserId, id, AuditAction.UPDATE);
+    return this.listColunas(tenantId);
+  }
+
+  async removeColuna(tenantId: string, actorUserId: string, id: string) {
+    const col = await this.prisma.tarefaColuna.findFirst({
+      where: { id, tenantId },
+      select: { id: true, sistema: true },
+    });
+    if (!col) throw new NotFoundException('Coluna não encontrada');
+    if (col.sistema) {
+      throw new BadRequestException(
+        'As colunas de sistema (A fazer / Em curso / Concluída) não podem ser eliminadas.',
+      );
+    }
+    // As tarefas nesta coluna ficam com colunaId null (FK SetNull) e voltam
+    // a agrupar pelo seu estado.
+    await this.prisma.tarefaColuna.delete({ where: { id } });
+    await this.auditColuna(tenantId, actorUserId, id, AuditAction.DELETE);
+    return this.listColunas(tenantId);
+  }
+
+  /** Cria as 3 colunas-sistema na primeira utilização do quadro. */
+  private async ensureColunas(tenantId: string) {
+    const n = await this.prisma.tarefaColuna.count({ where: { tenantId } });
+    if (n > 0) return;
+    await this.prisma.tarefaColuna.createMany({
+      data: [
+        { tenantId, nome: 'A fazer', estado: TarefaEstado.A_FAZER, ordem: 0, sistema: true },
+        { tenantId, nome: 'Em curso', estado: TarefaEstado.EM_CURSO, ordem: 1, sistema: true },
+        { tenantId, nome: 'Concluída', estado: TarefaEstado.CONCLUIDA, ordem: 2, sistema: true },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  private async assertColuna(tenantId: string, id: string) {
+    const col = await this.prisma.tarefaColuna.findFirst({
+      where: { id, tenantId },
+      select: { id: true, estado: true },
+    });
+    if (!col) throw new NotFoundException('Coluna vinculada não encontrada');
+    return col;
+  }
+
+  private async auditColuna(
+    tenantId: string,
+    actorUserId: string,
+    id: string,
+    action: AuditAction,
+  ) {
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action,
+      entityType: EntityType.TAREFA,
+      entityId: id,
+    });
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────

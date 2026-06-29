@@ -27,6 +27,7 @@ export interface Tarefa {
   estado: TarefaEstado
   prioridade: TarefaPrioridade
   dataVencimento: string | null
+  colunaId: string | null
   responsavel: { id: string; firstName: string; lastName: string } | null
   contrato: { id: string; numeroInterno: string | null; titulo: string } | null
 }

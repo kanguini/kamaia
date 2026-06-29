@@ -24,6 +24,8 @@ import {
   AddChecklistSchema,
   AddComentarioDto,
   AddComentarioSchema,
+  CreateColunaDto,
+  CreateColunaSchema,
   CreateTarefaDto,
   CreateTarefaSchema,
   ListTarefasQuery,
@@ -32,6 +34,8 @@ import {
   TrabalhoQuerySchema,
   UpdateChecklistDto,
   UpdateChecklistSchema,
+  UpdateColunaDto,
+  UpdateColunaSchema,
   UpdateTarefaDto,
   UpdateTarefaSchema,
 } from './tarefas.dto';
@@ -76,6 +80,45 @@ export class TarefasController {
     @Query(new ParseZodPipe(TrabalhoQuerySchema)) q: TrabalhoQuery,
   ) {
     return this.tarefas.trabalho(tenant.tenantId, user.sub, q.dias);
+  }
+
+  // ─── Colunas do quadro (rotas estáticas ANTES de :id) ─────────────
+
+  @Get('colunas')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD, Role.CONTRACT_MANAGER, Role.BUSINESS_USER, Role.VIEWER)
+  async listColunas(@Tenant() tenant: TenantContext) {
+    return this.tarefas.listColunas(tenant.tenantId);
+  }
+
+  @Post('colunas')
+  @Roles(...WRITE_ROLES)
+  async createColuna(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Body(new ParseZodPipe(CreateColunaSchema)) dto: CreateColunaDto,
+  ) {
+    return this.tarefas.createColuna(tenant.tenantId, user.sub, dto);
+  }
+
+  @Patch('colunas/:colunaId')
+  @Roles(...WRITE_ROLES)
+  async updateColuna(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('colunaId', new ParseUUIDPipe()) colunaId: string,
+    @Body(new ParseZodPipe(UpdateColunaSchema)) dto: UpdateColunaDto,
+  ) {
+    return this.tarefas.updateColuna(tenant.tenantId, user.sub, colunaId, dto);
+  }
+
+  @Delete('colunas/:colunaId')
+  @Roles(...WRITE_ROLES)
+  async removeColuna(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+    @Param('colunaId', new ParseUUIDPipe()) colunaId: string,
+  ) {
+    return this.tarefas.removeColuna(tenant.tenantId, user.sub, colunaId);
   }
 
   @Get(':id')

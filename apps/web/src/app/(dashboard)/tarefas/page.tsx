@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { Plus, Check, CalendarClock, AlertTriangle } from 'lucide-react'
+import { Plus, Check, CalendarClock, AlertTriangle, X } from 'lucide-react'
 import { api } from '@/lib/api'
 import { unwrapList } from '@/lib/list'
 import { Button } from '@/components/ui/button'
@@ -21,11 +21,14 @@ import {
 } from '@kamaia/shared-types'
 import { TarefaDrawer, type Tarefa, type Membro } from '@/components/tarefas/tarefa-drawer'
 
-const COLUNAS: { estado: TarefaEstado; label: string }[] = [
-  { estado: TarefaEstado.A_FAZER, label: 'A fazer' },
-  { estado: TarefaEstado.EM_CURSO, label: 'Em curso' },
-  { estado: TarefaEstado.CONCLUIDA, label: 'Concluída' },
-]
+interface Coluna {
+  id: string
+  nome: string
+  ordem: number
+  cor: string | null
+  estado: TarefaEstado | null
+  sistema: boolean
+}
 
 const PRIO_COR: Record<TarefaPrioridade, string> = {
   URGENTE: 'var(--k2-bad)',
@@ -44,12 +47,15 @@ export default function TarefasPage() {
   const [trabalho, setTrabalho] = useState<ItemTrabalho[]>([])
   const [loadingTrab, setLoadingTrab] = useState(false)
   const [tarefas, setTarefas] = useState<Tarefa[]>([])
+  const [colunas, setColunas] = useState<Coluna[]>([])
   const [membros, setMembros] = useState<Membro[]>([])
   const [loading, setLoading] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editando, setEditando] = useState<Tarefa | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState<TarefaEstado | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
+  const [addingCol, setAddingCol] = useState(false)
+  const [novaColuna, setNovaColuna] = useState('')
 
   const load = useCallback(async () => {
     if (!token) return
@@ -76,6 +82,20 @@ export default function TarefasPage() {
       .then((r) => setMembros(unwrapList<Membro>(r)))
       .catch(() => setMembros([]))
   }, [token])
+
+  const loadColunas = useCallback(async () => {
+    if (!token) return
+    try {
+      const r = await api<unknown>('/tarefas/colunas', { token })
+      setColunas(unwrapList<Coluna>(r))
+    } catch {
+      setColunas([])
+    }
+  }, [token])
+
+  useEffect(() => {
+    void loadColunas()
+  }, [loadColunas])
 
   const loadTrabalho = useCallback(async () => {
     if (!token) return
@@ -104,21 +124,26 @@ export default function TarefasPage() {
     }
   }
 
-  // Drag-and-drop: muda o estado da tarefa ao largar noutra coluna.
-  // Optimista (move já o cartão) + PATCH; refetch reconcilia carimbos
-  // (ex.: concluidaEm) ou reverte em caso de erro.
-  const mover = async (tarefaId: string, novoEstado: TarefaEstado) => {
+  // Drag-and-drop: muda a COLUNA da tarefa ao largar. Se a coluna for de
+  // sistema (mapeia um estado), o estado sincroniza no backend. Optimista
+  // + PATCH; refetch reconcilia (carimbos) ou reverte em caso de erro.
+  const mover = async (tarefaId: string, colunaId: string) => {
     const t = tarefas.find((x) => x.id === tarefaId)
-    if (!t || t.estado === novoEstado) return
+    if (!t || t.colunaId === colunaId) return
+    const col = colunas.find((c) => c.id === colunaId)
     setTarefas((prev) =>
-      prev.map((x) => (x.id === tarefaId ? { ...x, estado: novoEstado } : x)),
+      prev.map((x) =>
+        x.id === tarefaId
+          ? { ...x, colunaId, ...(col?.estado ? { estado: col.estado } : {}) }
+          : x,
+      ),
     )
     if (!token) return
     try {
       await api(`/tarefas/${tarefaId}`, {
         method: 'PATCH',
         token,
-        body: JSON.stringify({ estado: novoEstado }),
+        body: JSON.stringify({ colunaId }),
       })
       void load()
     } catch {
@@ -126,12 +151,51 @@ export default function TarefasPage() {
     }
   }
 
+  const criarColuna = async () => {
+    const nome = novaColuna.trim()
+    setNovaColuna('')
+    setAddingCol(false)
+    if (!nome || !token) return
+    try {
+      const r = await api<unknown>('/tarefas/colunas', {
+        method: 'POST',
+        token,
+        body: JSON.stringify({ nome }),
+      })
+      setColunas(unwrapList<Coluna>(r))
+    } catch {
+      /* ignora */
+    }
+  }
+  const eliminarColuna = async (c: Coluna) => {
+    if (!token) return
+    if (!window.confirm(`Eliminar a coluna "${c.nome}"? As tarefas voltam à coluna do seu estado.`)) return
+    try {
+      const r = await api<unknown>(`/tarefas/colunas/${c.id}`, { method: 'DELETE', token })
+      setColunas(unwrapList<Coluna>(r))
+      void load()
+    } catch {
+      /* ignora */
+    }
+  }
+
+  // Agrupa por coluna. Tarefa sem colunaId cai na coluna-sistema que
+  // corresponde ao seu estado (fallback), senão na primeira.
   const porColuna = useMemo(() => {
     const m: Record<string, Tarefa[]> = {}
-    for (const c of COLUNAS) m[c.estado] = []
-    for (const t of tarefas) if (m[t.estado]) m[t.estado].push(t)
+    for (const c of colunas) m[c.id] = []
+    const sysByEstado: Record<string, string> = {}
+    for (const c of colunas) if (c.estado) sysByEstado[c.estado] = c.id
+    const fallbackId = colunas[0]?.id
+    for (const t of tarefas) {
+      const colId =
+        t.colunaId && m[t.colunaId] !== undefined
+          ? t.colunaId
+          : sysByEstado[t.estado] ?? fallbackId
+      if (colId && m[colId]) m[colId].push(t)
+    }
     return m
-  }, [tarefas])
+  }, [tarefas, colunas])
 
   const abrirNova = () => {
     setEditando(null)
@@ -166,31 +230,38 @@ export default function TarefasPage() {
 
       {vista === 'quadro' && (
         <div className="tz-board">
-          {COLUNAS.map((c) => (
+          {colunas.map((c) => (
             <div
-              key={c.estado}
-              className={`tz-col${dragOver === c.estado ? ' over' : ''}`}
+              key={c.id}
+              className={`tz-col${dragOver === c.id ? ' over' : ''}`}
               onDragOver={(e) => {
                 e.preventDefault()
-                if (dragOver !== c.estado) setDragOver(c.estado)
+                if (dragOver !== c.id) setDragOver(c.id)
               }}
               onDrop={(e) => {
                 e.preventDefault()
                 const id = e.dataTransfer.getData('text/plain') || draggingId
                 setDragOver(null)
-                if (id) void mover(id, c.estado)
+                if (id) void mover(id, c.id)
               }}
             >
               <div className="tz-col-head">
-                <span>{c.label}</span>
-                <span className="tz-count">{porColuna[c.estado]?.length ?? 0}</span>
+                <span>{c.nome}</span>
+                <span className="tz-col-tools">
+                  <span className="tz-count">{porColuna[c.id]?.length ?? 0}</span>
+                  {!c.sistema && (
+                    <button className="tz-col-del" onClick={() => void eliminarColuna(c)} title="Eliminar coluna" type="button">
+                      <X size={12} />
+                    </button>
+                  )}
+                </span>
               </div>
               <div className="tz-col-body">
                 {loading && <div className="tz-empty">A carregar…</div>}
-                {!loading && (porColuna[c.estado]?.length ?? 0) === 0 && (
-                  <div className="tz-empty">Arraste para aqui ou crie uma tarefa.</div>
+                {!loading && (porColuna[c.id]?.length ?? 0) === 0 && (
+                  <div className="tz-empty">Arraste para aqui.</div>
                 )}
-                {porColuna[c.estado]?.map((t) => (
+                {porColuna[c.id]?.map((t) => (
                   <TarefaCard
                     key={t.id}
                     tarefa={t}
@@ -207,6 +278,28 @@ export default function TarefasPage() {
               </div>
             </div>
           ))}
+
+          <div className="tz-addcol">
+            {addingCol ? (
+              <input
+                className="tz-addcol-input"
+                autoFocus
+                value={novaColuna}
+                onChange={(e) => setNovaColuna(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void criarColuna()
+                  if (e.key === 'Escape') { setAddingCol(false); setNovaColuna('') }
+                }}
+                onBlur={() => void criarColuna()}
+                placeholder="Nome da coluna…"
+                maxLength={60}
+              />
+            ) : (
+              <button className="tz-addcol-btn" onClick={() => setAddingCol(true)} type="button">
+                <Plus size={14} /> Coluna
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -228,10 +321,16 @@ export default function TarefasPage() {
         .tz-seg { display: inline-flex; border: 1px solid var(--k2-border); border-radius: var(--k2-radius-sm); overflow: hidden; }
         .tz-seg button { background: var(--k2-bg-elev); border: 0; padding: 8px 14px; font-size: 13px; color: var(--k2-text-dim); cursor: pointer; font-family: inherit; }
         .tz-seg button.on { background: var(--k2-accent); color: var(--k2-accent-fg); }
-        .tz-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
-        @media (max-width: 900px) { .tz-board { grid-template-columns: 1fr; } }
-        .tz-col { background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); padding: 12px; transition: border-color 120ms ease, background 120ms ease; }
+        .tz-board { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; padding-bottom: 6px; }
+        .tz-col { flex: 0 0 290px; background: var(--k2-bg-elev); border: 1px solid var(--k2-border); border-radius: var(--k2-radius); padding: 12px; transition: border-color 120ms ease, background 120ms ease; }
         .tz-col.over { border-color: var(--k2-accent); background: var(--k2-bg-hover, var(--k2-bg-elev-2)); }
+        .tz-col-tools { display: inline-flex; align-items: center; gap: 6px; }
+        .tz-col-del { background: none; border: 0; color: var(--k2-text-mute); cursor: pointer; padding: 2px; border-radius: 4px; display: inline-flex; }
+        .tz-col-del:hover { color: var(--k2-bad); background: var(--k2-bg); }
+        .tz-addcol { flex: 0 0 200px; }
+        .tz-addcol-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; background: transparent; border: 1px dashed var(--k2-border); border-radius: var(--k2-radius); color: var(--k2-text-mute); cursor: pointer; font-size: 13px; font-family: inherit; }
+        .tz-addcol-btn:hover { color: var(--k2-text-dim); border-color: var(--k2-accent); }
+        .tz-addcol-input { width: 100%; padding: 10px 12px; background: var(--k2-bg-elev); border: 1px solid var(--k2-accent); border-radius: var(--k2-radius); color: var(--k2-text); font-size: 13px; font-family: inherit; outline: none; box-sizing: border-box; }
         .tz-col-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; color: var(--k2-text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
         .tz-count { background: var(--k2-bg-elev-2); color: var(--k2-text-mute); border-radius: 10px; padding: 1px 8px; font-size: 11px; }
         .tz-col-body { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }

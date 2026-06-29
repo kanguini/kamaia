@@ -21,8 +21,22 @@ export const UpdateTarefaSchema = z.object({
   responsavelId: z.string().uuid().nullable().optional(),
   contratoId: z.string().uuid().nullable().optional(),
   entidadeId: z.string().uuid().nullable().optional(),
+  colunaId: z.string().uuid().nullable().optional(),
 });
 export type UpdateTarefaDto = z.infer<typeof UpdateTarefaSchema>;
+
+export const CreateColunaSchema = z.object({
+  nome: z.string().min(1).max(60),
+  cor: z.string().max(20).optional(),
+});
+export type CreateColunaDto = z.infer<typeof CreateColunaSchema>;
+
+export const UpdateColunaSchema = z.object({
+  nome: z.string().min(1).max(60).optional(),
+  cor: z.string().max(20).nullable().optional(),
+  ordem: z.number().int().min(0).optional(),
+});
+export type UpdateColunaDto = z.infer<typeof UpdateColunaSchema>;
 
 export const ListTarefasQuerySchema = z.object({
   estado: z.nativeEnum(TarefaEstado).optional(),

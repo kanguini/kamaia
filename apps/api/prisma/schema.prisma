@@ -80,6 +80,7 @@ model Tenant {
   backupExports   BackupExport[]
   agendaEventos   AgendaEvento[]
   tarefas         Tarefa[]
+  tarefaColunas   TarefaColuna[]
 
   @@index([parentTenantId])
   @@index([slug])
@@ -1464,6 +1465,11 @@ model Tarefa {
   contratoId     String?          @map("contrato_id") @db.Uuid
   entidadeId     String?          @map("entidade_id") @db.Uuid
 
+  /// Coluna do quadro (kanban). Opcional: tarefas sem coluna caem na
+  /// coluna-sistema que corresponde ao seu `estado`. `estado` continua a
+  /// ser a fonte da semântica (aberto/concluído) para Agenda e trabalho.
+  colunaId       String?          @map("coluna_id") @db.Uuid
+
   concluidaEm    DateTime?        @map("concluida_em") @db.Timestamptz
   concluidaPor   String?          @map("concluida_por") @db.Uuid
 
@@ -1475,6 +1481,7 @@ model Tarefa {
   tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contrato       Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
   responsavel    User?            @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
+  coluna         TarefaColuna?    @relation(fields: [colunaId], references: [id], onDelete: SetNull)
 
   checklist      TarefaChecklistItem[]
   comentarios    TarefaComentario[]
@@ -1482,8 +1489,29 @@ model Tarefa {
   @@index([tenantId, responsavelId, estado])
   @@index([tenantId, estado, dataVencimento])
   @@index([tenantId, contratoId])
+  @@index([tenantId, colunaId])
   @@index([tenantId, deletedAt])
   @@map("tarefas")
+}
+
+model TarefaColuna {
+  id        String        @id @default(uuid()) @db.Uuid
+  tenantId  String        @map("tenant_id") @db.Uuid
+  nome      String        @db.VarChar(60)
+  ordem     Int           @default(0)
+  cor       String?       @db.VarChar(20)
+  /// Quando preenchido, a coluna é de "sistema" e está ligada a um estado
+  /// do ciclo de vida — largar uma tarefa nela sincroniza o `estado`.
+  /// Null = coluna livre (só agrupa, não muda o estado).
+  estado    TarefaEstado?
+  sistema   Boolean       @default(false)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tarefas   Tarefa[]
+
+  @@index([tenantId, ordem])
+  @@map("tarefa_colunas")
 }
 
 model TarefaChecklistItem {
