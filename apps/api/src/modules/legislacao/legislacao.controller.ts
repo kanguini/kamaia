@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -21,6 +22,8 @@ import {
   CreateLegislationSchema,
   ListLegislationQuery,
   ListLegislationQuerySchema,
+  UpdateLegislationDto,
+  UpdateLegislationSchema,
 } from '../rag/rag.dto';
 import { RagService } from '../rag/rag.service';
 import { chunkConteudo } from './lex-ao.parse';
@@ -107,8 +110,30 @@ export class LegislacaoController {
   }
 
   /**
-   * Força o crawl do lex.ao (full ou incremental). Rede de segurança
-   * para o caso de a ingestão automática não ter corrido. Só ADMIN.
+   * Transcrever / editar um diploma (texto integral + metadados). Quando o
+   * `conteudo` muda, os chunks são re-indexados para o Dr. Kamaia citar a
+   * nova transcrição. ADMIN/LEGAL_LEAD.
+   */
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async editar(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ParseZodPipe(UpdateLegislationSchema)) dto: UpdateLegislationDto,
+  ) {
+    await this.rag.update(id, dto);
+    if (dto.conteudo !== undefined) {
+      const trechos = dto.conteudo ? chunkConteudo(dto.conteudo) : [];
+      await this.rag.replaceChunks(
+        id,
+        trechos.map((trecho, i) => ({ trecho, ordem: i })),
+      );
+    }
+    return this.rag.get(id);
+  }
+
+  /**
+   * Força o crawl da fonte (full ou incremental). Rede de segurança para
+   * o caso de a ingestão automática não ter corrido. Só ADMIN.
    */
   @Post('importar')
   @Roles(Role.ADMIN)

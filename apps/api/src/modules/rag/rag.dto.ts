@@ -15,6 +15,16 @@ export const CreateLegislationSchema = z.object({
 });
 export type CreateLegislationDto = z.infer<typeof CreateLegislationSchema>;
 
+export const UpdateLegislationSchema = z.object({
+  titulo: z.string().min(2).max(300).optional(),
+  diploma: z.string().min(2).max(200).optional(),
+  orgao: z.string().max(200).nullable().optional(),
+  ano: z.coerce.number().int().min(1900).max(2200).nullable().optional(),
+  publicacao: z.coerce.date().nullable().optional(),
+  conteudo: z.string().nullable().optional(),
+});
+export type UpdateLegislationDto = z.infer<typeof UpdateLegislationSchema>;
+
 export const ListLegislationQuerySchema = z.object({
   q: z.string().optional(),
   orgao: z.string().max(200).optional(),

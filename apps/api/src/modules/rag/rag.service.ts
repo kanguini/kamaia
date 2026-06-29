@@ -7,6 +7,7 @@ import {
   CreateLegislationDto,
   ListLegislationQuery,
   SearchDto,
+  UpdateLegislationDto,
 } from './rag.dto';
 
 /**
@@ -93,6 +94,38 @@ export class RagService {
         conteudo: dto.conteudo,
       },
     });
+  }
+
+  /** Actualiza os campos de um diploma (ex.: transcrever o texto). */
+  async update(id: string, dto: UpdateLegislationDto) {
+    const doc = await this.prisma.legislationDocument.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!doc) throw new NotFoundException('Legislation not found');
+    return this.prisma.legislationDocument.update({
+      where: { id },
+      data: {
+        ...(dto.titulo !== undefined && { titulo: dto.titulo }),
+        ...(dto.diploma !== undefined && { diploma: dto.diploma }),
+        ...(dto.orgao !== undefined && { orgao: dto.orgao }),
+        ...(dto.ano !== undefined && { ano: dto.ano }),
+        ...(dto.publicacao !== undefined && { publicacao: dto.publicacao }),
+        ...(dto.conteudo !== undefined && { conteudo: dto.conteudo }),
+      },
+    });
+  }
+
+  /** Substitui os chunks de um documento (re-indexa após nova transcrição). */
+  async replaceChunks(
+    documentId: string,
+    chunks: { artigo?: string; trecho: string; ordem: number }[],
+  ) {
+    await this.prisma.legislationChunk.deleteMany({ where: { documentId } });
+    if (chunks.length > 0) {
+      await this.addChunks(documentId, { chunks });
+    }
+    return { ok: true, count: chunks.length };
   }
 
   /**

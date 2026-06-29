@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { Search, RefreshCw, Plus } from 'lucide-react'
+import { Search, RefreshCw, Plus, Pencil } from 'lucide-react'
 import type { Role } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
@@ -128,10 +128,14 @@ export default function LegislacaoPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [detail, setDetail] = useState<LegDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [editandoTexto, setEditandoTexto] = useState(false)
+  const [textoEdit, setTextoEdit] = useState('')
+  const [savingTexto, setSavingTexto] = useState(false)
   const openDetail = async (id: string) => {
     if (!token) return
     setDetailOpen(true)
     setDetail(null)
+    setEditandoTexto(false)
     setDetailLoading(true)
     try {
       const d = await api<LegDetail>(`/legislacao/${id}`, { token })
@@ -140,6 +144,27 @@ export default function LegislacaoPage() {
       setDetail(null)
     } finally {
       setDetailLoading(false)
+    }
+  }
+  const iniciarEdicao = () => {
+    setTextoEdit(detail?.conteudo ?? '')
+    setEditandoTexto(true)
+  }
+  const salvarTexto = async () => {
+    if (!detail || !token) return
+    setSavingTexto(true)
+    try {
+      const d = await api<LegDetail>(`/legislacao/${detail.id}`, {
+        method: 'PATCH',
+        token,
+        body: JSON.stringify({ conteudo: textoEdit }),
+      })
+      setDetail(d)
+      setEditandoTexto(false)
+    } catch {
+      /* mantém o modo de edição para o utilizador tentar de novo */
+    } finally {
+      setSavingTexto(false)
     }
   }
 
@@ -420,37 +445,66 @@ export default function LegislacaoPage() {
                   Publicação: {fmtDate(detail.publicacao)}
                 </div>
               )}
-              {detail.conteudo ? (
-                <pre
-                  style={{
-                    marginTop: 6,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    fontSize: 13.5,
-                    lineHeight: 1.65,
-                    fontFamily: 'inherit',
-                    color: 'var(--k2-text)',
-                    margin: 0,
-                  }}
-                >
-                  {detail.conteudo}
-                </pre>
-              ) : (
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--k2-text-mute)',
-                    background: 'var(--k2-bg-elev)',
-                    border: '1px dashed var(--k2-border)',
-                    borderRadius: 'var(--k2-radius-sm)',
-                    padding: 14,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Texto integral por transcrever. Um ADMIN pode colar o
-                  articulado em <strong>Adicionar diploma</strong> (ou
-                  editando este) — o Dr. Kamaia passa a citá-lo.
+              {editandoTexto ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Textarea
+                    value={textoEdit}
+                    onChange={(e) => setTextoEdit(e.target.value)}
+                    rows={22}
+                    placeholder="Cole aqui o texto OFICIAL do diploma (do Diário da República ou do regulador). Não invente — cole a fonte autêntica."
+                    style={{ resize: 'vertical', fontSize: 13.5, lineHeight: 1.6, fontFamily: 'inherit' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <Button variant="ghost" type="button" onClick={() => setEditandoTexto(false)} disabled={savingTexto}>
+                      Cancelar
+                    </Button>
+                    <Button variant="primary" type="button" onClick={salvarTexto} loading={savingTexto}>
+                      Guardar transcrição
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  {isAdmin && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button variant="secondary" size="sm" type="button" onClick={iniciarEdicao} leftIcon={<Pencil size={13} />}>
+                        {detail.conteudo ? 'Editar texto' : 'Transcrever'}
+                      </Button>
+                    </div>
+                  )}
+                  {detail.conteudo ? (
+                    <pre
+                      style={{
+                        marginTop: 2,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: 13.5,
+                        lineHeight: 1.65,
+                        fontFamily: 'inherit',
+                        color: 'var(--k2-text)',
+                        margin: 0,
+                      }}
+                    >
+                      {detail.conteudo}
+                    </pre>
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: 'var(--k2-text-mute)',
+                        background: 'var(--k2-bg-elev)',
+                        border: '1px dashed var(--k2-border)',
+                        borderRadius: 'var(--k2-radius-sm)',
+                        padding: 14,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Texto integral por transcrever. Carregue em
+                      <strong> Transcrever</strong> e cole o articulado oficial —
+                      o Dr. Kamaia passa a citá-lo.
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
