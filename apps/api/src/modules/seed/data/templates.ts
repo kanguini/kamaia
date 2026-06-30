@@ -370,4 +370,408 @@ E por estarem assim, justas e contratadas, as Partes assinam o presente contrato
 
 > ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
   },
+
+  // ─── Mútuo (empréstimo) ─────────────────────────────
+  {
+    tipoCodigo: 'MUTUO',
+    nome: 'Contrato de mútuo (empréstimo) pt-AO',
+    descricao: 'Empréstimo de quantia em dinheiro entre duas partes, com prazo e juros. Regula-se pelo Código Civil; operações com não-residentes observam a Lei Cambial.',
+    conteudo: `# CONTRATO DE MÚTUO
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designado por "Mutuante";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, representado por {{partes.contraparte.representante.nome}}, na qualidade de {{partes.contraparte.representante.cargo}}, doravante designado por "Mutuário".
+
+## Cláusula 1.ª — Objecto
+
+Pelo presente contrato, o Mutuante entrega ao Mutuário, a título de empréstimo, a quantia de {{valor | money}}, que este declara receber e de que se confessa devedor.
+
+## Cláusula 2.ª — Prazo de Restituição
+
+O Mutuário obriga-se a restituir a quantia mutuada até {{dataTermo | dateLong}}, [A COMPLETAR — de uma só vez ou em prestações; indicar plano].
+
+## Cláusula 3.ª — Juros
+
+Sobre o capital mutuado vencem-se juros à taxa de [A COMPLETAR — taxa anual] %, contados desde a entrega até efectivo e integral pagamento. As Partes declaram que a taxa convencionada respeita os limites legais aplicáveis.
+
+## Cláusula 4.ª — Mora
+
+Em caso de atraso no pagamento, acrescem juros de mora à taxa legal em vigor, sem prejuízo do vencimento antecipado de todas as prestações nos termos da cláusula seguinte.
+
+## Cláusula 5.ª — Vencimento Antecipado
+
+O incumprimento de qualquer prestação por prazo superior a [A COMPLETAR — dias] confere ao Mutuante o direito de exigir a totalidade do montante em dívida, vencendo-se imediatamente todas as obrigações.
+
+## Cláusula 6.ª — Garantias
+
+[A COMPLETAR — descrever garantias, se existirem: livrança, fiança, penhor, hipoteca.]
+
+## Cláusula 7.ª — Regime Cambial
+
+Tratando-se de operação com não-residente cambial ou em moeda estrangeira, as Partes obrigam-se a observar a Lei Cambial e os Avisos do Banco Nacional de Angola aplicáveis.
+
+## Cláusula 8.ª — Lei Aplicável e Foro
+
+O presente contrato rege-se pelo {{leiAplicavel | default:"direito angolano"}}, designadamente pelo Código Civil. Para a resolução de litígios, as Partes elegem o foro {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam o presente contrato em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Mandato ────────────────────────────────────────
+  {
+    tipoCodigo: 'MANDATO',
+    nome: 'Contrato de mandato pt-AO',
+    descricao: 'Mandato pelo qual o mandatário se obriga a praticar actos jurídicos por conta do mandante. Regula-se pelo Código Civil.',
+    conteudo: `# CONTRATO DE MANDATO
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designado por "Mandante";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, representado por {{partes.contraparte.representante.nome}}, na qualidade de {{partes.contraparte.representante.cargo}}, doravante designado por "Mandatário".
+
+## Cláusula 1.ª — Objecto
+
+O Mandante incumbe o Mandatário, que aceita, de praticar por sua conta os seguintes actos: [A COMPLETAR — descrição dos actos jurídicos a praticar].
+
+## Cláusula 2.ª — Poderes
+
+O presente mandato é conferido [A COMPLETAR — com / sem] poderes de representação. [Quando com representação, os poderes constam de procuração autónoma a outorgar.]
+
+## Cláusula 3.ª — Obrigações do Mandatário
+
+O Mandatário obriga-se a: (i) praticar os actos com a diligência devida e segundo as instruções do Mandante; (ii) prestar contas; (iii) entregar ao Mandante o que recebeu em execução do mandato.
+
+## Cláusula 4.ª — Retribuição
+
+O mandato é [A COMPLETAR — gratuito / oneroso]. Sendo oneroso, o Mandante pagará ao Mandatário {{valor | money}}, nos termos a acordar, acrescido das despesas necessárias devidamente documentadas.
+
+## Cláusula 5.ª — Vigência e Revogação
+
+O mandato vigora desde {{dataInicioVigencia | dateLong}} e cessa por revogação, renúncia, conclusão do encargo ou nos demais casos previstos na lei. A revogação e a renúncia observam o regime do Código Civil.
+
+## Cláusula 6.ª — Lei Aplicável e Foro
+
+O presente contrato rege-se pelo {{leiAplicavel | default:"direito angolano"}}, designadamente pelo Código Civil. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Empreitada ─────────────────────────────────────
+  {
+    tipoCodigo: 'EMPREITADA',
+    nome: 'Contrato de empreitada pt-AO',
+    descricao: 'Realização de uma obra mediante preço. Regula-se pelo Código Civil (contrato de empreitada).',
+    conteudo: `# CONTRATO DE EMPREITADA
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designado por "Dono da Obra";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, representado por {{partes.contraparte.representante.nome}}, na qualidade de {{partes.contraparte.representante.cargo}}, doravante designado por "Empreiteiro".
+
+## Cláusula 1.ª — Objecto
+
+O Empreiteiro obriga-se a executar, por conta e risco próprios, a seguinte obra: [A COMPLETAR — descrição da obra, local e especificações técnicas], de acordo com o projecto e o caderno de encargos que se anexam.
+
+## Cláusula 2.ª — Preço e Pagamento
+
+Pela execução da obra, o Dono da Obra pagará o preço de {{valor | money}}, [A COMPLETAR — preço global ou por medição], segundo o seguinte plano de pagamentos: [A COMPLETAR — autos de medição / marcos].
+
+## Cláusula 3.ª — Prazos
+
+A obra inicia-se em {{dataInicioVigencia | dateLong}} e deve estar concluída até {{dataTermo | dateLong}}. O atraso imputável ao Empreiteiro sujeita-o às penalidades previstas na cláusula 6.ª.
+
+## Cláusula 4.ª — Materiais e Execução
+
+[A COMPLETAR — quem fornece os materiais]. O Empreiteiro executa a obra segundo as regras da arte, normas técnicas aplicáveis e legislação de construção em vigor.
+
+## Cláusula 5.ª — Fiscalização e Recepção
+
+O Dono da Obra pode fiscalizar a execução. Concluída a obra, procede-se à sua verificação e recepção, lavrando-se o respectivo auto. A recepção não exonera o Empreiteiro pelos defeitos, nos termos da lei.
+
+## Cláusula 6.ª — Defeitos e Garantia
+
+O Empreiteiro responde pelos defeitos da obra nos termos do Código Civil, obrigando-se à sua eliminação no prazo de [A COMPLETAR — dias]. Período de garantia: [A COMPLETAR].
+
+## Cláusula 7.ª — Penalidades
+
+O atraso na conclusão sujeita o Empreiteiro a uma penalidade de [A COMPLETAR — valor/dia], sem prejuízo da indemnização por danos.
+
+## Cláusula 8.ª — Lei Aplicável e Foro
+
+O presente contrato rege-se pelo {{leiAplicavel | default:"direito angolano"}}, designadamente pelo Código Civil. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Consultoria ────────────────────────────────────
+  {
+    tipoCodigo: 'CONSULTORIA',
+    nome: 'Contrato de consultoria pt-AO',
+    descricao: 'Prestação de serviços de consultoria especializada, com entregáveis e confidencialidade.',
+    conteudo: `# CONTRATO DE CONSULTORIA
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designada por "Cliente";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, representada por {{partes.contraparte.representante.nome}}, na qualidade de {{partes.contraparte.representante.cargo}}, doravante designada por "Consultor".
+
+## Cláusula 1.ª — Objecto
+
+O Consultor obriga-se a prestar à Cliente serviços de consultoria em [A COMPLETAR — área], compreendendo [A COMPLETAR — âmbito e entregáveis].
+
+## Cláusula 2.ª — Entregáveis e Prazos
+
+Os entregáveis e respectivos prazos constam do anexo I. [A COMPLETAR — marcos.]
+
+## Cláusula 3.ª — Honorários e Pagamento
+
+Pela prestação dos serviços, a Cliente pagará {{valor | money}}, [A COMPLETAR — por avença / por projecto / por hora], mediante factura legal, a liquidar no prazo de [A COMPLETAR — dias]. Aos serviços de não-residentes aplica-se a retenção na fonte de IRT nos termos da lei fiscal angolana, quando devida.
+
+## Cláusula 4.ª — Independência
+
+O Consultor presta os serviços com autonomia técnica, não existindo vínculo laboral de subordinação entre as Partes.
+
+## Cláusula 5.ª — Confidencialidade e Propriedade Intelectual
+
+O Consultor mantém confidencialidade sobre a informação a que aceda. [A COMPLETAR — titularidade dos resultados/entregáveis.] O tratamento de dados pessoais respeita a Lei n.º 22/11, de 17 de Junho.
+
+## Cláusula 6.ª — Vigência
+
+O contrato vigora de {{dataInicioVigencia | dateLong}} a {{dataTermo | dateLong}}, [A COMPLETAR — renovação].
+
+## Cláusula 7.ª — Lei Aplicável e Foro
+
+Rege-se pelo {{leiAplicavel | default:"direito angolano"}}. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Fornecimento ───────────────────────────────────
+  {
+    tipoCodigo: 'FORNECIMENTO',
+    nome: 'Contrato de fornecimento de bens pt-AO',
+    descricao: 'Fornecimento continuado/periódico de bens, com preço, prazos de entrega e condições.',
+    conteudo: `# CONTRATO DE FORNECIMENTO
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designada por "Fornecedor";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, representada por {{partes.contraparte.representante.nome}}, na qualidade de {{partes.contraparte.representante.cargo}}, doravante designada por "Adquirente".
+
+## Cláusula 1.ª — Objecto
+
+O Fornecedor obriga-se a fornecer à Adquirente, de forma [A COMPLETAR — continuada/periódica], os seguintes bens: [A COMPLETAR — descrição, especificações e quantidades].
+
+## Cláusula 2.ª — Encomendas e Entregas
+
+As encomendas são efectuadas por [A COMPLETAR — meio]. O Fornecedor entrega no prazo de [A COMPLETAR] em [A COMPLETAR — local], correndo por sua conta os riscos até à entrega, salvo estipulação Incoterms diversa.
+
+## Cláusula 3.ª — Preço e Pagamento
+
+O preço unitário consta da tabela anexa; o valor estimado do contrato é de {{valor | money}}. O pagamento efectua-se no prazo de [A COMPLETAR — dias] após factura legal.
+
+## Cláusula 4.ª — Qualidade e Conformidade
+
+Os bens devem cumprir as especificações acordadas e a legislação aplicável. A Adquirente pode rejeitar bens não conformes, devendo o Fornecedor substituí-los.
+
+## Cláusula 5.ª — Garantia
+
+[A COMPLETAR — período e termos de garantia.]
+
+## Cláusula 6.ª — Vigência
+
+O contrato vigora de {{dataInicioVigencia | dateLong}} a {{dataTermo | dateLong}}, [A COMPLETAR — renovação e denúncia].
+
+## Cláusula 7.ª — Lei Aplicável e Foro
+
+Rege-se pelo {{leiAplicavel | default:"direito angolano"}}. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Arrendamento Habitacional ──────────────────────
+  {
+    tipoCodigo: 'ARRENDAMENTO_HABITACIONAL',
+    nome: 'Arrendamento urbano para habitação (Lei 26/15)',
+    descricao: 'Arrendamento de imóvel urbano destinado a habitação, ao abrigo da Lei n.º 26/15, de 23 de Outubro (Lei do Arrendamento Urbano).',
+    conteudo: `# CONTRATO DE ARRENDAMENTO URBANO PARA HABITAÇÃO
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designado por "Senhorio";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, doravante designado por "Arrendatário".
+
+## Cláusula 1.ª — Objecto e Fim
+
+O Senhorio dá de arrendamento ao Arrendatário, que aceita, o imóvel sito em [A COMPLETAR — endereço completo e identificação predial], destinado exclusivamente a habitação do Arrendatário e do seu agregado.
+
+## Cláusula 2.ª — Renda
+
+A renda mensal é de {{valor | money}}, paga até ao dia [A COMPLETAR — dia] de cada mês, por [A COMPLETAR — transferência/depósito] na conta indicada pelo Senhorio. A actualização da renda observa a Lei n.º 26/15, de 23 de Outubro.
+
+## Cláusula 3.ª — Caução
+
+O Arrendatário entrega, a título de caução, o montante de [A COMPLETAR — nº de rendas], a restituir no termo do contrato, deduzidas as quantias em dívida ou danos.
+
+## Cláusula 4.ª — Prazo e Renovação
+
+O contrato tem início em {{dataInicioVigencia | dateLong}} e o prazo de {{dataTermo | dateLong}}, renovável nos termos da Lei n.º 26/15. A denúncia e a oposição à renovação observam os prazos legais.
+
+## Cláusula 5.ª — Obrigações do Arrendatário
+
+O Arrendatário obriga-se a: usar o imóvel com diligência e para o fim acordado; não o subarrendar nem ceder sem autorização escrita; pagar pontualmente a renda e os encargos a seu cargo; restituir o imóvel no estado em que o recebeu, salvo desgaste normal.
+
+## Cláusula 6.ª — Obras e Conservação
+
+[A COMPLETAR — repartição de obras de conservação ordinária e extraordinária, nos termos da Lei n.º 26/15.]
+
+## Cláusula 7.ª — Resolução
+
+O incumprimento, designadamente a falta de pagamento da renda nos termos da lei, confere ao Senhorio o direito de resolução, nos termos da Lei n.º 26/15.
+
+## Cláusula 8.ª — Imposto de Selo
+
+O arrendamento está sujeito a Imposto de Selo, cuja liquidação cabe nos termos da lei fiscal angolana.
+
+## Cláusula 9.ª — Lei Aplicável e Foro
+
+Rege-se pela Lei n.º 26/15, de 23 de Outubro, e, subsidiariamente, pelo Código Civil. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Contrato-promessa de compra e venda de imóvel ──
+  {
+    tipoCodigo: 'CPCV_IMOVEL',
+    nome: 'Contrato-promessa de compra e venda de imóvel pt-AO',
+    descricao: 'Promessa bilateral de compra e venda de imóvel, com sinal. Regula-se pelo Código Civil.',
+    conteudo: `# CONTRATO-PROMESSA DE COMPRA E VENDA DE IMÓVEL
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designado por "Promitente-Vendedor";
+- **{{partes.contraparte.nome}}**, com NIF {{partes.contraparte.nif}}, doravante designado por "Promitente-Comprador".
+
+## Cláusula 1.ª — Objecto
+
+O Promitente-Vendedor promete vender, e o Promitente-Comprador promete comprar, o imóvel sito em [A COMPLETAR — endereço e identificação predial/matricial], livre de ónus ou encargos, salvo os declarados.
+
+## Cláusula 2.ª — Preço e Sinal
+
+O preço acordado é de {{valor | money}}. A título de sinal e princípio de pagamento, o Promitente-Comprador entrega [A COMPLETAR — montante do sinal], imputado no preço. O remanescente é pago no acto da escritura.
+
+## Cláusula 3.ª — Escritura Definitiva
+
+A escritura pública de compra e venda será outorgada até {{dataTermo | dateLong}}, em cartório a designar, cabendo a marcação a [A COMPLETAR]. O Promitente-Vendedor obriga-se a entregar a documentação necessária ao registo.
+
+## Cláusula 4.ª — Incumprimento e Sinal
+
+Em caso de incumprimento, aplica-se o regime do sinal previsto no Código Civil: o sinal é perdido a favor do Promitente-Vendedor se o incumprimento for imputável ao Comprador, ou restituído em dobro se imputável ao Vendedor, sem prejuízo do recurso à execução específica quando admissível.
+
+## Cláusula 5.ª — Encargos Fiscais
+
+Os impostos e encargos (designadamente Imposto de Selo e, quando aplicável, demais tributos sobre a transmissão) são suportados nos termos da lei e do acordado em [A COMPLETAR].
+
+## Cláusula 6.ª — Lei Aplicável e Foro
+
+Rege-se pelo {{leiAplicavel | default:"direito angolano"}}, designadamente pelo Código Civil. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
+
+  // ─── Trabalho — quadro executivo ────────────────────
+  {
+    tipoCodigo: 'TRABALHO_EXECUTIVO',
+    nome: 'Contrato de trabalho — quadro executivo (LGT)',
+    descricao: 'Contrato de trabalho para cargo de direcção/chefia, ao abrigo da Lei Geral do Trabalho de Angola.',
+    conteudo: `# CONTRATO DE TRABALHO — QUADRO EXECUTIVO
+
+**{{titulo}}**
+
+## Partes
+
+- **{{partes.principal.nome}}**, com NIF {{partes.principal.nif}}, doravante designada por "Empregador";
+- **{{partes.contraparte.nome}}**, portador do BI n.º [A COMPLETAR], doravante designado por "Trabalhador".
+
+## Cláusula 1.ª — Cargo e Funções
+
+O Trabalhador é admitido para exercer as funções de [A COMPLETAR — cargo de direcção/chefia], com as responsabilidades inerentes e as que lhe forem cometidas pelo Empregador.
+
+## Cláusula 2.ª — Local de Trabalho
+
+O local de trabalho é [A COMPLETAR], sem prejuízo de deslocações inerentes ao cargo.
+
+## Cláusula 3.ª — Retribuição
+
+A remuneração base mensal é de {{valor | money}}, acrescida de [A COMPLETAR — subsídios e benefícios]. [A COMPLETAR — componente variável/prémios, se aplicável.]
+
+## Cláusula 4.ª — Período Normal de Trabalho
+
+O período normal de trabalho observa os limites da Lei Geral do Trabalho de Angola, considerando-se o regime aplicável aos quadros de direcção e chefia.
+
+## Cláusula 5.ª — Vigência e Período Experimental
+
+O contrato vigora desde {{dataInicioVigencia | dateLong}}, [A COMPLETAR — por tempo indeterminado / a termo], com período experimental nos termos da Lei Geral do Trabalho.
+
+## Cláusula 6.ª — Confidencialidade e Não Concorrência
+
+O Trabalhador obriga-se a confidencialidade durante e após o contrato. [A COMPLETAR — pacto de não concorrência, dentro dos limites legais e com a devida compensação.]
+
+## Cláusula 7.ª — Cessação
+
+A cessação do contrato observa as causas e procedimentos da Lei Geral do Trabalho de Angola.
+
+## Cláusula 8.ª — Disposições Finais
+
+Em tudo o omisso aplica-se a Lei Geral do Trabalho de Angola e demais legislação aplicável. Foro: {{foro | default:"da Comarca de Luanda"}}.
+
+---
+
+E por estarem assim, justas e contratadas, as Partes assinam em duas vias de igual valor.
+
+> ⚠ Template gerado pelo Kamaia CLM. Revê e adapta. Não substitui aconselhamento jurídico.`,
+  },
 ];

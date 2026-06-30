@@ -70,6 +70,16 @@ export class TemplatesController {
     return this.templates.create(tenant.tenantId, user.sub, dto);
   }
 
+  /** Importa os modelos-base pt-AO para a biblioteca deste tenant. */
+  @Post('importar-base')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async importarBase(
+    @Tenant() tenant: TenantContext,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.templates.importarBase(tenant.tenantId, user.sub);
+  }
+
   @Patch(':id')
   @Roles(Role.ADMIN, Role.LEGAL_LEAD)
   async update(

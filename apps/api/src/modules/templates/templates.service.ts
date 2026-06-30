@@ -6,6 +6,7 @@ import {
 import { AuditAction, EntityType } from '@kamaia/shared-types';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TEMPLATES_BASE_SEED } from '../seed/data/templates';
 
 /**
  * Templates de contrato (minutas com placeholders mustache-like).
@@ -97,6 +98,60 @@ export class TemplatesService {
       },
     });
     return t;
+  }
+
+  /**
+   * Importa os templates-base pt-AO (TEMPLATES_BASE_SEED) para a biblioteca
+   * deste tenant. Idempotente: salta os que já existem (por nome) e os
+   * cujo TipoContrato global não esteja no catálogo. Liga-os aos tipos
+   * globais (tenantId=null).
+   */
+  async importarBase(tenantId: string, actorUserId: string) {
+    const tipos = await this.prisma.tipoContrato.findMany({
+      where: { tenantId: null },
+      select: { id: true, codigo: true },
+    });
+    const tipoByCodigo = new Map(tipos.map((t) => [t.codigo, t.id]));
+
+    const existentes = new Set(
+      (
+        await this.prisma.template.findMany({
+          where: { tenantId, deletedAt: null },
+          select: { nome: true },
+        })
+      ).map((t) => t.nome),
+    );
+
+    let criados = 0;
+    let saltados = 0;
+    for (const base of TEMPLATES_BASE_SEED) {
+      const tipoId = tipoByCodigo.get(base.tipoCodigo);
+      if (!tipoId || existentes.has(base.nome)) {
+        saltados++;
+        continue;
+      }
+      const t = await this.prisma.template.create({
+        data: {
+          tenantId,
+          createdBy: actorUserId,
+          tipoId,
+          nome: base.nome,
+          descricao: base.descricao,
+          conteudo: base.conteudo,
+          idiomas: ['pt-AO'],
+        },
+      });
+      await this.audit.log({
+        tenantId,
+        actorUserId,
+        action: AuditAction.CREATE,
+        entityType: EntityType.TEMPLATE,
+        entityId: t.id,
+        afterData: { nome: t.nome, tipoId: t.tipoId, fonte: 'base' },
+      });
+      criados++;
+    }
+    return { criados, saltados, total: TEMPLATES_BASE_SEED.length };
   }
 
   /**
