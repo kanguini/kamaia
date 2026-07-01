@@ -24,7 +24,7 @@ import {
   Sparkles,
   Send,
   Calendar,
-  TrendingUp,
+  Scale,
   Bell,
   FileSearch,
   Plus,
@@ -62,10 +62,10 @@ const CHIPS: Chip[] = [
       'Que datas-chave (termos, renovações, denúncias, pagamentos) vencem nos próximos 30 dias?',
   },
   {
-    icon: TrendingUp,
-    label: 'Top contratos por valor',
+    icon: Scale,
+    label: 'Consultar a lei',
     prompt:
-      'Quais são os 5 contratos activos com maior valor anual? Inclui contraparte e termo.',
+      'Quero consultar a legislação angolana sobre um tema. Pergunta-me qual e depois cita o diploma e o artigo aplicáveis.',
   },
   {
     icon: FileSearch,

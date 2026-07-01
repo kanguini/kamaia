@@ -12,6 +12,7 @@ import { EntidadesModule } from '../entidades/entidades.module';
 import { EntidadesService } from '../entidades/entidades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RagModule } from '../rag/rag.module';
+import { RagService } from '../rag/rag.service';
 import { ClaudeProvider } from './claude.provider';
 import { IaController } from './ia.controller';
 import { IaService } from './ia.service';
@@ -25,6 +26,7 @@ import { buildListDatasChaveTool } from './agent/tools/list-datas-chave.tool';
 import { buildListObrigacoesTool } from './agent/tools/list-obrigacoes.tool';
 import { buildFindOrCreateEntidadeTool } from './agent/tools/find-or-create-entidade.tool';
 import { buildCreateContratoTool } from './agent/tools/create-contrato.tool';
+import { buildConsultarLegislacaoTool } from './agent/tools/consultar-legislacao.tool';
 
 @Module({
   imports: [
@@ -54,6 +56,7 @@ export class IaModule implements OnModuleInit {
     private readonly entidadesService: EntidadesService,
     private readonly complianceService: ComplianceService,
     private readonly customFieldsService: CustomFieldsService,
+    private readonly ragService: RagService,
   ) {}
 
   /**
@@ -70,6 +73,10 @@ export class IaModule implements OnModuleInit {
     this.registry.register(buildOpenContratoTool(this.prisma));
     this.registry.register(buildListDatasChaveTool(this.prisma));
     this.registry.register(buildListObrigacoesTool(this.prisma));
+
+    // Consulta jurídica — fundamenta as respostas na legislação angolana
+    // carregada (base do Dr. Kamaia como agente de consulta).
+    this.registry.register(buildConsultarLegislacaoTool(this.ragService));
 
     // Tools de mutação (Sprint 1.4). find-or-create-entidade mantém-se
     // (útil para registar as partes de um contrato herdado).
