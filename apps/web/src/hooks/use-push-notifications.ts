@@ -5,6 +5,19 @@ import { api } from '@/lib/api'
 
 type PushStatus = 'unsupported' | 'denied' | 'default' | 'granted' | 'subscribed'
 
+// ────────────────────────────────────────────────────────────────────────
+// Web Push está DESACTIVADO por defeito.
+//
+// O backend (NestJS) ainda NÃO tem infra Web Push: faltam o modelo Prisma
+// `PushSubscription`, a config de chaves VAPID, as rotas
+// `GET /notifications/vapid-public-key` e `POST /notifications/push/subscribe`,
+// e o envio efectivo via `web-push` no NotificationsService. Enquanto isso
+// não existir, manter esta flag a `false` para que o hook não chame o backend
+// (evita 404s). Para activar: implementar a infra acima e pôr
+// NEXT_PUBLIC_PUSH_ENABLED=true.
+// ────────────────────────────────────────────────────────────────────────
+const PUSH_ENABLED = process.env.NEXT_PUBLIC_PUSH_ENABLED === 'true'
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -22,6 +35,12 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // Feature desligada: trata como não-suportada (UI esconde o toggle) e
+    // nunca regista SW nem contacta o backend.
+    if (!PUSH_ENABLED) {
+      setStatus('unsupported')
+      return
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setStatus('unsupported')
       return
@@ -37,6 +56,9 @@ export function usePushNotifications() {
   }, [])
 
   const subscribe = useCallback(async () => {
+    // Guard belt-and-suspenders: sem backend Web Push, não tentar subscrever
+    // (evita 404 em /notifications/vapid-public-key e /notifications/push/subscribe).
+    if (!PUSH_ENABLED) return
     if (!session?.accessToken) return
     setLoading(true)
     setError(null)
