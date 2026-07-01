@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import { Search, RefreshCw, Plus, Pencil } from 'lucide-react'
 import type { Role } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
@@ -47,6 +48,7 @@ interface ListResp {
 export default function LegislacaoPage() {
   const { data: session, status } = useSession()
   const { tenants } = useTenants()
+  const searchParams = useSearchParams()
   const token = session?.accessToken
 
   const isAdmin = useMemo<boolean>(() => {
@@ -131,21 +133,31 @@ export default function LegislacaoPage() {
   const [editandoTexto, setEditandoTexto] = useState(false)
   const [textoEdit, setTextoEdit] = useState('')
   const [savingTexto, setSavingTexto] = useState(false)
-  const openDetail = async (id: string) => {
-    if (!token) return
-    setDetailOpen(true)
-    setDetail(null)
-    setEditandoTexto(false)
-    setDetailLoading(true)
-    try {
-      const d = await api<LegDetail>(`/legislacao/${id}`, { token })
-      setDetail(d)
-    } catch {
+  const openDetail = useCallback(
+    async (id: string) => {
+      if (!token) return
+      setDetailOpen(true)
       setDetail(null)
-    } finally {
-      setDetailLoading(false)
-    }
-  }
+      setEditandoTexto(false)
+      setDetailLoading(true)
+      try {
+        const d = await api<LegDetail>(`/legislacao/${id}`, { token })
+        setDetail(d)
+      } catch {
+        setDetail(null)
+      } finally {
+        setDetailLoading(false)
+      }
+    },
+    [token],
+  )
+
+  // Deep-link: /biblioteca/legislacao?doc=<id> abre o diploma directo.
+  // É como as citações clicáveis do Dr. Kamaia chegam ao texto do diploma.
+  const docParam = searchParams.get('doc')
+  useEffect(() => {
+    if (docParam && token) void openDetail(docParam)
+  }, [docParam, token, openDetail])
   const iniciarEdicao = () => {
     setTextoEdit(detail?.conteudo ?? '')
     setEditandoTexto(true)

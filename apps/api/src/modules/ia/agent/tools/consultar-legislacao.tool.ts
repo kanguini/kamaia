@@ -76,6 +76,21 @@ Devolve, por resultado: diploma, título, artigo (quando disponível) e o trecho
               ? 'Sem resultados na legislação carregada — não afirmar o conteúdo da lei sem base.'
               : undefined,
         },
+        renderHint: 'list' as const,
+        // Citações clicáveis no chat → abrem o diploma na Biblioteca.
+        uiPayload: {
+          items: resultados.map((r, i) => ({
+            id: `${r.documentId}-${i}`,
+            label: r.diploma || r.titulo || 'Diploma',
+            sublabel: [
+              r.artigo ? `Art. ${r.artigo}` : null,
+              r.trecho.slice(0, 120),
+            ]
+              .filter(Boolean)
+              .join(' — '),
+            href: `/biblioteca/legislacao?doc=${r.documentId}`,
+          })),
+        },
       };
     },
   });
