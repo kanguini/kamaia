@@ -10,10 +10,10 @@
  * do Dr. Kamaia. ADMIN pode forçar/refrescar a importação.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
-import { Search, RefreshCw, Plus, Pencil } from 'lucide-react'
+import { Search, RefreshCw, Plus, Pencil, Loader2 } from 'lucide-react'
 import type { Role } from '@kamaia/shared-types'
 import { api } from '@/lib/api'
 import { useTenants } from '@/hooks/use-tenants'
@@ -45,7 +45,27 @@ interface ListResp {
   total: number
 }
 
+/**
+ * Wrapper Suspense — exigido pelo Next 14 App Router porque
+ * `useSearchParams()` (deep-link ?doc=<id> das citações) é usado no inner.
+ * Sem isto o `next build` falha em prerender com
+ * "missing-suspense-with-csr-bailout".
+ */
 export default function LegislacaoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}>
+          <Loader2 size={22} color="var(--k2-text-mute)" className="animate-spin" />
+        </div>
+      }
+    >
+      <LegislacaoInner />
+    </Suspense>
+  )
+}
+
+function LegislacaoInner() {
   const { data: session, status } = useSession()
   const { tenants } = useTenants()
   const searchParams = useSearchParams()
