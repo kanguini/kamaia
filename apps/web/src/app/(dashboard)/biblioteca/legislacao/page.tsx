@@ -217,12 +217,17 @@ export default function LegislacaoPage() {
     url: '',
     conteudo: '',
   })
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
   const setF =
     (k: keyof typeof form) =>
     (
       e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }))
+  const resetAdd = () => {
+    setForm({ titulo: '', diploma: '', orgao: '', ano: '', publicacao: '', url: '', conteudo: '' })
+    setPdfFile(null)
+  }
   const submitAdd = async () => {
     if (!token) return
     if (form.titulo.trim().length < 2 || form.diploma.trim().length < 2) {
@@ -232,18 +237,47 @@ export default function LegislacaoPage() {
     setSaving(true)
     setAddErr(null)
     try {
-      const body: Record<string, unknown> = {
-        titulo: form.titulo.trim(),
-        diploma: form.diploma.trim(),
-        orgao: form.orgao.trim() || undefined,
-        ano: form.ano ? Number(form.ano) : undefined,
-        publicacao: form.publicacao || undefined,
-        url: form.url.trim() || undefined,
-        conteudo: form.conteudo.trim() || undefined,
+      if (pdfFile) {
+        // Carrega o PDF oficial e extrai o texto no servidor (fonte
+        // autêntica — sem invenção). Reutiliza o upload de documentos.
+        const contentBase64 = await fileToBase64(pdfFile)
+        const upl = await api<{ id: string }>('/documents', {
+          method: 'POST',
+          token,
+          body: JSON.stringify({
+            nome: pdfFile.name,
+            mimeType: 'application/pdf',
+            contentBase64,
+          }),
+        })
+        await api('/legislacao/importar-pdf', {
+          method: 'POST',
+          token,
+          body: JSON.stringify({
+            documentId: upl.id,
+            titulo: form.titulo.trim(),
+            diploma: form.diploma.trim(),
+            orgao: form.orgao.trim() || undefined,
+            ano: form.ano ? Number(form.ano) : undefined,
+          }),
+        })
+      } else {
+        await api('/legislacao', {
+          method: 'POST',
+          token,
+          body: JSON.stringify({
+            titulo: form.titulo.trim(),
+            diploma: form.diploma.trim(),
+            orgao: form.orgao.trim() || undefined,
+            ano: form.ano ? Number(form.ano) : undefined,
+            publicacao: form.publicacao || undefined,
+            url: form.url.trim() || undefined,
+            conteudo: form.conteudo.trim() || undefined,
+          }),
+        })
       }
-      await api('/legislacao', { method: 'POST', token, body: JSON.stringify(body) })
       setAddOpen(false)
-      setForm({ titulo: '', diploma: '', orgao: '', ano: '', publicacao: '', url: '', conteudo: '' })
+      resetAdd()
       setReloadKey((k) => k + 1)
     } catch (e) {
       setAddErr((e as { error?: string })?.error ?? 'Não foi possível guardar o diploma.')
@@ -570,12 +604,27 @@ export default function LegislacaoPage() {
           <Field label="Link ao original (opcional)">
             <Input value={form.url} onChange={setF('url')} placeholder="https://…" />
           </Field>
-          <Field label="Texto do diploma (opcional — alimenta o Dr. Kamaia)">
+          <Field label="PDF oficial (opcional — extrai o texto automaticamente)">
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+              style={{ fontSize: 13, color: 'var(--k2-text-dim)' }}
+            />
+            {pdfFile && (
+              <div style={{ fontSize: 11, color: 'var(--k2-text-mute)', marginTop: 4 }}>
+                {pdfFile.name} — o texto será extraído no servidor. Pode deixar o
+                campo abaixo vazio.
+              </div>
+            )}
+          </Field>
+          <Field label="Texto do diploma (se não carregar PDF — alimenta o Dr. Kamaia)">
             <Textarea
               value={form.conteudo}
               onChange={setF('conteudo')}
               rows={8}
               placeholder="Cole aqui o articulado do diploma…"
+              disabled={!!pdfFile}
             />
           </Field>
 
@@ -591,6 +640,18 @@ export default function LegislacaoPage() {
       </Drawer>
     </div>
   )
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const res = typeof reader.result === 'string' ? reader.result : ''
+      resolve(res.includes(',') ? res.slice(res.indexOf(',') + 1) : res)
+    }
+    reader.onerror = () => reject(new Error('Falha a ler o ficheiro.'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function fonteLabel(f: string): string {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -10,13 +11,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import pdfParse from 'pdf-parse';
 import { z } from 'zod';
-import { Role } from '@kamaia/shared-types';
+import { Role, TenantContext } from '@kamaia/shared-types';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { Tenant } from '../../common/decorators/tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
+import { DocumentsService } from '../documents/documents.service';
 import {
   CreateLegislationDto,
   CreateLegislationSchema,
@@ -35,6 +39,14 @@ const ImportarSchema = z.object({
   limit: z.coerce.number().int().min(1).max(2000).optional(),
 });
 
+const ImportarPdfSchema = z.object({
+  documentId: z.string().uuid(),
+  titulo: z.string().min(2).max(300),
+  diploma: z.string().min(2).max(200),
+  orgao: z.string().max(200).optional(),
+  ano: z.coerce.number().int().min(1900).max(2200).optional(),
+});
+
 /**
  * Vista navegável da legislação (Biblioteca → Legislação). Lê de
  * LegislationDocument (curada + importada do lex.ao) reutilizando o
@@ -47,6 +59,7 @@ export class LegislacaoController {
   constructor(
     private readonly rag: RagService,
     private readonly lexAo: LexAoImportService,
+    private readonly documents: DocumentsService,
   ) {}
 
   @Get()
@@ -107,6 +120,56 @@ export class LegislacaoController {
       }
     }
     return doc;
+  }
+
+  /**
+   * Importar um diploma a partir de um PDF já carregado (via POST
+   * /documents). Extrai o texto (pdf-parse), cria o diploma e indexa-o
+   * (chunks + embeddings) para o Dr. Kamaia citar. Fonte autêntica → sem
+   * invenção. ADMIN/LEGAL_LEAD.
+   */
+  @Post('importar-pdf')
+  @Roles(Role.ADMIN, Role.LEGAL_LEAD)
+  async importarPdf(
+    @Tenant() tenant: TenantContext,
+    @Body(new ParseZodPipe(ImportarPdfSchema))
+    dto: z.infer<typeof ImportarPdfSchema>,
+  ) {
+    const { buffer, mimeType } = await this.documents.getBytes(
+      tenant.tenantId,
+      dto.documentId,
+    );
+    if (!mimeType.toLowerCase().includes('pdf')) {
+      throw new BadRequestException('O documento carregado não é um PDF.');
+    }
+    let conteudo = '';
+    try {
+      const parsed = await pdfParse(buffer);
+      conteudo = (parsed.text ?? '').replace(/\r/g, '').trim();
+    } catch (e) {
+      throw new BadRequestException(
+        `Não foi possível ler o PDF: ${(e as Error).message}`,
+      );
+    }
+    if (conteudo.length < 50) {
+      throw new BadRequestException(
+        'Não consegui extrair texto do PDF (pode ser digitalizado/imagem). Nesse caso, cole o texto manualmente.',
+      );
+    }
+    const doc = await this.rag.create({
+      titulo: dto.titulo,
+      diploma: dto.diploma,
+      orgao: dto.orgao,
+      ano: dto.ano,
+      fonte: 'CURADO',
+      conteudo,
+    });
+    const trechos = chunkConteudo(conteudo);
+    await this.rag.replaceChunks(
+      doc.id,
+      trechos.map((trecho, i) => ({ trecho, ordem: i })),
+    );
+    return { id: doc.id, caracteres: conteudo.length, chunks: trechos.length };
   }
 
   /**
