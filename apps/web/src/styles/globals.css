@@ -172,9 +172,8 @@
   font-feature-settings: 'tnum', 'zero';
   letter-spacing: -0.005em;
 }
-/* Sidebar colapsada — só icons. Coluna mais larga para acomodar a
-   margem do cartão flutuante (a largura é dada pelo grid + margem, sem
-   width fixa que transbordaria). */
+/* Sidebar colapsada — só icons. Coluna estreita; a sidebar docada
+   preenche-a por inteiro (sem width fixa que transbordaria). */
 .k2-shell.collapsed { grid-template-columns: 80px minmax(0, 1fr); }
 .k2-sidebar.collapsed .k2-nav-item { justify-content: center; padding: 10px 0; }
 .k2-sidebar.collapsed .k2-brand { justify-content: center; }
@@ -183,24 +182,21 @@
 /* Sidebar — bg igualada ao main para unidade visual.
    Em vez de elev (#fff/#161616) usamos bg (#fafafa/#0a0a0a).
    A separação visual é dada pelo border-right subtil. */
-/* Sidebar FLUTUANTE — destacada das margens como um cartão, com cantos
-   arredondados, sombra e fundo elevado. Em mobile volta a drawer
-   full-height (ver media query). */
+/* Sidebar DOCADA — encostada à esquerda, altura total, sem cantos nem
+   sombra. Separada do conteúdo por um border-right subtil. Em mobile
+   volta a drawer full-height (ver media query). */
 .k2-sidebar {
   background: var(--k2-bg);
-  border: 1px solid var(--k2-border-strong);
-  border-radius: 16px;
+  border-right: 1px solid var(--k2-border);
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 12px;
+  top: 0;
   align-self: start;
-  margin: 12px;
-  height: calc(100vh - 24px);
-  max-height: calc(100vh - 24px);
+  height: 100vh;
+  max-height: 100vh;
   overflow: hidden;
   z-index: 10;
-  box-shadow: 0 10px 32px -14px rgba(0, 0, 0, 0.35);
 }
 .k2-sb-head {
   padding: 18px 18px 14px;
