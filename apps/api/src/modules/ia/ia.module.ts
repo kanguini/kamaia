@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { CONTRATOS_HERANCA_FIRST } from '@kamaia/shared-types';
 import { AuditModule } from '../audit/audit.module';
 import { ComplianceModule } from '../compliance/compliance.module';
 import { ComplianceService } from '../compliance/compliance.service';
@@ -70,17 +71,22 @@ export class IaModule implements OnModuleInit {
     this.registry.register(buildListDatasChaveTool(this.prisma));
     this.registry.register(buildListObrigacoesTool(this.prisma));
 
-    // Tools de mutação (Sprint 1.4)
+    // Tools de mutação (Sprint 1.4). find-or-create-entidade mantém-se
+    // (útil para registar as partes de um contrato herdado).
     this.registry.register(
       buildFindOrCreateEntidadeTool(this.prisma, this.entidadesService),
     );
-    this.registry.register(
-      buildCreateContratoTool(
-        this.prisma,
-        this.contratosService,
-        this.complianceService,
-        this.customFieldsService,
-      ),
-    );
+    // Criar contrato de raiz fica DESLIGADO em herança-first — a IA não
+    // redige/cria contratos novos nesta fase (só ajuda a gerir/consultar).
+    if (!CONTRATOS_HERANCA_FIRST) {
+      this.registry.register(
+        buildCreateContratoTool(
+          this.prisma,
+          this.contratosService,
+          this.complianceService,
+          this.customFieldsService,
+        ),
+      );
+    }
   }
 }
