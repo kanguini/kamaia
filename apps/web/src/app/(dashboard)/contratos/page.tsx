@@ -17,6 +17,7 @@ import {
   ContratoEstado,
   ContratoOrigem,
   CONTRATO_ESTADO_LABELS,
+  CONTRATOS_HERANCA_FIRST,
   PaginatedResponse,
 } from '@kamaia/shared-types'
 import { Badge } from '@/components/ui/badge'
@@ -204,7 +205,7 @@ function ContratosListInner() {
               setNovoOpen(true)
             }}
           >
-            Novo contrato
+            {CONTRATOS_HERANCA_FIRST ? 'Adicionar contrato' : 'Novo contrato'}
           </Button>
         </div>
       </header>
@@ -216,7 +217,7 @@ function ContratosListInner() {
           setImportarMode(false)
           setPresetParte(undefined)
         }}
-        presetCaminho={importarMode ? 'existente' : undefined}
+        presetCaminho={CONTRATOS_HERANCA_FIRST || importarMode ? 'existente' : undefined}
         presetParte={presetParte}
       />
 

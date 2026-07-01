@@ -254,6 +254,20 @@ export enum ContratoOrigem {
   ADENDA = 'ADENDA',
 }
 
+/**
+ * Fase de produto — MVP HERANÇA-FIRST.
+ *
+ * `true`: a Kamaia trata apenas de contratos JÁ CELEBRADOS (herdados). A
+ * entrada faz-se por upload/importação; o contrato entra em gestão activa
+ * (REPOSITORIO/ACTIVO) e o valor está na gestão do ciclo de vida — datas,
+ * obrigações, compliance, adenda, terminação, arquivo.
+ *
+ * O caminho de CRIAÇÃO DE RAIZ (redacção, IA drafting, templates,
+ * negociação, assinatura) fica dormente: o código permanece, apenas
+ * inalcançável pela UI. Pôr `false` na Fase 2 reactiva o fluxo completo.
+ */
+export const CONTRATOS_HERANCA_FIRST = true;
+
 // ─── State Machine ────────────────────────────────────────
 //
 // Regras:

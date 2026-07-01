@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Upload, Sparkles, X } from 'lucide-react'
+import { CONTRATOS_HERANCA_FIRST } from '@kamaia/shared-types'
 import { api, getActiveTenantId } from '@/lib/api'
 import { useKamaiaAI } from '@/components/kamaia-ai/kamaia-ai-provider'
 
@@ -102,9 +103,14 @@ export function FirstRunBanner() {
         </button>
       </div>
       <p className="frb-hint">
-        Para começares, escolhe um caminho. Podes mudar depois.
+        {CONTRATOS_HERANCA_FIRST
+          ? 'Traz os contratos que já tens — nós cuidamos deles.'
+          : 'Para começares, escolhe um caminho. Podes mudar depois.'}
       </p>
-      <div className="frb-paths">
+      <div
+        className="frb-paths"
+        style={CONTRATOS_HERANCA_FIRST ? { gridTemplateColumns: '1fr' } : undefined}
+      >
         <Link href="/contratos?onboard=import" className="frb-path">
           <Upload size={16} className="frb-path-icon" />
           <div>
@@ -115,22 +121,24 @@ export function FirstRunBanner() {
             </div>
           </div>
         </Link>
-        <button
-          type="button"
-          onClick={() => void startWithAI()}
-          className="frb-path"
-        >
-          <Sparkles size={16} className="frb-path-icon" />
-          <div>
-            <div className="frb-path-title">
-              Criar primeiro contrato com o Dr. Kamaia
+        {!CONTRATOS_HERANCA_FIRST && (
+          <button
+            type="button"
+            onClick={() => void startWithAI()}
+            className="frb-path"
+          >
+            <Sparkles size={16} className="frb-path-icon" />
+            <div>
+              <div className="frb-path-title">
+                Criar primeiro contrato com o Dr. Kamaia
+              </div>
+              <div className="frb-path-sub">
+                Diz ao Dr. Kamaia o que precisas. Ele faz as perguntas certas e
+                monta o contrato.
+              </div>
             </div>
-            <div className="frb-path-sub">
-              Diz ao Dr. Kamaia o que precisas. Ele faz as perguntas certas e
-              monta o contrato.
-            </div>
-          </div>
-        </button>
+          </button>
+        )}
       </div>
 
       <style jsx>{`

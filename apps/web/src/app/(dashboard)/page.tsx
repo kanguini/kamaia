@@ -26,7 +26,7 @@ import {
   Calendar,
   TrendingUp,
   Bell,
-  FilePlus,
+  FileSearch,
   Plus,
   Square,
 } from 'lucide-react'
@@ -68,10 +68,10 @@ const CHIPS: Chip[] = [
       'Quais são os 5 contratos activos com maior valor anual? Inclui contraparte e termo.',
   },
   {
-    icon: FilePlus,
-    label: 'Criar um contrato',
+    icon: FileSearch,
+    label: 'Resumir um contrato',
     prompt:
-      'Quero criar um contrato. Guia-me com perguntas — preciso de título, tipo, contraparte, valor e datas.',
+      'Dá-me um resumo de um contrato à minha escolha — partes, valor, datas-chave, obrigações e riscos a vigiar. Pergunta-me qual.',
   },
 ]
 
