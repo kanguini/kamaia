@@ -159,7 +159,7 @@ model Membership {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@unique([userId, tenantId])
   @@index([tenantId])
@@ -249,7 +249,7 @@ model Entidade {
   updatedAt                DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                DateTime?                    @map("deleted_at") @db.Timestamptz
 
-  tenant                   Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                   Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contactos                EntidadeContacto[]
   documentosKYC            EntidadeDocumentoKYC[]
   partesEmContratos        ContratoParte[]
@@ -308,7 +308,7 @@ model Carteira {
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz
 
-  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contratos   Contrato[]
 
   @@index([tenantId])
@@ -341,7 +341,7 @@ model TipoContrato {
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant              Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contratos           Contrato[]
   templates           Template[]
   customFields        CustomFieldDefinition[]
@@ -491,10 +491,11 @@ model Template {
   /// distinguimos archived (isActive=false) de deleted (deletedAt!=null).
   deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz
 
-  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   tipo            TipoContrato @relation(fields: [tipoId], references: [id])
 
   @@index([tenantId, tipoId])
+  @@index([tipoId])
   @@map("templates")
 }
 
@@ -520,7 +521,7 @@ model Clausula {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, categoria])
   @@index([tipoContratoCodigos], type: Gin)
@@ -616,7 +617,7 @@ model Contrato {
   createdBy           String?          @map("created_by") @db.Uuid
   deletedAt           DateTime?        @map("deleted_at") @db.Timestamptz
 
-  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   tipo                TipoContrato     @relation(fields: [tipoId], references: [id])
   carteira            Carteira?        @relation(fields: [carteiraId], references: [id])
   parent              Contrato?        @relation("Adendas", fields: [parentContratoId], references: [id])
@@ -848,6 +849,7 @@ model ContratoObrigacao {
 
   @@index([contratoId])
   @@index([proximaData])
+  @@index([parteResponsavelId])
   @@map("contrato_obrigacoes")
 }
 
@@ -1076,7 +1078,7 @@ model ImportacaoLote {
   concluidoEm   DateTime?        @map("concluido_em") @db.Timestamptz
   resumoErros   Json?            @map("resumo_erros")
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   linhas        ImportacaoLinha[]
 
   @@index([tenantId, estado])
@@ -1129,7 +1131,7 @@ model Document {
   createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
   deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz
 
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contrato        Contrato?           @relation(fields: [contratoId], references: [id])
 
   @@index([tenantId])
@@ -1178,7 +1180,7 @@ model BackupExport {
   startedAt     DateTime @default(now()) @map("started_at") @db.Timestamptz
   completedAt   DateTime? @map("completed_at") @db.Timestamptz
 
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId, startedAt])
   @@index([tenantId, type, startedAt])
@@ -1200,7 +1202,7 @@ model AIConversation {
   updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt   DateTime?   @map("deleted_at") @db.Timestamptz
 
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   user        User        @relation(fields: [userId], references: [id])
   messages    AIMessage[]
 
@@ -1271,6 +1273,7 @@ model LegislationChunk {
   document      LegislationDocument   @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+  @@unique([documentId, ordem])
   @@map("legislation_chunks")
 }
 
@@ -1299,7 +1302,7 @@ model Subscription {
   createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("subscriptions")
 }
@@ -1325,7 +1328,7 @@ model UsageQuota {
 
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@map("usage_quotas")
 }
@@ -1363,7 +1366,7 @@ model Notification {
 
   createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
 
-  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, userId, status])
@@ -1405,7 +1408,7 @@ model AgendaEvento {
   updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt   DateTime?        @map("deleted_at") @db.Timestamptz
 
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contrato    Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, inicio])
@@ -1478,7 +1481,7 @@ model Tarefa {
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
 
-  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   contrato       Contrato?        @relation(fields: [contratoId], references: [id], onDelete: SetNull)
   responsavel    User?            @relation(fields: [responsavelId], references: [id], onDelete: SetNull)
   coluna         TarefaColuna?    @relation(fields: [colunaId], references: [id], onDelete: SetNull)
@@ -1507,7 +1510,7 @@ model TarefaColuna {
   sistema   Boolean       @default(false)
   createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   tarefas   Tarefa[]
 
   @@index([tenantId, ordem])
@@ -1576,7 +1579,7 @@ model ApiKey {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   createdBy   String    @map("created_by") @db.Uuid
 
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@map("api_keys")
@@ -1593,7 +1596,7 @@ model Webhook {
 
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   deliveries  WebhookDelivery[]
 
   @@index([tenantId])
@@ -1720,6 +1723,8 @@ model ContratoComentario {
   @@index([contratoId, resolvido])
   @@index([versaoId])
   @@index([clausulaRef])
+  @@index([parentComentarioId])
+  @@index([autorColaboradorId])
   @@map("contrato_comentarios")
 }
 
@@ -1782,5 +1787,6 @@ model ContratoAssinatura {
 
   @@index([contratoId, estado])
   @@index([versaoId])
+  @@index([colaboradorId])
   @@map("contrato_assinaturas")
 }
