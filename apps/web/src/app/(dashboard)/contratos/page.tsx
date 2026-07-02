@@ -27,15 +27,18 @@ import { estadoBadgeVariant, estadoLabel, fmtDate } from '@/lib/clm-format'
 import { NovoContratoFlow } from '@/components/contratos/novo-contrato-flow'
 import { ImportarCarteiraDrawer } from '@/components/contratos/importar-carteira-drawer'
 
+// Alinha com o retorno real de GET /contratos (contratos.service list):
+// o campo é `numeroInterno` (não `numero`) e a contraparte vem em
+// `partes[0].entidade` (primeira parte por ordem).
 interface ContratoListItem {
   id: string
-  numero: string | null
+  numeroInterno: string | null
   titulo: string
   estado: ContratoEstado
   origem: ContratoOrigem
   dataTermo: string | null
   tipo: { id: string; nome: string } | null
-  contrapartePrincipal: { id: string; nome: string } | null
+  partes: { entidade: { id: string; nome: string } | null }[]
 }
 
 interface TipoContrato {
@@ -316,7 +319,7 @@ function ContratosListInner() {
               <tr key={c.id} style={{ borderTop: '1px solid var(--k2-border)' }}>
                 <Td>
                   <Link href={`/contratos/${c.id}`} style={{ color: 'var(--k2-accent)', textDecoration: 'none', fontVariantNumeric: 'tabular-nums' }}>
-                    {c.numero ?? '—'}
+                    {c.numeroInterno ?? '—'}
                   </Link>
                 </Td>
                 <Td>
@@ -329,7 +332,7 @@ function ContratosListInner() {
                   <Badge variant={estadoBadgeVariant(c.estado)}>{estadoLabel(c.estado)}</Badge>
                 </Td>
                 <Td>{fmtDate(c.dataTermo)}</Td>
-                <Td>{c.contrapartePrincipal?.nome ?? '—'}</Td>
+                <Td>{c.partes?.[0]?.entidade?.nome ?? '—'}</Td>
                 <Td><OrigemBadge origem={c.origem} /></Td>
               </tr>
             ))}

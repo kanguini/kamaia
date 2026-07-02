@@ -13,13 +13,17 @@ import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
 import { Role, ROLE_LABELS } from '@kamaia/shared-types'
 
+// GET /memberships devolve o Membership com o `user` aninhado
+// (memberships.service.ts list → include user.select).
 interface Member {
   id: string
   userId: string
-  email: string
-  firstName: string
-  lastName: string
   role: Role
+  user: {
+    email: string
+    firstName: string | null
+    lastName: string | null
+  }
 }
 
 interface MembersResponse {
@@ -62,21 +66,26 @@ export default function EquipaPage() {
 
 function MemberRow({ member, onChanged }: { member: Member; onChanged: () => void }) {
   const [role, setRole] = useState<Role>(member.role)
-  const { mutate: changeRole, loading: changing } = useMutation(`/memberships/${member.id}`, 'PATCH')
+  // A rota de role é PATCH /memberships/:id/role — /:id dava 404 e a
+  // mudança "não pegava".
+  const { mutate: changeRole, loading: changing } = useMutation(`/memberships/${member.id}/role`, 'PATCH')
   const { mutate: remove, loading: removing } = useMutation(`/memberships/${member.id}`, 'DELETE')
+  const nome = [member.user.firstName, member.user.lastName].filter(Boolean).join(' ') || member.user.email
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', borderTop: '1px solid var(--k2-border)' }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 13 }}>{member.firstName} {member.lastName}</div>
-        <div style={{ fontSize: 11, color: 'var(--k2-text-mute)' }}>{member.email}</div>
+        <div style={{ fontWeight: 500, fontSize: 13 }}>{nome}</div>
+        <div style={{ fontSize: 11, color: 'var(--k2-text-mute)' }}>{member.user.email}</div>
       </div>
       <Select
         value={role}
         onChange={async (e) => {
           const newRole = e.target.value as Role
           setRole(newRole)
-          await changeRole({ role: newRole })
+          const r = await changeRole({ role: newRole })
+          // Optimistic com revert: em falha volta ao valor real.
+          if (!r) setRole(member.role)
           onChanged()
         }}
         style={{ width: 180 }}
@@ -91,7 +100,7 @@ function MemberRow({ member, onChanged }: { member: Member; onChanged: () => voi
         size="sm"
         loading={removing}
         onClick={async () => {
-          if (!confirm(`Remover ${member.firstName} ${member.lastName} da equipa?`)) return
+          if (!confirm(`Remover ${nome} da equipa?`)) return
           await remove()
           onChanged()
         }}
@@ -106,7 +115,8 @@ function MemberRow({ member, onChanged }: { member: Member; onChanged: () => voi
 function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: () => void }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>(Role.BUSINESS_USER)
-  const { mutate, loading, error } = useMutation('/memberships/invite', 'POST')
+  // O convite é POST /memberships (a rota /memberships/invite não existe → 404).
+  const { mutate, loading, error } = useMutation('/memberships', 'POST')
 
   return (
     <div

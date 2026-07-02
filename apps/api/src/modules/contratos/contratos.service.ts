@@ -429,6 +429,13 @@ export class ContratosService {
       include: {
         tipo: { select: { codigo: true, nome: true, categoria: true } },
         carteira: { select: { id: true, nome: true } },
+        // Primeira parte (por ordem) para a coluna "Contraparte" da
+        // lista — select mínimo para não inchar o payload a 50k rows.
+        partes: {
+          select: { entidade: { select: { id: true, nome: true } } },
+          orderBy: { ordem: 'asc' as const },
+          take: 1,
+        },
         _count: {
           select: {
             versoes: true,

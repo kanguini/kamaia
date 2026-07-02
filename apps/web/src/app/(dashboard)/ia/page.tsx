@@ -22,9 +22,11 @@ interface Citation {
   trecho: string
 }
 
+// A API devolve o modelo Prisma — o campo é `titulo`, não `title`
+// (ler `title` mostrava todas as conversas como "Sem título").
 interface Conversation {
   id: string
-  title: string
+  titulo: string
   updatedAt: string
 }
 
@@ -83,7 +85,7 @@ export default function IAPage() {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages])
 
-  const { mutate: createConv } = useMutation<{ title?: string }, Conversation>('/ia/conversations', 'POST')
+  const { mutate: createConv } = useMutation<{ titulo?: string }, Conversation>('/ia/conversations', 'POST')
   const [sending, setSending] = useState(false)
 
   const handleNew = async () => {
@@ -134,7 +136,8 @@ export default function IAPage() {
             ...(tenantId ? { 'X-Tenant-Id': tenantId } : {}),
             Accept: 'text/event-stream',
           },
-          body: JSON.stringify({ content }),
+          // A API valida `conteudo` (SendMessageSchema) — `content` dava 400.
+          body: JSON.stringify({ conteudo: content }),
         },
       )
       if (!res.ok || !res.body) {
@@ -256,7 +259,7 @@ export default function IAPage() {
               }}
             >
               <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {c.title || 'Sem título'}
+                {c.titulo || 'Sem título'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--k2-text-mute)' }}>{fmtDateTime(c.updatedAt)}</div>
             </button>

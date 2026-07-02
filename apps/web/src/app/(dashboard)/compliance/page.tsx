@@ -88,7 +88,8 @@ export default function CompliancePage() {
 }
 
 function ActoRow({ acto, onChanged }: { acto: PendingActo; onChanged: () => void }) {
-  const { mutate, loading } = useMutation(`/compliance/actos/${acto.id}/concluir`, 'POST')
+  // A rota é @Patch — POST dava 404 silencioso e o acto "não concluía".
+  const { mutate, loading, error } = useMutation(`/compliance/actos/${acto.id}/concluir`, 'PATCH')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', borderTop: '1px solid var(--k2-border)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -107,13 +108,16 @@ function ActoRow({ acto, onChanged }: { acto: PendingActo; onChanged: () => void
         <div style={{ fontSize: 12, color: 'var(--k2-text-dim)' }}>{fmtMoney(acto.valorLiquidar)}</div>
       )}
       <Badge variant={acto.estado === ActoEstado.PENDENTE ? 'warning' : 'info'}>{acto.estado.replaceAll('_', ' ')}</Badge>
+      {error && <span style={{ fontSize: 11, color: 'var(--k2-bad)' }}>{error}</span>}
       <Button
         size="sm"
         variant="secondary"
         loading={loading}
         onClick={async () => {
-          await mutate({})
-          onChanged()
+          // Só refresca se a mutação passou — antes o refetch corria
+          // mesmo em erro e o acto parecia concluído sem o estar.
+          const r = await mutate({})
+          if (r) onChanged()
         }}
       >
         Marcar concluído

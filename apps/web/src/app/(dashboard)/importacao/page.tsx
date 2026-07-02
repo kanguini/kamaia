@@ -12,7 +12,7 @@ import { useApi, useMutation } from '@/hooks/use-api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { LoteEstado, PaginatedResponse } from '@kamaia/shared-types'
+import { LoteEstado } from '@kamaia/shared-types'
 import { fmtDateTime } from '@/lib/clm-format'
 
 interface Lote {
@@ -35,9 +35,11 @@ const ESTADO_VARIANT: Partial<Record<LoteEstado, string>> = {
 }
 
 export default function ImportacaoPage() {
-  const { data, loading, refetch } = useApi<PaginatedResponse<Lote>>('/importacao/lotes?limit=50')
+  // useApi desembrulha o `data` de topo — o estado É o array de lotes.
+  // Ler `.data` outra vez dava undefined (lista sempre "sem lotes").
+  const { data, loading, refetch } = useApi<Lote[]>('/importacao/lotes?limit=50')
   const [showCreate, setShowCreate] = useState(false)
-  const lotes = data?.data ?? []
+  const lotes = data ?? []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

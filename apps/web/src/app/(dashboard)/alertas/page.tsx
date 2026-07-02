@@ -52,11 +52,6 @@ interface ExpirantContrato {
   tipo?: { codigo: string; nome: string }
 }
 
-interface ContratosList {
-  data: ExpirantContrato[]
-  total: number
-}
-
 interface PendingActo {
   id: string
   contratoId: string
@@ -71,15 +66,18 @@ interface PendingActo {
 
 export default function AlertasPage() {
   const { data: dashboard } = useApi<DashboardData>('/contratos/dashboard')
-  const { data: expira30 } = useApi<ContratosList>('/contratos?expiraEm=30&limit=20')
-  const { data: expira90 } = useApi<ContratosList>('/contratos?expiraEm=90&limit=20')
+  // useApi já desembrulha o `data` de topo dos endpoints paginados —
+  // o estado É o array. Ler `.data` outra vez dava sempre undefined
+  // (listas "A expirar" permanentemente vazias).
+  const { data: expira30 } = useApi<ExpirantContrato[]>('/contratos?expiraEm=30&limit=20')
+  const { data: expira90 } = useApi<ExpirantContrato[]>('/contratos?expiraEm=90&limit=20')
   const { data: actosPendentes, refetch: refetchActos } = useApi<PendingActo[]>(
     '/compliance/pendentes?dias=30',
   )
 
   // Contratos a expirar (30+90, deduplicados) para o Command Center.
   const contratosExpirar: PortfolioContrato[] = (() => {
-    const all = [...(expira30?.data ?? []), ...(expira90?.data ?? [])]
+    const all = [...(expira30 ?? []), ...(expira90 ?? [])]
     const seen = new Set<string>()
     const out: PortfolioContrato[] = []
     for (const c of all) {
@@ -96,8 +94,8 @@ export default function AlertasPage() {
     return out
   })()
 
-  const expira30List = expira30?.data ?? []
-  const expira90Only = (expira90?.data ?? []).filter(
+  const expira30List = expira30 ?? []
+  const expira90Only = (expira90 ?? []).filter(
     (c) => !expira30List.some((e) => e.id === c.id),
   )
   const actosCriticos = (actosPendentes ?? []).filter((a) => {
