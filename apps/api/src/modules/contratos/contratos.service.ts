@@ -561,26 +561,30 @@ export class ContratosService {
     // M1: inclui `estado` actual no where (concorrência otimista) — se
     // outra transição alterou o estado entretanto, count===0 e abortamos
     // em vez de sobrepor com um evento contraditório.
-    const r = await this.prisma.contrato.updateMany({
-      where: { id, tenantId, deletedAt: null, estado: contrato.estado },
-      data: { estado: para },
-    });
-    if (r.count === 0) {
-      throw new ConflictException(
-        'O estado do contrato mudou entretanto. Recarrega e tenta de novo.',
-      );
-    }
-    const updated = await this.prisma.contrato.findUniqueOrThrow({ where: { id } });
-
-    await this.prisma.contratoEvento.create({
-      data: {
-        contratoId: id,
-        tipo: ContratoEventoTipo.ESTADO_ALTERADO,
-        resumo: `${contrato.estado} → ${para}${motivo ? `: ${motivo}` : ''}`,
-        payload: { de: contrato.estado, para, motivo } as object,
-        actorUserId,
-        actorTipo: 'USER',
-      },
+    // Tx única (padrão do terminacao.service): estado + evento nunca
+    // divergem — um crash entre os dois deixava o contrato a mudar de
+    // estado sem rasto na timeline ("SEMPRE ContratoEvento").
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.contrato.updateMany({
+        where: { id, tenantId, deletedAt: null, estado: contrato.estado },
+        data: { estado: para },
+      });
+      if (r.count === 0) {
+        throw new ConflictException(
+          'O estado do contrato mudou entretanto. Recarrega e tenta de novo.',
+        );
+      }
+      await tx.contratoEvento.create({
+        data: {
+          contratoId: id,
+          tipo: ContratoEventoTipo.ESTADO_ALTERADO,
+          resumo: `${contrato.estado} → ${para}${motivo ? `: ${motivo}` : ''}`,
+          payload: { de: contrato.estado, para, motivo } as object,
+          actorUserId,
+          actorTipo: 'USER',
+        },
+      });
+      return tx.contrato.findUniqueOrThrow({ where: { id } });
     });
 
     await this.audit.log({
@@ -629,21 +633,36 @@ export class ContratosService {
       where: { id, tenantId, deletedAt: null },
     });
     if (!c) throw new NotFoundException('Contrato not found');
-    await this.prisma.contrato.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-    // M2: deixa rasto na timeline — um ACTIVO/ASSINADO não deve
-    // desaparecer das listas sem registo no histórico do contrato.
-    await this.prisma.contratoEvento.create({
-      data: {
-        contratoId: id,
-        tipo: ContratoEventoTipo.ARQUIVADO,
-        resumo: `Contrato removido (estado à remoção: ${c.estado})`,
-        payload: { estado: c.estado } as object,
-        actorUserId,
-        actorTipo: 'USER',
-      },
+    // Tx única: soft-delete + evento + estorno de quota são atómicos.
+    await this.prisma.$transaction(async (tx) => {
+      // Guard de concorrência: se outro pedido apagou entretanto,
+      // count===0 e não decrementamos a quota duas vezes.
+      const r = await tx.contrato.updateMany({
+        where: { id, tenantId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      if (r.count === 0) {
+        throw new ConflictException('O contrato já foi removido.');
+      }
+      // M2: deixa rasto na timeline — um ACTIVO/ASSINADO não deve
+      // desaparecer das listas sem registo no histórico do contrato.
+      await tx.contratoEvento.create({
+        data: {
+          contratoId: id,
+          tipo: ContratoEventoTipo.ARQUIVADO,
+          resumo: `Contrato removido (estado à remoção: ${c.estado})`,
+          payload: { estado: c.estado } as object,
+          actorUserId,
+          actorTipo: 'USER',
+        },
+      });
+      // Estorno da quota (o create incrementa; sem isto, criar+apagar
+      // em ciclo bloqueava o tenant no limite com meia dúzia de
+      // contratos vivos). Filtro >0 evita ficar negativo.
+      await tx.usageQuota.updateMany({
+        where: { tenantId, contratosUsado: { gt: 0 } },
+        data: { contratosUsado: { decrement: 1 } },
+      });
     });
     await this.audit.log({
       tenantId,

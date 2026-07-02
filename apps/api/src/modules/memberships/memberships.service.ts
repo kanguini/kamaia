@@ -135,6 +135,35 @@ export class MembershipsService {
       throw new ConflictException('User already has active membership in tenant');
     }
 
+    // Quota de utilizadores: reserva atómica fail-closed (mesmo padrão
+    // dos contratos) quando o convite ocupa um lugar NOVO — membership
+    // inexistente ou re-activação de um soft-deleted. Re-convites de um
+    // convite pendente não contam segundo lugar. Antes, utilizadoresUsado
+    // nunca era incrementado e o limite do plano não travava nada.
+    const ocupaNovoLugar = !existing || existing.deletedAt !== null;
+    if (ocupaNovoLugar) {
+      const quota = await this.prisma.usageQuota.findUnique({
+        where: { tenantId },
+        select: { utilizadoresLimit: true },
+      });
+      if (quota) {
+        const r = await this.prisma.usageQuota.updateMany({
+          where: {
+            tenantId,
+            ...(quota.utilizadoresLimit >= 0
+              ? { utilizadoresUsado: { lt: quota.utilizadoresLimit } }
+              : {}),
+          },
+          data: { utilizadoresUsado: { increment: 1 } },
+        });
+        if (r.count === 0) {
+          throw new ConflictException(
+            'Limite de utilizadores do plano atingido. Remove um membro ou faz upgrade.',
+          );
+        }
+      }
+    }
+
     // Gera token (mesmo padrão de ContratoColaborador)
     const prefix = randomBytes(4).toString('hex');
     const secret = randomBytes(24).toString('base64url');
@@ -143,34 +172,47 @@ export class MembershipsService {
     const expiresAt = new Date(Date.now() + 7 * 86400_000); // 7 dias
 
     let membership;
-    if (existing) {
-      // Re-activa: limpa deletedAt + reset invite
-      membership = await this.prisma.membership.update({
-        where: { id: existing.id },
-        data: {
-          role: dto.role,
-          invitedBy: actorUserId,
-          invitedAt: new Date(),
-          acceptedAt: null,
-          deletedAt: null,
-          inviteTokenHash: tokenHash,
-          inviteTokenPrefix: prefix,
-          inviteExpiresAt: expiresAt,
-        },
-      });
-    } else {
-      membership = await this.prisma.membership.create({
-        data: {
-          userId: user.id,
-          tenantId,
-          role: dto.role,
-          invitedBy: actorUserId,
-          invitedAt: new Date(),
-          inviteTokenHash: tokenHash,
-          inviteTokenPrefix: prefix,
-          inviteExpiresAt: expiresAt,
-        },
-      });
+    try {
+      if (existing) {
+        // Re-activa: limpa deletedAt + reset invite
+        membership = await this.prisma.membership.update({
+          where: { id: existing.id },
+          data: {
+            role: dto.role,
+            invitedBy: actorUserId,
+            invitedAt: new Date(),
+            acceptedAt: null,
+            deletedAt: null,
+            inviteTokenHash: tokenHash,
+            inviteTokenPrefix: prefix,
+            inviteExpiresAt: expiresAt,
+          },
+        });
+      } else {
+        membership = await this.prisma.membership.create({
+          data: {
+            userId: user.id,
+            tenantId,
+            role: dto.role,
+            invitedBy: actorUserId,
+            invitedAt: new Date(),
+            inviteTokenHash: tokenHash,
+            inviteTokenPrefix: prefix,
+            inviteExpiresAt: expiresAt,
+          },
+        });
+      }
+    } catch (e) {
+      // Estorno da reserva se a criação/re-activação falhar.
+      if (ocupaNovoLugar) {
+        await this.prisma.usageQuota
+          .updateMany({
+            where: { tenantId, utilizadoresUsado: { gt: 0 } },
+            data: { utilizadoresUsado: { decrement: 1 } },
+          })
+          .catch(() => undefined);
+      }
+      throw e;
     }
 
     // Envia email — best-effort
@@ -373,9 +415,22 @@ export class MembershipsService {
       }
     }
 
-    const updated = await this.prisma.membership.update({
-      where: { id: membershipId },
-      data: { deletedAt: new Date() },
+    // Tx: soft-delete + libertação do lugar na quota são atómicos.
+    // Guard updateMany({deletedAt:null}) evita decrementar duas vezes
+    // em remoções concorrentes.
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const r = await tx.membership.updateMany({
+        where: { id: membershipId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      if (r.count === 0) {
+        throw new NotFoundException('Membership not found');
+      }
+      await tx.usageQuota.updateMany({
+        where: { tenantId, utilizadoresUsado: { gt: 0 } },
+        data: { utilizadoresUsado: { decrement: 1 } },
+      });
+      return tx.membership.findUniqueOrThrow({ where: { id: membershipId } });
     });
     await this.audit.log({
       tenantId,

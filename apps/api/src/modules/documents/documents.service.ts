@@ -108,6 +108,77 @@ export class DocumentsService {
     const safeName = dto.nome.replace(/[^\w.\-]+/g, '_');
     const storageKey = `${tenantId}/${id}-${safeName}`;
 
+    // Quota de armazenamento: reserva atómica ANTES de gravar (mesmo
+    // padrão fail-closed dos contratos). Antes, storageBytesUsado nunca
+    // era incrementado — o billing mostrava 0% para sempre e nada
+    // travava um tenant STARTER com 500 GB. Limite <0 = ilimitado
+    // (incrementa na mesma para o billing mostrar o uso real).
+    const bytes = BigInt(buffer.byteLength);
+    const quota = await this.prisma.usageQuota.findUnique({
+      where: { tenantId },
+      select: { storageGBLimit: true },
+    });
+    if (quota) {
+      const where: Prisma.UsageQuotaWhereInput = { tenantId };
+      if (quota.storageGBLimit >= 0) {
+        const limitBytes = BigInt(quota.storageGBLimit) * 1024n * 1024n * 1024n;
+        if (bytes > limitBytes) {
+          throw new BadRequestException(
+            'Limite de armazenamento do plano atingido. Liberta espaço ou faz upgrade.',
+          );
+        }
+        where.storageBytesUsado = { lte: limitBytes - bytes };
+      }
+      const r = await this.prisma.usageQuota.updateMany({
+        where,
+        data: { storageBytesUsado: { increment: bytes } },
+      });
+      if (r.count === 0) {
+        throw new BadRequestException(
+          'Limite de armazenamento do plano atingido. Liberta espaço ou faz upgrade.',
+        );
+      }
+    }
+
+    let doc;
+    try {
+      doc = await this.criarDocumento(tenantId, actorUserId, dto, {
+        id,
+        storageKey,
+        buffer,
+        hash,
+      });
+    } catch (e) {
+      // Estorno da reserva se a gravação falhar.
+      await this.prisma.usageQuota
+        .updateMany({
+          where: { tenantId, storageBytesUsado: { gte: bytes } },
+          data: { storageBytesUsado: { decrement: bytes } },
+        })
+        .catch(() => undefined);
+      throw e;
+    }
+
+    await this.audit.log({
+      tenantId,
+      actorUserId,
+      action: AuditAction.CREATE,
+      entityType: EntityType.DOCUMENT,
+      entityId: doc.id,
+      afterData: { id: doc.id, nome: doc.nome, mimeType: doc.mimeType },
+    });
+
+    return doc;
+  }
+
+  /** Grava bytes no storage + linha na BD (extraído para o estorno de quota do create). */
+  private async criarDocumento(
+    tenantId: string,
+    actorUserId: string,
+    dto: CreateDocumentDto,
+    ctx: { id: string; storageKey: string; buffer: Buffer; hash: string },
+  ) {
+    const { id, storageKey, buffer, hash } = ctx;
     await this.storage.put(storageKey, buffer, dto.mimeType);
 
     const doc = await this.prisma.document.create({
@@ -129,15 +200,6 @@ export class DocumentsService {
       },
     });
 
-    await this.audit.log({
-      tenantId,
-      actorUserId,
-      action: AuditAction.CREATE,
-      entityType: EntityType.DOCUMENT,
-      entityId: doc.id,
-      afterData: { id: doc.id, nome: doc.nome, mimeType: doc.mimeType },
-    });
-
     return doc;
   }
 
@@ -148,16 +210,50 @@ export class DocumentsService {
       data: { deletedAt: new Date() },
     });
 
-    // AUDIT fix #3: storage cleanup. Antes, storage file ficava órfão
-    // no R2/local até manualmente removido. Best-effort — se delete
-    // do storage falhar, o doc fica marcado deletedAt (lista filtra)
-    // mas o ficheiro permanece. Logamos para reaper batch futuro.
-    try {
-      await this.storage.delete(doc.storageKey);
-    } catch (e) {
-      this.logger.warn(
-        `Falhou storage.delete para ${doc.storageKey}: ${e instanceof Error ? e.message : e}. Ficheiro fica para reaper.`,
+    // Antes de destruir os bytes, verifica se o documento é PROVA de
+    // outra coisa: versão (assinada) de contrato, procuração de parte,
+    // comprovativo fiscal (AGT/BNA) ou KYC. Nesses casos o registo sai
+    // das listas (deletedAt) mas o ficheiro físico fica — apagar a
+    // versão assinada de um contrato herdado destruía o histórico
+    // "imutável" sem aviso.
+    const [versoes, procuracoes, comprovObrig, comprovActo, kyc] =
+      await Promise.all([
+        this.prisma.contratoVersao.count({ where: { documentId: id } }),
+        this.prisma.contratoParte.count({
+          where: { procuracaoDocumentId: id },
+        }),
+        this.prisma.contratoObrigacaoInstancia.count({
+          where: { comprovativoId: id },
+        }),
+        this.prisma.contratoActoRegulatorio.count({
+          where: { comprovativoId: id },
+        }),
+        this.prisma.entidadeDocumentoKYC.count({ where: { documentId: id } }),
+      ]);
+    const referenciado =
+      versoes + procuracoes + comprovObrig + comprovActo + kyc > 0;
+
+    if (referenciado) {
+      this.logger.log(
+        `Documento ${id} soft-deleted mas ficheiro preservado (referenciado por ` +
+          `${versoes} versões, ${procuracoes} procurações, ${comprovObrig + comprovActo} comprovativos, ${kyc} KYC).`,
       );
+    } else {
+      // AUDIT fix #3: storage cleanup. Best-effort — se delete do
+      // storage falhar, o doc fica marcado deletedAt (lista filtra)
+      // mas o ficheiro permanece. Logamos para reaper batch futuro.
+      try {
+        await this.storage.delete(doc.storageKey);
+        // Só liberta quota quando os bytes desaparecem de facto.
+        await this.prisma.usageQuota.updateMany({
+          where: { tenantId, storageBytesUsado: { gte: doc.tamanhoBytes } },
+          data: { storageBytesUsado: { decrement: doc.tamanhoBytes } },
+        });
+      } catch (e) {
+        this.logger.warn(
+          `Falhou storage.delete para ${doc.storageKey}: ${e instanceof Error ? e.message : e}. Ficheiro fica para reaper.`,
+        );
+      }
     }
 
     await this.audit.log({

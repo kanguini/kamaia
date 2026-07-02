@@ -114,21 +114,23 @@ export class AlertsScheduler {
       const triggered = dc.alertaDias.some((dias) => dias === diasAteData);
       if (!triggered) continue;
 
-      // Idempotência: já disparado este alerta?
+      // Idempotência: já disparado ESTE alerta (dataChave + diasAntes)?
+      // O filtro de diasAntes tem de estar no where — antes, o findFirst
+      // devolvia um evento arbitrário (ex.: o do dia-30) e comparava só
+      // esse: no dia-7 o alerta re-disparava, e uma segunda passagem no
+      // mesmo dia (restart + runOnce) duplicava e-mails a toda a gente.
       const alreadySent = await this.prisma.contratoEvento.findFirst({
         where: {
           contratoId: dc.contratoId,
           tipo: ContratoEventoTipo.ALERTA_DISPARADO,
-          payload: {
-            path: ['dataChaveId'],
-            equals: dc.id,
-          },
+          AND: [
+            { payload: { path: ['dataChaveId'], equals: dc.id } },
+            { payload: { path: ['diasAntes'], equals: diasAteData } },
+          ],
         },
+        select: { id: true },
       });
-      if (alreadySent) {
-        const payload = alreadySent.payload as { diasAntes?: number } | null;
-        if (payload?.diasAntes === diasAteData) continue;
-      }
+      if (alreadySent) continue;
 
       await this.emitirAlertaDataChave(
         { ...dc, tipo: dc.tipo as DataChaveTipo },

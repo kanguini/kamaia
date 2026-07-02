@@ -43,11 +43,18 @@ interface LinhaMeta {
  *   "12 500 000"      → 1 250 000 000   (espaço = milhares)
  *   "12.500.000"      → 1 250 000 000   (ponto = milhares, múltiplos)
  *   "12,500,000"      → 1 250 000 000   (vírgula = milhares, múltiplos)
+ *   "12.500"          →     1 250 000   (PT: ponto + 3 dígitos = milhares)
+ *   "12,500"          →     1 250 000   (idem com vírgula)
  *   "1500,50"         →       150 050   (vírgula decimal, 2 casas)
- *   "1500.50"         →       150 050   (ponto decimal)
+ *   "1500.50"         →       150 050   (ponto decimal, 1-2 casas)
  *   "12.500.000,50"   → 1 250 000 050   (PT: ponto milhares, vírgula decimal)
  *   "12,500,000.50"   → 1 250 000 050   (EN: vírgula milhares, ponto decimal)
  * undefined se vazio/inválido/negativo.
+ *
+ * Heurística PT-AO: um separador único seguido de EXACTAMENTE 3 dígitos
+ * é milhares ("12.500" são doze mil e quinhentos — decimais em PT usam
+ * vírgula). Antes, "12.500" era lido como 12,50 (÷1000) e o Imposto de
+ * Selo saía calculado sobre a base errada.
  */
 export function parseValorCentavos(v?: string | number): bigint | undefined {
   if (v === undefined || v === null || v === '') return undefined;
@@ -73,13 +80,25 @@ export function parseValorCentavos(v?: string | number): bigint | undefined {
         : partes.join('.');
   } else if (temPonto) {
     const partes = s.split('.');
-    // Vários pontos → milhares; um único ponto fica como decimal.
-    if (partes.length > 2) s = partes.join('');
+    // Mesma heurística do ramo da vírgula: vários pontos, ou um único
+    // com 3 dígitos a seguir → milhares. Só 1-2 dígitos fica decimal.
+    if (partes.length > 2 || partes[1]?.length === 3) s = partes.join('');
   }
 
-  const n = Number(s.replace(/[^\d.]/g, ''));
-  if (!Number.isFinite(n) || n < 0) return undefined;
-  return BigInt(Math.round(n * 100));
+  // Aritmética em string/BigInt — nunca por float (Number perde
+  // precisão acima de 2^53 e é proibido para dinheiro neste projecto).
+  s = s.replace(/[^\d.]/g, '');
+  const [intPart = '', fracRaw = ''] = s.split('.');
+  if (!/^\d*$/.test(intPart) || (intPart === '' && fracRaw === '')) {
+    return undefined;
+  }
+  const frac2 = (fracRaw + '00').slice(0, 2);
+  let centavos = BigInt(intPart || '0') * 100n + BigInt(frac2 || '0');
+  // Arredonda pela 3ª casa decimal, se existir.
+  if (fracRaw.length > 2 && fracRaw.charCodeAt(2) >= 53 /* '5' */) {
+    centavos += 1n;
+  }
+  return centavos;
 }
 
 function parseData(s?: string): Date | undefined {
@@ -163,7 +182,14 @@ export class ImportacaoService implements OnModuleInit {
 
   async start(tenantId: string, actorUserId: string, loteId: string) {
     const lote = await this.getLoteRaw(tenantId, loteId);
-    if (lote.estado !== LoteEstado.EM_FILA) {
+    // EM_FILA é o caso normal; FALHOU pode ser re-tentado (as linhas
+    // PENDENTE remanescentes são retomadas — as CRIADO são ignoradas
+    // pelo filtro de idempotência do processarSincrono).
+    const reiniciaveis: (typeof lote.estado)[] = [
+      LoteEstado.EM_FILA,
+      LoteEstado.FALHOU,
+    ];
+    if (!reiniciaveis.includes(lote.estado)) {
       return { ok: false, estado: lote.estado };
     }
     await this.prisma.importacaoLote.update({
@@ -176,7 +202,21 @@ export class ImportacaoService implements OnModuleInit {
     // de GET /importacao/lotes/:id. Sem Redis, processa inline e só
     // devolve no fim (modo='inline') — o estado final já reflecte o
     // resultado. Em ambos os casos a lógica é processarSincrono.
-    const modo = await this.queue.enqueue({ loteId, tenantId, actorUserId });
+    let modo: string;
+    try {
+      modo = await this.queue.enqueue({ loteId, tenantId, actorUserId });
+    } catch (e) {
+      // Compensa o estado — sem isto, um blip do Redis no momento do
+      // clique deixava o lote PROCESSANDO para sempre (zombie), e
+      // start() recusava-o daí em diante.
+      await this.prisma.importacaoLote
+        .update({
+          where: { id: lote.id },
+          data: { estado: LoteEstado.EM_FILA },
+        })
+        .catch(() => undefined);
+      throw e;
+    }
 
     return { ok: true, modo };
   }
@@ -222,8 +262,12 @@ export class ImportacaoService implements OnModuleInit {
     actorUserId: string,
     loteId: string,
   ) {
+    // IDEMPOTÊNCIA: só linhas PENDENTE. Sem este filtro, uma re-entrega
+    // do job (worker crashou/reiniciou a meio — BullMQ re-entrega jobs
+    // stalled) reprocessava linhas já CRIADO e duplicava contratos em
+    // massa (com quota, eventos e webhooks duplicados).
     const linhas = await this.prisma.importacaoLinha.findMany({
-      where: { loteId },
+      where: { loteId, estado: LinhaEstado.PENDENTE },
     });
 
     // Tipo de contrato genérico — primeiro disponível ao tenant (ou global).
@@ -235,14 +279,20 @@ export class ImportacaoService implements OnModuleInit {
       orderBy: { tenantId: 'asc' },  // tenant-specific antes do global
     });
 
-    let processadas = 0;
-    let falhas = 0;
-
     // FIX auditoria: cada linha tem a sua tx; numeroInterno gerado
     // dentro da tx com advisory lock (igual ao ContratosService.create)
     // — evita duplicates de UNIQUE constraint em alto throughput
     for (const linha of linhas) {
       try {
+        // Cinto-e-suspensórios: se um crash anterior deixou a linha com
+        // contrato criado mas sem estado actualizado, não duplicar.
+        if (linha.contratoId) {
+          await this.prisma.importacaoLinha.update({
+            where: { id: linha.id },
+            data: { estado: LinhaEstado.CRIADO },
+          });
+          continue;
+        }
         if (!tipo) {
           throw new Error('Nenhum TipoContrato disponível para o tenant');
         }
@@ -281,7 +331,6 @@ export class ImportacaoService implements OnModuleInit {
             contratoId: contrato.id,
           },
         });
-        processadas += 1;
       } catch (e) {
         this.logger.warn(
           `Linha ${linha.id} falhou: ${e instanceof Error ? e.message : e}`,
@@ -293,9 +342,20 @@ export class ImportacaoService implements OnModuleInit {
             erros: { mensagem: e instanceof Error ? e.message : String(e) },
           },
         });
-        falhas += 1;
       }
     }
+
+    // Contadores calculados da BD (não de contadores em memória) — uma
+    // re-execução pós-crash reporta o lote INTEIRO, não só esta passagem.
+    const porEstado = await this.prisma.importacaoLinha.groupBy({
+      by: ['estado'],
+      where: { loteId },
+      _count: { _all: true },
+    });
+    const contar = (estado: LinhaEstado) =>
+      porEstado.find((g) => g.estado === estado)?._count._all ?? 0;
+    const processadas = contar(LinhaEstado.CRIADO);
+    const falhas = contar(LinhaEstado.FALHOU);
 
     const estadoFinal =
       falhas === 0
