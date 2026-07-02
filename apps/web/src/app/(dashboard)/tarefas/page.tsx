@@ -120,7 +120,9 @@ export default function TarefasPage() {
       await api(`/tarefas/${t.id}/concluir`, { method: 'POST', token, body: JSON.stringify({}) })
       void load()
     } catch {
-      /* erro silencioso; o refetch reflecte o estado real */
+      // Refetch também em erro — sem isto o ✓ "não fazia nada" e a UI
+      // ficava dessincronizada do estado real.
+      void load()
     }
   }
 
