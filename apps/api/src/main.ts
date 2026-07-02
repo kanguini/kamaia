@@ -39,6 +39,13 @@ async function bootstrap() {
     console.log('[bootstrap] Configuring helmet + CORS...');
     app.use(helmet());
 
+    // Atrás do proxy do Railway/Vercel, `req.ip` sem isto é o IP do edge —
+    // o ThrottlerGuard passa a partilhar UM bucket para todos os
+    // utilizadores (dois utilizadores activos → 429 em cascata). Com
+    // trust proxy = 1, o Express lê o X-Forwarded-For do proxy imediato.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (app.getHttpAdapter().getInstance() as any).set('trust proxy', 1);
+
     // ─── Body parsers ─────────────────────────────────────────
     // Documents upload em base64 + import lote com metadata grande
     // requerem mais do que os 100KB default. 25MB cobre PDFs típicos

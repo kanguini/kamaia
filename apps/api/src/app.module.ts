@@ -47,8 +47,13 @@ import { BillingModule } from './modules/billing/billing.module';
             { name: 'long', ttl: 3600000, limit: 100_000 },
           ]
         : [
-            { name: 'short', ttl: 60000, limit: 10 },
-            { name: 'long', ttl: 3600000, limit: 200 },
+            // Backstop global anti-abuso POR IP (com trust proxy no
+            // main.ts). Um dashboard data-heavy dispara 4-6 requests em
+            // paralelo por página — 10/min real causava 429 em uso normal.
+            // Os endpoints sensíveis (login, register, forgot) têm
+            // throttles dedicados mais apertados no AuthController.
+            { name: 'short', ttl: 60000, limit: 120 },
+            { name: 'long', ttl: 3600000, limit: 3000 },
           ],
     ),
     // Infra
