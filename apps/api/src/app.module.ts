@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryModule, SentryGlobalFilter } from '@sentry/nestjs/setup';
+import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -38,7 +39,9 @@ import { BillingModule } from './modules/billing/billing.module';
   imports: [
     // Sentry SDK — noop quando SENTRY_DSN não está definido.
     SentryModule.forRoot(),
-    ConfigModule.forRoot({ isGlobal: true }),
+    // validateEnv: hard-fail no arranque em produção se faltarem
+    // DATABASE_URL/JWT_SECRET/FRONTEND_URL (ver env.validation.ts).
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot(
       process.env.NODE_ENV === 'test'

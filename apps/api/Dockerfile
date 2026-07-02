@@ -26,12 +26,25 @@ RUN cd packages/shared-types && npx tsc
 RUN cd apps/api && npx prisma generate
 RUN cd apps/api && npx nest build
 
+# ── Production deps (sem devDependencies) ─────────────────
+# Auditoria: copiar o node_modules do builder levava jest/eslint/
+# @nestjs/cli para produção — imagem inflada + superfície de supply
+# chain. `prisma` vive em dependencies (o entrypoint corre
+# `prisma migrate deploy` em runtime).
+FROM base AS prod-deps
+COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared-types/package.json ./packages/shared-types/
+RUN npm ci --omit=dev
+
 # ── Runner (production) ───────────────────────────────────
 FROM base AS runner
 ENV NODE_ENV=production
 
-# Copy full node_modules tree from builder (hoisted by npm workspaces)
-COPY --from=builder /app/node_modules ./node_modules
+# node_modules de produção + Prisma client gerado (o generate escreve
+# em node_modules/.prisma no builder — tem de vir de lá).
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy root package.json so workspace resolution still works
 COPY --from=builder /app/package.json ./
@@ -51,9 +64,14 @@ RUN chmod +x /app/apps/api/entrypoint.sh
 # Uploads directory (Railway volume mount point)
 RUN mkdir -p /app/apps/api/uploads
 
+# Auditoria: nunca correr como root — a API processa ficheiros hostis
+# (pdf-parse/tesseract/mammoth); um RCE não pode dar root no container.
+RUN chown -R node:node /app/apps/api/uploads
+USER node
+
 WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-# Entrypoint script handles prisma db push + app start with logging
+# Entrypoint script handles prisma migrate deploy + app start with logging
 CMD ["./entrypoint.sh"]

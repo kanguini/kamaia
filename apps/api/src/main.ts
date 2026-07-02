@@ -94,6 +94,11 @@ async function bootstrap() {
     app.setGlobalPrefix('api');
     console.log('[bootstrap] Global prefix /api set');
 
+    // SIGTERM (deploy Railway) dispara onModuleDestroy dos providers —
+    // Prisma fecha conexões e os workers BullMQ param limpo em vez de
+    // serem cortados a frio a meio de um job.
+    app.enableShutdownHooks();
+
     const port = parseInt(
       process.env.PORT || config.get<string>('APP_PORT') || '3001',
       10,

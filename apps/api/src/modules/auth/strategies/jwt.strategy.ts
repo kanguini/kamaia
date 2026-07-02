@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { JwtPayload } from '@kamaia/shared-types';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { resolveJwtSecret } from '../jwt-secret';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -10,7 +11,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_SECRET', 'change-me-in-prod'),
+      // Mesma resolução do JwtModule (assinatura) — ver jwt-secret.ts.
+      secretOrKey: resolveJwtSecret(config),
     });
   }
 
