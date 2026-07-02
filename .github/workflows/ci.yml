@@ -238,3 +238,19 @@ jobs:
       - name: Typecheck marketing
         run: npm run typecheck
         working-directory: apps/marketing
+
+      # `next build` apanha erros de prerender (ex.: useSearchParams sem
+      # <Suspense>) que o typecheck NÃO vê — esta classe de falha já
+      # partiu o deploy Vercel 2x sem o CI acusar. Envs dummy porque o
+      # build só precisa delas para embed, não para ligar a nada.
+      - name: Build web (prerender check)
+        run: npx next build
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+          NEXTAUTH_SECRET: ci-dummy-secret-not-used-in-prod
+          NEXTAUTH_URL: http://localhost:3000
+
+      - name: Build marketing (prerender check)
+        run: npx next build
+        working-directory: apps/marketing
