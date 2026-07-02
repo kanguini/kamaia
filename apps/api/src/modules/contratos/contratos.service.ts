@@ -141,6 +141,7 @@ export class ContratosService {
           await tx.contratoParte.create({
             data: {
               contratoId: c.id,
+              tenantId,
               entidadeId: p.entidadeId,
               papel: p.papel,
               representanteNome: p.representanteNome,

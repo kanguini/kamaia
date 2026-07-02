@@ -258,6 +258,9 @@ model Entidade {
   @@index([tenantId, nome])
   @@index([tenantId, nif])
   @@index([searchVector], type: Gin)
+  /// Alvo das FKs compostas (tenantId, id) — isolamento multi-tenant
+  /// verificável pela própria BD (auditoria C8).
+  @@unique([tenantId, id])
   @@map("entidades")
 }
 
@@ -312,6 +315,9 @@ model Carteira {
   contratos   Contrato[]
 
   @@index([tenantId])
+  /// Alvo das FKs compostas (tenantId, id) — isolamento multi-tenant
+  /// verificável pela própria BD (auditoria C8).
+  @@unique([tenantId, id])
   @@map("carteiras")
 }
 
@@ -655,6 +661,9 @@ model Contrato {
   // (estado=ACTIVO AND data_termo<=hoje), que não tem tenantId leading.
   @@index([estado, dataTermo])
   @@index([searchVector], type: Gin)
+  /// Alvo das FKs compostas (tenantId, id) — isolamento multi-tenant
+  /// verificável pela própria BD (auditoria C8).
+  @@unique([tenantId, id])
   @@map("contratos")
 }
 
@@ -736,6 +745,10 @@ enum PartePapel {
 model ContratoParte {
   id                   String      @id @default(uuid()) @db.Uuid
   contratoId           String      @map("contrato_id") @db.Uuid
+  /// Denormalizado do contrato (auditoria C8): permite a FK composta
+  /// (tenantId, entidadeId) → Entidade — a BD passa a IMPEDIR que uma
+  /// parte referencie uma entidade de outro tenant.
+  tenantId             String      @map("tenant_id") @db.Uuid
   entidadeId           String      @map("entidade_id") @db.Uuid
   papel                PartePapel
   representanteNome    String?     @map("representante_nome") @db.VarChar(200)
@@ -747,11 +760,12 @@ model ContratoParte {
   createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   contrato             Contrato    @relation(fields: [contratoId], references: [id], onDelete: Cascade)
-  entidade             Entidade    @relation(fields: [entidadeId], references: [id])
+  entidade             Entidade    @relation(fields: [tenantId, entidadeId], references: [tenantId, id])
   obrigacoesComoResponsavel ContratoObrigacao[]
 
   @@index([contratoId])
   @@index([entidadeId])
+  @@index([tenantId])
   @@map("contrato_partes")
 }
 

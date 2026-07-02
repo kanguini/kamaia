@@ -32,8 +32,10 @@ export class ContratoPartesService {
   ) {
     await this.assertContrato(tenantId, contratoId);
 
+    // tenantId na parte (C8): alimenta a FK composta → entidades, que
+    // impede ao nível da BD referenciar entidade de outro tenant.
     const parte = await this.prisma.contratoParte.create({
-      data: { contratoId, ...dto },
+      data: { contratoId, tenantId, ...dto },
     });
 
     await this.prisma.contratoEvento.create({
