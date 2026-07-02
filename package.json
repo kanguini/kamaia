@@ -16,7 +16,7 @@
     "seed": "cd apps/api && npx ts-node prisma/seed.ts",
     "db:studio": "cd apps/api && npx prisma studio",
     "clean": "turbo clean && rm -rf node_modules",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx}": [
