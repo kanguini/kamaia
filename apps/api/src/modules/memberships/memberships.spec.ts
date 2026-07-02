@@ -28,7 +28,20 @@ interface MembershipRow {
 }
 
 function makePrisma(rows: MembershipRow[]) {
-  return {
+  // Anotação explícita: o $transaction referencia `prisma` no próprio
+  // initializer (TS7022 sem ela).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prisma: Record<string, any> = {
+    // remove() corre em $transaction — o mock passa-se a si próprio
+    // como tx (as mesmas tabelas em memória).
+    $transaction: jest.fn(
+      async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
+        fn(prisma),
+    ),
+    usageQuota: {
+      findUnique: jest.fn(async () => null), // sem quota configurada nos tests
+      updateMany: jest.fn(async () => ({ count: 1 })),
+    },
     membership: {
       count: jest.fn(
         async (args: { where: { tenantId: string; role?: Role; acceptedAt?: object | null; deletedAt?: null; NOT?: { id: string } } }) => {
@@ -64,8 +77,29 @@ function makePrisma(rows: MembershipRow[]) {
           return r;
         },
       ),
+      updateMany: jest.fn(
+        async (args: {
+          where: { id: string; deletedAt?: null };
+          data: Partial<MembershipRow>;
+        }) => {
+          const r = rows.find(
+            (r) =>
+              r.id === args.where.id &&
+              (args.where.deletedAt !== null || r.deletedAt === null),
+          );
+          if (!r) return { count: 0 };
+          Object.assign(r, args.data);
+          return { count: 1 };
+        },
+      ),
+      findUniqueOrThrow: jest.fn(async (args: { where: { id: string } }) => {
+        const r = rows.find((r) => r.id === args.where.id);
+        if (!r) throw new Error('not found');
+        return r;
+      }),
     },
-  } as unknown as Parameters<typeof MembershipsService['prototype']['list']>[0] extends never
+  };
+  return prisma as unknown as Parameters<typeof MembershipsService['prototype']['list']>[0] extends never
     ? never
     : ConstructorParameters<typeof MembershipsService>[0];
 }

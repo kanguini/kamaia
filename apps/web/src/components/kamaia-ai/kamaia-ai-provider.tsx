@@ -63,7 +63,7 @@ interface KamaiaAIContextValue {
 
   // Mensagens
   messages: Message[]
-  send: (text: string, opts?: { allowMutations?: boolean }) => Promise<void>
+  send: (text: string, opts?: { allowMutations?: boolean; confirmToken?: string }) => Promise<void>
   sending: boolean
   /** Pára o stream em curso. */
   stop: () => void
@@ -247,7 +247,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
   // se a conversa muda, abortamos a anterior.
   const sendAbortRef = useRef<AbortController | null>(null)
   // Último texto enviado pelo utilizador — usado pelo botão "Repetir".
-  const lastSentRef = useRef<{ text: string; opts?: { allowMutations?: boolean } } | null>(null)
+  const lastSentRef = useRef<{ text: string; opts?: { allowMutations?: boolean; confirmToken?: string } } | null>(null)
 
   // Cancela ao desmontar o provider OU ao mudar de conversa
   useEffect(() => {
@@ -331,7 +331,7 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
    * 5. Reconcilia ids reais; marca streaming=false em done.
    */
   const send = useCallback(
-    async (text: string, opts?: { allowMutations?: boolean }) => {
+    async (text: string, opts?: { allowMutations?: boolean; confirmToken?: string }) => {
       if (!text.trim() || !session?.accessToken) return
       lastSentRef.current = { text, opts }
 
@@ -418,7 +418,10 @@ export function KamaiaAIProvider({ children, shortcutKey = 'j' }: ProviderProps)
               pageContext,
               // Gate de confirmação: só vai true quando o utilizador
               // confirma explicitamente uma acção de mutação proposta.
+              // O confirmToken vincula a confirmação à acção específica
+              // (toolName+args) que o utilizador viu no card.
               ...(opts?.allowMutations ? { allowMutations: true } : {}),
+              ...(opts?.confirmToken ? { confirmToken: opts.confirmToken } : {}),
             }),
             signal: ac.signal,
           },

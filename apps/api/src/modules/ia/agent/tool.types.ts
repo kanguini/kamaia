@@ -58,6 +58,14 @@ export interface ToolContext {
    * confirma explicitamente (frontend reenvia com este flag).
    */
   allowMutations?: boolean;
+  /**
+   * Vínculo da confirmação à ACÇÃO confirmada (auditoria): hash de
+   * (toolName + args canónicos) emitido no CONFIRMATION_REQUIRED. O
+   * turn confirmado só executa a invocação cujo hash coincide, uma
+   * única vez — sem isto, "Sim, confirmo" autorizava QUALQUER mutação
+   * do turno, com args que o modelo re-gera livremente.
+   */
+  confirmToken?: string;
 }
 
 /**

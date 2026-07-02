@@ -11,6 +11,7 @@ import {
 import { Role } from '@kamaia/shared-types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
@@ -45,7 +46,12 @@ export class RagController {
     return this.rag.get(id);
   }
 
+  // ESCRITA no corpus GLOBAL (auditoria C7): Role.ADMIN de um tenant
+  // não chega — qualquer cliente self-service envenenaria a "lei" que
+  // o Dr. Kamaia cita a TODOS os tenants. PlatformAdminGuard restringe
+  // aos curadores da plataforma (PLATFORM_ADMIN_EMAILS, fail-closed).
   @Post('legislation')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN)
   async create(
     @Body(new ParseZodPipe(CreateLegislationSchema)) dto: CreateLegislationDto,
@@ -54,6 +60,7 @@ export class RagController {
   }
 
   @Post('legislation/:id/chunks')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN)
   async addChunks(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -74,6 +81,7 @@ export class RagController {
    * fallback textual.
    */
   @Post('legislation/:id/reembed')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN)
   async reembed(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.rag.reembed(id);

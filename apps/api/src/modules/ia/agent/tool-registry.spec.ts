@@ -1,6 +1,6 @@
 import { Role } from '@prisma/client';
 import { z } from 'zod';
-import { ToolRegistry } from './tool-registry';
+import { confirmTokenFor, ToolRegistry } from './tool-registry';
 import { defineTool, ToolContext } from './tool.types';
 
 /**
@@ -225,8 +225,13 @@ describe('ToolRegistry', () => {
       await reg.execute('read', {}, CTX_BASE);
       expect(audit.log).not.toHaveBeenCalled();
 
-      // Mutação confirmada (allowMutations) executa e audita.
-      await reg.execute('mutate', { v: 'x' }, { ...CTX_BASE, allowMutations: true });
+      // Mutação confirmada (allowMutations + confirmToken da acção
+      // exacta) executa e audita.
+      await reg.execute('mutate', { v: 'x' }, {
+        ...CTX_BASE,
+        allowMutations: true,
+        confirmToken: confirmTokenFor('mutate', { v: 'x' }),
+      });
       expect(audit.log).toHaveBeenCalledTimes(1);
       const call = audit.calls[0];
       expect(call.tenantId).toBe('tenant-A');
@@ -258,9 +263,51 @@ describe('ToolRegistry', () => {
       expect(execSpy).not.toHaveBeenCalled();
       expect(audit.log).not.toHaveBeenCalled();
 
-      // Com allowMutations, executa.
-      const ok = await reg.execute('mutate', { v: 'x' }, { ...CTX_BASE, allowMutations: true });
+      // O CONFIRMATION_REQUIRED emite o token que vincula a confirmação
+      // à acção exacta.
+      const details = (out as { error: { details: { confirmToken: string } } })
+        .error.details;
+      expect(details.confirmToken).toBe(confirmTokenFor('mutate', { v: 'x' }));
+
+      // allowMutations SEM token não chega — a confirmação não está
+      // vinculada a nenhuma acção.
+      const semToken = await reg.execute('mutate', { v: 'x' }, {
+        ...CTX_BASE,
+        allowMutations: true,
+      });
+      expect('error' in semToken && semToken.error.code).toBe(
+        'CONFIRMATION_REQUIRED',
+      );
+      expect(execSpy).not.toHaveBeenCalled();
+
+      // Token de OUTROS args não executa (o modelo re-gerou parâmetros
+      // diferentes dos confirmados) — volta a pedir confirmação.
+      const tokenErrado = await reg.execute('mutate', { v: 'DIFERENTE' }, {
+        ...CTX_BASE,
+        allowMutations: true,
+        confirmToken: confirmTokenFor('mutate', { v: 'x' }),
+      });
+      expect('error' in tokenErrado && tokenErrado.error.code).toBe(
+        'CONFIRMATION_REQUIRED',
+      );
+      expect(execSpy).not.toHaveBeenCalled();
+
+      // Com allowMutations + token da acção exacta, executa.
+      const ctxOk: ToolContext = {
+        ...CTX_BASE,
+        allowMutations: true,
+        confirmToken: confirmTokenFor('mutate', { v: 'x' }),
+      };
+      const ok = await reg.execute('mutate', { v: 'x' }, ctxOk);
       expect('result' in ok).toBe(true);
+      expect(execSpy).toHaveBeenCalledTimes(1);
+
+      // One-shot: o token foi consumido — segunda mutação idêntica no
+      // mesmo turn volta a exigir confirmação.
+      const segunda = await reg.execute('mutate', { v: 'x' }, ctxOk);
+      expect('error' in segunda && segunda.error.code).toBe(
+        'CONFIRMATION_REQUIRED',
+      );
       expect(execSpy).toHaveBeenCalledTimes(1);
     });
 

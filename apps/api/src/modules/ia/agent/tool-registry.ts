@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AuditAction, EntityType } from '@kamaia/shared-types';
@@ -196,17 +197,29 @@ export class ToolRegistry {
     } catch {
       needsConfirm = true;
     }
-    if (needsConfirm && !ctx.allowMutations) {
-      return {
-        error: {
-          code: 'CONFIRMATION_REQUIRED',
-          message:
-            `A acção "${name}" altera dados e requer confirmação do utilizador — NÃO foi executada. ` +
-            `Descreve em linguagem natural o que vais fazer (com os parâmetros principais) e pede ao utilizador para confirmar. ` +
-            `Quando ele confirmar, a acção será executada.`,
-          details: { toolName: name, args: parsed.data },
-        },
-      };
+    if (needsConfirm) {
+      // Vínculo confirmação↔acção: o token é o hash de (tool + args
+      // canónicos). Só executa se o turn trouxer allowMutations E o
+      // token da acção que o utilizador viu/confirmou. Se o modelo
+      // re-gerar args diferentes (valor, contraparte…), o hash difere
+      // e volta a pedir confirmação com o novo resumo — nunca executa
+      // algo diferente do que foi confirmado.
+      const token = confirmTokenFor(name, parsed.data);
+      if (!ctx.allowMutations || ctx.confirmToken !== token) {
+        return {
+          error: {
+            code: 'CONFIRMATION_REQUIRED',
+            message:
+              `A acção "${name}" altera dados e requer confirmação do utilizador — NÃO foi executada. ` +
+              `Descreve em linguagem natural o que vais fazer (com os parâmetros principais) e pede ao utilizador para confirmar. ` +
+              `Quando ele confirmar, a acção será executada.`,
+            details: { toolName: name, args: parsed.data, confirmToken: token },
+          },
+        };
+      }
+      // One-shot: o token é consumido — uma segunda mutação no mesmo
+      // turn (mesmo idêntica) volta a exigir confirmação.
+      ctx.confirmToken = undefined;
     }
 
     // Execução com try-catch defensivo
@@ -247,6 +260,31 @@ export class ToolRegistry {
 
     return outcome;
   }
+}
+
+/**
+ * Token de confirmação: SHA-256 de (toolName + args canónicos). A
+ * canonicalização (chaves ordenadas, recursivo) evita que uma simples
+ * reordenação de chaves pelo modelo invalide a confirmação — só uma
+ * MUDANÇA DE VALORES o faz.
+ */
+export function confirmTokenFor(toolName: string, args: unknown): string {
+  return createHash('sha256')
+    .update(`${toolName}\n${canonicalJson(args)}`)
+    .digest('hex')
+    .slice(0, 32);
+}
+
+function canonicalJson(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
+  const keys = Object.keys(v as Record<string, unknown>).sort();
+  return `{${keys
+    .map(
+      (k) =>
+        `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`,
+    )
+    .join(',')}}`;
 }
 
 /**

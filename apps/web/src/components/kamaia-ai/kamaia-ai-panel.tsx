@@ -689,7 +689,15 @@ function ToolCallChip({ trace }: { trace: ToolCallTrace }) {
                 disabled={sending}
                 onClick={() => {
                   setActed('confirm')
-                  void send('Sim, confirmo.', { allowMutations: true })
+                  // O confirmToken vincula esta confirmação à acção
+                  // exacta (toolName+args) mostrada no resumo — o
+                  // backend só executa a invocação com hash igual.
+                  const token = (trace.uiPayload as { confirmToken?: string } | undefined)
+                    ?.confirmToken
+                  void send('Sim, confirmo.', {
+                    allowMutations: true,
+                    ...(token ? { confirmToken: token } : {}),
+                  })
                 }}
               >
                 Confirmar

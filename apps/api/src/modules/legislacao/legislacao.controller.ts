@@ -17,6 +17,7 @@ import { Role, TenantContext } from '@kamaia/shared-types';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Tenant } from '../../common/decorators/tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ParseZodPipe } from '../../common/pipes/parse-zod.pipe';
@@ -93,7 +94,12 @@ export class LegislacaoController {
    * cobre). Fiável e sem scraping. Se houver texto, fragmenta-o para o
    * Dr. Kamaia poder citar. ADMIN/LEGAL_LEAD.
    */
+  // ESCRITA no corpus GLOBAL (auditoria C7): Role de tenant não chega —
+  // o acervo é partilhado por todos os tenants e um ADMIN self-service
+  // podia envenenar a "lei" citada aos outros. PlatformAdminGuard
+  // restringe aos curadores (PLATFORM_ADMIN_EMAILS, fail-closed).
   @Post()
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN, Role.LEGAL_LEAD)
   async criar(
     @Body(new ParseZodPipe(CreateLegislationSchema)) dto: CreateLegislationDto,
@@ -129,6 +135,7 @@ export class LegislacaoController {
    * invenção. ADMIN/LEGAL_LEAD.
    */
   @Post('importar-pdf')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN, Role.LEGAL_LEAD)
   async importarPdf(
     @Tenant() tenant: TenantContext,
@@ -178,6 +185,7 @@ export class LegislacaoController {
    * nova transcrição. ADMIN/LEGAL_LEAD.
    */
   @Patch(':id')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN, Role.LEGAL_LEAD)
   async editar(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -199,6 +207,7 @@ export class LegislacaoController {
    * o caso de a ingestão automática não ter corrido. Só ADMIN.
    */
   @Post('importar')
+  @UseGuards(PlatformAdminGuard)
   @Roles(Role.ADMIN)
   async importar(
     @Query(new ParseZodPipe(ImportarSchema)) q: z.infer<typeof ImportarSchema>,

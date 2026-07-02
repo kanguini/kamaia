@@ -674,6 +674,7 @@ export class IaService {
     pageContext?: PageContext,
     allowMutations?: boolean,
     signal?: AbortSignal,
+    confirmToken?: string,
   ): AsyncGenerator<
     | { kind: 'user-msg'; messageId: string }
     | { kind: 'text'; delta: string }
@@ -786,6 +787,7 @@ export class IaService {
         conversationId,
         messageId: userMsg.id,
         allowMutations,
+        confirmToken,
       },
     })) {
       if (ev.kind === 'text') {

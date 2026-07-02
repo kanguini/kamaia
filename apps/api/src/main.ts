@@ -54,13 +54,20 @@ async function bootstrap() {
     app.use(urlencoded({ limit: '25mb', extended: true }));
 
     const frontendUrl = config.get<string>('FRONTEND_URL', 'http://localhost:3000');
-    const allowedOrigins = frontendUrl.split(',').map((o) => o.trim());
+    // '*' é filtrado deliberadamente: com credentials:true, reflectir
+    // qualquer origin permite roubo de sessão cross-site. Se alguém
+    // "resolver" um problema de CORS com FRONTEND_URL=* o wildcard é
+    // ignorado em vez de abrir a API ao mundo.
+    const allowedOrigins = frontendUrl
+      .split(',')
+      .map((o) => o.trim())
+      .filter((o) => o && o !== '*');
     console.log(`[bootstrap] CORS allowed origins: ${allowedOrigins.join(', ')}`);
 
     app.enableCors({
       origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'), false);

@@ -18,6 +18,23 @@ const nextConfig = {
       'recharts',
     ],
   },
+  // Security headers (auditoria): o dashboard autenticado era frameável
+  // (clickjacking) e sem política de referrer/sniffing. CSP fica para
+  // uma fase posterior (styled-jsx exige 'unsafe-inline' — carece de
+  // análise própria antes de activar).
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
+  },
   // Onda C.3.1: redirects server-side em vez de client-side useEffect.
   // Mais rápido (sem flash), SEO-friendly, e funciona para curl/bots.
   async redirects() {
