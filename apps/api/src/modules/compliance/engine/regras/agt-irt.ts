@@ -1,6 +1,7 @@
 import {
   ActoRegulatorioTipo,
   ComplianceContext,
+  isMoedaKwanza,
   TipoContratoCategoria,
 } from '@kamaia/shared-types';
 import { DISCLAIMER_PADRAO, RegraCompliance } from '../types';
@@ -38,14 +39,25 @@ export const REGRA_AGT_RETENCAO_IRT_NAO_RESIDENTE: RegraCompliance = {
     ) return false;
     return ctx.partesResidentes.some((r) => !r);
   },
-  build: (ctx) => ({
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? (ctx.valor * 15n) / 100n : undefined,
-    observacoes:
-      'Reter 15% do valor pago ao não-residente. Entrega à AGT até ao ' +
-      'último dia útil do mês seguinte ao do pagamento. Verificar CDT ' +
-      'aplicável (e.g. Portugal, Cabo Verde) que pode reduzir a taxa.',
-  }),
+  build: (ctx) => {
+    // A retenção entrega-se em KWANZAS — contratos em moeda estrangeira
+    // usam o contravalor valorEmAKZ; sem conversão, não se calcula
+    // (antes: 15% sobre centavos de USD tratados como AKZ).
+    const base = isMoedaKwanza(ctx.moeda) ? ctx.valor : ctx.valorEmAKZ;
+    const semConversao =
+      !isMoedaKwanza(ctx.moeda) && ctx.valorEmAKZ === null;
+    return {
+      baseTributavel: base ?? undefined,
+      valorLiquidar: base !== null ? (base * 15n) / 100n : undefined,
+      observacoes:
+        'Reter 15% do valor pago ao não-residente. Entrega à AGT até ao ' +
+        'último dia útil do mês seguinte ao do pagamento. Verificar CDT ' +
+        'aplicável (e.g. Portugal, Cabo Verde) que pode reduzir a taxa.' +
+        (semConversao
+          ? ` ATENÇÃO: contrato em ${ctx.moeda} sem contravalor em AKZ — preencher o valor em kwanzas para calcular a retenção.`
+          : ''),
+    };
+  },
 };
 
 export const REGRAS_AGT: RegraCompliance[] = [

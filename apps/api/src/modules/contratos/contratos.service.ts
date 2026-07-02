@@ -693,9 +693,13 @@ export class ContratosService {
    * round-trips no painel inicial.
    */
   async dashboard(tenantId: string) {
+    // Meia-noite UTC (mesmo fix documentado no list()): dataTermo é
+    // @db.Date — comparar com a hora corrente excluía contratos que
+    // vencem HOJE dos KPIs, precisamente no dia mais importante.
     const agora = new Date();
-    const em30 = new Date(); em30.setDate(em30.getDate() + 30);
-    const em90 = new Date(); em90.setDate(em90.getDate() + 90);
+    agora.setUTCHours(0, 0, 0, 0);
+    const em30 = new Date(agora); em30.setDate(em30.getDate() + 30);
+    const em90 = new Date(agora); em90.setDate(em90.getDate() + 90);
 
     // Janela do trimestre anterior — usada para delta %
     const inicioTrimestreActual = new Date();
@@ -735,14 +739,22 @@ export class ContratosService {
           dataTermo: { gte: agora, lte: em30 },
         },
       }),
-      this.prisma.contrato.aggregate({
-        where: {
-          tenantId,
-          deletedAt: null,
-          dataTermo: { gte: agora, lte: em30 },
-        },
-        _sum: { valor: true },
-      }),
+      // Risco em AKZ: somar `valor` cru misturava centavos de AOA com
+      // USD/EUR num número sem significado. AOA usa `valor`; moeda
+      // estrangeira usa o contravalor `valor_em_akz` (sem contravalor,
+      // fica de fora — KPI honesto em vez de inflacionado).
+      this.prisma.$queryRaw<[{ soma: bigint | null }]>`
+        SELECT SUM(
+          CASE
+            WHEN moeda IS NULL OR moeda IN ('AOA', 'AKZ') THEN valor
+            ELSE valor_em_akz
+          END
+        )::bigint AS soma
+        FROM contratos
+        WHERE tenant_id = ${tenantId}::uuid
+          AND deleted_at IS NULL
+          AND data_termo >= ${agora} AND data_termo <= ${em30}
+      `,
       this.prisma.contrato.count({
         where: {
           tenantId,
@@ -865,10 +877,7 @@ export class ContratosService {
       activos,
       porEstado: Object.fromEntries(porEstado.map((p) => [p.estado, p._count])),
       expiraEm30,
-      expiraEm30RiscoCentavos:
-        expiraEm30Valor._sum.valor !== null
-          ? expiraEm30Valor._sum.valor.toString()
-          : '0',
+      expiraEm30RiscoCentavos: (expiraEm30Valor[0]?.soma ?? 0n).toString(),
       expiraEm90,
       denunciaEm60,
       actosPendentes,

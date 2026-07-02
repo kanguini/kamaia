@@ -1,6 +1,7 @@
 import {
   ActoRegulatorioTipo,
   ComplianceContext,
+  isMoedaKwanza,
   TipoContratoCategoria,
 } from '@kamaia/shared-types';
 import { DISCLAIMER_IS, RegraCompliance } from '../types';
@@ -40,6 +41,38 @@ function calcular(base: bigint, taxaPercentagem: number): bigint {
   return numerador / 1_000_000n;
 }
 
+/**
+ * Base tributável: o IS liquida-se em KWANZAS — contratos em moeda
+ * estrangeira usam o contravalor valorEmAKZ. Sem conversão disponível
+ * não se calcula (antes: 7% sobre centavos de USD tratados como AKZ —
+ * valor fiscal errado por ordem de grandeza).
+ */
+function baseFiscal(ctx: ComplianceContext): bigint | null {
+  if (!isMoedaKwanza(ctx.moeda)) return ctx.valorEmAKZ;
+  return ctx.valor;
+}
+
+/**
+ * Campos fiscais comuns: base em AKZ, valor pela taxa, e prazo contado
+ * do FACTO TRIBUTÁRIO (dataAssinatura) — não de "hoje". Um herdado
+ * assinado em 2023 mostra o imposto em mora, não "a vencer em 30 dias".
+ */
+function camposFiscais(ctx: ComplianceContext, taxaPercentagem: number) {
+  const base = baseFiscal(ctx);
+  return {
+    baseTributavel: base ?? undefined,
+    valorLiquidar: base !== null ? calcular(base, taxaPercentagem) : undefined,
+    prazoLimite: addDias(ctx.dataAssinatura, PRAZO_LIQUIDACAO_DIAS),
+  };
+}
+
+/** Nota anexada quando falta o contravalor em AKZ. */
+function notaMoeda(ctx: ComplianceContext): string {
+  return !isMoedaKwanza(ctx.moeda) && ctx.valorEmAKZ === null
+    ? ` ATENÇÃO: contrato em ${ctx.moeda} sem contravalor em AKZ — preencher o valor em kwanzas para calcular o imposto.`
+    : '';
+}
+
 // ═══════════════════════════════════════════════════════════
 // Verba 23.3 — Recibo de quitação (operações isentas de IVA)
 // ═══════════════════════════════════════════════════════════
@@ -57,14 +90,12 @@ export const REGRA_IS_PRESTACAO_SERVICOS: RegraCompliance = {
     ctx.categoria === TipoContratoCategoria.SERVICOS && ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '23.3',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 7) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 7),
     observacoes:
       'IS sobre recibo de quitação — incide aquando do recebimento. ' +
       'Sujeitos passivos: prestadores de serviços. Verifique enquadramento ' +
       'em sede de IVA — se a operação for tributada em IVA, esta verba ' +
-      'pode não aplicar.',
+      'pode não aplicar.' + notaMoeda(ctx),
   }),
 };
 
@@ -85,12 +116,10 @@ export const REGRA_IS_ARRENDAMENTO_HABITACIONAL: RegraCompliance = {
     ctx.tipoCodigo === 'ARRENDAMENTO_HABITACIONAL',
   build: (ctx) => ({
     tgisVerbaNumero: '2.1',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.1) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 0.1),
     observacoes:
       'Liquidação mensal sobre cada renda devida. Sujeito passivo: senhorio. ' +
-      'Submeter via Portal do Contribuinte no prazo de 10 dias após celebração.',
+      'Submeter via Portal do Contribuinte no prazo de 10 dias após celebração.' + notaMoeda(ctx),
   }),
 };
 
@@ -108,12 +137,10 @@ export const REGRA_IS_ARRENDAMENTO_COMERCIAL: RegraCompliance = {
     ctx.tipoCodigo === 'ARRENDAMENTO',
   build: (ctx) => ({
     tgisVerbaNumero: '2.2',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.4) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 0.4),
     observacoes:
       'Liquidação mensal sobre cada renda devida. Sujeito passivo: senhorio. ' +
-      'Submeter via Portal do Contribuinte no prazo de 10 dias após celebração.',
+      'Submeter via Portal do Contribuinte no prazo de 10 dias após celebração.' + notaMoeda(ctx),
   }),
 };
 
@@ -133,12 +160,10 @@ export const REGRA_IS_MUTUO: RegraCompliance = {
   aplicaSe: (ctx) => ctx.tipoCodigo === 'MUTUO' && ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '16.1.1',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.5) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 0.5),
     observacoes:
       'Taxa 0,5% assume prazo até 1 ano. Verificar prazo real do mútuo: ' +
-      '0,4% (1-5 anos), 0,3% (5+ anos), 0,1% (crédito habitação — Verba 16.1.5).',
+      '0,4% (1-5 anos), 0,3% (5+ anos), 0,1% (crédito habitação — Verba 16.1.5).' + notaMoeda(ctx),
   }),
 };
 
@@ -162,13 +187,11 @@ export const REGRA_IS_COMPRAVENDA_IMOVEL: RegraCompliance = {
     ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '1',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.3) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 0.3),
     observacoes:
       'Liquidação devida pelo adquirente. Verificar cumulação com SISA, ' +
       'que tem taxa autónoma (até 2% do valor patrimonial tributário). ' +
-      'Necessário antes da escritura pública.',
+      'Necessário antes da escritura pública.' + notaMoeda(ctx),
   }),
 };
 
@@ -190,13 +213,11 @@ export const REGRA_IS_GARANTIA: RegraCompliance = {
   build: (ctx) => ({
     // Pessimista: taxa de prazo curto, que é a mais alta
     tgisVerbaNumero: '10.1',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 0.3) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 0.3),
     observacoes:
       'Assume garantia com duração até 1 ano (Verba 10.1, taxa 0,3%). ' +
       'Para garantias 1-5 anos: 0,2% (10.2). 5+ anos / indefinido: 0,1% (10.3). ' +
-      'Ajustar conforme prazo real do contrato.',
+      'Ajustar conforme prazo real do contrato.' + notaMoeda(ctx),
   }),
 };
 
@@ -239,13 +260,11 @@ export const REGRA_IS_EMPREITADA: RegraCompliance = {
   aplicaSe: (ctx) => ctx.tipoCodigo === 'EMPREITADA' && ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '23.3',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 7) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 7),
     observacoes:
       'Aplicada como prestação de serviços (Verba 23.3, 7%). Se a ' +
       'empreitada envolver transmissão de propriedade do imóvel, verificar ' +
-      'Verba 1 cumulativamente.',
+      'Verba 1 cumulativamente.' + notaMoeda(ctx),
   }),
 };
 
@@ -266,13 +285,11 @@ export const REGRA_IS_LICENCA_IP: RegraCompliance = {
     ctx.categoria === TipoContratoCategoria.IP && ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '23.3',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 7) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 7),
     observacoes:
       'Licenças e cessões de IP — assumido enquadramento como prestação ' +
       'de serviços (7%). Pagamentos a licenciante não-residente disparam ' +
-      'também retenção IRT 15%.',
+      'também retenção IRT 15%.' + notaMoeda(ctx),
   }),
 };
 
@@ -293,12 +310,10 @@ export const REGRA_IS_FORNECIMENTO: RegraCompliance = {
     ['FORNECIMENTO', 'DISTRIBUICAO'].includes(ctx.tipoCodigo) && ctx.valor !== null,
   build: (ctx) => ({
     tgisVerbaNumero: '23.3',
-    baseTributavel: ctx.valor ?? undefined,
-    valorLiquidar: ctx.valor ? calcular(ctx.valor, 7) : undefined,
-    prazoLimite: addDias(null, PRAZO_LIQUIDACAO_DIAS),
+    ...camposFiscais(ctx, 7),
     observacoes:
       'Assumindo prestação isenta de IVA. Se houver IVA, esta verba não ' +
-      'aplica. Confirmar enquadramento concreto antes de liquidar.',
+      'aplica. Confirmar enquadramento concreto antes de liquidar.' + notaMoeda(ctx),
   }),
 };
 

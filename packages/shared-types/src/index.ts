@@ -1449,6 +1449,13 @@ export interface ComplianceContext {
   valor: bigint | null;
   moeda: string | null;
   valorEmAKZ: bigint | null;
+  /**
+   * Data do facto tributário (assinatura). Os prazos legais (ex.: 30
+   * dias para liquidar IS) contam a partir DAQUI — não de "hoje". Um
+   * contrato herdado assinado em 2023 tem o imposto em mora, não
+   * "a vencer daqui a 30 dias".
+   */
+  dataAssinatura: Date | null;
   partesResidentes: boolean[];   // true = residente cambial
   paisesResidencia: string[];
   leiAplicavel: string | null;
@@ -1490,6 +1497,17 @@ export interface ComplianceActoDetectado {
  */
 export const MOEDAS_SUPORTADAS = ['AOA', 'AKZ', 'USD', 'EUR', 'BRL', 'CNY', 'GBP', 'ZAR'] as const;
 export type MoedaSuportada = typeof MOEDAS_SUPORTADAS[number];
+
+/**
+ * O kwanza tem DOIS códigos aceites no sistema: 'AOA' (ISO 4217) e
+ * 'AKZ' (símbolo informal, presente em dados legados). Qualquer lógica
+ * fiscal/agregação que pergunte "isto é kwanza?" usa ESTE helper —
+ * comparar só com 'AOA' deixava contratos AKZ tratados como moeda
+ * estrangeira. `null`/vazio assume kwanza (moeda por defeito).
+ */
+export function isMoedaKwanza(moeda: string | null | undefined): boolean {
+  return !moeda || moeda === 'AOA' || moeda === 'AKZ';
+}
 
 /** Moeda canónica para novos contratos / formulários. */
 export const MOEDA_PADRAO: MoedaSuportada = 'AOA';

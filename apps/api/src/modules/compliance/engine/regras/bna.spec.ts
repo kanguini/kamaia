@@ -29,6 +29,7 @@ function ctx(usd: bigint, naoResidente = true): ComplianceContext {
     valor: usd,
     moeda: 'USD',
     valorEmAKZ: null,
+    dataAssinatura: null,
     partesResidentes: [true, !naoResidente],
     paisesResidencia: ['AO', naoResidente ? 'PT' : 'AO'],
     leiAplicavel: 'Direito angolano',

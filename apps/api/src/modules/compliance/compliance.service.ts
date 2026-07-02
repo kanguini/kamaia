@@ -388,6 +388,7 @@ export class ComplianceService {
     valor: bigint | null;
     moeda: string | null;
     valorEmAKZ: bigint | null;
+    dataAssinatura: Date | null;
     leiAplicavel: string | null;
     tipo: { codigo: string; categoria: string };
     partes: Array<{ entidade: { nacionalidadeCambial: string; paisResidencia: string } }>;
@@ -403,6 +404,7 @@ export class ComplianceService {
       valor: contrato.valor,
       moeda: contrato.moeda,
       valorEmAKZ: contrato.valorEmAKZ,
+      dataAssinatura: contrato.dataAssinatura,
       partesResidentes: contrato.partes.map(
         (p) => p.entidade.nacionalidadeCambial === 'RESIDENTE',
       ),

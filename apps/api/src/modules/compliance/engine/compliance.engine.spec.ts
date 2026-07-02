@@ -22,6 +22,7 @@ describe('ComplianceEngine', () => {
       valor: BigInt(10_000_000_00),  // AKZ 10M
       moeda: 'AKZ',
       valorEmAKZ: BigInt(10_000_000_00),
+      dataAssinatura: null,
       partesResidentes: [true, true],
       paisesResidencia: ['AO', 'AO'],
       leiAplicavel: 'Angola',
@@ -150,6 +151,64 @@ describe('ComplianceEngine', () => {
     it('contrato de serviços sem valor não dispara IS (base tributável ausente)', () => {
       const actos = engine.evaluate(ctxBase({ valor: null }));
       expect(actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS')).toBeUndefined();
+    });
+
+    // ── Moeda estrangeira (auditoria Jul/2026) ──────────────
+    it('contrato em USD calcula o IS sobre o CONTRAVALOR em AKZ, não sobre o valor em USD', () => {
+      const actos = engine.evaluate(
+        ctxBase({
+          valor: BigInt(100_000_00), // USD 100k
+          moeda: 'USD',
+          valorEmAKZ: BigInt(90_000_000_00), // AKZ 90M
+        }),
+      );
+      const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
+      expect(is).toBeDefined();
+      expect(is!.baseTributavel).toBe(BigInt(90_000_000_00));
+      expect(is!.valorLiquidar).toBe((BigInt(90_000_000_00) * 7n) / 100n);
+    });
+
+    it('contrato em USD SEM contravalor não calcula valor (nunca 7% sobre centavos de USD) e avisa', () => {
+      const actos = engine.evaluate(
+        ctxBase({
+          valor: BigInt(100_000_00),
+          moeda: 'USD',
+          valorEmAKZ: null,
+        }),
+      );
+      const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
+      expect(is).toBeDefined();
+      expect(is!.valorLiquidar).toBeUndefined();
+      expect(is!.observacoes).toMatch(/sem contravalor em AKZ/);
+    });
+
+    it("'AKZ' e 'AOA' são ambos kwanza — o valor directo é a base", () => {
+      for (const moeda of ['AKZ', 'AOA']) {
+        const actos = engine.evaluate(
+          ctxBase({ moeda, valorEmAKZ: null }),
+        );
+        const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
+        expect(is!.baseTributavel).toBe(BigInt(10_000_000_00));
+      }
+    });
+
+    // ── Prazo a partir do facto tributário (auditoria Jul/2026) ──
+    it('prazoLimite conta da dataAssinatura — herdado de 2023 mostra o IS em mora, não "a vencer"', () => {
+      const assinado = new Date('2023-03-15');
+      const actos = engine.evaluate(
+        ctxBase({ dataAssinatura: assinado }),
+        assinado, // vigência avaliada à data do facto (comportamento existente)
+      );
+      const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
+      expect(is!.prazoLimite).toEqual(new Date('2023-04-14'));
+    });
+
+    it('sem dataAssinatura, o prazo cai para hoje+30 (comportamento anterior)', () => {
+      const antes = Date.now();
+      const actos = engine.evaluate(ctxBase({ dataAssinatura: null }));
+      const is = actos.find((a) => a.regraId === 'IS_PRESTACAO_SERVICOS');
+      const esperadoMin = antes + 29.5 * 86_400_000;
+      expect(is!.prazoLimite!.getTime()).toBeGreaterThan(esperadoMin);
     });
   });
 
